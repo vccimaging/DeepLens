@@ -12,9 +12,9 @@ This package is essential for:
 
 -   `basics.py`: This module defines fundamental variables, constants (e.g., wavelengths, sampling densities), and the base `DeepObj` class that provides common functionalities like device placement (`.to()`) and data type conversion (`.astype()`) for other classes in the package.
 
--   `ray.py`: Contains the `Ray` class, which is the cornerstone of geometric ray tracing in DeepLens. It encapsulates the properties of optical rays, including their origin, direction, wavelength, and validity.
+-   `light/ray.py`: Contains the `Ray` class, which is the cornerstone of geometric ray tracing in DeepLens. It encapsulates the properties of optical rays, including their origin, direction, wavelength, and validity.
 
--   `wave.py`: Implements the `ComplexWave` class for wave optics simulations. This module includes various methods for wave propagation, such as the Angular Spectrum Method (ASM) and Rayleigh-Sommerfeld diffraction, enabling the simulation of diffraction and interference.
+-   `light/wave.py`: Implements the `ComplexWave` class for wave optics simulations. This module includes various methods for wave propagation, such as the Angular Spectrum Method (ASM) and Rayleigh-Sommerfeld diffraction, enabling the simulation of diffraction and interference.
 
 -   `psf.py`: Provides tools for calculating the Point Spread Function (PSF) of an optical system, a critical metric for assessing image quality.
 

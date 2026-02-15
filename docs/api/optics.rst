@@ -347,7 +347,7 @@ Wave Propagation Example
 
 .. code-block:: python
 
-    from deeplens.optics.wave import ComplexWave
+    from deeplens.optics import ComplexWave
 
     # Plane wave then propagate 10 mm in air
     field = ComplexWave.plane_wave(wvln=0.55, phy_size=(5.12, 5.12), res=(512, 512))

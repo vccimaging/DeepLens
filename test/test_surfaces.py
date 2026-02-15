@@ -8,7 +8,7 @@ import math
 
 from deeplens.optics.geometric_surface import Spheric, Aspheric, Aperture, Plane
 from deeplens.optics.geometric_surface.base import Surface
-from deeplens.optics.ray import Ray
+from deeplens.optics.light import Ray
 
 
 class TestSphericSurface:

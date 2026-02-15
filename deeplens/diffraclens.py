@@ -29,7 +29,7 @@ from deeplens.optics.diffractive_surface import (
 )
 from deeplens.optics.psf import conv_psf
 from deeplens.optics.utils import diff_float
-from deeplens.optics.wave import ComplexWave
+from deeplens.optics.light import ComplexWave
 
 
 class DiffractiveLens(Lens):

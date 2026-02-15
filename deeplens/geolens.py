@@ -51,9 +51,9 @@ from deeplens.optics.geometric_surface import (
 from deeplens.optics.phase_surface import Phase
 from deeplens.optics.material import Material
 from deeplens.optics.monte_carlo import forward_integral
-from deeplens.optics.ray import Ray
+from deeplens.optics.light import Ray
 from deeplens.optics.utils import diff_float
-from deeplens.optics.wave import AngularSpectrumMethod
+from deeplens.optics.light import AngularSpectrumMethod
 from deeplens.utils import (
     batch_psnr,
     batch_ssim,

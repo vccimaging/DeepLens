@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from deeplens.optics.monte_carlo import forward_integral, assign_points_to_pixels
-from deeplens.optics.ray import Ray
+from deeplens.optics.light import Ray
 
 
 class TestForwardIntegral:

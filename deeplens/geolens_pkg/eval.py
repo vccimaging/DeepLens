@@ -59,7 +59,7 @@ from deeplens.basics import (
     SPP_PSF,
     WAVE_RGB,
 )
-from deeplens.optics.ray import Ray
+from deeplens.optics.light import Ray
 
 # RGB color definitions for wavelength visualization
 RGB_RED = "#CC0000"
