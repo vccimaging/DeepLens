@@ -34,6 +34,10 @@ This package is essential for:
 
 -   `phase_surface/`: Phase-only surfaces (e.g., `Phase`, `Zernike`, `Fresnel`) for wavefront modulation.
 
+### Geometric lens tools
+
+-   `geolens_pkg/`: Helper package for geometric lens systems, including I/O, optimization, evaluation, tolerance analysis, and 2D/3D visualization (`GeoLensEval`, `GeoLensOptim`, `GeoLensVis`, `GeoLensIO`, `GeoLensTolerance`, `GeoLensVis3D`, `create_lens`).
+
 ### Utilities and loss
 
 -   `utils.py`: Utility functions for the optics package.

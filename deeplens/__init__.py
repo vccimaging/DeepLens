@@ -5,7 +5,7 @@ from .optics import *
 from .network import *
 
 # geolens
-from .geolens_pkg import *
+from .optics.geolens_pkg import *
 
 # utilities
 from .utils import *

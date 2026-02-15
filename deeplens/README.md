@@ -28,4 +28,4 @@ This document outlines the file structure of the `deeplens` package.
     -   `reconstruction/`: Contains networks for image reconstruction (e.g., UNet, NAFNet).
     -   `loss/`: Defines various loss functions.
 
--   **`geolens_pkg/`**: A helper package for geometry-related operations, including I/O, optimization, and visualization.
+-   **`optics/geolens_pkg/`**: A helper package for geometry-related operations, including I/O, optimization, and visualization.

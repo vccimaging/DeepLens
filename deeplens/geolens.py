@@ -32,12 +32,12 @@ from deeplens.basics import (
     SPP_RENDER,
     WAVE_RGB,
 )
-from deeplens.geolens_pkg.eval import GeoLensEval
-from deeplens.geolens_pkg.io import GeoLensIO
-from deeplens.geolens_pkg.optim import GeoLensOptim
-from deeplens.geolens_pkg.tolerance import GeoLensTolerance
-from deeplens.geolens_pkg.view_3d import GeoLensVis3D
-from deeplens.geolens_pkg.vis import GeoLensVis
+from deeplens.optics.geolens_pkg.eval import GeoLensEval
+from deeplens.optics.geolens_pkg.io import GeoLensIO
+from deeplens.optics.geolens_pkg.optim import GeoLensOptim
+from deeplens.optics.geolens_pkg.tolerance import GeoLensTolerance
+from deeplens.optics.geolens_pkg.view_3d import GeoLensVis3D
+from deeplens.optics.geolens_pkg.vis import GeoLensVis
 from deeplens.lens import Lens
 from deeplens.optics.geometric_surface import (
     Aperture,
