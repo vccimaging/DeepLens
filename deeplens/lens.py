@@ -12,16 +12,16 @@ import torch
 from torchvision.utils import make_grid, save_image
 from tqdm import tqdm
 
-from deeplens.basics import (
+from deeplens.basics import init_device
+from deeplens.optics.config import (
     DEFAULT_WAVE,
     DEPTH,
     EPSILON,
     PSF_KS,
     SPP_PSF,
     WAVE_RGB,
-    DeepObj,
-    init_device,
 )
+from deeplens.optics import DeepObj
 from deeplens.optics.imgsim import (
     conv_psf,
     conv_psf_depth_interp,

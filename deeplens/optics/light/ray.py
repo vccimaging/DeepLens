@@ -11,7 +11,8 @@ import copy
 import torch
 import torch.nn.functional as F
 
-from deeplens.basics import DEFAULT_WAVE, EPSILON, DeepObj
+from deeplens.optics.config import DEFAULT_WAVE, EPSILON
+from deeplens.optics import DeepObj
 
 
 class Ray(DeepObj):

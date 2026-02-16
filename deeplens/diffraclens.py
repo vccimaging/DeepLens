@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from deeplens.basics import DEFAULT_WAVE, DEPTH, PSF_KS
+from deeplens.optics.config import DEFAULT_WAVE, DEPTH, PSF_KS
 from deeplens.lens import Lens
 from deeplens.optics.diffractive_surface import (
     Binary2,

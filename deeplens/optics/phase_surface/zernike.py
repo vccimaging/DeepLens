@@ -4,7 +4,7 @@ import math
 
 import torch
 
-from deeplens.basics import EPSILON
+from deeplens.optics.config import EPSILON
 from deeplens.optics.phase_surface.phase import Phase
 
 

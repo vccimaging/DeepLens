@@ -21,7 +21,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from deeplens.optics.geometric_surface import Aperture, Aspheric, AsphericNorm, Spheric, ThinLens, Plane
 from deeplens.optics.material import MATERIAL_data
-from deeplens.basics import WAVE_RGB
+from deeplens.optics.config import WAVE_RGB
 from deeplens.geolens import GeoLens
 
 

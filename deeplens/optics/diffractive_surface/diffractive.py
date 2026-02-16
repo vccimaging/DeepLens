@@ -12,7 +12,8 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from deeplens.basics import EPSILON, DeepObj
+from deeplens.optics.config import EPSILON
+from deeplens.optics import DeepObj
 from deeplens.optics.material import Material
 from deeplens.optics.utils import diff_quantize
 

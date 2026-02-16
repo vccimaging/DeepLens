@@ -20,7 +20,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision.utils import save_image
 
-from deeplens.basics import (
+from deeplens.optics.config import (
     DEFAULT_WAVE,
     DELTA_PARAXIAL,
     DEPTH,

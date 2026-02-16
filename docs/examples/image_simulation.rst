@@ -26,7 +26,7 @@ Single Depth
     import torchvision.transforms as T
     from torchvision.utils import save_image
     from deeplens import GeoLens
-    from deeplens.basics import DEPTH, SPP_RENDER
+    from deeplens.optics.config import DEPTH, SPP_RENDER
     
     # Load lens
     lens = GeoLens(
@@ -60,7 +60,7 @@ Render objects at different distances:
 
 .. code-block:: python
 
-    from deeplens.basics import SPP_RENDER
+    from deeplens.optics.config import SPP_RENDER
     
     # Depths are negative (object in front of lens)
     depths = [-500, -1000, -2000, -5000, -10000]
@@ -93,7 +93,7 @@ For scenes with varying depth, use PSF map convolution:
     from PIL import Image
     import torch
     import torchvision.transforms as T
-    from deeplens.basics import PSF_KS, SPP_PSF
+    from deeplens.optics.config import PSF_KS, SPP_PSF
     
     # Load RGB image
     img_rgb = Image.open('./datasets/edof/rgb.png')
@@ -144,7 +144,7 @@ For accurate diffraction simulation, use coherent PSF:
 .. code-block:: python
 
     import torch
-    from deeplens.basics import PSF_KS, SPP_COHERENT
+    from deeplens.optics.config import PSF_KS, SPP_COHERENT
     
     # For wave optics PSF, use psf_coherent() method
     # Requires double precision for accurate phase computation
@@ -173,7 +173,7 @@ The render() method automatically handles RGB wavelengths:
 
 .. code-block:: python
 
-    from deeplens.basics import WAVE_RGB, SPP_RENDER
+    from deeplens.optics.config import WAVE_RGB, SPP_RENDER
     
     # render() uses WAVE_RGB = [0.656, 0.588, 0.486] um for R, G, B channels
     # Each channel is rendered with its corresponding wavelength
@@ -186,7 +186,7 @@ The render() method automatically handles RGB wavelengths:
     
     # For custom wavelength PSFs, compute directly:
     import torch
-    from deeplens.basics import PSF_KS, SPP_PSF
+    from deeplens.optics.config import PSF_KS, SPP_PSF
     
     wavelengths = WAVE_RGB  # [0.656, 0.588, 0.486]
     point = torch.tensor([0.0, 0.0, -2000.0])
@@ -206,7 +206,7 @@ Use PSF map for spatially-varying blur:
 
 .. code-block:: python
 
-    from deeplens.basics import PSF_KS, SPP_PSF, DEPTH
+    from deeplens.optics.config import PSF_KS, SPP_PSF, DEPTH
     import torch
     
     # Method 1: Use render() with psf_map method (recommended)
@@ -250,7 +250,7 @@ Including Sensor and ISP
     # - ISP pipeline (demosaicing, white balance, color correction, gamma)
     
     # Render image through lens first
-    from deeplens.basics import DEPTH, SPP_RENDER
+    from deeplens.optics.config import DEPTH, SPP_RENDER
     
     img_rendered = lens.render(
         img_tensor, 
@@ -279,7 +279,7 @@ Circular Bokeh
 
 .. code-block:: python
 
-    from deeplens.basics import SPP_RENDER
+    from deeplens.optics.config import SPP_RENDER
     
     # Defocus effects depend on object distance
     # Objects far from focus distance have larger blur
@@ -315,7 +315,7 @@ Bokeh shape depends on aperture:
     lens.set_fnum(fnum=2.8)  # Larger aperture = more bokeh
     
     # Render with new aperture
-    from deeplens.basics import SPP_RENDER
+    from deeplens.optics.config import SPP_RENDER
     img_rendered = lens.render(img_tensor, depth=-5000.0, method='ray_tracing', spp=SPP_RENDER)
 
 Computational Photography
@@ -329,7 +329,7 @@ Using lens with cubic phase element:
 .. code-block:: python
 
     from deeplens import GeoLens
-    from deeplens.basics import SPP_RENDER
+    from deeplens.optics.config import SPP_RENDER
     
     # Load lens with cubic phase element for EDoF
     # Cubic phase creates depth-invariant PSF
@@ -476,7 +476,7 @@ Compare with Ground Truth
 .. code-block:: python
 
     from deeplens.utils import batch_psnr, batch_ssim
-    from deeplens.basics import DEPTH, SPP_RENDER
+    from deeplens.optics.config import DEPTH, SPP_RENDER
     
     # Reference (sharp) image
     img_ref = img_tensor
