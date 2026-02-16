@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from deeplens.paraxiallens import ParaxialLens
-from deeplens.basics import DEPTH
+from deeplens.optics.config import DEPTH
 
 
 class TestParaxialLensInit:

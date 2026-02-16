@@ -18,7 +18,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from deeplens.basics import (
+from deeplens.optics.config import (
     DEFAULT_WAVE,
     PSF_KS,
     SPP_COHERENT,

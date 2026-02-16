@@ -6,15 +6,15 @@ import pytest
 import torch
 
 
-from deeplens.basics import (
+from deeplens.basics import init_device
+from deeplens.optics import DeepObj
+from deeplens.optics.config import (
     DEPTH,
     DEFAULT_WAVE,
     EPSILON,
     PSF_KS,
     SPP_PSF,
     WAVE_RGB,
-    DeepObj,
-    init_device,
     wave_rgb,
 )
 

@@ -9,7 +9,7 @@
 import torch
 import torch.nn.functional as F
 
-from deeplens.basics import EPSILON
+from deeplens.optics.config import EPSILON
 
 
 def forward_integral(ray, ps, ks, pointc=None):
