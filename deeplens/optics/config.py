@@ -30,11 +30,3 @@ WAVE_BLUE = [0.450, 0.470, 0.490]  # [um] narrow band blue spectrum
 FULL_SPECTRUM = np.arange(0.400, 0.701, 0.02)
 HYPER_SPEC_RANGE = [0.42, 0.66]  # [um]. reference 400nm to 700nm, 20nm step size
 HYPER_SPEC_BAND = 49  # 5nm/step, according to "Shift-variant color-coded diffractive spectral imaging system"
-
-
-def wave_rgb():
-    """Randomly select one wave from R, G, B spectrum and return the wvln list (length 3)"""
-    wave_r = np.random.choice([0.620, 0.660, 0.700])
-    wave_g = np.random.choice([0.500, 0.530, 0.560])
-    wave_b = np.random.choice([0.450, 0.470, 0.490])
-    return [wave_r, wave_g, wave_b]

@@ -33,7 +33,7 @@ Creating a Hybrid System
 .. code-block:: python
 
     import torch
-    from deeplens.hybridlens import HybridLens
+    from deeplens.optics import HybridLens
     
     # HybridLens consists of a GeoLens (refractive) and a DOE (diffractive)
     # The easiest way is to load from a JSON file that contains both:
@@ -161,7 +161,7 @@ Combining Refractive and Diffractive
     # - Enables compact achromatic designs
     
     # Load a hybrid lens design
-    from deeplens.hybridlens import HybridLens
+    from deeplens.optics import HybridLens
     
     lens = HybridLens(
         filename='./datasets/lenses/hybrid/achromatic_hybrid.json',

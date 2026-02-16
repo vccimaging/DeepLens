@@ -90,19 +90,19 @@ class Camera(Renderer):
 
         # Lens
         if lens_type == "geolens":
-            from deeplens.geolens import GeoLens
+            from deeplens.optics import GeoLens
 
             self.lens = GeoLens(lens_file, device=device)
         elif lens_type == "hybridlens":
-            from deeplens.hybridlens import HybridLens
+            from deeplens.optics import HybridLens
 
             self.lens = HybridLens(lens_file, device=device)
         elif lens_type == "paraxiallens":
-            from deeplens.paraxiallens import ParaxialLens
+            from deeplens.optics import ParaxialLens
 
             self.lens = ParaxialLens(lens_file, device=device)
         elif lens_type == "diffraclens":
-            from deeplens.diffraclens import DiffractiveLens
+            from deeplens.optics import DiffractiveLens
 
             self.lens = DiffractiveLens(lens_file, device=device)
         else:

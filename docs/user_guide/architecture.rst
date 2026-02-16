@@ -37,7 +37,7 @@ The :class:`~deeplens.camera.Camera` class is the main entry point for end-to-en
 Lens Module
 -----------
 
-The :class:`~deeplens.lens.Lens` class is the base class for all optical systems. It defines the common interface for PSF calculation, rendering, and analysis. DeepLens provides several specialized lens types:
+The :class:`~deeplens.optics.lens.Lens` class is the base class for all optical systems. It defines the common interface for PSF calculation, rendering, and analysis. DeepLens provides several specialized lens types:
 
 *   **GeoLens**: The most accurate model for refractive lens systems. Uses differentiable ray tracing to compute PSFs and simulate optical aberrations (spherical, coma, astigmatism, distortion, chromatic). Supports multi-element lens systems with aspherical surfaces.
 
@@ -75,7 +75,7 @@ Key Features
 GeoLens Architecture
 --------------------
 
-The :class:`~deeplens.geolens.GeoLens` is the most commonly used class for designing refractive optics. It is designed using a **Mixin** architecture to separate concerns and keep the codebase modular.
+The :class:`~deeplens.optics.geolens.GeoLens` is the most commonly used class for designing refractive optics. It is designed using a **Mixin** architecture to separate concerns and keep the codebase modular.
 
 Class Hierarchy
 ~~~~~~~~~~~~~~~

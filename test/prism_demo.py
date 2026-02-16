@@ -1,4 +1,4 @@
-from deeplens.geolens import GeoLens
+from deeplens.optics import GeoLens
 from deeplens.optics.geometric_surface import Prism
 
 # A thin lens

@@ -20,7 +20,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision.utils import save_image
 
-from deeplens.optics.config import (
+from .config import (
     DEFAULT_WAVE,
     DELTA_PARAXIAL,
     DEPTH,
@@ -32,14 +32,14 @@ from deeplens.optics.config import (
     SPP_RENDER,
     WAVE_RGB,
 )
-from deeplens.optics.geolens_pkg.eval import GeoLensEval
-from deeplens.optics.geolens_pkg.io import GeoLensIO
-from deeplens.optics.geolens_pkg.optim import GeoLensOptim
-from deeplens.optics.geolens_pkg.tolerance import GeoLensTolerance
-from deeplens.optics.geolens_pkg.view_3d import GeoLensVis3D
-from deeplens.optics.geolens_pkg.vis import GeoLensVis
-from deeplens.lens import Lens
-from deeplens.optics.geometric_surface import (
+from .geolens_pkg.eval import GeoLensEval
+from .geolens_pkg.io import GeoLensIO
+from .geolens_pkg.optim import GeoLensOptim
+from .geolens_pkg.tolerance import GeoLensTolerance
+from .geolens_pkg.view_3d import GeoLensVis3D
+from .geolens_pkg.vis import GeoLensVis
+from .lens import Lens
+from .geometric_surface import (
     Aperture,
     Aspheric,
     AsphericNorm,
@@ -48,12 +48,11 @@ from deeplens.optics.geometric_surface import (
     Spheric,
     ThinLens,
 )
-from deeplens.optics.phase_surface import Phase
-from deeplens.optics.material import Material
-from deeplens.optics.imgsim import forward_integral
-from deeplens.optics.light import Ray
-from deeplens.optics.utils import diff_float
-from deeplens.optics.light import AngularSpectrumMethod
+from .phase_surface import Phase
+from .material import Material
+from .imgsim import forward_integral
+from .light import Ray, AngularSpectrumMethod
+from .utils import diff_float
 from deeplens.utils import (
     batch_psnr,
     batch_ssim,

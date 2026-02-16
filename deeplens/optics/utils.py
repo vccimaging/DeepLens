@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -110,6 +111,14 @@ def foc_dist_balanced(d1, d2):
     """
     foc_dist = 2 * d1 * d2 / (d1 + d2)
     return foc_dist
+
+
+def wave_rgb():
+    """Randomly select one wave from R, G, B spectrum and return the wvln list (length 3)"""
+    wave_r = np.random.choice([0.620, 0.660, 0.700])
+    wave_g = np.random.choice([0.500, 0.530, 0.560])
+    wave_b = np.random.choice([0.450, 0.470, 0.490])
+    return [wave_r, wave_g, wave_b]
 
 
 # ================================
