@@ -216,17 +216,15 @@ Next Steps
 Repository Structure
 --------------------
 
-The DeepLens repository is organized as follows::
+The DeepLens repository is organized around three decoupled modules::
 
     DeepLens/
     ├── deeplens/              # Main package
-    │   ├── optics/            # Optical simulation modules
-    │   ├── sensor/            # Sensor simulation modules
-    │   ├── network/           # Neural network architectures
-    │   ├── geolens.py         # Geometric lens class
-    │   ├── diffraclens.py     # Diffractive lens class
-    │   ├── hybridlens.py      # Hybrid lens class
-    │   └── psfnetlens.py      # Neural surrogate lens
+    │   ├── optics/            # Optical simulation and lens models
+    │   ├── sensor/            # Sensor and ISP simulation
+    │   ├── network/           # Surrogate + reconstruction networks
+    │   ├── camera.py          # Camera composition wrapper
+    │   └── ...
     ├── 0_hello_deeplens.py    # Basic tutorial
     ├── 1_end2end_lens_design.py    # End-to-end design example
     ├── 2_autolens_rms.py      # Automated lens design
@@ -255,4 +253,3 @@ DeepLens comes with several example scripts:
     python 4_tasklens_img_classi.py
 
 Each script includes detailed comments and configuration options.
-
