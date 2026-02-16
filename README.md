@@ -105,19 +105,17 @@ Run the demo code:
 python 0_hello_deeplens.py
 ```
 
-DeepLens repo is structured as follows:
+DeepLens repo is structured around three decoupled modules (``optics``, ``sensor``, and ``network``):
 
 ```
 DeepLens/
 │
 ├── deeplens/
-│   ├── optics/ (optics simulation)
-|   ├── sensor/ (sensor simulation)
-|   ├── network/ (network architectures)
-|   ├── ...
-|   ├── geolens.py (refractive lens with ray tracing model)
-|   ├── diffraclens.py (diffractive lens with wave optics model)
-|   └── your_own_optical_system.py (your own optical lens)
+│   ├── optics/ (optics simulation and lens models)
+│   ├── sensor/ (sensor + ISP simulation)
+│   ├── network/ (surrogate and reconstruction networks)
+│   ├── camera.py (composes lens and sensor into a camera simulator)
+│   └── ...
 │
 ├── 0_hello_deeplens.py (code tutorials)
 ├── ...
