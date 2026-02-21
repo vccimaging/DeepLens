@@ -37,36 +37,31 @@ Contents
 
    installation
    quickstart
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+
    tutorials
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-
-   user_guide/architecture
-   user_guide/lens_systems
-   user_guide/optical_elements
-   user_guide/sensors
-   user_guide/neural_networks
-
-.. toctree::
-   :maxdepth: 2
-   :caption: API Reference
-
-   api/index
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Examples
-
    examples/automated_lens_design
    examples/end2end_design
    examples/image_simulation
    examples/hybrid_lenses
 
 .. toctree::
+   :maxdepth: 2
+   :caption: References
+
+   user_guide/architecture
+   user_guide/lens_systems
+   user_guide/optical_elements
+   user_guide/sensors
+   user_guide/neural_networks
+   api/index
+
+.. toctree::
    :maxdepth: 1
-   :caption: Development
+   :caption: Miscellaneous
 
    contributing
    code_of_conduct
