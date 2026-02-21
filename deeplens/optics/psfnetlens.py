@@ -17,12 +17,12 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 from transformers import get_cosine_schedule_with_warmup
 
-from deeplens.geolens import GeoLens
-from deeplens.lens import Lens
+from .geolens import GeoLens
+from .lens import Lens
 from deeplens.network.surrogate import MLP
 from deeplens.network.surrogate.psfnet_mplconv import PSFNet_MLPConv
-from deeplens.basics import DEPTH, PSF_KS
-from deeplens.optics.psf import conv_psf_pixel, conv_psf_pixel_high_res, rotate_psf
+from .config import DEPTH, PSF_KS
+from .imgsim import conv_psf_pixel, conv_psf_pixel_high_res, rotate_psf
 
 
 class PSFNetLens(Lens):

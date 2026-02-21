@@ -16,9 +16,9 @@ import torch
 import yaml
 from tqdm import tqdm
 
-from deeplens.geolens import GeoLens
-from deeplens.geolens_pkg.utils import create_lens
-from deeplens.basics import DEPTH, EPSILON, WAVE_RGB
+from deeplens.optics import GeoLens
+from deeplens.optics.geolens_pkg.utils import create_lens
+from deeplens.optics.config import DEPTH, EPSILON, WAVE_RGB
 from deeplens.utils import create_video_from_images, set_logger, set_seed
 
 

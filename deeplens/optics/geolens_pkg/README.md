@@ -1,6 +1,6 @@
 # GeoLens Package
 
-The `geolens_pkg` is a sub-package of DeepLens that provides a comprehensive suite of tools for the classical evaluation, optimization, and analysis of geometric lens systems (`GeoLens`). The functionalities are designed to be accurate and are aligned with industry-standard optical design software like Zemax.
+The `geolens_pkg` is a sub-package of DeepLens (under `optics/`) that provides a comprehensive suite of tools for the classical evaluation, optimization, and analysis of geometric lens systems (`GeoLens`). The functionalities are designed to be accurate and are aligned with industry-standard optical design software like Zemax.
 
 ## Key Features
 

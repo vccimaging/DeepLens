@@ -33,7 +33,7 @@ Creating a Hybrid System
 .. code-block:: python
 
     import torch
-    from deeplens.hybridlens import HybridLens
+    from deeplens.optics import HybridLens
     
     # HybridLens consists of a GeoLens (refractive) and a DOE (diffractive)
     # The easiest way is to load from a JSON file that contains both:
@@ -63,7 +63,7 @@ Ray-Wave Hybrid Tracing
 .. code-block:: python
 
     import torch
-    from deeplens.basics import PSF_KS, DEFAULT_WAVE, SPP_COHERENT
+    from deeplens.optics.config import PSF_KS, DEFAULT_WAVE, SPP_COHERENT
     
     # Ensure double precision for accurate phase computation
     torch.set_default_dtype(torch.float64)
@@ -161,7 +161,7 @@ Combining Refractive and Diffractive
     # - Enables compact achromatic designs
     
     # Load a hybrid lens design
-    from deeplens.hybridlens import HybridLens
+    from deeplens.optics import HybridLens
     
     lens = HybridLens(
         filename='./datasets/lenses/hybrid/achromatic_hybrid.json',
@@ -181,7 +181,7 @@ Multi-Wavelength Optimization
 
     import torch
     import torch.optim as optim
-    from deeplens.basics import WAVE_RGB, SPP_COHERENT, PSF_KS
+    from deeplens.optics.config import WAVE_RGB, SPP_COHERENT, PSF_KS
     
     # Set double precision for coherent ray tracing
     torch.set_default_dtype(torch.float64)
@@ -270,7 +270,7 @@ Using Cubic Phase Plate
     # Cubic phase creates a depth-invariant PSF (wavefront coding)
     
     from deeplens import GeoLens
-    from deeplens.basics import DEPTH, PSF_KS, SPP_PSF
+    from deeplens.optics.config import DEPTH, PSF_KS, SPP_PSF
     
     # Load lens with cubic phase element
     # Cubic surfaces are defined in JSON with type "Cubic"
@@ -298,7 +298,7 @@ Optimization for EDoF
 .. code-block:: python
 
     import torch
-    from deeplens.basics import PSF_KS, SPP_PSF
+    from deeplens.optics.config import PSF_KS, SPP_PSF
     
     # Optimize DOE for consistent PSF across depth range
     depths = torch.linspace(-500, -5000, 5)

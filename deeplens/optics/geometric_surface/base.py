@@ -7,10 +7,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from deeplens.basics import DeepObj
-from deeplens.optics.materials import Material
-
-EPSILON = 1e-12
+from deeplens.optics.base import DeepObj
+from deeplens.optics.config import EPSILON
+from deeplens.optics.material import Material
 
 
 class Surface(DeepObj):

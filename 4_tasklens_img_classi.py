@@ -23,7 +23,7 @@ from transformers import get_cosine_schedule_with_warmup
 
 import wandb
 from deeplens import GeoLens
-from deeplens.optics.psf import conv_psf
+from deeplens.optics.imgsim import conv_psf
 from deeplens.utils import set_logger, set_seed
 
 

@@ -18,26 +18,26 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from deeplens.basics import (
+from .config import (
     DEFAULT_WAVE,
     PSF_KS,
     SPP_COHERENT,
     WAVE_RGB,
 )
-from deeplens.geolens import GeoLens
-from deeplens.lens import Lens
-from deeplens.optics.diffractive_surface import (
+from .geolens import GeoLens
+from .lens import Lens
+from .diffractive_surface import (
     Binary2,
     Fresnel,
     Grating,
     Pixel2D,
     Zernike,
 )
-from deeplens.optics.geometric_surface import Plane
-from deeplens.optics.monte_carlo import forward_integral
-from deeplens.optics.phase_surface import Phase
-from deeplens.optics.utils import diff_float
-from deeplens.optics.wave import AngularSpectrumMethod
+from .geometric_surface import Plane
+from .imgsim import forward_integral
+from .phase_surface import Phase
+from .utils import diff_float
+from .light import AngularSpectrumMethod
 
 
 class HybridLens(Lens):

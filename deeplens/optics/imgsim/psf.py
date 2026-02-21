@@ -31,7 +31,7 @@ import cv2 as cv
 import torch
 import torch.nn.functional as F
 
-from deeplens.basics import DELTA, PSF_KS
+from deeplens.optics.config import DELTA, PSF_KS
 
 
 # ================================================

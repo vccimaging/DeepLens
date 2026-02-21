@@ -18,18 +18,18 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from deeplens.basics import DEFAULT_WAVE, DEPTH, PSF_KS
-from deeplens.lens import Lens
-from deeplens.optics.diffractive_surface import (
+from .config import DEFAULT_WAVE, DEPTH, PSF_KS
+from .lens import Lens
+from .diffractive_surface import (
     Binary2,
     Fresnel,
     Pixel2D,
     ThinLens,
     Zernike,
 )
-from deeplens.optics.psf import conv_psf
-from deeplens.optics.utils import diff_float
-from deeplens.optics.wave import ComplexWave
+from .imgsim import conv_psf
+from .utils import diff_float
+from .light import ComplexWave
 
 
 class DiffractiveLens(Lens):

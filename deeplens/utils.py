@@ -14,104 +14,6 @@ from tqdm import tqdm
 
 
 # ==================================
-# Interpolation
-# ==================================
-def interp1d(query, key, value, mode="linear"):
-    """Interpolate 1D query points to the key points.
-
-    Args:
-        query (torch.Tensor): Query points, shape [N, 1]
-        key (torch.Tensor): Key points, shape [M, 1]
-        value (torch.Tensor): Value at key points, shape [M, ...]
-        mode (str): Interpolation mode.
-
-    Returns:
-        torch.Tensor: Interpolated value, shape [N, ...]
-
-    Reference:
-        [1] https://github.com/aliutkus/torchinterp1d
-    """
-    if mode == "linear":
-        # Flatten query and key tensors for processing
-        query_flat = query.flatten()  # [N]
-        key_flat = key.flatten()  # [M]
-
-        # Get the original value shape to preserve extra dimensions
-        value_shape = value.shape  # [M, ...]
-        M = value_shape[0]
-        extra_dims = value_shape[1:]
-        value_reshaped = value.view(M, -1)  # [M, D] where D = product of extra dims
-
-        # Sort key and value
-        sort_idx = torch.argsort(key_flat)
-        key_sorted = key_flat[sort_idx]  # [M]
-        value_sorted = value_reshaped[sort_idx]  # [M, D]
-
-        # Find the indices for interpolation
-        indices = torch.searchsorted(key_sorted, query_flat, right=False)  # [N]
-        indices = torch.clamp(indices, 1, len(key_sorted) - 1)  # [N]
-
-        # Get the left and right key points
-        key_left = key_sorted[indices - 1]  # [N]
-        key_right = key_sorted[indices]  # [N]
-        value_left = value_sorted[indices - 1]  # [N, D]
-        value_right = value_sorted[indices]  # [N, D]
-
-        # Linear interpolation
-        result = value_left.clone()  # [N, D]
-        mask = key_left != key_right  # [N]
-        if mask.any():
-            # Compute interpolation weights
-            weight = (query_flat - key_left) / (key_right - key_left)  # [N]
-            weight = weight.unsqueeze(-1)  # [N, 1] for broadcasting
-
-            # Apply interpolation only where mask is True
-            interpolated = value_left + weight * (value_right - value_left)  # [N, D]
-            result = torch.where(mask.unsqueeze(-1), interpolated, value_left)  # [N, D]
-
-        # Reshape result back to [N, ...] maintaining the extra dimensions
-        result_shape = (query.shape[0],) + extra_dims
-        query_value = result.view(result_shape)
-
-    elif mode == "grid_sample":
-        # https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.grid_sample.html
-        # This requires uniform spacing between key points.
-        raise NotImplementedError("Grid sample is not implemented yet.")
-
-    else:
-        raise ValueError(f"Invalid interpolation mode: {mode}")
-
-    return query_value
-
-
-def grid_sample_xy(
-    input, grid_xy, mode="bilinear", padding_mode="zeros", align_corners=False
-):
-    """This function is slightly modified from torch.nn.functional.grid_sample to use xy-coordinate grid.
-    
-    Args:
-        input (torch.Tensor): Input tensor, shape [B, C, H, W]
-        grid_xy (torch.Tensor): Grid xy coordinates, shape [B, H, W, 2]. Top-left is (-1, 1), bottom-right is (1, -1).
-        mode (str): Interpolation mode, "bilinear" or "nearest"
-        padding_mode (str): Padding mode, "zeros" or "border"
-        align_corners (bool): Whether to align corners
-
-    Returns:
-        torch.Tensor: Output tensor, shape [B, C, H, W]
-    """
-    grid_x = grid_xy[..., 0]
-    grid_y = grid_xy[..., 1]
-    grid = torch.stack([grid_x, -grid_y], dim=-1)
-    return F.grid_sample(
-        input,
-        grid,
-        mode=mode,
-        padding_mode=padding_mode,
-        align_corners=align_corners,
-    )
-
-
-# ==================================
 # Image IO
 # ==================================
 def img2batch(img):
@@ -273,18 +175,6 @@ def denormalize_ImageNet(batch):
 
     batch_out = batch * std + mean
     return batch_out
-
-
-# ==================================
-# EDoF
-# ==================================
-def foc_dist_balanced(d1, d2):
-    """When focus to foc_dist, d1 and d2 will have the same CoC.
-
-    Reference: https://en.wikipedia.org/wiki/Circle_of_confusion
-    """
-    foc_dist = 2 * d1 * d2 / (d1 + d2)
-    return foc_dist
 
 
 # ==================================

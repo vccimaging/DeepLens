@@ -6,7 +6,7 @@ import pytest
 import torch
 
 
-from deeplens.optics.wave import ComplexWave, AngularSpectrumMethod
+from deeplens.optics.light import ComplexWave, AngularSpectrumMethod
 
 
 class TestComplexWaveInit:

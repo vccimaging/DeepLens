@@ -74,7 +74,7 @@ Step 3: Curriculum Learning
 
 .. code-block:: python
 
-    from deeplens.basics import DEPTH, WAVE_RGB, SPP_PSF
+    from deeplens.optics.config import DEPTH, WAVE_RGB, SPP_PSF
     
     # Use the built-in optimize() method for curriculum learning
     # This handles ray sampling, loss computation, and constraints automatically
@@ -265,7 +265,7 @@ Multi-Wavelength Optimization
 
 .. code-block:: python
 
-    from deeplens.basics import WAVE_RGB  # [0.656, 0.588, 0.486] um
+    from deeplens.optics.config import WAVE_RGB  # [0.656, 0.588, 0.486] um
     
     # The loss_rms() function already handles multi-wavelength optimization
     # It computes RMS for R, G, B wavelengths and averages them
@@ -277,7 +277,7 @@ Multi-Wavelength Optimization
     )
     
     # For custom wavelength handling:
-    from deeplens.basics import SPP_PSF
+    from deeplens.optics.config import SPP_PSF
     
     wavelengths = WAVE_RGB  # [0.65627250, 0.58756180, 0.48613270]
     total_loss = 0.0

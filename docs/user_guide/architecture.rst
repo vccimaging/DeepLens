@@ -6,20 +6,22 @@ This section describes the high-level software architecture of DeepLens. Underst
 Overview
 --------
 
-The core abstraction in DeepLens is the **Camera**, which acts as a complete image simulator. A Camera is composed of two main components: a **Lens** (optical system) and a **Sensor** (electronic system).
+DeepLens is organized into three decoupled modules: **Optics**, **Sensor**, and **Network**. The **Camera** class composes optics and sensor simulation for end-to-end image formation, while neural networks can be trained independently on generated data.
 
 .. code-block:: text
 
-    Camera
-    ├── Lens (Optical System)
-    │   ├── GeoLens (Ray-traced refractive lens)
-    │   ├── ParaxialLens (Thin lens / Circle of Confusion model)
-    │   ├── DiffractiveLens (Wave-based diffractive optics)
-    │   ├── HybridLens (Refractive + Diffractive combination)
-    │   └── PSFNetLens (Neural network surrogate model)
-    └── Sensor (Electronic System)
-        ├── Noise Model (Read/Shot noise)
-        └── ISP (Image Signal Processor)
+    DeepLens
+    ├── Optics (deeplens.optics)
+    │   ├── GeoLens / ParaxialLens / DiffractiveLens / HybridLens / PSFNetLens
+    │   └── Optical primitives (surfaces, materials, ray/wave propagation)
+    ├── Sensor (deeplens.sensor)
+    │   ├── Sensor / RGBSensor / MonoSensor / EventSensor
+    │   └── ISP modules (demosaic, white balance, color correction, gamma, etc.)
+    ├── Network (deeplens.network)
+    │   ├── Surrogate networks (PSF prediction)
+    │   ├── Reconstruction networks (UNet, NAFNet, Restormer, SwinIR)
+    │   └── Losses and datasets
+    └── Camera (deeplens.camera.Camera) - composition wrapper for optics + sensor
 
 Camera System
 -------------
@@ -34,10 +36,10 @@ The :class:`~deeplens.camera.Camera` class is the main entry point for end-to-en
     4.  **ISP**: The raw data is processed back into a displayable RGB image (demosaicing, white balance, color correction, gamma, etc.).
 - **Output**: A simulated "captured" image that mimics what a real camera would produce, along with ground truth for training.
 
-Lens Module
------------
+Optics
+------
 
-The :class:`~deeplens.lens.Lens` class is the base class for all optical systems. It defines the common interface for PSF calculation, rendering, and analysis. DeepLens provides several specialized lens types:
+The :class:`~deeplens.optics.lens.Lens` class is the base class for all optical systems, defining the common interface for PSF calculation, rendering, and analysis. These lens implementations are the primary high-level abstractions within the optics module:
 
 *   **GeoLens**: The most accurate model for refractive lens systems. Uses differentiable ray tracing to compute PSFs and simulate optical aberrations (spherical, coma, astigmatism, distortion, chromatic). Supports multi-element lens systems with aspherical surfaces.
 
@@ -72,10 +74,21 @@ Key Features
 
 *   **ISP Modules**: Modular components including black level compensation, demosaicing, auto white balance, color correction matrix, and gamma correction.
 
+Network Module
+--------------
+
+The :mod:`deeplens.network` package is decoupled from both optics and sensor internals. It provides:
+
+*   **Surrogate Networks**: Fast neural approximations of optical behavior (e.g., PSF prediction).
+*   **Reconstruction Networks**: Image restoration models that process sensor outputs.
+*   **Loss Functions and Datasets**: Training utilities for optics-aware learning pipelines.
+
+This separation keeps model development independent from physical simulation details and improves code readability and extensibility.
+
 GeoLens Architecture
 --------------------
 
-The :class:`~deeplens.geolens.GeoLens` is the most commonly used class for designing refractive optics. It is designed using a **Mixin** architecture to separate concerns and keep the codebase modular.
+The :class:`~deeplens.optics.geolens.GeoLens` is the most commonly used class for designing refractive optics. It is designed using a **Mixin** architecture to separate concerns and keep the codebase modular.
 
 Class Hierarchy
 ~~~~~~~~~~~~~~~
@@ -104,4 +117,3 @@ While ``GeoLens`` can be part of a ``Camera``, it is often used **standalone** f
 *   Optimize lens surface parameters (curvature, thickness, aspheric coefficients) to minimize spot size or wavefront error.
 
 This decoupling allows optical engineers to focus purely on the lens design before integrating it into a full camera system simulation.
-

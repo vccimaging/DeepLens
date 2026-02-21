@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from deeplens import GeoLens
-from deeplens.basics import DEPTH, DEFAULT_WAVE
+from deeplens.optics.config import DEPTH, DEFAULT_WAVE
 
 
 class TestGeoLensLoading:

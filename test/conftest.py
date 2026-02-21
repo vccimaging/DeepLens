@@ -114,7 +114,7 @@ def sample_image_small(device_auto):
 @pytest.fixture(scope="function")
 def sample_ray(device_auto):
     """Create a sample ray for testing."""
-    from deeplens.optics.ray import Ray
+    from deeplens.optics.light import Ray
 
     o = torch.tensor([[0.0, 0.0, -100.0]], device=device_auto)
     d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
@@ -125,7 +125,7 @@ def sample_ray(device_auto):
 @pytest.fixture(scope="function")
 def sample_rays_batch(device_auto):
     """Create a batch of rays for testing."""
-    from deeplens.optics.ray import Ray
+    from deeplens.optics.light import Ray
 
     # Create 100 rays in a grid pattern
     n = 10

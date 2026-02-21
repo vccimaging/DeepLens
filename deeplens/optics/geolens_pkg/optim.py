@@ -36,7 +36,7 @@ import torch
 from tqdm import tqdm
 from transformers import get_cosine_schedule_with_warmup
 
-from deeplens.basics import (
+from deeplens.optics.config import (
     DEFAULT_WAVE,
     DEPTH,
     EPSILON,
@@ -45,7 +45,6 @@ from deeplens.basics import (
     SPP_PSF,
     WAVE_RGB,
 )
-from deeplens.utils import set_logger
 
 
 class GeoLensOptim:
@@ -530,7 +529,17 @@ class GeoLensOptim:
 
         os.makedirs(result_dir, exist_ok=True)
         if not logging.getLogger().hasHandlers():
-            set_logger(result_dir)
+            logger = logging.getLogger()
+            logger.setLevel("DEBUG")
+            fmt = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s", "%Y-%m-%d %H:%M:%S")
+            sh = logging.StreamHandler()
+            sh.setFormatter(fmt)
+            sh.setLevel("INFO")
+            fh = logging.FileHandler(f"{result_dir}/output.log")
+            fh.setFormatter(fmt)
+            fh.setLevel("INFO")
+            logger.addHandler(sh)
+            logger.addHandler(fh)
         logging.info(f"lr:{lrs}, iterations:{iterations}, num_ring:{num_ring}, num_arm:{num_arm}, rays_per_fov:{spp}.")
         logging.info("If Out-of-Memory, try to reduce num_ring, num_arm, and rays_per_fov.")
 
