@@ -197,7 +197,7 @@ data_lq, data_gt = camera.render(data_dict, render_mode='psf_patch', output_type
 ## Next Steps
 
 * Explore the [tutorials](tutorials.md) for more detailed examples
-* Check out the [Lens API](api/lens.md) for detailed API documentation
+* Check out the [Optics API](api/optics.md) for detailed API documentation
 * See [Automated Lens Design](examples/automated_lens_design.md) for advanced applications
 
 ## Repository Structure

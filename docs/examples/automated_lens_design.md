@@ -368,5 +368,5 @@ After optimization, you should achieve:
 ## See Also
 
 * [Tutorials](../tutorials.md) - Tutorial on lens optimization
-* [Lens API](../api/lens.md) - GeoLens API reference
+* [Optics API](../api/optics.md) - GeoLens API reference
 * Paper: [Nature Communications 2024](https://www.nature.com/articles/s41467-024-50835-7)

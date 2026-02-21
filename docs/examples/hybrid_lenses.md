@@ -410,6 +410,6 @@ python 6_hybridlens_design.py
 ## See Also
 
 * [Automated Lens Design](automated_lens_design.md) - Optimization techniques
-* [Optical Elements](../user_guide/optical_elements.md) - Diffractive surfaces
+* [Optics API](../api/optics.md) - Diffractive surfaces
 * [Tutorials](../tutorials.md) - Step-by-step guides
 * Paper: [SIGGRAPH Asia 2024](https://arxiv.org/abs/2406.00834)

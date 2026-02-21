@@ -308,5 +308,5 @@ lens = GeoLens(**config['lens'])
 ## Next Steps
 
 * Check the [Automated Lens Design](examples/automated_lens_design.md) for advanced applications
-* Explore the [Lens API](api/lens.md) for detailed API documentation
+* Explore the [Optics API](api/optics.md) for detailed API documentation
 * Join our community on [Slack](https://join.slack.com/t/deeplens/shared_invite/zt-2wz3x2n3b-plRqN26eDhO2IY4r_gmjOw)

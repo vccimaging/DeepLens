@@ -1,4 +1,6 @@
-![DeepLens Logo](assets/logo.png)
+<div align="center">
+  <img src="assets/logo.png" alt="DeepLens Logo" width="480">
+</div>
 
 **DeepLens** is a differentiable optical lens simulator developed for:
 

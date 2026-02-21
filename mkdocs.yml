@@ -57,28 +57,18 @@ nav:
   - Getting Started:
     - Installation: installation.md
     - Quickstart: quickstart.md
+    - Architecture: user_guide/architecture.md
   - Tutorials:
     - Overview: tutorials.md
     - Automated Lens Design: examples/automated_lens_design.md
     - End-to-End Design: examples/end2end_design.md
     - Image Simulation: examples/image_simulation.md
     - Hybrid Lenses: examples/hybrid_lenses.md
-  - References:
-    - Architecture: user_guide/architecture.md
-    - Lens Systems: user_guide/lens_systems.md
-    - Optical Elements: user_guide/optical_elements.md
-    - Sensors: user_guide/sensors.md
-    - Neural Networks: user_guide/neural_networks.md
-    - API Reference:
-      - Overview: api/index.md
-      - Lens: api/lens.md
-      - GeoLens: api/geolens.md
-      - HybridLens: api/hybridlens.md
-      - Optics: api/optics.md
-      - Sensor: api/sensor.md
-      - Network: api/network.md
-      - Utilities: api/utils.md
-  - Miscellaneous:
+  - API Reference:
+    - Optics: api/optics.md
+    - Sensor: api/sensor.md
+    - Network: api/network.md
+  - About:
     - Contributing: contributing.md
     - Code of Conduct: code_of_conduct.md
     - Citation: citation.md

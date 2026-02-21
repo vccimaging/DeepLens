@@ -457,6 +457,6 @@ print(f"SSIM: {ssim:.4f}")
 ## See Also
 
 * [Tutorials](../tutorials.md) - Step-by-step tutorials
-* [Lens Systems](../user_guide/lens_systems.md) - Lens system details
-* [Sensors](../user_guide/sensors.md) - Sensor simulation
+* [Optics API](../api/optics.md) - Lens system details
+* [Sensor API](../api/sensor.md) - Sensor simulation
 * Example script: `7_image_simulation.py`

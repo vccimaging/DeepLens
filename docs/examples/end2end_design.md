@@ -404,5 +404,5 @@ Compared to fixed optics + network:
 
 * [Automated Lens Design](automated_lens_design.md) - Pure optical optimization
 * [Tutorials](../tutorials.md) - Detailed tutorials
-* [Neural Networks](../user_guide/neural_networks.md) - Network architectures
+* [Network API](../api/network.md) - Network architectures
 * Paper: [Nature Communications 2024](https://www.nature.com/articles/s41467-024-50835-7)
