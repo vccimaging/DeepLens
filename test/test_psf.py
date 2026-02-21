@@ -1,11 +1,11 @@
 """
-Tests for deeplens/optics/psf.py - PSF convolution functions.
+Tests for deeplens/optics/imgsim/psf.py - PSF convolution functions.
 """
 
 import pytest
 import torch
 
-from deeplens.optics.psf import (
+from deeplens.optics.imgsim import (
     conv_psf,
     conv_psf_map,
     conv_psf_pixel,

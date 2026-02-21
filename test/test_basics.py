@@ -1,22 +1,22 @@
 """
-Tests for deeplens/basics.py - Basic utilities and constants.
+Tests for deeplens core utilities - init_device, optics config constants, and DeepObj.
 """
 
 import pytest
 import torch
 
 
-from deeplens.basics import (
+from deeplens import init_device
+from deeplens.optics.base import DeepObj
+from deeplens.optics.config import (
     DEPTH,
     DEFAULT_WAVE,
     EPSILON,
     PSF_KS,
     SPP_PSF,
     WAVE_RGB,
-    DeepObj,
-    init_device,
-    wave_rgb,
 )
+from deeplens.optics.utils import wave_rgb
 
 
 class TestConstants:

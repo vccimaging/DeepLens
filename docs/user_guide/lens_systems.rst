@@ -150,7 +150,7 @@ DiffractiveLens - Paraxial Wave Optics
 
 .. code-block:: python
 
-    from deeplens.diffraclens import DiffractiveLens
+    from deeplens.optics import DiffractiveLens
     
     # Load from file (sensor_res and sensor_size are read from the file)
     lens = DiffractiveLens(
@@ -174,7 +174,7 @@ HybridLens - Refractive-Diffractive Lens System
 .. code-block:: python
 
     import torch
-    from deeplens.hybridlens import HybridLens
+    from deeplens.optics import HybridLens
     
     # Load from file (sensor_res and sensor_size are read from the file)
     lens = HybridLens(
@@ -247,7 +247,7 @@ ParaxialLens - Quick Prototyping
 
 .. code-block:: python
 
-    from deeplens.paraxiallens import ParaxialLens
+    from deeplens.optics import ParaxialLens
     
     lens = ParaxialLens(
         foclen=50.0,              # Focal length in mm

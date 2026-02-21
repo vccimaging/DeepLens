@@ -88,7 +88,7 @@ Step 3: Joint Optimization
     mse_loss = torch.nn.MSELoss()  # Use PyTorch's MSELoss
     
     # Training loop
-    from deeplens.basics import DEPTH, SPP_RENDER
+    from deeplens.optics.config import DEPTH, SPP_RENDER
     num_epochs = 100
     depth = DEPTH  # -20000.0 mm default
     
@@ -147,7 +147,7 @@ Step 4: Evaluation
 .. code-block:: python
 
     from deeplens.utils import batch_psnr, batch_ssim
-    from deeplens.basics import SPP_RENDER
+    from deeplens.optics.config import SPP_RENDER
     
     network.eval()
     
@@ -242,7 +242,7 @@ Optimize lens for image classification accuracy:
 .. code-block:: python
 
     import torchvision.models as models
-    from deeplens.basics import DEPTH, SPP_RENDER
+    from deeplens.optics.config import DEPTH, SPP_RENDER
     
     # Pre-trained classifier
     classifier = models.resnet18(weights='IMAGENET1K_V1').cuda()
@@ -322,7 +322,7 @@ Alternate between lens and network optimization:
 
 .. code-block:: python
 
-    from deeplens.basics import DEPTH, SPP_RENDER
+    from deeplens.optics.config import DEPTH, SPP_RENDER
     
     for epoch in range(100):
         # Phase 1: Optimize network (freeze lens)
@@ -356,7 +356,7 @@ Train across multiple object distances:
 
 .. code-block:: python
 
-    from deeplens.basics import SPP_RENDER
+    from deeplens.optics.config import SPP_RENDER
     
     depths = [-500.0, -1000.0, -2000.0, -5000.0]  # Negative values (object in front of lens)
     

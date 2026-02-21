@@ -7,7 +7,7 @@ Technical Paper:
 import os
 from datetime import datetime
 
-from deeplens.psfnetlens import PSFNetLens
+from deeplens.optics import PSFNetLens
 from deeplens.utils import set_logger
 
 result_dir = "./results/" + datetime.now().strftime("%m%d-%H%M%S") + "-PSFNet"

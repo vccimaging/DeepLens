@@ -68,13 +68,13 @@ Image Normalization
    :param batch: Normalized batch
    :return: Denormalized batch
 
-Interpolation
--------------
+Interpolation (deeplens.optics.utils)
+-------------------------------------
 
 interp1d
 ^^^^^^^^
 
-.. py:function:: deeplens.utils.interp1d(query, key, value, mode="linear")
+.. py:function:: deeplens.optics.utils.interp1d(query, key, value, mode="linear")
 
    Interpolate 1D query points to the key points.
 
@@ -87,7 +87,7 @@ interp1d
 grid_sample_xy
 ^^^^^^^^^^^^^^
 
-.. py:function:: deeplens.utils.grid_sample_xy(input, grid_xy, mode="bilinear", padding_mode="zeros", align_corners=False)
+.. py:function:: deeplens.optics.utils.grid_sample_xy(input, grid_xy, mode="bilinear", padding_mode="zeros", align_corners=False)
 
    Grid sample using xy-coordinate grid [-1, 1].
 

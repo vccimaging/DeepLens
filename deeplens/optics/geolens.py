@@ -20,7 +20,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision.utils import save_image
 
-from deeplens.basics import (
+from .config import (
     DEFAULT_WAVE,
     DELTA_PARAXIAL,
     DEPTH,
@@ -32,14 +32,14 @@ from deeplens.basics import (
     SPP_RENDER,
     WAVE_RGB,
 )
-from deeplens.geolens_pkg.eval import GeoLensEval
-from deeplens.geolens_pkg.io import GeoLensIO
-from deeplens.geolens_pkg.optim import GeoLensOptim
-from deeplens.geolens_pkg.tolerance import GeoLensTolerance
-from deeplens.geolens_pkg.view_3d import GeoLensVis3D
-from deeplens.geolens_pkg.vis import GeoLensVis
-from deeplens.lens import Lens
-from deeplens.optics.geometric_surface import (
+from .geolens_pkg.eval import GeoLensEval
+from .geolens_pkg.io import GeoLensIO
+from .geolens_pkg.optim import GeoLensOptim
+from .geolens_pkg.tolerance import GeoLensTolerance
+from .geolens_pkg.view_3d import GeoLensVis3D
+from .geolens_pkg.vis import GeoLensVis
+from .lens import Lens
+from .geometric_surface import (
     Aperture,
     Aspheric,
     AsphericNorm,
@@ -48,17 +48,12 @@ from deeplens.optics.geometric_surface import (
     Spheric,
     ThinLens,
 )
-from deeplens.optics.phase_surface import Phase
-from deeplens.optics.materials import Material
-from deeplens.optics.monte_carlo import forward_integral
-from deeplens.optics.ray import Ray
-from deeplens.optics.utils import diff_float
-from deeplens.optics.wave import AngularSpectrumMethod
-from deeplens.utils import (
-    batch_psnr,
-    batch_ssim,
-    img2batch,
-)
+from .phase_surface import Phase
+from .material import Material
+from .imgsim import forward_integral
+from .light import Ray, AngularSpectrumMethod
+from .utils import diff_float
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 
 class GeoLens(
@@ -947,7 +942,13 @@ class GeoLens(
         """
         # Change sensor resolution to match the image
         sensor_res_original = self.sensor_res
-        img = img2batch(img_org).to(self.device)
+        if isinstance(img_org, np.ndarray):
+            img = torch.from_numpy(img_org).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+        elif torch.is_tensor(img_org):
+            img = img_org.permute(2, 0, 1).unsqueeze(0).float()
+            if img.max() > 1.0:
+                img = img / 255.0
+        img = img.to(self.device)
         self.set_sensor_res(sensor_res=img.shape[-2:])
 
         # Image rendering
@@ -959,9 +960,11 @@ class GeoLens(
             img_render = torch.clamp(img_render, 0, 1)
 
         # Compute PSNR and SSIM
-        render_psnr = round(batch_psnr(img, img_render).item(), 3)
-        render_ssim = round(batch_ssim(img, img_render).item(), 3)
-        print(f"Rendered image: PSNR={render_psnr:.3f}, SSIM={render_ssim:.3f}")
+        img_np = img.squeeze(0).permute(1, 2, 0).cpu().numpy()
+        render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
+        render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
+        render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
+        print(f"Rendered image: PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}")
 
         # Save image
         if save_name is not None:
@@ -972,10 +975,11 @@ class GeoLens(
             img_render = self.unwarp(img_render, depth)
 
             # Compute PSNR and SSIM
-            render_psnr = round(batch_psnr(img, img_render).item(), 3)
-            render_ssim = round(batch_ssim(img, img_render).item(), 3)
+            render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
+            render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
+            render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
             print(
-                f"Rendered image (unwarped): PSNR={render_psnr:.3f}, SSIM={render_ssim:.3f}"
+                f"Rendered image (unwarped): PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}"
             )
 
             if save_name is not None:

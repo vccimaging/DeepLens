@@ -263,23 +263,23 @@ Propagation Functions
 PSF Utilities
 -------------
 
-.. py:function:: deeplens.optics.psf.conv_psf(img, psf)
+.. py:function:: deeplens.optics.imgsim.psf.conv_psf(img, psf)
 
    Convolve an image batch with one PSF per channel.
 
-.. py:function:: deeplens.optics.psf.conv_psf_map(img, psf_map)
+.. py:function:: deeplens.optics.imgsim.psf.conv_psf_map(img, psf_map)
 
    Convolve with a spatial PSF map (grid-based).
 
-.. py:function:: deeplens.optics.psf.conv_psf_map_depth_interp(img, depth, psf_map, psf_depths)
+.. py:function:: deeplens.optics.imgsim.psf.conv_psf_map_depth_interp(img, depth, psf_map, psf_depths)
 
    Depth-aware PSF map interpolation and convolution.
 
-.. py:function:: deeplens.optics.psf.conv_psf_pixel(img, psf)
+.. py:function:: deeplens.optics.imgsim.psf.conv_psf_pixel(img, psf)
 
    Per-pixel PSF convolution.
 
-.. py:function:: deeplens.optics.psf.read_psf_map(filename, grid=10)
+.. py:function:: deeplens.optics.imgsim.psf.read_psf_map(filename, grid=10)
 
    Read a PSF map image into a tensor.
 
@@ -301,15 +301,15 @@ PSFLoss
 Monte Carlo Integration
 -----------------------
 
-.. py:function:: deeplens.optics.monte_carlo.forward_integral(ray, ps, ks, pointc=None, coherent=False)
+.. py:function:: deeplens.optics.imgsim.monte_carlo.forward_integral(ray, ps, ks, pointc=None, coherent=False)
 
    Forward Monte Carlo integration for PSF or wavefront from rays.
 
-.. py:function:: deeplens.optics.monte_carlo.assign_points_to_pixels(points, mask, ks, x_range, y_range, interpolate=True, coherent=False, amp=None, phase=None)
+.. py:function:: deeplens.optics.imgsim.monte_carlo.assign_points_to_pixels(points, mask, ks, x_range, y_range, interpolate=True, coherent=False, amp=None, phase=None)
 
    Helper for assigning sample points to pixel grids.
 
-.. py:function:: deeplens.optics.monte_carlo.backward_integral(ray, img, ps, H, W, interpolate=True, pad=True, energy_correction=1)
+.. py:function:: deeplens.optics.imgsim.monte_carlo.backward_integral(ray, img, ps, H, W, interpolate=True, pad=True, energy_correction=1)
 
    Backward integral (experimental) for ray-tracing-based rendering.
 
@@ -347,7 +347,7 @@ Wave Propagation Example
 
 .. code-block:: python
 
-    from deeplens.optics.wave import ComplexWave
+    from deeplens.optics import ComplexWave
 
     # Plane wave then propagate 10 mm in air
     field = ComplexWave.plane_wave(wvln=0.55, phy_size=(5.12, 5.12), res=(512, 512))

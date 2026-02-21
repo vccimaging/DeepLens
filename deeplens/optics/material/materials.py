@@ -12,7 +12,7 @@ import re
 
 import torch
 
-from deeplens.basics import DeepObj
+from deeplens.optics.base import DeepObj
 
 
 # ===========================================
@@ -53,10 +53,11 @@ def read_agf(file_path):
     return materials
 
 
-CDGM_data = read_agf(os.path.dirname(__file__) + "/material/CDGM.AGF")
-SCHOTT_data = read_agf(os.path.dirname(__file__) + "/material/SCHOTT.AGF")
-MISC_data = read_agf(os.path.dirname(__file__) + "/material/MISC.AGF")
-PLASTIC_data = read_agf(os.path.dirname(__file__) + "/material/PLASTIC2022.AGF")
+_dir = os.path.dirname(__file__)
+CDGM_data = read_agf(os.path.join(_dir, "CDGM.AGF"))
+SCHOTT_data = read_agf(os.path.join(_dir, "SCHOTT.AGF"))
+MISC_data = read_agf(os.path.join(_dir, "MISC.AGF"))
+PLASTIC_data = read_agf(os.path.join(_dir, "PLASTIC2022.AGF"))
 MATERIAL_data = {**MISC_data, **PLASTIC_data, **CDGM_data, **SCHOTT_data}
 
 
@@ -73,9 +74,7 @@ def read_custom_mat(file_path):
         return {}
 
 
-CUSTOM_data = read_custom_mat(
-    os.path.dirname(__file__) + "/material/materials_data.json"
-)
+CUSTOM_data = read_custom_mat(os.path.join(_dir, "materials_data.json"))
 
 
 # ===========================================
