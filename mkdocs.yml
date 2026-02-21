@@ -1,0 +1,84 @@
+site_name: DeepLens
+site_url: https://deeplens.readthedocs.io/en/latest/
+repo_url: https://github.com/singer-yang/DeepLens
+repo_name: singer-yang/DeepLens
+
+docs_dir: docs
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.arithmatex:
+      generic: true
+  - tables
+  - attr_list
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Quickstart: quickstart.md
+  - Tutorials:
+    - Overview: tutorials.md
+    - Automated Lens Design: examples/automated_lens_design.md
+    - End-to-End Design: examples/end2end_design.md
+    - Image Simulation: examples/image_simulation.md
+    - Hybrid Lenses: examples/hybrid_lenses.md
+  - References:
+    - Architecture: user_guide/architecture.md
+    - Lens Systems: user_guide/lens_systems.md
+    - Optical Elements: user_guide/optical_elements.md
+    - Sensors: user_guide/sensors.md
+    - Neural Networks: user_guide/neural_networks.md
+    - API Reference:
+      - Overview: api/index.md
+      - Lens: api/lens.md
+      - GeoLens: api/geolens.md
+      - HybridLens: api/hybridlens.md
+      - Optics: api/optics.md
+      - Sensor: api/sensor.md
+      - Network: api/network.md
+      - Utilities: api/utils.md
+  - Miscellaneous:
+    - Contributing: contributing.md
+    - Code of Conduct: code_of_conduct.md
+    - Citation: citation.md
