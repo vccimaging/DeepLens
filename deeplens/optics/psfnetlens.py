@@ -96,7 +96,13 @@ class PSFNetLens(Lens):
         self.refocus(foc_dist=-20000)
 
     def set_sensor_res(self, sensor_res):
-        """Set sensor resolution for both PSFNetLens and the embedded GeoLens."""
+        """Set sensor resolution for both PSFNetLens and the embedded GeoLens.
+
+        Updates the pixel size accordingly.
+
+        Args:
+            sensor_res (tuple): New sensor resolution as ``(W, H)`` in pixels.
+        """
         self.lens.set_sensor_res(sensor_res)
         self.pixel_size = self.lens.pixel_size
 
@@ -302,7 +308,11 @@ class PSFNetLens(Lens):
         return sample_input, sample_psf
 
     def eval(self):
-        """Set the network to evaluation mode."""
+        """Switch the PSF surrogate network to evaluation mode.
+
+        Disables dropout and batch normalisation updates in the internal
+        ``psfnet`` module.  Call this before inference.
+        """
         self.psfnet.eval()
 
     def points2input(self, points):
@@ -333,7 +343,15 @@ class PSFNetLens(Lens):
     # Network inference
     # ==================================================
     def refocus(self, foc_dist):
-        """Refocus the lens to the given focus distance."""
+        """Refocus the lens to a given object distance.
+
+        Delegates to the embedded :class:`GeoLens` and stores the focus
+        distance for subsequent PSF predictions.
+
+        Args:
+            foc_dist (float): Focus distance in [mm] (negative, towards the
+                object).
+        """
         self.lens.refocus(foc_dist)
         self.foc_dist = foc_dist
 

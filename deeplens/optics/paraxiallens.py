@@ -73,7 +73,15 @@ class ParaxialLens(Lens):
         self.refocus(foc_dist=-20000)
 
     def refocus(self, foc_dist):
-        """Refocus the lens to the given focus distance."""
+        """Refocus the lens to a given object distance.
+
+        Args:
+            foc_dist (float): Focus distance in [mm].  Must be less than the
+                focal length (i.e. beyond the focal point).
+
+        Raises:
+            AssertionError: If *foc_dist* >= ``self.foclen``.
+        """
         assert foc_dist < self.foclen, "Focus distance is too close."
         self.foc_dist = foc_dist
 
@@ -208,12 +216,37 @@ class ParaxialLens(Lens):
         return dof
 
     def psf_rgb(self, points, ks=PSF_KS, **kwargs):
-        """Compute RGB PSF."""
+        """Compute RGB PSF by replicating the monochrome PSF across three channels.
+
+        The paraxial model is achromatic, so all channels share the same PSF.
+
+        Args:
+            points (torch.Tensor): Point source positions, shape ``[N, 3]``.
+            ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
+            **kwargs: Forwarded to :meth:`psf`.
+
+        Returns:
+            torch.Tensor: RGB PSFs, shape ``[N, 3, ks, ks]``.
+        """
         psf = self.psf(points, ks=ks, psf_type="gaussian", **kwargs)
         return psf.unsqueeze(1).repeat(1, 3, 1, 1)
 
     def psf_map(self, grid=(5, 5), ks=PSF_KS, depth=DEPTH, **kwargs):
-        """Compute monochrome PSF map."""
+        """Compute a spatially-uniform monochrome PSF map.
+
+        Because the paraxial model has no spatially-varying aberrations, every
+        grid position receives the same on-axis PSF.
+
+        Args:
+            grid (tuple, optional): Grid dimensions ``(rows, cols)``.
+                Defaults to ``(5, 5)``.
+            ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
+            depth (float, optional): Object depth [mm]. Defaults to ``DEPTH``.
+            **kwargs: Forwarded to :meth:`psf`.
+
+        Returns:
+            torch.Tensor: PSF map, shape ``[rows, cols, 1, ks, ks]``.
+        """
         points = torch.tensor([[0, 0, depth]], device=self.device)
         psf = self.psf(points=points, ks=ks, psf_type="gaussian", **kwargs)
         psf_map = psf.unsqueeze(0).unsqueeze(0).repeat(grid[0], grid[1], 1, 1, 1)
@@ -282,14 +315,36 @@ class ParaxialLens(Lens):
         return psf_l, psf_r
 
     def psf_rgb_dp(self, points, ks=PSF_KS):
-        """Compute RGB dual-pixel PSF."""
+        """Compute RGB dual-pixel PSFs for left and right sub-apertures.
+
+        Replicates the monochrome dual-pixel PSFs across three colour channels.
+
+        Args:
+            points (torch.Tensor): Point source positions, shape ``[N, 3]``.
+            ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
+
+        Returns:
+            tuple: ``(psf_left, psf_right)`` each of shape ``[N, 3, ks, ks]``.
+        """
         psf_l, psf_r = self.psf_dp(points, ks=ks)
         psf_l = psf_l.unsqueeze(1).repeat(1, 3, 1, 1)
         psf_r = psf_r.unsqueeze(1).repeat(1, 3, 1, 1)
         return psf_l, psf_r
 
     def psf_map_dp(self, grid=(5, 5), ks=PSF_KS, depth=DEPTH, **kwargs):
-        """Compute dual-pixel PSF map."""
+        """Compute spatially-uniform dual-pixel PSF maps.
+
+        Args:
+            grid (tuple, optional): Grid dimensions ``(rows, cols)``.
+                Defaults to ``(5, 5)``.
+            ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
+            depth (float, optional): Object depth [mm]. Defaults to ``DEPTH``.
+            **kwargs: Forwarded to :meth:`psf_dp`.
+
+        Returns:
+            tuple: ``(psf_map_left, psf_map_right)`` each of shape
+                ``[rows, cols, 1, ks, ks]``.
+        """
         points = torch.tensor([[0, 0, depth]], device=self.device)
         psf_l, psf_r = self.psf_dp(points, ks=ks, **kwargs)
         psf_map_l = psf_l.unsqueeze(0).unsqueeze(0).repeat(grid[0], grid[1], 1, 1, 1)
