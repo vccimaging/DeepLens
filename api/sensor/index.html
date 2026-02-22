@@ -1,0 +1,3515 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://deeplens.readthedocs.io/en/latest/api/sensor/">
+      
+      
+        <link rel="prev" href="../optics/">
+      
+      
+        <link rel="next" href="../network/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Sensor - DeepLens</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/api.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sensor-api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="DeepLens" class="md-header__button md-logo" aria-label="DeepLens" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DeepLens
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sensor
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/singer-yang/DeepLens" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    singer-yang/DeepLens
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../installation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../optics/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="DeepLens" class="md-nav__button md-logo" aria-label="DeepLens" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    DeepLens
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/singer-yang/DeepLens" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    singer-yang/DeepLens
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../optics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sensor
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sensor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sensor-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensor Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sensor Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rgbsensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RGBSensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RGBSensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RGBSensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monosensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MonoSensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MonoSensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MonoSensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eventsensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventSensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EventSensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventSensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#isp-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ISP Modules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ISP Modules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.BlackLevelCompensation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BlackLevelCompensation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AutoWhiteBalance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Demosaic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demosaic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorCorrectionMatrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GammaCorrection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ToneMapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ToneMapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.DeadPixelCorrection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeadPixelCorrection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Denoise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Denoise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.LensShadingCorrection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LensShadingCorrection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AntiAliasingFilter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AntiAliasingFilter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorSpaceConversion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sensor-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensor Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sensor Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rgbsensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RGBSensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RGBSensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RGBSensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monosensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MonoSensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MonoSensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MonoSensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eventsensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventSensor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EventSensor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventSensor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#isp-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ISP Modules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ISP Modules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.BlackLevelCompensation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BlackLevelCompensation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AutoWhiteBalance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Demosaic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demosaic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorCorrectionMatrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GammaCorrection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ToneMapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ToneMapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.DeadPixelCorrection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeadPixelCorrection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Denoise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Denoise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.LensShadingCorrection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LensShadingCorrection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AntiAliasingFilter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AntiAliasingFilter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ColorSpaceConversion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="sensor-api-reference">Sensor API Reference</h1>
+<p>The <code>deeplens.sensor</code> module provides differentiable sensor models with noise simulation and a full image signal processing (ISP) pipeline.</p>
+<hr />
+<h2 id="sensor-models">Sensor Models</h2>
+<h3 id="sensor">Sensor</h3>
+<p>Base sensor class.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.Sensor" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.Sensor</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Sensor</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">4000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">))</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Minimal image sensor with gamma-only ISP.</p>
+<p>The simplest sensor model: records physical size and resolution, and
+applies only a gamma correction in the ISP forward pass.  For a sensor
+with noise simulation and Bayer demosaicing use
+:class:<code>~deeplens.sensor.rgb_sensor.RGBSensor</code>.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.Sensor.size">size</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical sensor size (W, H) [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.Sensor.res">res</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pixel resolution (W, H).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.Sensor.isp">isp</span></code></td>
+            <td>
+                  <code><span title="torch.nn.Sequential">Sequential</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ISP pipeline (<code>GammaCorrection</code> by default).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>sensor = Sensor(size=(8.0, 6.0), res=(4000, 3000))
+sensor = Sensor.from_config("sensor.json")</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+        <p>Initialize a minimal sensor.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>size</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical sensor size (W, H) [mm].
+Defaults to <code>(8.0, 6.0)</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(8.0, 6.0)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>res</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pixel resolution (W, H).
+Defaults to <code>(4000, 3000)</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(4000, 3000)</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="rgbsensor">RGBSensor</h3>
+<p>Full RGB sensor with Bayer pattern, noise model (read noise + shot noise), and ISP pipeline (black level compensation, white balance, demosaicing, color correction, gamma).</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.RGBSensor" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.RGBSensor</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">RGBSensor</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">36.0</span><span class="p">,</span> <span class="mf">24.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">5472</span><span class="p">,</span> <span class="mi">3648</span><span class="p">),</span> <span class="n">bit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">black_level</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">bayer_pattern</span><span class="o">=</span><span class="s1">&#39;rggb&#39;</span><span class="p">,</span> <span class="n">white_balance</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.8</span><span class="p">),</span> <span class="n">color_matrix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gamma_param</span><span class="o">=</span><span class="mf">2.2</span><span class="p">,</span> <span class="n">iso_base</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">read_noise_std</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">shot_noise_std_alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">shot_noise_std_beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">wavelengths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">red_response</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">green_response</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">blue_response</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.sensor.Sensor" href="#deeplens.sensor.Sensor">Sensor</a></code></p>
+
+
+
+        <p>RGB Bayer-pattern sensor with physics-based noise model and invertible ISP.</p>
+<p>Simulates the full image-capture pipeline from linear photon counts to
+display-ready sRGB:</p>
+<ol>
+<li><strong>Spectral integration</strong> – optional per-channel spectral response.</li>
+<li><strong>Bayer mosaic</strong> – pixel-level colour filtering to a single-channel
+   raw image.</li>
+<li><strong>Noise</strong> – shot noise (signal-dependent Gaussian) + read noise
+   (ISO-independent Gaussian) added to the n-bit raw data.</li>
+<li><strong>ISP</strong> (forward) – via an
+   :class:<code>~deeplens.sensor.isp_modules.isp.InvertibleISP</code>:
+   black-level correction → white balance → colour matrix →
+   demosaicing → gamma correction.</li>
+</ol>
+<p>The ISP is <strong>invertible</strong>: <code>unprocess()</code> converts sRGB back to linear
+RGB for training data generation.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.RGBSensor.bit">bit</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ADC bit depth.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.RGBSensor.nbit_max">nbit_max</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum digital number <code>2**bit - 1</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.RGBSensor.black_level">black_level</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Black level pedestal [DN].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.RGBSensor.bayer_pattern">bayer_pattern</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bayer pattern (e.g. <code>"rggb"</code>).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.RGBSensor.iso_base">iso_base</span></code></td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base ISO (noise-free reference).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.sensor.RGBSensor.isp">isp</span></code></td>
+            <td>
+                  <code><span title="deeplens.sensor.isp_modules.isp.InvertibleISP">InvertibleISP</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Embedded ISP pipeline.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>size</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor physical size in mm (W, H). Default (36.0, 24.0).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(36.0, 24.0)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>res</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor resolution in pixels (W, H). Default (5472, 3648).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(5472, 3648)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>bit</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bit depth. Default 10.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>black_level</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Black level. Default 64.</p>
+              </div>
+            </td>
+            <td>
+                  <code>64</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer_pattern</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bayer pattern e.g. "rggb". Default "rggb".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;rggb&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>white_balance</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>White balance gains. Default (2.0, 1.0, 1.8).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(2.0, 1.0, 1.8)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>color_matrix</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span> or <span title="Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Color correction matrix.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>gamma_param</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Gamma correction parameter. Default 2.2.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2.2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iso_base</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base ISO. Default 100.</p>
+              </div>
+            </td>
+            <td>
+                  <code>100</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>read_noise_std</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Read noise std. Default 0.5.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>shot_noise_std_alpha</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shot noise alpha. Default 0.4.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.4</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>shot_noise_std_beta</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shot noise beta. Default 0.0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>wavelengths</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wavelengths.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>red_response</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Red channel spectral response.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>green_response</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Green channel spectral response.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>blue_response</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Blue channel spectral response.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="monosensor">MonoSensor</h3>
+<p>Monochrome sensor without color filter array.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.MonoSensor" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.MonoSensor</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">MonoSensor</span><span class="p">(</span><span class="n">bit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">black_level</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">4000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">),</span> <span class="n">read_noise_std</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">shot_noise_std_alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">shot_noise_std_beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">iso_base</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">wavelengths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spectral_response</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.sensor.Sensor (deeplens.sensor.sensor.Sensor)" href="#deeplens.sensor.Sensor">Sensor</a></code></p>
+
+
+
+        <p>Monochrome sensor with noise simulation and ISP.</p>
+
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bit</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bit depth of the sensor. Default 10.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>black_level</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Black level value. Default 64.</p>
+              </div>
+            </td>
+            <td>
+                  <code>64</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>size</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor physical size in mm (W, H). Default (8.0, 6.0).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(8.0, 6.0)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>res</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor resolution in pixels (W, H). Default (4000, 3000).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(4000, 3000)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>read_noise_std</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Read noise standard deviation. Default 0.5.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>shot_noise_std_alpha</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shot noise alpha parameter. Default 0.4.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.4</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>shot_noise_std_beta</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shot noise beta parameter. Default 0.0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iso_base</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base ISO value. Default 100.</p>
+              </div>
+            </td>
+            <td>
+                  <code>100</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>wavelengths</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wavelengths for spectral response.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>spectral_response</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Spectral response values.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="eventsensor">EventSensor</h3>
+<p>Event camera sensor that outputs asynchronous brightness-change events.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.EventSensor" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.EventSensor</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">EventSensor</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">4000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">),</span> <span class="n">threshold_pos</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">threshold_neg</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">sigma_threshold</span><span class="o">=</span><span class="mf">0.03</span><span class="p">,</span> <span class="n">cutoff_hz</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">leak_rate_hz</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shot_noise_rate_hz</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-07</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.sensor.Sensor (deeplens.sensor.sensor.Sensor)" href="#deeplens.sensor.Sensor">Sensor</a></code></p>
+
+
+
+        <p>Event sensor (Dynamic Vision Sensor) simulation.</p>
+<p>An event camera independently measures per-pixel log-intensity changes
+and fires an event whenever the change exceeds a contrast threshold:</p>
+<div class="highlight"><pre><span></span><code>e_k = (x_k, y_k, t_k, p_k)
+</code></pre></div>
+<p>where p_k ∈ {+1, -1} is the polarity. This class produces dense
+event count maps of shape (B, 2, H, W) where channel 0 counts
+positive events and channel 1 counts negative events.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>size</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical sensor size in mm, (width, height).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(8.0, 6.0)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>res</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor resolution in pixels, (width, height).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(4000, 3000)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>threshold_pos</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Positive contrast threshold (C+). Default 0.2.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>threshold_neg</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Negative contrast threshold (C-). Default 0.2.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sigma_threshold</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Std-dev of threshold noise. Set to 0 for
+deterministic operation. Default 0.03.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.03</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cutoff_hz</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>High-pass temporal filter cutoff frequency in Hz.
+Set to 0 to disable. Default 0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>leak_rate_hz</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Leak event rate in Hz. Simulates spontaneous
+background events. Set to 0 to disable. Default 0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>shot_noise_rate_hz</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shot noise event rate in Hz. Simulates
+noise events from dark current. Set to 0 to disable. Default 0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>eps</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Small constant added before log to avoid log(0). Default 1e-7.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1e-07</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+<h2 id="isp-modules">ISP Modules</h2>
+<p>Individual image signal processing stages used inside <code>RGBSensor</code>. Each module is a <code>torch.nn.Module</code>.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.BlackLevelCompensation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.BlackLevelCompensation</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BlackLevelCompensation</span><span class="p">(</span><span class="n">bit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">black_level</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Black level compensation (BLC).</p>
+<p>Black level compensation is a technique to subtract the black level from the image.</p>
+
+        <p>Initialize black level compensation.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bit</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bit depth of the input image.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>black_level</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Black level value.</p>
+              </div>
+            </td>
+            <td>
+                  <code>64</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.AutoWhiteBalance" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.AutoWhiteBalance</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">AutoWhiteBalance</span><span class="p">(</span><span class="n">awb_method</span><span class="o">=</span><span class="s1">&#39;gray_world&#39;</span><span class="p">,</span> <span class="n">white_balance</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.8</span><span class="p">))</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Auto white balance (AWB).</p>
+
+        <p>Initialize auto white balance.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>awb_method</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>AWB method, "gray_world" or "manual".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;gray_world&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>white_balance</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>RGB white balance for manual AWB, shape [3].</p>
+              </div>
+            </td>
+            <td>
+                  <code>(2.0, 1.0, 1.8)</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.Demosaic" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.Demosaic</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Demosaic</span><span class="p">(</span><span class="n">bayer_pattern</span><span class="o">=</span><span class="s1">&#39;rggb&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;malvar&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Demosaic, or Color Filter Array (CFA).</p>
+<p>Converts a Bayer pattern image to a full RGB image by interpolating
+missing color values at each pixel location.</p>
+
+
+<details class="supported-methods" open>
+  <summary>Supported methods</summary>
+  <ul>
+<li>"bilinear": Simple bilinear interpolation (fast, lower quality)</li>
+<li>"malvar": Malvar-He-Cutler high-quality gradient-corrected interpolation</li>
+</ul>
+</details>
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] Malvar, He, Cutler. "High-Quality Linear Interpolation for Demosaicing
+    of Bayer-Patterned Color Images", ICASSP 2004.</p>
+</details>
+        <p>Initialize demosaic.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer_pattern</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Bayer pattern, "rggb" or "bggr".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;rggb&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>method</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Demosaic method, "bilinear" or "malvar".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;malvar&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorCorrectionMatrix" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.ColorCorrectionMatrix</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ColorCorrectionMatrix</span><span class="p">(</span><span class="n">ccm_matrix</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Color correction matrix (CCM).</p>
+<p>Color correction matrix is a 4x3 matrix that corrects the color of the image.</p>
+
+        <p>Initialize color correction matrix.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>ccm_matrix</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Color correction matrix of shape [4, 3]. Example:
+[[1.8506, -0.7920, -0.0605],
+ [-0.1562,  1.6455, -0.4912],
+ [ 0.0176, -0.5439,  1.5254],
+ [ 0.0,     0.0,     0.0   ]]</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] https://github.com/QiuJueqin/fast-openISP/blob/master/configs/nikon_d3200.yaml#L57
+[2] https://github.com/timothybrooks/hdr-plus/blob/master/src/finish.cpp#L626
+[3] https://www.dxomark.com/Cameras/Canon/EOS-R6---Measurements, "Color Response"</p>
+</details>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.GammaCorrection" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.GammaCorrection</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">GammaCorrection</span><span class="p">(</span><span class="n">gamma_param</span><span class="o">=</span><span class="mf">2.2</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Gamma correction (GC).</p>
+<p>Gamma correction is a technique to adjust the gamma of the image.</p>
+
+        <p>Initialize gamma correction module.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>gamma_param</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Gamma parameter. Default is 2.2.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2.2</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.ToneMapping" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.ToneMapping</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ToneMapping</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;reinhard&#39;</span><span class="p">,</span> <span class="n">exposure</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Global tone mapping operator.</p>
+<p>Maps HDR linear radiance values to displayable [0, 1] range using a
+global (per-pixel, spatially invariant) curve.</p>
+
+
+<details class="supported-methods" open>
+  <summary>Supported methods</summary>
+  <ul>
+<li>"reinhard":  L / (1 + L), from [Reinhard et al. 2002].</li>
+<li>"aces":      ACES filmic curve approximation, from [Narkowicz 2015].</li>
+<li>"hable":     Uncharted 2 filmic curve, from [Hable 2010].</li>
+</ul>
+</details>
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] Reinhard et al., "Photographic Tone Reproduction for Digital Images", SIGGRAPH 2002.
+[2] Narkowicz, "ACES Filmic Tone Mapping Curve", 2015.
+[3] Hable, "Filmic Tonemapping Operators", GDC 2010.</p>
+</details>
+        <p>Initialize tone mapping module.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>method</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tone mapping method, one of "reinhard", "aces", "hable".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;reinhard&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>exposure</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Exposure multiplier applied before tone mapping.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1.0</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.DeadPixelCorrection" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.DeadPixelCorrection</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">DeadPixelCorrection</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">soft_blend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Dead pixel correction (DPC).</p>
+<p>Detects and corrects dead/stuck pixels by comparing each pixel to its
+neighbors and replacing outliers with a local mean value.</p>
+<p>Note: Uses differentiable operations (mean instead of median, soft mask).</p>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] https://github.com/QiuJueqin/fast-openISP/blob/master/modules/dpc.py</p>
+</details>
+        <p>Initialize dead pixel correction.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>threshold</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Threshold for detecting dead pixels (as fraction of max value).</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.1</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>kernel_size</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Size of the kernel for correction (must be odd).</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>soft_blend</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, use differentiable soft blending. If False, use hard threshold.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>temperature</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Temperature for soft sigmoid blending (lower = sharper transition).</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.01</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.Denoise" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.Denoise</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Denoise</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;gaussian&#39;</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sigma_color</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Noise reduction (differentiable).</p>
+<p>Applies denoising filters to reduce sensor noise in the image.
+Supports Gaussian filtering (differentiable) and bilateral filtering.</p>
+<p>Note: Median filtering is NOT differentiable, so we use Gaussian or bilateral instead.</p>
+
+        <p>Initialize denoise.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>method</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Noise reduction method: "gaussian", "bilateral", or None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;gaussian&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>kernel_size</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Size of the kernel (must be odd).</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sigma</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Standard deviation for spatial Gaussian kernel.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sigma_color</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Standard deviation for color/intensity similarity (bilateral only).</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.1</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.LensShadingCorrection" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.LensShadingCorrection</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">LensShadingCorrection</span><span class="p">(</span><span class="n">shading_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">falloff_model</span><span class="o">=</span><span class="s1">&#39;radial&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Lens shading correction (LSC).</p>
+<p>Corrects vignetting (darkening at edges/corners) caused by lens optical
+properties by applying a spatially-varying gain map.</p>
+
+        <p>Initialize lens shading correction module.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>shading_map</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pre-computed shading gain map of shape [H, W] or [1, 1, H, W].
+         If None, a radial falloff model is used. Default is None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>strength</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Strength of the correction (0-1). 0 = no correction, 1 = full. Default is 1.0.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>falloff_model</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Model for computing gain map. Options: "radial", "polynomial".
+           Only used if shading_map is None. Default is "radial".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;radial&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.AntiAliasingFilter" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.AntiAliasingFilter</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">AntiAliasingFilter</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;weighted_average&#39;</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Anti-Aliasing Filter (AAF). </p>
+<p>Anti-aliasing filter is applied to raw Bayer data to reduce moiré patterns
+and aliasing artifacts before demosaicing.</p>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] https://github.com/QiuJueqin/fast-openISP/blob/master/modules/aaf.py</p>
+</details>
+        <p>Initialize the Anti-Aliasing Filter.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>method</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Filtering method. Options: "weighted_average", "gaussian", "none", or None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;weighted_average&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>kernel_size</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Size of the filter kernel (must be odd).</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorSpaceConversion" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.ColorSpaceConversion</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ColorSpaceConversion</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
+
+
+
+        <p>Color space conversion (CSC).</p>
+<p>Color space conversion is a technique to convert the color space of the image.</p>
+
+        <p>Initialize color space conversion module.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

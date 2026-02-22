@@ -1,0 +1,44 @@
+/* API documentation styling */
+
+/* Compact autodoc headings */
+.doc-heading {
+  border-top: 2px solid var(--md-default-fg-color--lightest);
+  padding-top: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+/* Signature styling */
+.doc-signature {
+  font-size: 0.85em;
+  background: var(--md-code-bg-color);
+  padding: 0.5em 0.75em;
+  border-radius: 0.3rem;
+  border-left: 3px solid var(--md-accent-fg-color);
+}
+
+/* Parameter lists */
+.doc-param-details {
+  margin-left: 1rem;
+  font-size: 0.92em;
+}
+
+/* Object labels (class, method, etc.) */
+.doc-label {
+  font-size: 0.75em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Tighter spacing for nested members */
+.doc-children .doc-heading {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* Source code toggle */
+.doc-source summary {
+  font-size: 0.8em;
+  color: var(--md-default-fg-color--light);
+}

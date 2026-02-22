@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/contributing/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/examples/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/installation/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/quickstart/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/api/network/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/api/optics/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+    <url>
+         <loc>https://deeplens.readthedocs.io/en/latest/api/sensor/</loc>
+         <lastmod>2026-02-22</lastmod>
+    </url>
+</urlset>

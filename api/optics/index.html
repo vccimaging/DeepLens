@@ -1,0 +1,6326 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://deeplens.readthedocs.io/en/latest/api/optics/">
+      
+      
+        <link rel="prev" href="../../quickstart/">
+      
+      
+        <link rel="next" href="../sensor/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Optics - DeepLens</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/api.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#optics-api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="DeepLens" class="md-header__button md-logo" aria-label="DeepLens" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DeepLens
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Optics
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/singer-yang/DeepLens" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    singer-yang/DeepLens
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../installation/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Installation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="DeepLens" class="md-nav__button md-logo" aria-label="DeepLens" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    DeepLens
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/singer-yang/DeepLens" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    singer-yang/DeepLens
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optics
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#base-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base Classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Base Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deepobj" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeepObj
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DeepObj">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeepObj
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DeepObj">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj.to" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj.astype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        astype
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj.clone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clone
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.psf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        psf
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.psf_rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        psf_rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.psf_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        psf_map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        render
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lens-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lens Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#geolens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GeoLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.GeoLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluation-geolenseval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation (GeoLensEval)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.eval.GeoLensEval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensEval
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-geolensoptim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization (GeoLensOptim)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.optim.GeoLensOptim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensOptim
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#io-geolensio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I/O (GeoLensIO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.io.GeoLensIO" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensIO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualization-geolensvis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visualization (GeoLensVis)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.vis.GeoLensVis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensVis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tolerancing-geolenstolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tolerancing (GeoLensTolerance)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensTolerance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3d-visualization-geolensvis3d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3D Visualization (GeoLensVis3D)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensVis3D
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hybridlens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HybridLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HybridLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.HybridLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HybridLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffractivelens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiffractiveLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DiffractiveLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DiffractiveLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiffractiveLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paraxiallens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParaxialLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ParaxialLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.ParaxialLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParaxialLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#psfnetlens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSFNetLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PSFNetLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.PSFNetLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSFNetLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surfaces
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Surfaces">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Surface.ray_reaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ray_reaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spheric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spheric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Spheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spheric
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aspheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aspheric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Aspheric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Aspheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aspheric
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aperture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aperture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Aperture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Aperture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aperture
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#light-representations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Light Representations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Light Representations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ray
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Ray">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complexwave" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ComplexWave
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComplexWave">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.ComplexWave" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ComplexWave
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#psf-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSF Utilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PSF Utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.imgsim.psf.conv_psf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        conv_psf
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.imgsim.psf.conv_psf_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        conv_psf_map
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sensor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sensor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../network/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#base-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base Classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Base Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deepobj" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeepObj
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DeepObj">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeepObj
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DeepObj">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj.to" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        to
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj.astype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        astype
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DeepObj.clone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clone
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.psf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        psf
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.psf_rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        psf_rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.psf_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        psf_map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Lens.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        render
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lens-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lens Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#geolens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GeoLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.GeoLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluation-geolenseval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation (GeoLensEval)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.eval.GeoLensEval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensEval
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-geolensoptim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization (GeoLensOptim)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.optim.GeoLensOptim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensOptim
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#io-geolensio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        I/O (GeoLensIO)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.io.GeoLensIO" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensIO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualization-geolensvis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visualization (GeoLensVis)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.vis.GeoLensVis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensVis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tolerancing-geolenstolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tolerancing (GeoLensTolerance)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensTolerance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3d-visualization-geolensvis3d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3D Visualization (GeoLensVis3D)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GeoLensVis3D
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hybridlens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HybridLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HybridLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.HybridLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HybridLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffractivelens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiffractiveLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DiffractiveLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.DiffractiveLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiffractiveLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paraxiallens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParaxialLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ParaxialLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.ParaxialLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ParaxialLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#psfnetlens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSFNetLens
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PSFNetLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.PSFNetLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSFNetLens
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surfaces
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Surfaces">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Surface.ray_reaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ray_reaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spheric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spheric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Spheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spheric
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aspheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aspheric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Aspheric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Aspheric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aspheric
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aperture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aperture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Aperture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.geometric_surface.Aperture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aperture
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#light-representations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Light Representations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Light Representations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ray
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Ray">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.Ray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complexwave" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ComplexWave
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComplexWave">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.ComplexWave" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ComplexWave
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#psf-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PSF Utilities
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PSF Utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.imgsim.psf.conv_psf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        conv_psf
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.optics.imgsim.psf.conv_psf_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        conv_psf_map
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="optics-api-reference">Optics API Reference</h1>
+<p>The <code>deeplens.optics</code> module contains the differentiable lens models, optical surfaces, light representations, and image simulation utilities.</p>
+<hr />
+<h2 id="base-classes">Base Classes</h2>
+<h3 id="deepobj">DeepObj</h3>
+<p>Base class for all optical objects. Provides device transfer, dtype conversion, and cloning by introspecting instance tensors.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.DeepObj" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.DeepObj</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">DeepObj</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Base class for all differentiable optical objects in DeepLens.</p>
+<p>Provides device management, dtype conversion, and deep-copy support via
+automatic introspection over instance tensors and nested <code>DeepObj</code>
+sub-objects.  All lens, surface, material, ray, and wave objects inherit
+from this class.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.DeepObj.dtype">dtype</span></code></td>
+            <td>
+                  <code><span title="torch.dtype">dtype</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current floating-point dtype of all owned tensors.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.DeepObj.device">device</span></code></td>
+            <td>
+                  <code><span title="torch.dtype">dtype</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current compute device (set by :meth:<code>to</code>).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.DeepObj.to" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">to</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Move all tensors and nested objects to <em>device</em>.</p>
+<p>Recursively walks over every instance attribute and moves tensors,
+<code>nn.Module</code> sub-objects, and nested <code>DeepObj</code> objects to the
+requested device.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Target device, e.g. <code>"cuda"</code>, <code>"cpu"</code>, or a
+<code>torch.device</code> instance.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>DeepObj</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>self</code> (for chaining).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>lens = GeoLens(filename="lens.json")
+lens.to("cuda")  # move all tensors to GPU</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.DeepObj.astype" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">astype</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert all floating-point tensors to <em>dtype</em>.</p>
+<p>Also calls <code>torch.set_default_dtype(dtype)</code> so that subsequent
+tensor creation uses the same precision.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>dtype</code>
+            </td>
+            <td>
+                  <code><span title="torch.dtype">dtype</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Target floating-point dtype.  Must be one of
+<code>torch.float16</code>, <code>torch.float32</code>, or <code>torch.float64</code>.
+Pass <code>None</code> to be a no-op.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>DeepObj</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>self</code> (for chaining).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="AssertionError">AssertionError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <em>dtype</em> is not a recognised floating-point dtype.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>lens = GeoLens(filename="lens.json")
+lens.astype(torch.float64)  # switch to double precision</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.DeepObj.clone" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">clone</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">clone</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Clone a DeepObj object.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="lens">Lens</h3>
+<p>Abstract base class for all lens types. Defines the shared interface: <code>psf()</code>, <code>psf_rgb()</code>, <code>render()</code>, etc.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.Lens" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.Lens</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Lens</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.DeepObj (deeplens.optics.base.DeepObj)" href="#deeplens.optics.DeepObj">DeepObj</a></code></p>
+
+
+
+        <p>Initialize a lens class.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>dtype</code>
+            </td>
+            <td>
+                  <code><span title="torch.dtype">dtype</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Data type. Defaults to torch.float32.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="torch.float32">float32</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Device to run the lens. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.Lens.psf" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">psf</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">psf</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">wvln</span><span class="o">=</span><span class="n">DEFAULT_WAVE</span><span class="p">,</span> <span class="n">ks</span><span class="o">=</span><span class="n">PSF_KS</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute the monochromatic PSF for one or more point sources.</p>
+<p>Subclasses must override this method with a differentiable
+implementation.  Three computation models are common in practice:
+geometric ray binning, coherent ray-wave, and Huygens spherical-wave
+integration.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>points</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Point source coordinates, shape <code>[N, 3]</code>
+or <code>[3]</code>.  <code>x, y</code> are normalised to <code>[-1, 1]</code>
+(relative to the sensor half-diagonal); <code>z</code> is depth in mm
+(must be negative, i.e. in front of the lens).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>wvln</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wavelength in micrometers.  Defaults to
+<code>DEFAULT_WAVE</code> (0.587 µm, d-line).</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.DEFAULT_WAVE">DEFAULT_WAVE</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ks</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output PSF kernel size in pixels.  Defaults
+to <code>PSF_KS</code> (64).</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.PSF_KS">PSF_KS</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional keyword arguments forwarded to the underlying
+PSF computation (e.g. <code>spp</code>, <code>model</code>, <code>recenter</code>).</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor: PSF intensity map, shape <code>[ks, ks]</code> for a single</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>point or <code>[N, ks, ks]</code> for a batch.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="NotImplementedError">NotImplementedError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>This base implementation must be overridden.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>The method is differentiable with respect to all optimisable lens
+parameters so it can be used directly inside a training loop.</p>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>point = torch.tensor([0.0, 0.0, -10000.0])
+psf = lens.psf(points=point, ks=64, model="geometric")
+print(psf.shape)  # torch.Size([64, 64])</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.Lens.psf_rgb" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">psf_rgb</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">psf_rgb</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">ks</span><span class="o">=</span><span class="n">PSF_KS</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute the RGB (tri-chromatic) PSF by stacking three wavelength calls.</p>
+<p>Calls :meth:<code>psf</code> three times for the RGB primary wavelengths defined
+in <code>WAVE_RGB</code> and stacks the results along the channel axis.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>points</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Point source coordinates, shape <code>[N, 3]</code>
+or <code>[3]</code>.  Same convention as :meth:<code>psf</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ks</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>PSF kernel size. Defaults to <code>PSF_KS</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.PSF_KS">PSF_KS</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Forwarded to :meth:<code>psf</code> (e.g. <code>spp</code>, <code>model</code>).</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor: RGB PSF, shape <code>[3, ks, ks]</code> for a single point</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>or <code>[N, 3, ks, ks]</code> for a batch.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.Lens.psf_map" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">psf_map</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">psf_map</span><span class="p">(</span><span class="n">grid</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">wvln</span><span class="o">=</span><span class="n">DEFAULT_WAVE</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">DEPTH</span><span class="p">,</span> <span class="n">ks</span><span class="o">=</span><span class="n">PSF_KS</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute monochrome PSF map.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>grid</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Grid size (grid_w, grid_h). Defaults to (5, 5), meaning 5x5 grid.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(5, 5)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>wvln</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wavelength. Defaults to DEFAULT_WAVE.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.DEFAULT_WAVE">DEFAULT_WAVE</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>depth</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Depth of the object. Defaults to DEPTH.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.DEPTH">DEPTH</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ks</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Kernel size. Defaults to PSF_KS.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.PSF_KS">PSF_KS</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>psf_map</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Shape of [grid_h, grid_w, 3, ks, ks].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.Lens.render" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">render</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">render</span><span class="p">(</span><span class="n">img_obj</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">DEPTH</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;psf_patch&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Differentiable image simulation for a 2D (flat) scene.</p>
+<p>Performs only the optical component of image simulation and is fully
+differentiable.  Sensor noise is handled separately by the
+:class:<code>~deeplens.camera.Camera</code> class.</p>
+<p>For incoherent imaging the intensity PSF is convolved with the
+object-space image.  For coherent imaging the complex PSF is convolved
+with the complex object image before squaring for intensity.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_obj</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image in linear (raw) space,
+shape <code>[B, C, H, W]</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>depth</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Object depth in mm (negative value).
+Defaults to <code>DEPTH</code> (-20 000 mm, i.e. infinity).</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.DEPTH">DEPTH</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>method</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Rendering method.  One of:</p>
+<ul>
+<li><code>"psf_patch"</code> – convolve a single PSF evaluated at
+  <em>patch_center</em> (default).</li>
+<li><code>"psf_map"</code> – spatially-varying PSF block convolution.</li>
+</ul>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;psf_patch&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Method-specific keyword arguments:</p>
+<ul>
+<li>For <code>"psf_map"</code>: <code>psf_grid</code> (tuple, default <code>(10, 10)</code>),
+  <code>psf_ks</code> (int, default <code>PSF_KS</code>).</li>
+<li>For <code>"psf_patch"</code>: <code>patch_center</code> (tuple or Tensor,
+  default <code>(0.0, 0.0)</code>), <code>psf_ks</code> (int).</li>
+</ul>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor: Rendered image, shape <code>[B, C, H, W]</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="AssertionError">AssertionError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <em>method</em> is <code>"psf_map"</code> and the image
+resolution does not match the sensor resolution.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Exception">Exception</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <em>method</em> is not recognised.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="references" open>
+  <summary>References</summary>
+  <p>[1] "Optical Aberration Correction in Postprocessing using Imaging Simulation", TOG 2021.
+[2] "Efficient depth- and spatially-varying image simulation for defocus deblur", ICCVW 2025.</p>
+</details>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>img_rendered = lens.render(img, depth=-10000.0, method="psf_patch",
+...                            patch_center=(0.3, 0.0), psf_ks=64)</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+<h2 id="lens-models">Lens Models</h2>
+<h3 id="geolens">GeoLens</h3>
+<p>Differentiable multi-element refractive lens via geometric ray tracing. This is the primary lens model in DeepLens.</p>
+<p><code>GeoLens</code> uses a mixin architecture — functionality is split across <code>GeoLensEval</code>, <code>GeoLensOptim</code>, <code>GeoLensVis</code>, <code>GeoLensIO</code>, <code>GeoLensTolerance</code>, and <code>GeoLensVis3D</code>.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.GeoLens" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.GeoLens</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">GeoLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.Lens (deeplens.optics.lens.Lens)" href="#deeplens.optics.Lens">Lens</a></code>, <code><a class="autorefs autorefs-internal" title="deeplens.optics.geolens_pkg.eval.GeoLensEval" href="#deeplens.optics.geolens_pkg.eval.GeoLensEval">GeoLensEval</a></code>, <code><a class="autorefs autorefs-internal" title="deeplens.optics.geolens_pkg.optim.GeoLensOptim" href="#deeplens.optics.geolens_pkg.optim.GeoLensOptim">GeoLensOptim</a></code>, <code><a class="autorefs autorefs-internal" title="deeplens.optics.geolens_pkg.vis.GeoLensVis" href="#deeplens.optics.geolens_pkg.vis.GeoLensVis">GeoLensVis</a></code>, <code><a class="autorefs autorefs-internal" title="deeplens.optics.geolens_pkg.io.GeoLensIO" href="#deeplens.optics.geolens_pkg.io.GeoLensIO">GeoLensIO</a></code>, <code><a class="autorefs autorefs-internal" title="deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance" href="#deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance">GeoLensTolerance</a></code>, <code><a class="autorefs autorefs-internal" title="deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D" href="#deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D">GeoLensVis3D</a></code></p>
+
+
+
+        <p>Differentiable geometric lens using vectorised ray tracing.</p>
+<p>The primary lens model in DeepLens.  Supports multi-element refractive
+(and partially reflective) systems loaded from JSON, Zemax <code>.zmx</code>, or
+Code V <code>.seq</code> files.  Accuracy is aligned with Zemax OpticStudio.</p>
+<p>Uses a <strong>mixin architecture</strong> – six specialised mixin classes are
+composed at class definition time to keep each concern isolated:</p>
+<ul>
+<li>:class:<code>~deeplens.optics.geolens_pkg.eval.GeoLensEval</code> – optical
+  performance evaluation (spot, MTF, distortion, vignetting).</li>
+<li>:class:<code>~deeplens.optics.geolens_pkg.optim.GeoLensOptim</code> – loss
+  functions and gradient-based optimisation.</li>
+<li>:class:<code>~deeplens.optics.geolens_pkg.vis.GeoLensVis</code> – 2-D layout
+  and ray visualisation.</li>
+<li>:class:<code>~deeplens.optics.geolens_pkg.io.GeoLensIO</code> – read/write
+  JSON, Zemax <code>.zmx</code>.</li>
+<li>:class:<code>~deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance</code> –
+  manufacturing tolerance analysis.</li>
+<li>:class:<code>~deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D</code> – 3-D
+  mesh visualisation.</li>
+</ul>
+<p><strong>Key differentiability trick</strong>: Ray-surface intersection
+(:meth:<code>~deeplens.optics.geometric_surface.base.Surface.newtons_method</code>)
+uses a non-differentiable Newton loop followed by one differentiable
+Newton step to enable gradient flow.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.surfaces">surfaces</span></code></td>
+            <td>
+                  <code><span title="list">list</span>[<span title="Surface">Surface</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ordered list of optical surfaces.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.materials">materials</span></code></td>
+            <td>
+                  <code><span title="list">list</span>[<span title="deeplens.optics.material.Material">Material</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optical materials between surfaces.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.d_sensor">d_sensor</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Back focal distance [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.foclen">foclen</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Effective focal length [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.fnum">fnum</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>F-number.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.rfov">rfov</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Half-diagonal field of view [radians].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.sensor_size">sensor_size</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical sensor size (W, H) [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.sensor_res">sensor_res</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor resolution (W, H) [pixels].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.GeoLens.pixel_size">pixel_size</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pixel pitch [mm].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="references" open>
+  <summary>References</summary>
+  <p>Xinge Yang et al., "Curriculum learning for ab initio deep learned
+refractive optics," <em>Nature Communications</em> 2024.</p>
+</details>
+        <p>Initialize a refractive lens.</p>
+
+
+<details class="there-are-two-ways-to-initialize-a-geolens" open>
+  <summary>There are two ways to initialize a GeoLens</summary>
+  <ol>
+<li>Read a lens from .json/.zmx/.seq file</li>
+<li>Initialize a lens with no lens file, then manually add surfaces and materials</li>
+</ol>
+</details>
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>filename</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to lens file (.json, .zmx, or .seq). Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="torch.device">device</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Device for tensor computations. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dtype</code>
+            </td>
+            <td>
+                  <code><span title="torch.dtype">dtype</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Data type for computations. Defaults to torch.float32.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="torch.float32">float32</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h4 id="evaluation-geolenseval">Evaluation (GeoLensEval)</h4>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geolens_pkg.eval.GeoLensEval" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geolens_pkg.eval.GeoLensEval</span>
+
+
+</h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Mixin providing classical optical performance evaluation for <code>GeoLens</code>.</p>
+<p>Provides spot diagrams, RMS error maps, MTF curves, distortion analysis,
+vignetting, and field curvature — results are accuracy-aligned with
+Zemax OpticStudio.</p>
+<p>This class is not instantiated directly; it is mixed into
+:class:<code>~deeplens.optics.geolens.GeoLens</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h4 id="optimization-geolensoptim">Optimization (GeoLensOptim)</h4>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geolens_pkg.optim.GeoLensOptim" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geolens_pkg.optim.GeoLensOptim</span>
+
+
+</h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Mixin providing differentiable optimisation for <code>GeoLens</code>.</p>
+<p>Implements gradient-based lens design using PyTorch autograd:</p>
+<ul>
+<li><strong>Loss functions</strong> – RMS spot error, focus, surface regularity, gap
+  constraints, material validity.</li>
+<li><strong>Constraint initialisation</strong> – edge-thickness and self-intersection
+  guards.</li>
+<li><strong>Optimizer helpers</strong> – parameter groups with per-type learning rates
+  and cosine annealing schedules.</li>
+<li><strong>High-level <code>optimize()</code></strong> – curriculum-learning training loop.</li>
+</ul>
+<p>This class is not instantiated directly; it is mixed into
+:class:<code>~deeplens.optics.geolens.GeoLens</code>.</p>
+
+
+<details class="references" open>
+  <summary>References</summary>
+  <p>Xinge Yang et al., "Curriculum learning for ab initio deep learned
+refractive optics," <em>Nature Communications</em> 2024.</p>
+</details>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h4 id="io-geolensio">I/O (GeoLensIO)</h4>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geolens_pkg.io.GeoLensIO" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geolens_pkg.io.GeoLensIO</span>
+
+
+</h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Mixin providing file I/O for <code>GeoLens</code>.</p>
+<p>Supports reading and writing lens prescriptions in three formats:</p>
+<ul>
+<li><strong>JSON</strong> (primary): human-readable, supports parenthesised optimisable
+  parameters, e.g. <code>"(d)": 5.0</code>.</li>
+<li><strong>Zemax .zmx</strong>: industry-standard sequential lens file.</li>
+<li><strong>Code V .seq</strong>: Code V sequential format (read-only).</li>
+</ul>
+<p>This class is not instantiated directly; it is mixed into
+:class:<code>~deeplens.optics.geolens.GeoLens</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h4 id="visualization-geolensvis">Visualization (GeoLensVis)</h4>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geolens_pkg.vis.GeoLensVis" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geolens_pkg.vis.GeoLensVis</span>
+
+
+</h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Mixin providing 2-D lens layout and ray visualisation for <code>GeoLens</code>.</p>
+<p>Generates publication-quality cross-section plots showing lens surfaces
+and traced ray bundles in either the meridional or sagittal plane.</p>
+<p>This class is not instantiated directly; it is mixed into
+:class:<code>~deeplens.optics.geolens.GeoLens</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h4 id="tolerancing-geolenstolerance">Tolerancing (GeoLensTolerance)</h4>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance</span>
+
+
+</h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Mixin providing tolerance analysis for <code>GeoLens</code>.</p>
+<p>Implements two complementary approaches:</p>
+<ul>
+<li><strong>Sensitivity analysis</strong> – first-order gradient-based estimation of how
+  each manufacturing error affects optical performance.</li>
+<li><strong>Monte-Carlo analysis</strong> – statistical sampling of random manufacturing
+  errors to predict yield and worst-case performance.</li>
+</ul>
+<p>This class is not instantiated directly; it is mixed into
+:class:<code>~deeplens.optics.geolens.GeoLens</code>.</p>
+
+
+<details class="references" open>
+  <summary>References</summary>
+  <p>Jun Dai et al., "Tolerance-Aware Deep Optics,"
+<em>arXiv:2502.04719</em>, 2025.</p>
+</details>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h4 id="3d-visualization-geolensvis3d">3D Visualization (GeoLensVis3D)</h4>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D</span>
+
+
+</h4>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Mixin providing 3-D mesh visualisation for <code>GeoLens</code>.</p>
+<p>Creates lens surface, aperture, barrier, sensor, and ray-path meshes as
+polygon data and optionally renders them with PyVista.  All geometry is
+expressed in millimetres and stored as :class:<code>CrossPoly</code> (vertex/face)
+objects that can be saved to <code>.obj</code> files for external renderers.</p>
+<p>This class is not instantiated directly; it is mixed into
+:class:<code>~deeplens.optics.geolens.GeoLens</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="hybridlens">HybridLens</h3>
+<p>Combines a <code>GeoLens</code> with a diffractive optical element (DOE). Performs coherent ray tracing to the DOE plane, then Angular Spectrum Method (ASM) propagation to the sensor.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.HybridLens" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.HybridLens</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">HybridLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.Lens (deeplens.optics.lens.Lens)" href="#deeplens.optics.Lens">Lens</a></code></p>
+
+
+
+        <p>Hybrid refractive-diffractive lens using a differentiable ray–wave model.</p>
+<p>Combines a :class:<code>~deeplens.optics.geolens.GeoLens</code> (refractive module)
+with a diffractive optical element (DOE) placed behind it.  The pipeline
+is:</p>
+<ol>
+<li><strong>Coherent ray tracing</strong> through the embedded <code>GeoLens</code> to obtain a
+   complex wavefront at the DOE plane (including all geometric aberrations).</li>
+<li><strong>DOE phase modulation</strong> applied to the wavefront.</li>
+<li><strong>Angular Spectrum Method (ASM) propagation</strong> from the DOE to the sensor
+   plane to produce the final intensity PSF.</li>
+</ol>
+<p>This enables end-to-end gradient flow from image quality metrics back to
+both refractive surface parameters and the DOE phase profile.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.HybridLens.geolens">geolens</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="deeplens.optics.GeoLens (deeplens.optics.geolens.GeoLens)" href="#deeplens.optics.GeoLens">GeoLens</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Embedded refractive module.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.HybridLens.doe">doe</span></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Diffractive optical element (one of <code>Binary2</code>, <code>Pixel2D</code>,
+<code>Fresnel</code>, <code>Zernike</code>, <code>Grating</code>).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>Operates in <code>torch.float64</code> by default for numerical stability of
+the wave-propagation step.</p>
+</details>
+
+<details class="references" open>
+  <summary>References</summary>
+  <p>Xinge Yang et al., "End-to-End Hybrid Refractive-Diffractive Lens
+Design with Differentiable Ray-Wave Model," <em>SIGGRAPH Asia</em> 2024.</p>
+</details>
+        <p>Initialize a hybrid refractive-diffractive lens.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>filename</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the lens configuration JSON file. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Computation device ('cpu' or 'cuda'). Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dtype</code>
+            </td>
+            <td>
+                  <code><span title="torch.dtype">dtype</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Data type for computations. Defaults to torch.float64.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="torch.float64">float64</span></code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="diffractivelens">DiffractiveLens</h3>
+<p>Pure wave-optics lens using diffractive surfaces and scalar diffraction propagation.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.DiffractiveLens" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.DiffractiveLens</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">DiffractiveLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.Lens (deeplens.optics.lens.Lens)" href="#deeplens.optics.Lens">Lens</a></code></p>
+
+
+
+        <p>Paraxial diffractive lens in which each element is modelled as a phase surface.</p>
+<p>Every optical element (converging lens, DOE, metasurface, …) is
+represented by a phase function applied to an incoming complex wavefront.
+Propagation between surfaces uses the Angular Spectrum Method (ASM).
+This model is simple and fast, but accurate only in the paraxial regime
+(it does not account for higher-order geometric aberrations).</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.DiffractiveLens.surfaces">surfaces</span></code></td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ordered list of diffractive/phase surfaces.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.DiffractiveLens.d_sensor">d_sensor</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Distance from the last surface to the sensor
+plane [mm].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>Operates in <code>torch.float64</code> by default for numerical stability of
+the wave-propagation step.</p>
+</details>
+        <p>Initialize a diffractive lens.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>filename</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the lens configuration JSON file. If provided, loads the lens configuration from file. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Computation device ('cpu' or 'cuda'). Defaults to 'cpu'.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="paraxiallens">ParaxialLens</h3>
+<p>Thin-lens / circle-of-confusion model for simple depth-of-field and bokeh simulation.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.ParaxialLens" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.ParaxialLens</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ParaxialLens</span><span class="p">(</span><span class="n">foclen</span><span class="p">,</span> <span class="n">fnum</span><span class="p">,</span> <span class="n">sensor_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sensor_res</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.Lens (deeplens.optics.lens.Lens)" href="#deeplens.optics.Lens">Lens</a></code></p>
+
+
+
+        <p>Thin-lens / ABCD-matrix model for fast defocus simulation.</p>
+<p>Models the circle of confusion (CoC) caused by defocus but not
+higher-order optical aberrations.  Useful as a fast baseline renderer for
+depth-of-field effects, as commonly used in Blender and similar tools.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ParaxialLens.foclen">foclen</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Focal length [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ParaxialLens.fnum">fnum</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>F-number.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ParaxialLens.sensor_size">sensor_size</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical sensor size (W, H) [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ParaxialLens.sensor_res">sensor_res</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pixel resolution (W, H).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ParaxialLens.pixel_size">pixel_size</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pixel pitch [mm].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+        <p>Initialize a paraxial lens.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>foclen</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Focal length in [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>fnum</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>F-number.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sensor_size</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical sensor size as (W, H) in [mm]. Defaults to (8.0, 8.0).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sensor_res</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor resolution as (W, H) in pixels. Defaults to (2000, 2000).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Computation device. Defaults to "cpu".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;cpu&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="psfnetlens">PSFNetLens</h3>
+<p>Neural surrogate that wraps a <code>GeoLens</code> with an MLP to predict PSFs. Useful for fast, differentiable PSF evaluation during end-to-end training.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.PSFNetLens" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.PSFNetLens</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">PSFNetLens</span><span class="p">(</span><span class="n">lens_path</span><span class="p">,</span> <span class="n">in_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">psf_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">&#39;mlp_conv&#39;</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.Lens (deeplens.optics.lens.Lens)" href="#deeplens.optics.Lens">Lens</a></code></p>
+
+
+
+        <p>Neural surrogate lens that predicts PSFs via a small MLP/MLPConv network.</p>
+<p>Wraps a :class:<code>~deeplens.optics.geolens.GeoLens</code> with a neural network
+trained to predict RGB PSFs from <code>(fov, depth, focus_distance)</code> inputs.
+After training, PSF prediction is ~100× faster than ray tracing, making
+it suitable for real-time applications and large-scale optimisation.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.PSFNetLens.lens">lens</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="deeplens.optics.GeoLens (deeplens.optics.geolens.GeoLens)" href="#deeplens.optics.GeoLens">GeoLens</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The underlying refractive lens (used for training data
+generation and for sensor metadata).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.PSFNetLens.psfnet">psfnet</span></code></td>
+            <td>
+                  <code><span title="torch.nn.Module">Module</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Neural network for PSF prediction.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.PSFNetLens.pixel_size">pixel_size</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pixel pitch [mm] (copied from the embedded lens).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.PSFNetLens.rfov">rfov</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Half-diagonal field of view [radians].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="notes" open>
+  <summary>Notes</summary>
+  <p>Use :meth:<code>train_psfnet</code> to train the surrogate from ray-traced PSF
+samples.  Use :meth:<code>load_net</code> to load pre-trained weights.</p>
+</details>
+        <p>Initialize a PSF network lens.</p>
+<p>In the default settings, the PSF network takes (fov, depth, foc_dist) as input and outputs RGB PSF on y-axis at (fov, depth, foc_dist).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>lens_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the lens file.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>in_chan</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of input channels.</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>psf_chan</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of output channels.</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name of the model.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;mlp_conv&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>kernel_size</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Kernel size.</p>
+              </div>
+            </td>
+            <td>
+                  <code>64</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+<h2 id="surfaces">Surfaces</h2>
+<h3 id="surface">Surface</h3>
+<p>Base class for all geometric optical surfaces. Implements surface intersection (Newton's method with one differentiable step) and differentiable vector Snell's law refraction.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geometric_surface.Surface" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geometric_surface.Surface</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Surface</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">mat2</span><span class="p">,</span> <span class="n">pos_xy</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">vec_local</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">is_square</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.DeepObj (deeplens.optics.base.DeepObj)" href="#deeplens.optics.DeepObj">DeepObj</a></code></p>
+
+
+
+        <p>Base class for all geometric optical surfaces.</p>
+<p>A surface sits at axial position <code>d</code> (mm) in the global coordinate
+system, has an aperture radius <code>r</code> (mm), and separates two optical
+media.  Subclasses override :meth:<code>_sag</code> and :meth:<code>_dfdxy</code> to define
+their shape.</p>
+<p>Ray–surface interaction is handled by three stages, implemented in
+:meth:<code>ray_reaction</code>:</p>
+<ol>
+<li><strong>Coordinate transform</strong> – ray is brought into the local surface frame.</li>
+<li><strong>Intersection</strong> – solved via Newton's method (:meth:<code>newtons_method</code>),
+   using a non-differentiable iteration loop followed by a single
+   differentiable Newton step to enable gradient flow.</li>
+<li><strong>Refraction / reflection</strong> – vector Snell's law (:meth:<code>refract</code>) or
+   specular reflection (:meth:<code>reflect</code>).</li>
+</ol>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Surface.d">d</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Axial position of the surface vertex [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Surface.r">r</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Aperture radius [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Surface.mat2">mat2</span></code></td>
+            <td>
+                  <code><span title="deeplens.optics.material.Material">Material</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optical material on the transmission side.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Surface.is_square">is_square</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>True</code> the aperture is square; otherwise circular.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Surface.tolerancing">tolerancing</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>When <code>True</code>, manufacturing error offsets are
+applied during ray tracing.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+        <p>Initialize a generic optical surface.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>r</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Aperture radius [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>d</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Axial position of the surface vertex [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>mat2</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> or <span title="deeplens.optics.material.Material">Material</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Material on the transmission side
+(e.g. <code>"N-BK7"</code>, <code>"air"</code>).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pos_xy</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Lateral offset <code>[x, y]</code> [mm].
+Defaults to <code>[0.0, 0.0]</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>[0.0, 0.0]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>vec_local</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local normal direction.
+Defaults to <code>[0.0, 0.0, 1.0]</code> (on-axis).</p>
+              </div>
+            </td>
+            <td>
+                  <code>[0.0, 0.0, 1.0]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>is_square</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Use a square aperture.
+Defaults to <code>False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Compute device. Defaults to <code>"cpu"</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;cpu&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="deeplens.optics.geometric_surface.Surface.ray_reaction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ray_reaction</span>
+
+
+</h5>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ray_reaction</span><span class="p">(</span><span class="n">ray</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">,</span> <span class="n">refraction</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute the output ray after intersection and refraction/reflection.</p>
+<p>Transforms the ray to the local surface frame, solves the intersection
+via Newton's method, applies vector Snell's law (or specular reflection),
+then transforms back to global coordinates.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>ray</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="deeplens.optics.Ray (deeplens.optics.light.Ray)" href="#deeplens.optics.Ray">Ray</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Incident ray bundle.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>n1</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Refractive index of the incident medium.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>n2</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Refractive index of the transmission medium.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>refraction</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>True</code> (default) refract the ray;
+if <code>False</code> reflect it.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>Ray</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Updated ray bundle after the surface interaction.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="spheric">Spheric</h3>
+<p>Spherical surface defined by curvature <span class="arithmatex">\(c = 1/R\)</span>.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geometric_surface.Spheric" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geometric_surface.Spheric</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Spheric</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">mat2</span><span class="p">,</span> <span class="n">pos_xy</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">vec_local</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">is_square</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.geometric_surface.Surface (deeplens.optics.geometric_surface.base.Surface)" href="#deeplens.optics.geometric_surface.Surface">Surface</a></code></p>
+
+
+
+        <p>Spherical refractive surface parameterized by curvature.</p>
+<p>The sag function is:</p>
+<p>.. math::</p>
+<div class="highlight"><pre><span></span><code>z(x, y) = \frac{c \rho^2}{1 + \sqrt{1 - c^2 \rho^2}}, \quad
+\rho^2 = x^2 + y^2
+</code></pre></div>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Spheric.c">c</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Surface curvature <code>1/R</code> [1/mm].  Differentiable
+with respect to gradient-based optimization.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+        <p>Initialize a spherical surface.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>c</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Surface curvature <code>1/R</code> [1/mm].  Use <code>0</code> for a flat
+surface (equivalent to <code>Plane</code>).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>r</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Aperture radius [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>d</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Axial vertex position [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>mat2</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> or <span title="deeplens.optics.material.Material">Material</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Material on the transmission side.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pos_xy</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Lateral offset <code>[x, y]</code> [mm].
+Defaults to <code>[0.0, 0.0]</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>[0.0, 0.0]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>vec_local</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local normal direction.
+Defaults to <code>[0.0, 0.0, 1.0]</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>[0.0, 0.0, 1.0]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>is_square</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Square aperture flag. Defaults to
+<code>False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Compute device. Defaults to <code>"cpu"</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;cpu&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="aspheric">Aspheric</h3>
+<p>Even-asphere surface: spherical base with polynomial corrections.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geometric_surface.Aspheric" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geometric_surface.Aspheric</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Aspheric</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">ai</span><span class="p">,</span> <span class="n">mat2</span><span class="p">,</span> <span class="n">pos_xy</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">vec_local</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">is_square</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.geometric_surface.Surface (deeplens.optics.geometric_surface.base.Surface)" href="#deeplens.optics.geometric_surface.Surface">Surface</a></code></p>
+
+
+
+        <p>Even-order aspheric surface.</p>
+<p>The sag function is:</p>
+<p>.. math::</p>
+<div class="highlight"><pre><span></span><code>z(\rho) = \frac{c\,\rho^2}{1 + \sqrt{1-(1+k)c^2\rho^2}}
+         + \sum_{i=1}^{n} a_{2i}\,\rho^{2i},
+\quad \rho^2 = x^2 + y^2
+</code></pre></div>
+<p>All coefficients <code>c</code>, <code>k</code>, and <code>ai</code> are differentiable torch
+tensors so they can be optimised with gradient descent.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Aspheric.c">c</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base curvature [1/mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Aspheric.k">k</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Conic constant.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.geometric_surface.Aspheric.ai">ai</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Even-order aspheric coefficients
+<code>[a2, a4, a6, ...]</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+        <p>Initialize an aspheric surface.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>r</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Aperture radius [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>d</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Axial vertex position [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>c</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Base curvature <code>1/R</code> [1/mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>k</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Conic constant (<code>0</code> = sphere, <code>-1</code> = paraboloid).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ai</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="float">float</span>] or None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Even-order aspheric coefficients
+<code>[a2, a4, a6, ...]</code>.  Pass <code>None</code> or an empty list for a
+pure conic.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>mat2</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> or <span title="deeplens.optics.material.Material">Material</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Material on the transmission side.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pos_xy</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Lateral offset <code>[x, y]</code> [mm].
+Defaults to <code>[0.0, 0.0]</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>[0.0, 0.0]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>vec_local</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="float">float</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local normal direction.
+Defaults to <code>[0.0, 0.0, 1.0]</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>[0.0, 0.0, 1.0]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>is_square</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Square aperture flag.
+Defaults to <code>False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Compute device. Defaults to <code>"cpu"</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;cpu&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="aperture">Aperture</h3>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.geometric_surface.Aperture" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.geometric_surface.Aperture</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Aperture</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">pos_xy</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">vec_local</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">is_square</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="deeplens.optics.geometric_surface.plane.Plane">Plane</span></code></p>
+
+
+
+        <p>Aperture surface.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+<h2 id="light-representations">Light Representations</h2>
+<h3 id="ray">Ray</h3>
+<p>Geometric ray representation carrying origin, direction, wavelength, validity mask, energy, and optical path length (OPL).</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.Ray" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.Ray</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Ray</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">wvln</span><span class="o">=</span><span class="n">DEFAULT_WAVE</span><span class="p">,</span> <span class="n">coherent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.DeepObj (deeplens.optics.base.DeepObj)" href="#deeplens.optics.DeepObj">DeepObj</a></code></p>
+
+
+
+        <p>Batched ray bundle for optical simulation.</p>
+<p>Stores ray origins, directions, wavelength, validity mask, energy, obliquity,
+and (in coherent mode) optical path length.  All tensor attributes share the
+same batch shape <code>(*batch_size, num_rays)</code>.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.o">o</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ray origins, shape <code>(*batch, num_rays, 3)</code> [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.d">d</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Unit ray directions, shape <code>(*batch, num_rays, 3)</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.wvln">wvln</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wavelength scalar [µm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.is_valid">is_valid</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Binary validity mask, shape <code>(*batch, num_rays)</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.en">en</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Energy weight, shape <code>(*batch, num_rays, 1)</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.obliq">obliq</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Obliquity factor, shape <code>(*batch, num_rays, 1)</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.opl">opl</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optical path length (coherent mode only),
+shape <code>(*batch, num_rays, 1)</code> [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.Ray.coherent">coherent</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether OPL tracking is enabled.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+        <p>Initialize a ray object.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>o</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ray origin, shape <code>(..., num_rays, 3)</code> [mm].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>d</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ray direction, shape <code>(..., num_rays, 3)</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>wvln</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ray wavelength [µm].</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="deeplens.optics.config.DEFAULT_WAVE">DEFAULT_WAVE</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>coherent</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Enable optical path length tracking for coherent
+tracing. Defaults to <code>False</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Compute device. Defaults to <code>"cpu"</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;cpu&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h3 id="complexwave">ComplexWave</h3>
+<p>Complex electromagnetic field with Angular Spectrum Method (ASM), Fresnel, and Fraunhofer propagation via <code>torch.fft</code>.</p>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="deeplens.optics.ComplexWave" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.optics.ComplexWave</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ComplexWave</span><span class="p">(</span><span class="n">u</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">wvln</span><span class="o">=</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">phy_size</span><span class="o">=</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">2000</span><span class="p">,</span> <span class="mi">2000</span><span class="p">))</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="deeplens.optics.DeepObj (deeplens.optics.base.DeepObj)" href="#deeplens.optics.DeepObj">DeepObj</a></code></p>
+
+
+
+        <p>Complex scalar wave field for diffraction simulation.</p>
+<p>Represents a monochromatic, coherent complex amplitude on a uniform
+rectangular grid.  Propagation methods (ASM, Fresnel, Fraunhofer) are
+implemented as member functions and use <code>torch.fft</code> for efficiency.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ComplexWave.u">u</span></code></td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Complex amplitude, shape <code>[1, 1, H, W]</code>.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ComplexWave.wvln">wvln</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wavelength [µm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ComplexWave.k">k</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wave number <code>2π / (λ × 10⁻³)</code> [mm⁻¹].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ComplexWave.phy_size">phy_size</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical aperture size (W, H) [mm].</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ComplexWave.ps">ps</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Pixel pitch [mm] (must be square).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ComplexWave.res">res</span></code></td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Grid resolution (H, W) in pixels.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="deeplens.optics.ComplexWave.z">z</span></code></td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current axial position [mm].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+        <p>Initialize a complex wave field.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>u</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span> or None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Initial complex amplitude.
+Accepted shapes: <code>[H, W]</code>, <code>[1, H, W]</code>, or
+<code>[1, 1, H, W]</code>.  If <code>None</code> a zero field is created with
+the given <em>res</em>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>wvln</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Wavelength [µm].  Defaults to <code>0.55</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.55</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>z</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Initial axial position [mm].  Defaults to
+<code>0.0</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.0</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>phy_size</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Physical aperture (W, H) [mm].
+Defaults to <code>(4.0, 4.0)</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(4.0, 4.0)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>res</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Grid resolution (H, W) [pixels].  Only
+used when <em>u</em> is <code>None</code>.  Defaults to <code>(2000, 2000)</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(2000, 2000)</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="AssertionError">AssertionError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the pixel pitch is not square or the
+wavelength is outside the range <code>(0.1, 10)</code> µm.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><hr />
+<h2 id="psf-utilities">PSF Utilities</h2>
+<p>Functions for convolving images with point spread functions.</p>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.optics.imgsim.psf.conv_psf" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">deeplens.optics.imgsim.psf.conv_psf</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">conv_psf</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">psf</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Convolve an image batch with a single spatially-uniform PSF.</p>
+<p>Applies a per-channel 2-D convolution using <code>reflect</code> boundary padding
+so that the output has the same spatial dimensions as the input.  The PSF
+is internally flipped to convert the cross-correlation implemented by
+<code>F.conv2d</code> into a true convolution.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image batch, shape <code>[B, C, H, W]</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>psf</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>PSF kernel, shape <code>[C, ks, ks]</code>.  <code>ks</code> may be
+odd or even.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor: Rendered image, shape <code>[B, C, H, W]</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>psf = lens.psf_rgb(points=torch.tensor([0.0, 0.0, -10000.0]))
+img_blur = conv_psf(img, psf)</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.optics.imgsim.psf.conv_psf_map" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">deeplens.optics.imgsim.psf.conv_psf_map</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">conv_psf_map</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">psf_map</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents first">
+
+        <p>Convolve an image batch with a spatially-varying PSF map.</p>
+<p>Divides the image into <code>grid_h × grid_w</code> non-overlapping patches and
+convolves each patch with its corresponding PSF kernel.  The results are
+assembled back into a full-resolution output via a weighted blending step.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image batch, shape <code>[B, C, H, W]</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>psf_map</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>PSF map, shape <code>[grid_h, grid_w, C, ks, ks]</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor: Rendered image, shape <code>[B, C, H, W]</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
