@@ -3,7 +3,7 @@
 </div>
 
 <p align="center">
-    <a href="https://deeplens.readthedocs.io/">Docs</a> •
+    <a href="https://vccimaging.org/DeepLens/">Docs</a> •
     <a href="https://github.com/singer-yang/DeepLens-tutorials">Tutorials</a> •
     <a href="#community">Community</a> •
     <a href="https://pypi.org/project/deeplens-core/">PyPI</a>
