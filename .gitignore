@@ -11,6 +11,7 @@ deeplens/do_code/
 !lenses/**/*.png
 !images/*.png
 !assets/*.png
+!docs/assets/*.png
 debug.py
 *.log
 temp/*
@@ -19,8 +20,8 @@ lenses/pancake/
 datasets/BSDS300/
 *.out
 
-# Sphinx documentation build results
-docs/_build/
+# MkDocs build artifacts
+site/
 
 # add my own files
 test/test_outputs
