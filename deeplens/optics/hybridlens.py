@@ -104,11 +104,19 @@ class HybridLens(Lens):
     def read_lens_json(self, filename):
         """Read the lens configuration from a JSON file.
 
-        Loads a GeoLens and associated DOE from the specified file.
-        Supported DOE types: binary2, pixel2d, fresnel, zernike, grating.
+        Loads a :class:`GeoLens` and associated DOE from the specified file.
+        A ``Plane`` surface is appended to the GeoLens surface list as a
+        placeholder for the DOE plane.
+
+        Supported DOE types: ``binary2``, ``pixel2d``, ``fresnel``,
+        ``zernike``, ``grating``.
 
         Args:
-            filename (str): Path to the JSON configuration file.
+            filename (str): Path to the JSON configuration file.  Must
+                contain a ``"DOE"`` key with a ``"type"`` field.
+
+        Raises:
+            ValueError: If the DOE type in the file is not supported.
         """
         # Load geolens
         geolens = GeoLens(filename=filename, device=self.device)
@@ -148,10 +156,12 @@ class HybridLens(Lens):
     def write_lens_json(self, lens_path):
         """Write the lens configuration to a JSON file.
 
-        Saves the GeoLens and DOE configurations to a JSON file.
+        Serialises the ``GeoLens`` surfaces (excluding the DOE placeholder)
+        and the ``DOE`` configuration into a single JSON file that can be
+        reloaded with :meth:`read_lens_json`.
 
         Args:
-            lens_path (str): Path for the output JSON file.
+            lens_path (str): Output file path.
         """
         geolens = self.geolens
         data = {}
@@ -190,40 +200,54 @@ class HybridLens(Lens):
     # Utils
     # =====================================================================
     def analysis(self, save_name="./test.png"):
-        """Perform lens analysis and save visualizations.
+        """Run a quick visual analysis of the hybrid lens.
 
-        Draws the lens layout and DOE phase map.
+        Generates two figures: the 2D lens layout (saved to *save_name*) and
+        the DOE phase map (saved to ``<save_name>_doe.png``).
 
         Args:
-            save_name (str, optional): Base path for saving analysis images. Defaults to './test.png'.
+            save_name (str, optional): Base file path for the layout image.
+                The DOE phase-map image is derived by appending ``_doe``
+                before the extension.  Defaults to ``'./test.png'``.
         """
         self.draw_layout(save_name=save_name)
         self.doe.draw_phase_map(save_name=f"{save_name}_doe.png")
 
     def double(self):
-        """Convert lens to double precision (float64) for accurate phase calculations."""
+        """Convert the GeoLens and DOE to ``float64`` precision.
+
+        Double precision is required for numerically stable phase
+        accumulation during coherent ray tracing and ASM propagation.
+        Called automatically by :meth:`__init__`.
+        """
         self.geolens.astype(torch.float64)
         self.doe.astype(torch.float64)
 
     def refocus(self, foc_dist):
-        """Refocus the HybridLens to a given depth.
+        """Refocus the hybrid lens to a given object distance.
 
-        Adjusts the GeoLens focus distance. The DOE is not moved because it is
-        installed with the geolens as described in the Siggraph Asia 2024 paper.
+        Only the ``GeoLens`` sensor-to-last-surface spacing is adjusted; the
+        DOE remains fixed relative to the refractive group (it is physically
+        cemented to the lens barrel).
 
         Args:
-            foc_dist (float): Target focus distance.
+            foc_dist (float): Target focus distance in [mm] (negative,
+                towards the object).
         """
         self.geolens.refocus(foc_dist)
 
     def calc_scale(self, depth):
-        """Calculate the scale factor for object-to-image mapping.
+        """Calculate the object-to-image magnification scale factor.
+
+        Delegates to the embedded :class:`GeoLens`.
 
         Args:
-            depth (float): Object depth distance.
+            depth (float): Object distance in [mm] (negative, towards the
+                object).
 
         Returns:
-            float: Scale factor (object height / image height).
+            float: Scale factor mapping normalised sensor coordinates
+                ``[-1, 1]`` to physical object-space coordinates [mm].
         """
         return self.geolens.calc_scale(depth)
 
@@ -231,16 +255,33 @@ class HybridLens(Lens):
     # PSF-related functions
     # =====================================================================
     def doe_field(self, point, wvln=DEFAULT_WAVE, spp=SPP_COHERENT):
-        """Compute the complex wave field at DOE plane using coherent ray tracing. This function re-implements geolens.pupil_field() by changing the computation position from pupil plane to the last surface (DOE). The wavefront stores information of all diffraction orders.
+        """Compute the complex wave field at the DOE plane via coherent ray tracing.
+
+        Similar to ``GeoLens.pupil_field()``, but evaluates the field at the
+        last surface (DOE plane) instead of the exit pupil.  The returned
+        wavefront encodes amplitude, phase, and all diffraction-order
+        information needed for subsequent DOE modulation and ASM propagation.
 
         Args:
-            point (torch.Tensor): Tensor of shape (3,) representing the point source position. Defaults to torch.tensor([0.0, 0.0, -10000.0]).
-            wvln (float): Wavelength. Defaults to DEFAULT_WAVE.
-            spp (int): Samples per pixel. Must be >= 1,000,000 for accurate simulation. Defaults to SPP_COHERENT.
+            point (torch.Tensor): Point source position, shape ``(3,)`` or
+                ``(1, 3)`` as ``[x, y, z]`` in normalised sensor coordinates
+                for x/y and mm for z.
+            wvln (float, optional): Wavelength in [um].  Defaults to
+                ``DEFAULT_WAVE``.
+            spp (int, optional): Number of rays to sample.  Must be
+                >= 1,000,000 for accurate coherent simulation.  Defaults to
+                ``SPP_COHERENT``.
 
         Returns:
-            wavefront: Tensor of shape [H, W] representing the complex wavefront.
-            psf_center: List containing the PSF center coordinates [x, y].
+            tuple:
+                - **wavefront** (*torch.Tensor*) -- Complex wavefront at the
+                  DOE plane, shape ``[H, W]``.
+                - **psf_center** (*list[float]*) -- Estimated PSF centre on
+                  the sensor in normalised coordinates ``[x, y]``.
+
+        Raises:
+            AssertionError: If *spp* < 1,000,000 or the default dtype is not
+                ``float64``.
         """
         assert spp >= 1_000_000, (
             "Coherent ray tracing spp is too small, "
@@ -296,21 +337,37 @@ class HybridLens(Lens):
         wvln=DEFAULT_WAVE,
         spp=SPP_COHERENT,
     ):
-        """Single point monochromatic PSF using ray-wave model. The PSF contains all diffraction orders with correct diffraction efficiencies.
+        """Compute a single-point monochromatic PSF using the ray-wave model.
 
-        Steps:
-            1, Calculate complex wavefield at DOE plane by coherent ray tracing.
-            2, Apply DOE phase modulation to the wavefield.
-            3, Propagate the wavefield to sensor plane, calculate intensity PSF, crop the valid region and normalize the intensity.
+        The returned PSF includes all diffraction orders with physically
+        correct diffraction efficiencies.  The pipeline is:
+
+        1. Coherent ray tracing through the ``GeoLens`` to obtain the complex
+           wavefront at the DOE plane.
+        2. DOE phase modulation applied to the wavefront.
+        3. ASM propagation to the sensor, intensity calculation, cropping, and
+           normalisation.
 
         Args:
-            points (torch.Tensor, optional): [x, y, z] coordinates of the point source. Defaults to torch.Tensor([0,0,-10000]).
-            ks (int, optional): size of the PSF patch. Defaults to PSF_KS.
-            wvln (float, optional): wvln. Defaults to DEFAULT_WAVE.
-            spp (int, optional): number of rays to sample. Defaults to SPP_COHERENT.
+            points (list or torch.Tensor, optional): ``[x, y, z]`` point
+                source coordinates.  *x, y* are in normalised sensor
+                coordinates ``[-1, 1]``; *z* is depth in [mm].  Defaults to
+                ``[0.0, 0.0, -10000.0]``.
+            ks (int or None, optional): Output PSF patch size.  If ``None``,
+                returns the central quarter of the full-sensor intensity.
+                Defaults to ``PSF_KS``.
+            wvln (float, optional): Wavelength in [um].  Defaults to
+                ``DEFAULT_WAVE``.
+            spp (int, optional): Number of coherent rays to sample.  Defaults
+                to ``SPP_COHERENT``.
 
         Returns:
-            psf_out (torch.Tensor): PSF patch. Normalized to sum to 1. Shape [ks, ks]
+            torch.Tensor: Normalised PSF patch (sums to 1), shape
+                ``[ks, ks]``.  Returned in ``float32`` precision.
+
+        Raises:
+            ValueError: If the default dtype is not ``float64`` (call
+                :meth:`double` first).
         """
         # Check double precision
         if not torch.get_default_dtype() == torch.float64:
@@ -396,19 +453,26 @@ class HybridLens(Lens):
     # =====================================================================
     @torch.no_grad()
     def draw_layout(self, save_name="./DOELens.png", depth=-10000.0, ax=None, fig=None):
-        """Draw HybridLens layout with ray-tracing and wave-propagation visualization.
+        """Draw the hybrid-lens layout with ray paths and wave-propagation arcs.
 
-        Shows the lens geometry with ray paths through the refractive elements
-        and wave propagation arcs from the DOE to the sensor.
+        Renders the refractive elements via ``GeoLens.draw_lens_2d()``, traces
+        rays at three field angles (on-axis, 0.707x, 0.99x full field), and
+        overlays concentric arcs between the DOE and sensor to illustrate the
+        wave-propagation region.
 
         Args:
-            save_name (str, optional): Path to save the figure. Defaults to './DOELens.png'.
-            depth (float, optional): Object depth for ray tracing. Defaults to -10000.0.
-            ax (matplotlib.axes.Axes, optional): Existing axes to draw on. Defaults to None.
-            fig (matplotlib.figure.Figure, optional): Existing figure to use. Defaults to None.
+            save_name (str, optional): File path to save the figure (used only
+                when *ax* is ``None``).  Defaults to ``'./DOELens.png'``.
+            depth (float, optional): Object depth [mm] for the traced rays.
+                Defaults to ``-10000.0``.
+            ax (matplotlib.axes.Axes, optional): Pre-existing axes to draw
+                into.  If ``None``, a new figure is created and saved.
+            fig (matplotlib.figure.Figure, optional): Pre-existing figure.
+                Required when *ax* is provided.
 
         Returns:
-            tuple: (ax, fig) if ax was provided, otherwise saves the figure.
+            tuple or None: ``(ax, fig)`` when *ax* was provided; otherwise
+                the figure is saved to *save_name* and nothing is returned.
         """
         geolens = self.geolens
 
@@ -496,16 +560,26 @@ class HybridLens(Lens):
     def get_optimizer(
         self, doe_lr=1e-4, lens_lr=[1e-4, 1e-4, 1e-2, 1e-5], lr_decay=0.01
     ):
-        """Get optimizer for lens and DOE parameters.
+        """Build an Adam optimiser for joint lens + DOE design.
+
+        Collects trainable parameters from both the ``GeoLens`` (surface
+        thicknesses, curvatures, conic constants, aspheric coefficients) and
+        the DOE phase profile into a single optimiser with per-group learning
+        rates.
 
         Args:
-            doe_lr (float, optional): Learning rate for DOE parameters. Defaults to 1e-4.
-            lens_lr (list, optional): Learning rates for lens parameters [d, c, k, a].
-                Defaults to [1e-4, 1e-4, 1e-2, 1e-5].
-            lr_decay (float, optional): Decay rate for higher-order coefficients. Defaults to 0.01.
+            doe_lr (float, optional): Learning rate for DOE phase parameters.
+                Defaults to ``1e-4``.
+            lens_lr (list[float], optional): Per-parameter-group learning
+                rates for the GeoLens, ordered as
+                ``[thickness_d, curvature_c, conic_k, aspheric_a]``.
+                Defaults to ``[1e-4, 1e-4, 1e-2, 1e-5]``.
+            lr_decay (float, optional): Multiplicative decay applied to
+                higher-order aspheric coefficients.  Defaults to ``0.01``.
 
         Returns:
-            torch.optim.Adam: Configured optimizer for all trainable parameters.
+            torch.optim.Adam: Configured optimiser over all trainable
+                parameters.
         """
         params = []
         params += self.geolens.get_optimizer_params(lrs=lens_lr, decay=lr_decay)

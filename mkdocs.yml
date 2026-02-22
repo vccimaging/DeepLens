@@ -69,5 +69,6 @@ nav:
       - Optics: api/optics.md
       - Sensor: api/sensor.md
       - Network: api/network.md
+      - Camera: api/camera.md
   - Examples: examples.md
   - Contributing: contributing.md

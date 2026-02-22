@@ -38,18 +38,39 @@ class Renderer:
         return self.render(*args, **kwargs)
 
     def set_device(self, device):
-        """Set the compute device."""
+        """Set the compute device.
+
+        Args:
+            device (str): Target device (e.g. ``'cpu'``, ``'cuda'``, ``'cuda:0'``).
+        """
         self.device = device
 
     def move_to_device(self, data_dict):
-        """Move all tensors in the dict to the configured device."""
+        """Move all tensor values in a dictionary to the configured device.
+
+        Args:
+            data_dict (dict): Dictionary whose tensor values will be transferred.
+
+        Returns:
+            dict: The same dictionary with tensors moved in-place.
+        """
         for key in data_dict:
             if isinstance(data_dict[key], torch.Tensor):
                 data_dict[key] = data_dict[key].to(self.device)
         return data_dict
 
     def render(self, data_dict):
-        """Subclasses must implement rendering."""
+        """Render an image from the input data dictionary.
+
+        Subclasses must override this method with their specific rendering
+        pipeline.
+
+        Args:
+            data_dict (dict): Input data for rendering.
+
+        Raises:
+            NotImplementedError: Always, unless overridden by a subclass.
+        """
         raise NotImplementedError
 
 
@@ -290,8 +311,9 @@ class Camera(Renderer):
             **kwargs: Additional data required for specific output types (e.g., field_center).
 
         Returns:
-            *_lq (torch.Tensor): Low-quality network input (B, C, H, W)
-            *_gt (torch.Tensor): Ground-truth for training (B, C, H, W)
+            tuple: (data_lq, data_gt) where:
+                - data_lq (Tensor): Low-quality network input, shape (B, C, H/2, W/2).
+                - data_gt (Tensor): Ground-truth target, shape (B, C, H/2, W/2).
         """
         sensor = self.sensor
         pixel_size = sensor.pixel_size
