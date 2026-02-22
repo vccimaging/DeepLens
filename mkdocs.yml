@@ -37,7 +37,7 @@ plugins:
             show_source: false
             show_root_heading: true
             members_order: source
-            heading_level: 4
+            heading_level: 3
             separate_signature: true
             merge_init_into_class: true
             show_signature_annotations: true
@@ -60,9 +60,11 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
-  - Home: index.md
-  - Installation: installation.md
-  - Quickstart: quickstart.md
+  - Home:
+      - Overview: index.md
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+      - Architecture: architecture.md
   - API Reference:
       - Optics: api/optics.md
       - Sensor: api/sensor.md
