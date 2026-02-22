@@ -293,7 +293,25 @@ class GeoLensVis:
         zmx_format=False,
         fix_bound=False,
     ):
-        """Draw lens layout in a 2D plot."""
+        """Draw lens cross-section layout in a 2D plot.
+
+        Renders each surface profile, connects lens elements with edge lines,
+        and draws the sensor plane.
+
+        Args:
+            ax (matplotlib.axes.Axes, optional): Existing axes to draw on. If None,
+                creates a new figure. Defaults to None.
+            fig (matplotlib.figure.Figure, optional): Existing figure. Defaults to None.
+            color (str, optional): Line colour for lens outlines. Defaults to 'k'.
+            linestyle (str, optional): Line style. Defaults to '-'.
+            zmx_format (bool, optional): If True, draw stepped edge connections
+                matching Zemax layout style. Defaults to False.
+            fix_bound (bool, optional): If True, use fixed axis limits [-1,7]x[-4,4].
+                Defaults to False.
+
+        Returns:
+            tuple: (ax, fig) matplotlib axes and figure objects.
+        """
         # If no ax is given, generate a new one.
         if ax is None and fig is None:
             # fig, ax = plt.subplots(figsize=(6, 6))

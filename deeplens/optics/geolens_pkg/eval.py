@@ -525,7 +525,21 @@ class GeoLensEval:
     # MTF
     # ================================================================
     def mtf(self, fov, wvln=DEFAULT_WAVE):
-        """Calculate MTF at a specific field of view."""
+        """Calculate Modulation Transfer Function at a specific field of view.
+
+        Computes the geometric MTF by first generating a PSF at the given field
+        position, then converting it to tangential and sagittal MTF curves via FFT.
+
+        Args:
+            fov (float): Field of view angle in radians.
+            wvln (float, optional): Wavelength in micrometers. Defaults to DEFAULT_WAVE.
+
+        Returns:
+            tuple: (freq, mtf_tan, mtf_sag) where:
+                - freq (ndarray): Spatial frequency axis in cycles/mm.
+                - mtf_tan (ndarray): Tangential (meridional) MTF values.
+                - mtf_sag (ndarray): Sagittal MTF values.
+        """
         point = [0, -fov / self.rfov, DEPTH]
         psf = self.psf(points=point, recenter=True, wvln=wvln)
         freq, mtf_tan, mtf_sag = self.psf2mtf(psf, pixel_size=self.pixel_size)
@@ -684,9 +698,21 @@ class GeoLensEval:
         spp=SPP_CALC,
         show=False,
     ):
-        """Draw field curvature: best-focus defocus Δz (mm) vs field angle (deg), RGB overlaid.
+        """Draw field curvature: best-focus defocus vs field angle, RGB overlaid.
 
-        - Tangential (meridional) curves are solid lines (y-axis spread minimized).
+        For each wavelength and field angle, sweeps defocus positions around the
+        sensor plane and finds the position that minimizes the tangential ray spread.
+        Plots tangential curves as solid lines.
+
+        Args:
+            save_name (str, optional): Path to save the figure. Defaults to
+                ``'./field_curvature.png'``.
+            num_points (int, optional): Number of field angle samples. Defaults to 32.
+            z_span (float, optional): Half-range of defocus sweep in mm. Defaults to 1.0.
+            z_steps (int, optional): Number of defocus steps. Defaults to 1001.
+            wvln_list (list, optional): Wavelengths to evaluate. Defaults to WAVE_RGB.
+            spp (int, optional): Number of rays per field point. Defaults to SPP_CALC.
+            show (bool, optional): If True, display plot interactively. Defaults to False.
         """
         print("This function is not optimized for the best speed.")
         device = self.device
@@ -785,7 +811,19 @@ class GeoLensEval:
     # Vignetting
     # ================================================================
     def vignetting(self, depth=DEPTH, num_grid=64):
-        """Compute vignetting."""
+        """Compute relative illumination (vignetting) map.
+
+        Measures the fraction of rays that successfully reach the sensor for each
+        field position, indicating light falloff from center to edge.
+
+        Args:
+            depth (float, optional): Object distance. Defaults to DEPTH.
+            num_grid (int, optional): Grid resolution for field sampling. Defaults to 64.
+
+        Returns:
+            Tensor: Vignetting map with values in [0, 1]. Shape [num_grid, num_grid].
+                A value of 1.0 means no vignetting; 0.0 means fully vignetted.
+        """
         # Sample rays, shape [num_grid, num_grid, num_rays, 3]
         ray = self.sample_grid_rays(depth=depth, num_grid=num_grid)
 
@@ -797,7 +835,16 @@ class GeoLensEval:
         return vignetting
 
     def draw_vignetting(self, filename=None, depth=DEPTH, resolution=512, show=False):
-        """Draw vignetting."""
+        """Draw vignetting (relative illumination) map as a grayscale image.
+
+        Args:
+            filename (str, optional): Path to save the figure. If None, auto-generates
+                a name based on depth. Defaults to None.
+            depth (float, optional): Object distance. Defaults to DEPTH.
+            resolution (int, optional): Output image resolution in pixels. Defaults to 512.
+            show (bool, optional): If True, display the plot interactively.
+                Defaults to False.
+        """
         # Calculate vignetting map
         vignetting = self.vignetting(depth=depth)
 
@@ -828,15 +875,24 @@ class GeoLensEval:
     # Wavefront error
     # ================================================================
     def wavefront_error(self):
-        """Compute wavefront error."""
+        """Compute wavefront error across the field of view.
+
+        Not yet implemented.
+        """
         pass
 
     def field_curvature(self):
-        """Compute field curvature."""
+        """Compute field curvature (best-focus defocus vs field angle).
+
+        Not yet implemented.
+        """
         pass
 
     def aberration_histogram(self):
-        """Compute aberration histogram."""
+        """Compute aberration histogram (Seidel or Zernike decomposition).
+
+        Not yet implemented.
+        """
         pass
 
     # ================================================================

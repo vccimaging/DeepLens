@@ -34,7 +34,7 @@ plugins:
         python:
           options:
             docstring_style: google
-            show_source: false
+            show_source: true
             show_root_heading: true
             members_order: source
             heading_level: 3

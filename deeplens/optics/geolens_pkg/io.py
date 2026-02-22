@@ -40,7 +40,18 @@ class GeoLensIO:
     """
 
     def read_lens_zmx(self, filename="./test.zmx"):
-        """Load the lens from .zmx file."""
+        """Load the lens from a Zemax .zmx sequential lens file.
+
+        Parses STANDARD and EVENASPH surface types, glass materials, field
+        definitions (YFLN), and entrance pupil settings (ENPD/FLOA).
+
+        Args:
+            filename (str, optional): Path to the .zmx file. Supports both
+                UTF-8 and UTF-16 encoded files. Defaults to './test.zmx'.
+
+        Returns:
+            GeoLens: ``self``, for method chaining.
+        """
         # Read .zmx file
         try:
             with open(filename, "r", encoding="utf-8") as file:
@@ -179,7 +190,14 @@ class GeoLensIO:
         return self
 
     def write_lens_zmx(self, filename="./test.zmx"):
-        """Write the lens into .zmx file."""
+        """Write the lens to a Zemax .zmx sequential lens file.
+
+        Exports surfaces (STANDARD or EVENASPH), materials, field definitions,
+        and entrance pupil settings in Zemax OpticStudio format.
+
+        Args:
+            filename (str, optional): Output file path. Defaults to './test.zmx'.
+        """
         lens_zmx_str = ""
         if self.float_enpd:
             enpd_str = "FLOA"
@@ -248,7 +266,19 @@ class GeoLensIO:
     # CODE V Format (.seq)
     # ====================================================================================
     def read_lens_seq(self, filename="./test.seq"):
-        """Load the lens from CODE V .seq file."""
+        """Load the lens from a CODE V .seq sequential file.
+
+        Parses standard and aspheric surfaces (with conic and polynomial
+        coefficients A–I), entrance pupil diameter (EPD), field angles (YAN),
+        aperture stop (STO), and image surface (SI).
+
+        Args:
+            filename (str, optional): Path to the .seq file. Supports both
+                UTF-8 and Latin-1 encoded files. Defaults to './test.seq'.
+
+        Returns:
+            GeoLens: ``self``, for method chaining.
+        """
         print(f"\n{'=' * 60}")
         print(f"Start reading CODE V file: {filename}")
         print(f"{'=' * 60}\n")
@@ -592,7 +622,17 @@ class GeoLensIO:
         return self
 
     def write_lens_seq(self, filename="./test.seq"):
-        """Write the lens into CODE V .seq file."""
+        """Write the lens to a CODE V .seq sequential file.
+
+        Exports surfaces, materials, field definitions, and entrance pupil
+        settings in CODE V format.
+
+        Args:
+            filename (str, optional): Output file path. Defaults to './test.seq'.
+
+        Returns:
+            GeoLens: ``self``, for method chaining.
+        """
 
         import datetime
 

@@ -1786,11 +1786,22 @@ class GeoLens(
 
     @torch.no_grad()
     def calc_fov(self):
-        """Compute FoV (radian) of the lens.
+        """Compute field of view (FoV) of the lens in radians.
 
-        We implement two types of FoV calculation:
-            1. Perspective projection from focal length and sensor size.
-            2. Ray tracing to compute output ray angle.
+        Calculates FoV using two methods:
+            1. **Perspective projection** — from focal length and sensor size
+               (effective FoV, ignoring distortion).
+            2. **Ray tracing** — traces rays from the sensor edge backwards to
+               determine the real FoV including distortion effects.
+
+        Updates:
+            self.vfov (float): Vertical FoV in radians.
+            self.hfov (float): Horizontal FoV in radians.
+            self.dfov (float): Diagonal FoV in radians.
+            self.rfov (float): Half-diagonal (radius) FoV in radians.
+            self.real_rfov (float): Real half-diagonal FoV from ray tracing.
+            self.real_dfov (float): Real diagonal FoV from ray tracing.
+            self.eqfl (float): 35mm equivalent focal length in mm.
 
         Reference:
             [1] https://en.wikipedia.org/wiki/Angle_of_view_(photography)
@@ -2225,10 +2236,13 @@ class GeoLens(
 
     @torch.no_grad()
     def set_fov(self, rfov):
-        """Set FoV. This function is used to assign design targets.
+        """Set half-diagonal field of view as a design target.
+
+        Unlike ``calc_fov()`` which derives FoV from focal length and sensor
+        size, this method directly assigns the target FoV for lens optimisation.
 
         Args:
-            rfov (float): half diagonal-FoV in radian.
+            rfov (float): Half-diagonal FoV in radians.
         """
         self.rfov = rfov
 

@@ -137,7 +137,23 @@ class GeoLensOptim:
             self.obliq_min = 0.4
 
     def loss_reg(self, w_focus=10.0, w_ray_angle=2.0, w_intersec=1.0, w_gap=0.1, w_surf=1.0):
-        """Regularization loss for lens design."""
+        """Compute combined regularization loss for lens design.
+
+        Aggregates multiple constraint losses to keep the lens physically valid
+        during gradient-based optimisation.
+
+        Args:
+            w_focus (float, optional): Weight for focus loss. Defaults to 10.0.
+            w_ray_angle (float, optional): Weight for chief ray angle loss. Defaults to 2.0.
+            w_intersec (float, optional): Weight for self-intersection loss. Defaults to 1.0.
+            w_gap (float, optional): Weight for air gap / thickness loss. Defaults to 0.1.
+            w_surf (float, optional): Weight for surface shape loss. Defaults to 1.0.
+
+        Returns:
+            tuple: (loss_reg, loss_dict) where:
+                - loss_reg (Tensor): Scalar combined regularization loss.
+                - loss_dict (dict): Per-component loss values for logging.
+        """
         # Loss functions for regularization
         # loss_focus = self.loss_infocus()
         loss_ray_angle = self.loss_ray_angle()
@@ -185,12 +201,16 @@ class GeoLensOptim:
         return loss
 
     def loss_surface(self):
-        """Penalize surface shape:
-            1. Penalize maximum sag
-            2. Penalize diameter to thickness ratio
-            3. Penalize thick_max to thick_min ratio
-            4. Penalize diameter to thickness ratio
-            5. Penalize maximum to minimum thickness ratio
+        """Penalize extreme surface shapes that are difficult to manufacture.
+
+        Checks four constraints for each optimisable surface:
+            1. Sag-to-diameter ratio exceeding ``sag2diam_max``.
+            2. Maximum surface gradient exceeding ``grad_max``.
+            3. Diameter-to-thickness ratio exceeding ``diam2thick_max``.
+            4. Maximum-to-minimum thickness ratio exceeding ``tmax2tmin_max``.
+
+        Returns:
+            Tensor: Scalar surface shape penalty loss.
         """
         sag2diam_max = self.sag2diam_max
         grad_max_allowed = self.grad_max
@@ -373,7 +393,14 @@ class GeoLensOptim:
         return loss
 
     def loss_ray_angle(self):
-        """Loss function to penalize large chief ray angle."""
+        """Penalize large chief ray angles and low obliquity factors.
+
+        Ensures that rays arrive at the sensor within acceptable incidence
+        angles, which is critical for sensor coupling and colour cross-talk.
+
+        Returns:
+            Tensor: Scalar chief-ray-angle penalty loss.
+        """
         max_angle_deg = self.chief_ray_angle_max
         obliq_min = self.obliq_min
 
@@ -399,6 +426,14 @@ class GeoLensOptim:
         return loss_cra + loss_obliq
 
     def loss_mat(self):
+        """Penalize material parameters outside manufacturable ranges.
+
+        Constrains refractive index *n* to [1.5, 1.9] and Abbe number *V* to
+        [30, 70] for each non-air surface material.
+
+        Returns:
+            Tensor: Scalar material penalty loss.
+        """
         n_max = 1.9
         n_min = 1.5
         V_max = 70
@@ -526,14 +561,36 @@ class GeoLensOptim:
         shape_control=True,
         result_dir=None,
     ):
-        """Optimize the lens by minimizing rms errors.
+        """Optimise the lens by minimising RGB RMS spot errors.
 
-        Debug hints:
-            1, Slowly optimize with small learning rate
-            2, FOV and thickness should match well
-            3, Reasonable parameter range
-            4, Aspheric order higher is better but also more sensitive
-            5, More iterations with larger ray sampling
+        Runs a curriculum-learning training loop with Adam optimiser and cosine
+        annealing. Periodically evaluates the lens, saves intermediate results,
+        and optionally corrects surface shapes.
+
+        Args:
+            lrs (list, optional): Learning rates for [d, c, k, a] parameter groups.
+                Defaults to [1e-3, 1e-4, 1e-1, 1e-4].
+            decay (float, optional): Decay factor for higher-order aspheric coefficients.
+                Defaults to 0.01.
+            iterations (int, optional): Total training iterations. Defaults to 5000.
+            test_per_iter (int, optional): Evaluate and save every N iterations.
+                Defaults to 100.
+            centroid (bool, optional): If True, use chief-ray centroid as PSF centre
+                reference; otherwise use pinhole model. Defaults to False.
+            optim_mat (bool, optional): If True, include material parameters (n, V)
+                in optimisation. Defaults to False.
+            shape_control (bool, optional): If True, call ``correct_shape()`` at each
+                evaluation step. Defaults to True.
+            result_dir (str, optional): Directory to save results. If None,
+                auto-generates a timestamped directory. Defaults to None.
+
+        Note:
+            Debug hints:
+                1. Slowly optimise with small learning rate.
+                2. FoV and thickness should match well.
+                3. Keep parameter ranges reasonable.
+                4. Higher aspheric order is better but more sensitive.
+                5. More iterations with larger ray sampling improves convergence.
         """
         # Experiment settings
         depth = DEPTH

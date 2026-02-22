@@ -48,7 +48,16 @@ class GeoLensTolerance:
     """
 
     def init_tolerance(self, tolerance_params=None):
-        """Initialize tolerance parameters for the lens."""
+        """Initialize manufacturing tolerance parameters for all surfaces.
+
+        Sets up tolerance ranges (e.g., curvature, thickness, decenter, tilt)
+        on each surface. These are used by ``sample_tolerance()`` to simulate
+        random manufacturing errors.
+
+        Args:
+            tolerance_params (dict, optional): Custom tolerance specifications.
+                If None, each surface uses its own defaults. Defaults to None.
+        """
         if tolerance_params is None:
             tolerance_params = {}
 
@@ -57,7 +66,11 @@ class GeoLensTolerance:
 
     @torch.no_grad()
     def sample_tolerance(self):
-        """Sample a random manufacturing error for the lens."""
+        """Apply random manufacturing errors to all surfaces.
+
+        Randomly perturbs each surface according to its tolerance ranges and
+        then refocuses the lens to compensate for the focus shift.
+        """
         # Randomly perturb all surfaces
         for i in range(len(self.surfaces)):
             self.surfaces[i].sample_tolerance()
@@ -67,7 +80,10 @@ class GeoLensTolerance:
 
     @torch.no_grad()
     def zero_tolerance(self):
-        """Clear manufacturing error for the lens."""
+        """Reset all manufacturing errors to zero (nominal lens state).
+
+        Clears the perturbations on every surface and refocuses the lens.
+        """
         for i in range(len(self.surfaces)):
             self.surfaces[i].zero_tolerance()
 
