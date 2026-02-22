@@ -1,0 +1,62 @@
+/* ── Compact heading sizes for API entries ──────────────────────── */
+/* Top-level objects (classes, standalone functions) → h4 */
+.md-typeset .doc-heading h4,
+.md-typeset .doc-heading h4 code {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Member methods/attributes → h5 */
+.md-typeset .doc-heading h5,
+.md-typeset .doc-heading h5 code {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ── Separator between top-level API objects ─────────────────────── */
+/* Add a visible rule before each documented class/function */
+.md-typeset .doc-object {
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  padding-top: 1rem;
+  margin-top: 1.5rem;
+}
+
+/* First object in a section — no top border */
+.md-typeset .doc-object:first-of-type {
+  border-top: none;
+  margin-top: 0;
+}
+
+/* ── Separator between member methods ────────────────────────────── */
+.md-typeset .doc-children .doc-object {
+  border-top: 1px dashed var(--md-default-fg-color--lightest);
+  padding-top: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* ── Signature block styling ─────────────────────────────────────── */
+/* separate_signature puts the signature in a <pre> code block */
+.md-typeset .doc-signature {
+  font-size: 0.82rem;
+  background: var(--md-code-bg-color);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.3rem 0 0.8rem;
+  border-left: 3px solid var(--md-primary-fg-color);
+}
+
+/* ── Section titles (Parameters, Returns, etc.) ──────────────────── */
+.md-typeset .doc-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.75rem;
+  border-bottom: none;
+}
+
+/* ── Reduce vertical bloat in parameter lists ────────────────────── */
+.md-typeset .doc-section table {
+  font-size: 0.82rem;
+}

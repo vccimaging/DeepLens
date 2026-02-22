@@ -37,6 +37,10 @@ plugins:
             show_source: false
             show_root_heading: true
             members_order: source
+            heading_level: 4
+            separate_signature: true
+            merge_init_into_class: true
+            show_signature_annotations: true
 
 markdown_extensions:
   - admonition
@@ -48,6 +52,9 @@ markdown_extensions:
       generic: true
   - tables
   - attr_list
+
+extra_css:
+  - stylesheets/api.css
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
