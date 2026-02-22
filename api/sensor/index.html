@@ -223,55 +223,18 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
-  
-  
     
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
   
   Home
 
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../installation/" class="md-tabs__link">
-        
-  
-  
+        </a>
+      </li>
     
-  
-  Installation
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../quickstart/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Quickstart
-
-      </a>
-    </li>
   
 
       
@@ -385,9 +348,25 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -401,13 +380,50 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -432,9 +448,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -456,6 +473,42 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -485,10 +538,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -506,8 +559,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -624,7 +677,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sensor" class="md-nav__link">
+  <a href="#deeplens.sensor.Sensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         Sensor
@@ -636,10 +689,54 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.Sensor" class="md-nav__link">
+  <a href="#deeplens.sensor.Sensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.response_curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        response_curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.unprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.linrgb2raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linrgb2raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.simu_noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simu_noise
       
     </span>
   </a>
@@ -652,7 +749,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#rgbsensor" class="md-nav__link">
+  <a href="#deeplens.sensor.RGBSensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         RGBSensor
@@ -664,10 +761,109 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.RGBSensor" class="md-nav__link">
+  <a href="#deeplens.sensor.RGBSensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        RGBSensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.response_curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        response_curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.unprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.linrgb2raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linrgb2raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.simu_noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simu_noise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.sample_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.reset_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.process2rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        process2rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.bayer2rggb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bayer2rggb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.rggb2bayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rggb2bayer
       
     </span>
   </a>
@@ -680,7 +876,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#monosensor" class="md-nav__link">
+  <a href="#deeplens.sensor.MonoSensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         MonoSensor
@@ -692,10 +888,54 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.MonoSensor" class="md-nav__link">
+  <a href="#deeplens.sensor.MonoSensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MonoSensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.response_curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        response_curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.unprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.linrgb2raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linrgb2raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.simu_noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simu_noise
       
     </span>
   </a>
@@ -708,7 +948,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#eventsensor" class="md-nav__link">
+  <a href="#deeplens.sensor.EventSensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         EventSensor
@@ -720,10 +960,54 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.EventSensor" class="md-nav__link">
+  <a href="#deeplens.sensor.EventSensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        EventSensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.forward_video" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward_video
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.events_to_voxel_grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        events_to_voxel_grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.events_to_timestamp_image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        events_to_timestamp_image
       
     </span>
   </a>
@@ -761,6 +1045,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="BlackLevelCompensation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.BlackLevelCompensation.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.BlackLevelCompensation.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -771,6 +1083,67 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="AutoWhiteBalance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.apply_awb_bayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply_awb_bayer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.apply_awb_rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply_awb_rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.safe_reverse_awb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        safe_reverse_awb
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -783,6 +1156,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Demosaic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Demosaic.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Demosaic.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -793,6 +1194,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="ColorCorrectionMatrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.sample_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.reset_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -805,6 +1256,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="GammaCorrection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.sample_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.reset_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -815,6 +1316,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="ToneMapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ToneMapping.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ToneMapping.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -827,6 +1356,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DeadPixelCorrection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.DeadPixelCorrection.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.DeadPixelCorrection.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -837,6 +1394,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Denoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Denoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Denoise.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -849,6 +1434,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="LensShadingCorrection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.LensShadingCorrection.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.LensShadingCorrection.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -860,6 +1473,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="AntiAliasingFilter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AntiAliasingFilter.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AntiAliasingFilter.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -870,6 +1511,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="ColorSpaceConversion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.rgb_to_ycrcb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rgb_to_ycrcb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.ycrcb_to_rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ycrcb_to_rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1015,7 +1706,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sensor" class="md-nav__link">
+  <a href="#deeplens.sensor.Sensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         Sensor
@@ -1027,10 +1718,54 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.Sensor" class="md-nav__link">
+  <a href="#deeplens.sensor.Sensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.response_curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        response_curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.unprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.linrgb2raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linrgb2raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.Sensor.simu_noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simu_noise
       
     </span>
   </a>
@@ -1043,7 +1778,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#rgbsensor" class="md-nav__link">
+  <a href="#deeplens.sensor.RGBSensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         RGBSensor
@@ -1055,10 +1790,109 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.RGBSensor" class="md-nav__link">
+  <a href="#deeplens.sensor.RGBSensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        RGBSensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.response_curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        response_curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.unprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.linrgb2raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linrgb2raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.simu_noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simu_noise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.sample_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.reset_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.process2rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        process2rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.bayer2rggb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bayer2rggb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.RGBSensor.rggb2bayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rggb2bayer
       
     </span>
   </a>
@@ -1071,7 +1905,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#monosensor" class="md-nav__link">
+  <a href="#deeplens.sensor.MonoSensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         MonoSensor
@@ -1083,10 +1917,54 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.MonoSensor" class="md-nav__link">
+  <a href="#deeplens.sensor.MonoSensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MonoSensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.response_curve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        response_curve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.unprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unprocess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.linrgb2raw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linrgb2raw
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.MonoSensor.simu_noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simu_noise
       
     </span>
   </a>
@@ -1099,7 +1977,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#eventsensor" class="md-nav__link">
+  <a href="#deeplens.sensor.EventSensor" class="md-nav__link">
     <span class="md-ellipsis">
       
         EventSensor
@@ -1111,10 +1989,54 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.sensor.EventSensor" class="md-nav__link">
+  <a href="#deeplens.sensor.EventSensor.from_config" class="md-nav__link">
     <span class="md-ellipsis">
       
-        EventSensor
+        from_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.forward_video" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward_video
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.events_to_voxel_grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        events_to_voxel_grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.EventSensor.events_to_timestamp_image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        events_to_timestamp_image
       
     </span>
   </a>
@@ -1152,6 +2074,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="BlackLevelCompensation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.BlackLevelCompensation.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.BlackLevelCompensation.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1162,6 +2112,67 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="AutoWhiteBalance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.apply_awb_bayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply_awb_bayer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.apply_awb_rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply_awb_rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AutoWhiteBalance.safe_reverse_awb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        safe_reverse_awb
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1174,6 +2185,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Demosaic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Demosaic.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Demosaic.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1184,6 +2223,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="ColorCorrectionMatrix">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.sample_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.reset_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorCorrectionMatrix.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1196,6 +2285,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="GammaCorrection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.sample_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.reset_augmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reset_augmentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.GammaCorrection.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1206,6 +2345,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="ToneMapping">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ToneMapping.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ToneMapping.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1218,6 +2385,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DeadPixelCorrection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.DeadPixelCorrection.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.DeadPixelCorrection.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1228,6 +2423,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Denoise">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Denoise.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.Denoise.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1240,6 +2463,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="LensShadingCorrection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.LensShadingCorrection.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.LensShadingCorrection.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1251,6 +2502,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="AntiAliasingFilter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AntiAliasingFilter.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.AntiAliasingFilter.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1261,6 +2540,56 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="ColorSpaceConversion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.rgb_to_ycrcb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rgb_to_ycrcb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.ycrcb_to_rgb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ycrcb_to_rgb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.forward" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        forward
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deeplens.sensor.isp_modules.ColorSpaceConversion.reverse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reverse
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1293,7 +2622,6 @@
 <p>The <code>deeplens.sensor</code> module provides differentiable sensor models with noise simulation and a full image signal processing (ISP) pipeline.</p>
 <hr />
 <h2 id="sensor-models">Sensor Models</h2>
-<h3 id="sensor">Sensor</h3>
 <p>Base sensor class.</p>
 
 
@@ -1301,11 +2629,11 @@
 
 
 
-<h4 id="deeplens.sensor.Sensor" class="doc doc-heading">
+<h3 id="deeplens.sensor.Sensor" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.Sensor</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Sensor</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">4000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">))</span>
 </code></pre></div>
 
@@ -1452,25 +2780,391 @@ Defaults to <code>(4000, 3000)</code>.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.Sensor.from_config" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">from_config</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_config</span><span class="p">(</span><span class="n">sensor_file</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Create a Sensor from a JSON config file.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>sensor_file</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to JSON sensor config file.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sensor instance.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.Sensor.response_curve" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">response_curve</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">response_curve</span><span class="p">(</span><span class="n">img_irr</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply response curve to the irradiance image to get the raw image.</p>
+<p>Default is identity (linear response).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_irr</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Irradiance image</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_raw</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raw image</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.Sensor.unprocess" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">unprocess</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">unprocess</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse ISP: convert sRGB image back to linear RGB.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, C, H, W), range [0, 1] in sRGB space.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_linear</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, C, H, W), range [0, 1] in linear space.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.Sensor.linrgb2raw" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">linrgb2raw</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">linrgb2raw</span><span class="p">(</span><span class="n">img_linear</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert linear RGB image to raw sensor space.</p>
+<p>For the base Sensor, raw is the linear image itself (identity).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_linear</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_raw</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.Sensor.simu_noise" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">simu_noise</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">simu_noise</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Simulate sensor noise.</p>
+<p>Default is identity (no noise).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Same image unchanged</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
 
     </div>
 
-</div><h3 id="rgbsensor">RGBSensor</h3>
-<p>Full RGB sensor with Bayer pattern, noise model (read noise + shot noise), and ISP pipeline (black level compensation, white balance, demosaicing, color correction, gamma).</p>
+</div><p>Full RGB sensor with Bayer pattern, noise model (read noise + shot noise), and ISP pipeline (black level compensation, white balance, demosaicing, color correction, gamma).</p>
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="deeplens.sensor.RGBSensor" class="doc doc-heading">
+<h3 id="deeplens.sensor.RGBSensor" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.RGBSensor</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">RGBSensor</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">36.0</span><span class="p">,</span> <span class="mf">24.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">5472</span><span class="p">,</span> <span class="mi">3648</span><span class="p">),</span> <span class="n">bit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">black_level</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">bayer_pattern</span><span class="o">=</span><span class="s1">&#39;rggb&#39;</span><span class="p">,</span> <span class="n">white_balance</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.8</span><span class="p">),</span> <span class="n">color_matrix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gamma_param</span><span class="o">=</span><span class="mf">2.2</span><span class="p">,</span> <span class="n">iso_base</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">read_noise_std</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">shot_noise_std_alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">shot_noise_std_beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">wavelengths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">red_response</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">green_response</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">blue_response</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -1870,25 +3564,703 @@ RGB for training data generation.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.from_config" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">from_config</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_config</span><span class="p">(</span><span class="n">sensor_file</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Create an RGBSensor from a JSON config file.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>sensor_file</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to JSON sensor config file.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>RGBSensor instance.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.response_curve" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">response_curve</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">response_curve</span><span class="p">(</span><span class="n">img_spectral</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply response curve to the spectral image to get the raw image.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_spectral</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Spectral image, shape (B, C, H, W), range [0, 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_raw</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raw image, shape (B, 3, H, W), range [0, 1]</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] Spectral Sensitivity Estimation Without a Camera. ICCP 2023.
+[2] https://github.com/COLOR-Lab-Eilat/Spectral-sensitivity-estimation</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.unprocess" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">unprocess</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">unprocess</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">in_type</span><span class="o">=</span><span class="s1">&#39;rgb&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Unprocess an image to unbalanced RAW RGB space.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 3, H, W), range [0, 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>in_type</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image type, either "rgb" or "linear_rgb"</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;rgb&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>image</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 3, H, W), range [0, 1] in raw space</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.linrgb2raw" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">linrgb2raw</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">linrgb2raw</span><span class="p">(</span><span class="n">img_linrgb</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert linear RGB image to raw Bayer space.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_linrgb</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 3, H, W), range [0, 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bayer_nbit</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 1, H, W), range [~black_level, 2**bit - 1]</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.simu_noise" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">simu_noise</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">simu_noise</span><span class="p">(</span><span class="n">img_raw</span><span class="p">,</span> <span class="n">iso</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Simulate sensor noise considering sensor quantization and noise model.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_raw</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>N-bit clean image, (B, C, H, W), range [0, 2**bit - 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iso</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(B,), range [0, 800]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_raw_noise</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>N-bit noisy image, (B, C, H, W), range [0, 2**bit - 1]</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] "Unprocessing Images for Learned Raw Denoising."
+[2] https://www.photonstophotos.net/Charts/RN_ADU.htm
+[3] https://www.photonstophotos.net/Investigations/Measurement_and_Sample_Variation.htm
+[4] https://www.dpreview.com/forums/thread/4669806</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.sample_augmentation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">sample_augmentation</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">sample_augmentation</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Randomly sample a set of augmentation parameters for ISP modules. Used for data augmentation during training.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.reset_augmentation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reset_augmentation</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reset_augmentation</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reset parameters for ISP modules. Used for evaluation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.process2rgb" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">process2rgb</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">process2rgb</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">in_type</span><span class="o">=</span><span class="s1">&#39;rggb&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Process an image to a RGB image.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 3, H, W), range [0, 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>in_type</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image type, either "rggb" or "bayer"</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;rggb&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>image</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 3, H, W), range [0, 1]</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.bayer2rggb" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">bayer2rggb</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">bayer2rggb</span><span class="p">(</span><span class="n">bayer_nbit</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert RAW bayer image to RAW RGGB image.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer_nbit</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 1, H, W), range [~black_level, 2**bit - 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>rggb</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 3, H, W), range [0, 1]</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.RGBSensor.rggb2bayer" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">rggb2bayer</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">rggb2bayer</span><span class="p">(</span><span class="n">rggb</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert RGGB image to RAW Bayer.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>rggb</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape [4, H/2, W/2] or [B, 4, H/2, W/2], range [0, 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bayer</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape [1, H, W] or [B, 1, H, W], range [~black_level, 2**bit - 1]</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
 
     </div>
 
-</div><h3 id="monosensor">MonoSensor</h3>
-<p>Monochrome sensor without color filter array.</p>
+</div><p>Monochrome sensor without color filter array.</p>
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="deeplens.sensor.MonoSensor" class="doc doc-heading">
+<h3 id="deeplens.sensor.MonoSensor" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.MonoSensor</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">MonoSensor</span><span class="p">(</span><span class="n">bit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">black_level</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">4000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">),</span> <span class="n">read_noise_std</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">shot_noise_std_alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">shot_noise_std_beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">iso_base</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">wavelengths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spectral_response</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -2097,25 +4469,412 @@ RGB for training data generation.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.MonoSensor.from_config" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">from_config</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_config</span><span class="p">(</span><span class="n">sensor_file</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Create a MonoSensor from a JSON config file.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>sensor_file</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to JSON sensor config file.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>MonoSensor instance.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.MonoSensor.response_curve" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">response_curve</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">response_curve</span><span class="p">(</span><span class="n">img_spectral</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply spectral response curve to get a monochrome raw image.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_spectral</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Spectral image, (B, N_wavelengths, H, W)</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_raw</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Monochrome raw image, (B, 1, H, W)</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.MonoSensor.unprocess" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">unprocess</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">unprocess</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse ISP: convert gamma-corrected image back to linear RGB space.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, C, H, W), range [0, 1] in display space.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_linear</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, C, H, W), range [0, 1] in linear space.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.MonoSensor.linrgb2raw" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">linrgb2raw</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">linrgb2raw</span><span class="p">(</span><span class="n">img_linear</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert linear image to n-bit raw digital number.</p>
+<p>Applies spectral response (RGB to Mono) and quantization.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_linear</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_nbit</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor of shape (B, 1, H, W), range [~black_level, 2**bit - 1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.MonoSensor.simu_noise" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">simu_noise</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">simu_noise</span><span class="p">(</span><span class="n">img_raw</span><span class="p">,</span> <span class="n">iso</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Simulate sensor noise considering sensor quantization and noise model.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_raw</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>N-bit clean image, (B, C, H, W), range [0, 2**bit - 1]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iso</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(B,), range [0, 800]</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_raw_noise</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>N-bit noisy image, (B, C, H, W), range [0, 2**bit - 1]</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] "Unprocessing Images for Learned Raw Denoising."
+[2] https://www.photonstophotos.net/Charts/RN_ADU.htm
+[3] https://www.photonstophotos.net/Investigations/Measurement_and_Sample_Variation.htm
+[4] https://www.dpreview.com/forums/thread/4669806</p>
+</details>
+
+    </div>
+
+</div>
+
 
 
   </div>
 
     </div>
 
-</div><h3 id="eventsensor">EventSensor</h3>
-<p>Event camera sensor that outputs asynchronous brightness-change events.</p>
+</div><p>Event camera sensor that outputs asynchronous brightness-change events.</p>
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h4 id="deeplens.sensor.EventSensor" class="doc doc-heading">
+<h3 id="deeplens.sensor.EventSensor" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.EventSensor</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">EventSensor</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">),</span> <span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">4000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">),</span> <span class="n">threshold_pos</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">threshold_neg</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">sigma_threshold</span><span class="o">=</span><span class="mf">0.03</span><span class="p">,</span> <span class="n">cutoff_hz</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">leak_rate_hz</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shot_noise_rate_hz</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-07</span><span class="p">)</span>
 </code></pre></div>
 
@@ -2309,6 +5068,445 @@ noise events from dark current. Set to 0 to disable. Default 0.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.EventSensor.from_config" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">from_config</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_config</span><span class="p">(</span><span class="n">sensor_file</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Create an EventSensor from a JSON config file.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>sensor_file</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to JSON sensor config file.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>EventSensor instance.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.EventSensor.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">I_t</span><span class="p">,</span> <span class="n">I_t_1</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert two consecutive frames into a dense event count map.</p>
+<p>Each pixel independently computes the change in log intensity and
+fires integer-count positive or negative events when the change
+exceeds the contrast threshold.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>I_t</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Current frame, tensor (B, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>I_t_1</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Previous frame, tensor (B, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dt</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Time interval between frames in seconds. Required when
+<code>cutoff_hz</code>, <code>leak_rate_hz</code>, or <code>shot_noise_rate_hz</code>
+is non-zero. Default None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>events</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor (B, 2, H, W). Channel 0 = positive event
+counts, channel 1 = negative event counts.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.EventSensor.forward_video" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward_video</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward_video</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Simulate event sensor output from a video sequence.</p>
+<p>Iterates over consecutive frame pairs and generates event count
+maps for each transition.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>frames</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor (B, T, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dt</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Time interval between frames in seconds. Default None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>events</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor (B, T-1, 2, H, W). Event count maps for each
+consecutive frame pair.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.EventSensor.events_to_voxel_grid" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">events_to_voxel_grid</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">events_to_voxel_grid</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">num_bins</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert event count map to a temporal voxel grid representation.</p>
+<p>Distributes events across <code>num_bins</code> temporal bins using linear
+interpolation. This is a common input representation for event-
+based neural networks.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>events</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor (B, 2, H, W) — single-pair event counts.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>num_bins</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of temporal bins. Default 5.</p>
+              </div>
+            </td>
+            <td>
+                  <code>5</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>voxel</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor (B, num_bins, H, W).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.EventSensor.events_to_timestamp_image" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">events_to_timestamp_image</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">events_to_timestamp_image</span><span class="p">(</span><span class="n">events</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert event count map to a 2-channel timestamp-like image.</p>
+<p>Creates a representation where non-zero pixels indicate event
+activity. Channel 0 stores positive event magnitude, channel 1
+stores negative event magnitude, both normalised to [0, 1].</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>events</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor (B, 2, H, W).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ts_img</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor (B, 2, H, W), range [0, 1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2324,11 +5522,11 @@ noise events from dark current. Set to 0 to disable. Default 0.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.BlackLevelCompensation" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.BlackLevelCompensation" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.BlackLevelCompensation</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BlackLevelCompensation</span><span class="p">(</span><span class="n">bit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">black_level</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
 </code></pre></div>
 
@@ -2409,6 +5607,167 @@ noise events from dark current. Set to 0 to disable. Default 0.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.BlackLevelCompensation.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">bayer</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Black Level Compensation.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input n-bit bayer image [B, 1, H, W], data range [~black_level, 2**bit - 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bayer_float</code></td>            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output float bayer image [B, 1, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.BlackLevelCompensation.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">bayer</span><span class="p">,</span> <span class="n">quantize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse black level compensation.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 1, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>quantize</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, round to integer values (non-differentiable).</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bayer_nbit</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor of shape [B, 1, H, W], data range [0, 2^bit-1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2421,11 +5780,11 @@ noise events from dark current. Set to 0 to disable. Default 0.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.AutoWhiteBalance" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.AutoWhiteBalance" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.AutoWhiteBalance</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">AutoWhiteBalance</span><span class="p">(</span><span class="n">awb_method</span><span class="o">=</span><span class="s1">&#39;gray_world&#39;</span><span class="p">,</span> <span class="n">white_balance</span><span class="o">=</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.8</span><span class="p">))</span>
 </code></pre></div>
 
@@ -2505,6 +5864,315 @@ noise events from dark current. Set to 0 to disable. Default 0.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.AutoWhiteBalance.apply_awb_bayer" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">apply_awb_bayer</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">apply_awb_bayer</span><span class="p">(</span><span class="n">bayer</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply white balance to Bayer pattern image.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 1, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bayer_wb</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor with same shape as input.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.AutoWhiteBalance.apply_awb_rgb" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">apply_awb_rgb</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">apply_awb_rgb</span><span class="p">(</span><span class="n">rgb</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply white balance to RGB image.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>rgb</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 3, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>rgb_wb</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor with same shape as input.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.AutoWhiteBalance.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">input_tensor</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Auto White Balance (AWB).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>input_tensor</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 1, H, W] or [B, 3, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>output_tensor</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor [B, 1, H, W] or [B, 3, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.AutoWhiteBalance.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse auto white balance (differentiable).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [3, H, W] or [B, 3, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>rgb_unbalanced</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor with inverse white balance applied.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.AutoWhiteBalance.safe_reverse_awb" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">safe_reverse_awb</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">safe_reverse_awb</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse auto white balance.</p>
+<p>Ref: https://github.com/google-research/google-research/blob/master/unprocessing/unprocess.py#L92C1-L102C28</p>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2517,11 +6185,11 @@ noise events from dark current. Set to 0 to disable. Default 0.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.Demosaic" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.Demosaic" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.Demosaic</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Demosaic</span><span class="p">(</span><span class="n">bayer_pattern</span><span class="o">=</span><span class="s1">&#39;rggb&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;malvar&#39;</span><span class="p">)</span>
 </code></pre></div>
 
@@ -2617,6 +6285,151 @@ missing color values at each pixel location.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.Demosaic.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">bayer</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Demosaic a Bayer pattern image to RGB.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 1, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>rgb</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor of shape [B, 3, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.Demosaic.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse demosaic from RAW RGB to RAW Bayer.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>RAW RGB image, shape [3, H, W] or [B, 3, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>torch.Tensor: Bayer image, shape [1, H, W] or [B, 1, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2629,11 +6442,11 @@ missing color values at each pixel location.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.ColorCorrectionMatrix" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.ColorCorrectionMatrix" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.ColorCorrectionMatrix</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ColorCorrectionMatrix</span><span class="p">(</span><span class="n">ccm_matrix</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </code></pre></div>
 
@@ -2710,6 +6523,168 @@ missing color values at each pixel location.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorCorrectionMatrix.sample_augmentation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">sample_augmentation</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">sample_augmentation</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Sample augmentation for synthetic data generation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorCorrectionMatrix.reset_augmentation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reset_augmentation</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reset_augmentation</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reset augmentation for evaluation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorCorrectionMatrix.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">rgb_image</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Color Correction Matrix. Convert RGB image to sensor color space.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>rgb_image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 3, H, W] in RGB format.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>rgb_corrected</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Corrected RGB image in sensor color space.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorCorrectionMatrix.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse color correction matrix. Convert sensor color space to RGB image.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>rgb_image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 3, H, W] in sensor color space.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2722,11 +6697,11 @@ missing color values at each pixel location.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.GammaCorrection" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.GammaCorrection" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.GammaCorrection</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">GammaCorrection</span><span class="p">(</span><span class="n">gamma_param</span><span class="o">=</span><span class="mf">2.2</span><span class="p">)</span>
 </code></pre></div>
 
@@ -2792,6 +6767,221 @@ missing color values at each pixel location.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.GammaCorrection.sample_augmentation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">sample_augmentation</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">sample_augmentation</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Sample augmentation for synthetic data generation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.GammaCorrection.reset_augmentation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reset_augmentation</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reset_augmentation</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reset augmentation for evaluation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.GammaCorrection.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">quantize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Gamma Correction (differentiable).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+                  <code><span title="tensor">tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image. Shape of [B, C, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>quantize</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to quantize the image to 8-bit.
+             WARNING: quantize=True makes this non-differentiable!</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_gamma</code></td>            <td>
+                  <code><span title="tensor">tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Gamma corrected image. Shape of [B, C, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] "There is no restriction as to where stage gamma correction is placed," page 35, Architectural Analysis of a Baseline ISP Pipeline.</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.GammaCorrection.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse gamma correction.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+                  <code><span title="tensor">tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input image. Shape of [B, C, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img</code></td>            <td>
+                  <code><span title="tensor">tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Inverse gamma corrected image. Shape of [B, C, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] https://github.com/google-research/google-research/blob/master/unprocessing/unprocess.py#L78</p>
+</details>
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2804,11 +6994,11 @@ missing color values at each pixel location.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.ToneMapping" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.ToneMapping" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.ToneMapping</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ToneMapping</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;reinhard&#39;</span><span class="p">,</span> <span class="n">exposure</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
 </code></pre></div>
 
@@ -2906,6 +7096,152 @@ global (per-pixel, spatially invariant) curve.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ToneMapping.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply global tone mapping.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>HDR linear image, (B, C, H, W), range [0, +inf).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_tm</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tone-mapped image, (B, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ToneMapping.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Inverse tone mapping (recover linear HDR from tone-mapped image).</p>
+<p>Only analytically invertible for "reinhard". For "aces" and "hable",
+uses an iterative Newton's method approximation.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tone-mapped image, (B, C, H, W), range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_hdr</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Recovered linear image, (B, C, H, W), range [0, +inf).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2918,11 +7254,11 @@ global (per-pixel, spatially invariant) curve.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.DeadPixelCorrection" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.DeadPixelCorrection" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.DeadPixelCorrection</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">DeadPixelCorrection</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">soft_blend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
 </code></pre></div>
 
@@ -3040,6 +7376,156 @@ neighbors and replacing outliers with a local mean value.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.DeadPixelCorrection.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">bayer</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Dead Pixel Correction (differentiable).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input bayer image [B, 1, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bayer_corrected</code></td>            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Corrected bayer image [B, 1, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.DeadPixelCorrection.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">bayer</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reverse dead pixel correction (identity).</p>
+<p>Note: Dead pixel correction is a lossy operation that cannot be reversed.
+This returns the input unchanged.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input bayer image [B, 1, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bayer</code></td>            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input unchanged.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -3052,11 +7538,11 @@ neighbors and replacing outliers with a local mean value.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.Denoise" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.Denoise" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.Denoise</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Denoise</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;gaussian&#39;</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sigma_color</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
 </code></pre></div>
 
@@ -3169,6 +7655,156 @@ Supports Gaussian filtering (differentiable) and bilateral filtering.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.Denoise.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply denoise (differentiable).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, C, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img_filtered</code></td>            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Denoised image, data range [0, 1].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.Denoise.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reverse denoising (identity).</p>
+<p>Note: Denoising is a lossy operation that cannot be reversed.
+This returns the input unchanged.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>img</code>
+            </td>
+            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, C, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>img</code></td>            <td>
+                  <code><span title="torch.Tensor">Tensor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input unchanged.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -3181,11 +7817,11 @@ Supports Gaussian filtering (differentiable) and bilateral filtering.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.LensShadingCorrection" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.LensShadingCorrection" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.LensShadingCorrection</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">LensShadingCorrection</span><span class="p">(</span><span class="n">shading_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strength</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">falloff_model</span><span class="o">=</span><span class="s1">&#39;radial&#39;</span><span class="p">)</span>
 </code></pre></div>
 
@@ -3284,6 +7920,150 @@ properties by applying a spatially-varying gain map.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.LensShadingCorrection.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply lens shading correction to remove vignetting.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>x</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, C, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>x_corrected</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Corrected tensor of shape [B, C, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.LensShadingCorrection.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reverse lens shading correction (add vignetting back).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>x</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, C, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>x_vignetted</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Tensor with vignetting applied, shape [B, C, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -3296,11 +8076,11 @@ properties by applying a spatially-varying gain map.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.AntiAliasingFilter" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.AntiAliasingFilter" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.AntiAliasingFilter</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">AntiAliasingFilter</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;weighted_average&#39;</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 </code></pre></div>
 
@@ -3389,6 +8169,152 @@ and aliasing artifacts before demosaicing.</p>
 
 
 
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.AntiAliasingFilter.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">bayer</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Apply anti-aliasing filter to remove moiré pattern.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 1, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Filtered bayer tensor of same shape as input.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.AntiAliasingFilter.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">bayer</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reverse anti-aliasing filter (approximation).</p>
+<p>Note: Anti-aliasing is a lossy operation, so perfect reversal is not possible.
+This returns the input unchanged as an approximation.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>bayer</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 1, H, W], data range [0, 1].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor unchanged.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -3401,11 +8327,11 @@ and aliasing artifacts before demosaicing.</p>
 
 
 
-<h4 id="deeplens.sensor.isp_modules.ColorSpaceConversion" class="doc doc-heading">
+<h3 id="deeplens.sensor.isp_modules.ColorSpaceConversion" class="doc doc-heading">
             <span class="doc doc-object-name doc-class-name">deeplens.sensor.isp_modules.ColorSpaceConversion</span>
 
 
-</h4>
+</h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ColorSpaceConversion</span><span class="p">()</span>
 </code></pre></div>
 
@@ -3440,6 +8366,315 @@ and aliasing artifacts before demosaicing.</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorSpaceConversion.rgb_to_ycrcb" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">rgb_to_ycrcb</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">rgb_to_ycrcb</span><span class="p">(</span><span class="n">rgb_image</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert RGB to YCrCb (differentiable).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>rgb_image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 3, H, W] in RGB format.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ycrcb_image</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor of shape [B, 3, H, W] in YCrCb format.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="reference" open>
+  <summary>Reference</summary>
+  <p>[1] https://github.com/QiuJueqin/fast-openISP/blob/master/modules/csc.py</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorSpaceConversion.ycrcb_to_rgb" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ycrcb_to_rgb</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ycrcb_to_rgb</span><span class="p">(</span><span class="n">ycrcb_image</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert YCrCb to RGB (differentiable).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>ycrcb_image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 3, H, W] in YCrCb format.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>rgb_image</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor of shape [B, 3, H, W] in RGB format.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorSpaceConversion.forward" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">forward</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">conversion</span><span class="o">=</span><span class="s1">&#39;rgb_to_ycrcb&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert between color spaces.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 3, H, W].</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>conversion</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Conversion direction, "rgb_to_ycrcb" or "ycrcb_to_rgb".</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;rgb_to_ycrcb&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>converted_image</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor of shape [B, 3, H, W].</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="deeplens.sensor.isp_modules.ColorSpaceConversion.reverse" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">reverse</span>
+
+
+</h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">reverse</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reverse color space conversion (YCrCb to RGB).</p>
+<p>This is the inverse of the forward pass (which defaults to rgb_to_ycrcb).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>image</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Input tensor of shape [B, 3, H, W] in YCrCb format.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>rgb_image</code></td>            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output tensor of shape [B, 3, H, W] in RGB format.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
 
 
 
