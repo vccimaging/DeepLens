@@ -24,6 +24,13 @@ from deeplens.optics.material import MATERIAL_data
 from deeplens.optics.config import WAVE_RGB
 from deeplens.optics.geolens import GeoLens
 
+# Common optical glasses for random material selection
+COMMON_GLASSES = [
+    "n-bk7", "n-sk16", "h-k9l", "n-lak14", "n-sk2", "bk7", "n-lak7",
+    "f2", "n-f2", "n-sf5", "n-sf11", "n-sf1",
+    "pmma", "coc", "okp4",
+]
+
 
 # ====================================================================================
 # Lens starting point generation
@@ -54,16 +61,14 @@ def create_lens(
 
     # Compute lens parameters
     aper_r = foclen / fnum / 2
-    imgh = round(2 * foclen * float(np.tan(np.deg2rad(fov / 2))), 2)
+    half_fov = np.deg2rad(fov / 2)
+    imgh = round(2 * foclen * float(np.tan(half_fov)), 2)
     if thickness is None:
         thickness = foclen + flange
     d_opt = thickness - flange
 
-    # Materials
-    mat_names = list(MATERIAL_data.keys())
-    for mat in ["air", "vacuum", "occluder"]:
-        if mat in mat_names:
-            mat_names.remove(mat)
+    # Materials: use common glasses instead of the full 700+ catalog
+    mat_names = [m for m in COMMON_GLASSES if m in MATERIAL_data]
 
     # Create lens
     lens = GeoLens()
@@ -110,12 +115,27 @@ def create_lens(
     for s in surfaces:
         s.d = s.d / d_opt_actual * d_opt
 
+    # Update surface semi-apertures based on position relative to aperture stop.
+    # Surfaces far from the stop need larger radii to pass off-axis rays.
+    # r_i = aper_r + |d_i - d_stop| * tan(half_fov)
+    d_stop = None
+    for s in surfaces:
+        if isinstance(s, Aperture):
+            d_stop = s.d.item() if hasattr(s.d, "item") else float(s.d)
+            break
+    if d_stop is not None:
+        for s in surfaces:
+            if isinstance(s, Aperture):
+                continue
+            d_i = s.d.item() if hasattr(s.d, "item") else float(s.d)
+            s.r = aper_r + abs(d_i - d_stop) * float(np.tan(half_fov))
+
     # Lens sensor (dummy sensor resolution)
     lens = lens.to(lens.device)
     lens.d_sensor = torch.tensor(thickness).to(lens.device)
     lens.r_sensor = imgh / 2
     lens.set_sensor_res(sensor_res=(2000, 2000))
-    
+
     # Lens calculation
     lens.enpd = enpd
     lens.float_enpd = True if enpd is None else False
@@ -124,6 +144,7 @@ def create_lens(
     lens.post_computation()
 
     # Save lens
+    os.makedirs(save_dir, exist_ok=True)
     filename = f"starting_point_f{foclen}mm_imgh{imgh}_fnum{fnum}"
     lens.write_lens_json(os.path.join(save_dir, f"{filename}.json"))
     lens.analysis(os.path.join(save_dir, f"{filename}"))
@@ -136,11 +157,12 @@ def create_surface(surface_type, d_total, aper_r, imgh, mat):
         c = -float(np.random.rand()) * 0.001
     else:
         c = float(np.random.rand()) * 0.001
-    r = max(imgh / 2, aper_r)
+    # Use aper_r as initial radius; will be updated after thickness normalization
+    r = aper_r
 
     if surface_type == "Spheric":
         return Spheric(r=r, d=d_total, c=c, mat2=mat)
-    
+
     elif surface_type == "Aspheric":
         ai = np.random.randn(8).astype(np.float32) * 1e-24
         k = float(np.random.rand()) * 1e-6
@@ -148,7 +170,7 @@ def create_surface(surface_type, d_total, aper_r, imgh, mat):
 
     elif surface_type == "Plane":
         return Plane(r=r, d=d_total, mat2=mat)
-    
+
     else:
         raise Exception("Surface type not supported yet.")
 

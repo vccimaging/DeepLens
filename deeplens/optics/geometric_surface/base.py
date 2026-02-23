@@ -575,7 +575,7 @@ class Surface(DeepObj):
                 r = self.r + self.r_error
             else:
                 r = self.r
-            valid = (x**2 + y**2) <= r**2
+            valid = (x**2 + y**2) <= (r**2 + EPSILON)
 
         return valid
 
