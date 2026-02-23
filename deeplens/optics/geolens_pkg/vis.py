@@ -327,21 +327,24 @@ class GeoLensVis:
                 s_prev = self.surfaces[i]
                 s = self.surfaces[i + 1]
 
-                r_prev = float(s_prev.r)
-                r = float(s.r)
+                r_prev = float(s_prev.draw_r())
+                r = float(s.draw_r())
                 sag_prev = s_prev.surface_with_offset(r_prev, 0.0).item()
                 sag = s.surface_with_offset(r, 0.0).item()
 
-                if zmx_format:
-                    if r > r_prev:
-                        z = np.array([sag_prev, sag_prev, sag])
-                        x = np.array([r_prev, r, r])
-                    else:
-                        z = np.array([sag_prev, sag, sag])
-                        x = np.array([r_prev, r, r])
+                if r_prev >= r:
+                    # Front surface wider: go axially forward at r_prev, then step radially inward
+                    z = np.array([sag_prev, sag, sag])
+                    x = np.array([r_prev, r_prev, r])
                 else:
-                    z = np.array([sag_prev, sag])
-                    x = np.array([r_prev, r])
+                    # Rear surface wider: step radially outward at z_prev, then go axially forward
+                    z = np.array([sag_prev, sag_prev, sag])
+                    x = np.array([r_prev, r, r])
+
+                if not zmx_format:
+                    # In non-zmx mode use a direct diagonal between the two outer edges
+                    z = np.array([z[0], z[-1]])
+                    x = np.array([x[0], x[-1]])
 
                 ax.plot(z, -x, color, linewidth=0.75)
                 ax.plot(z, x, color, linewidth=0.75)

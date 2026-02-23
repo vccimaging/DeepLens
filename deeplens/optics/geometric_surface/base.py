@@ -717,9 +717,14 @@ class Surface(DeepObj):
     # =====================================================================
     # Visualization
     # =====================================================================
+    def draw_r(self):
+        """Effective drawing radius, clamped to the valid data range."""
+        return min(self.r, self.max_height())
+
     def draw_widget(self, ax, color="black", linestyle="solid"):
         """Draw widget for the surface on the 2D plot."""
-        r = torch.linspace(-self.r, self.r, 128, device=self.device)
+        r_eff = self.draw_r()
+        r = torch.linspace(-r_eff, r_eff, 128, device=self.device)
         z = self.surface_with_offset(r, torch.zeros(len(r), device=self.device))
         ax.plot(
             z.cpu().detach().numpy(),
