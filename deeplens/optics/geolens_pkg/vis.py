@@ -329,8 +329,12 @@ class GeoLensVis:
 
                 r_prev = float(s_prev.draw_r())
                 r = float(s.draw_r())
-                sag_prev = s_prev.surface_with_offset(r_prev, 0.0).item()
-                sag = s.surface_with_offset(r, 0.0).item()
+                sag_prev = s_prev.surface_with_offset(
+                    r_prev, 0.0, valid_check=False
+                ).item()
+                sag = s.surface_with_offset(
+                    r, 0.0, valid_check=False
+                ).item()
 
                 if r_prev >= r:
                     # Front surface wider: go axially forward at r_prev, then step radially inward

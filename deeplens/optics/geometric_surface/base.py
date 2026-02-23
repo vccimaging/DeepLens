@@ -725,7 +725,9 @@ class Surface(DeepObj):
         """Draw widget for the surface on the 2D plot."""
         r_eff = self.draw_r()
         r = torch.linspace(-r_eff, r_eff, 128, device=self.device)
-        z = self.surface_with_offset(r, torch.zeros(len(r), device=self.device))
+        z = self.surface_with_offset(
+            r, torch.zeros(len(r), device=self.device), valid_check=False
+        )
         ax.plot(
             z.cpu().detach().numpy(),
             r.cpu().detach().numpy(),
