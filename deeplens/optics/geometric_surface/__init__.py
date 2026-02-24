@@ -9,4 +9,5 @@ from .plane import Plane
 from .prism import Prism
 from .qtype import QTypeFreeform
 from .spheric import Spheric
+from .spiral import Spiral
 from .thinlens import ThinLens

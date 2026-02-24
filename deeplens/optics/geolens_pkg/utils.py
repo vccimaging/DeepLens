@@ -22,7 +22,6 @@ from mpl_toolkits.mplot3d import Axes3D
 from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Spheric, ThinLens, Plane
 from ..material import MATERIAL_data
 from ..config import WAVE_RGB
-from ..geolens import GeoLens
 
 # Common optical glasses for random material selection
 COMMON_GLASSES = [
