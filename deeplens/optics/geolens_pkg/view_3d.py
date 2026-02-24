@@ -474,7 +474,6 @@ def sample_parallel_3D(
         forward (bool, optional): forward or backward rays. Defaults to True.
         entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to False.
     """
-    pass
     if entrance_pupil:
         # Sample 2nd points on the pupil
         pupilz, pupilx = lens.calc_entrance_pupil()

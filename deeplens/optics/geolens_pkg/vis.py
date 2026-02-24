@@ -16,9 +16,6 @@ Functions:
         - draw_lens_2d(): Draw lens layout in a 2D plot
         - draw_ray_2d(): Plot ray paths
 
-    3D Layout Visualization:
-        - draw_layout_3d(): Draw 3D layout of the lens system
-
     3D Barrier Generation:
         - create_barrier(): Create a 3D barrier for the lens system
 """
@@ -472,7 +469,7 @@ class GeoLensVis:
         #             "pos_z": geolens.surfaces[i].d.item(),
 
         # Plot lens layout
-        ax, fig = self.draw_layout()
+        ax, fig = self.draw_layout(filename)
 
         # Plot barrier
         barrier_z_ls = []
