@@ -90,9 +90,9 @@ class GratingPhase(Phase):
 
     def dphi_dxy(self, x, y):
         """Calculate phase derivatives (dphi/dx, dphi/dy) for given points."""
-        # Expand scalar derivatives to match input tensor shape
-        dphidx = torch.ones_like(x) * self.alpha * torch.sin(self.theta) / self.norm_radii
-        dphidy = torch.ones_like(y) * self.alpha * torch.cos(self.theta) / self.norm_radii
+        # Scalar derivatives broadcast to input tensor shape without allocation
+        dphidx = (self.alpha * torch.sin(self.theta) / self.norm_radii).expand_as(x)
+        dphidy = (self.alpha * torch.cos(self.theta) / self.norm_radii).expand_as(y)
         return dphidx, dphidy
 
     def get_optimizer_params(self, lrs=[1e-4, 1e-3], optim_mat=False):

@@ -68,6 +68,25 @@ class Phase(DeepObj):
         self.device = device if device is not None else torch.device("cpu")
         self.to(self.device)
 
+        # Pre-compute rotation matrices (depends only on static vec_local/vec_global)
+        self._cache_rotation_matrices()
+
+    def _cache_rotation_matrices(self):
+        """Pre-compute and cache rotation matrices for local/global transforms."""
+        needs_rotation = (
+            torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON
+        )
+        if needs_rotation:
+            self._R_to_local = self._get_rotation_matrix(
+                self.vec_local, self.vec_global
+            )
+            self._R_to_global = self._get_rotation_matrix(
+                self.vec_global, self.vec_local
+            )
+        else:
+            self._R_to_local = None
+            self._R_to_global = None
+
     # ==============================
     # Abstract methods to be implemented by subclasses
     # ==============================
@@ -242,11 +261,10 @@ class Phase(DeepObj):
         ray.o[..., 1] = ray.o[..., 1] - self.pos_y
         ray.o[..., 2] = ray.o[..., 2] - self.d
 
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_local, self.vec_global)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate ray origin and direction (using cached matrix)
+        if self._R_to_local is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_local)
+            ray.d = self._apply_rotation(ray.d, self._R_to_local)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         return ray
@@ -260,11 +278,10 @@ class Phase(DeepObj):
         Returns:
             ray (Ray): transformed ray in global coordinate system.
         """
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_global, self.vec_local)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate ray origin and direction (using cached matrix)
+        if self._R_to_global is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_global)
+            ray.d = self._apply_rotation(ray.d, self._R_to_global)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         # Shift ray origin back to global coordinates

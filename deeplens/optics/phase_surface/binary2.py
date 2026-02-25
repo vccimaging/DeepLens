@@ -79,15 +79,12 @@ class Binary2Phase(Phase):
         """Reference phase map at design wavelength."""
         x_norm = x / self.norm_radii
         y_norm = y / self.norm_radii
-        r_norm = torch.sqrt(x_norm**2 + y_norm**2 + EPSILON)
+        r2 = x_norm * x_norm + y_norm * y_norm + EPSILON
 
-        phi = (
-            self.order2 * r_norm**2
-            + self.order4 * r_norm**4
-            + self.order6 * r_norm**6
-            + self.order8 * r_norm**8
-            + self.order10 * r_norm**10
-            + self.order12 * r_norm**12
+        # Horner's method: r2*(o2 + r2*(o4 + r2*(o6 + r2*(o8 + r2*(o10 + r2*o12)))))
+        phi = r2 * (
+            self.order2
+            + r2 * (self.order4 + r2 * (self.order6 + r2 * (self.order8 + r2 * (self.order10 + r2 * self.order12))))
         )
 
         phi = torch.remainder(phi, 2 * torch.pi)
@@ -97,18 +94,16 @@ class Binary2Phase(Phase):
         """Calculate phase derivatives (dphi/dx, dphi/dy) for given points."""
         x_norm = x / self.norm_radii
         y_norm = y / self.norm_radii
-        r_norm = torch.sqrt(x_norm**2 + y_norm**2 + EPSILON)
+        r2 = x_norm * x_norm + y_norm * y_norm + EPSILON
 
-        dphidr = (
-            2 * self.order2 * r_norm
-            + 4 * self.order4 * r_norm**3
-            + 6 * self.order6 * r_norm**5
-            + 8 * self.order8 * r_norm**7
-            + 10 * self.order10 * r_norm**9
-            + 12 * self.order12 * r_norm**11
+        # d/dr2 of polynomial, then chain rule: dphi/dx = dphi/dr2 * 2*x_norm / norm_radii
+        # Horner's: o2 + r2*(2*o4 + r2*(3*o6 + r2*(4*o8 + r2*(5*o10 + r2*6*o12))))
+        dphidr2 = (
+            self.order2
+            + r2 * (2 * self.order4 + r2 * (3 * self.order6 + r2 * (4 * self.order8 + r2 * (5 * self.order10 + r2 * 6 * self.order12))))
         )
-        dphidx = dphidr * x_norm / r_norm / self.norm_radii
-        dphidy = dphidr * y_norm / r_norm / self.norm_radii
+        dphidx = dphidr2 * 2 * x_norm / self.norm_radii
+        dphidy = dphidr2 * 2 * y_norm / self.norm_radii
 
         return dphidx, dphidy
 
