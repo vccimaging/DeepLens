@@ -99,6 +99,29 @@ class Surface(DeepObj):
         self.device = device if device is not None else torch.device("cpu")
         self.to(self.device)
 
+        # Pre-compute rotation matrices (depends only on static vec_local/vec_global)
+        self._cache_rotation_matrices()
+
+    def _cache_rotation_matrices(self):
+        """Pre-compute and cache rotation matrices for local/global transforms.
+
+        Called once at init. The matrices depend only on vec_local and vec_global,
+        which are static after construction.
+        """
+        needs_rotation = (
+            torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON
+        )
+        if needs_rotation:
+            self._R_to_local = self._get_rotation_matrix(
+                self.vec_local, self.vec_global
+            )
+            self._R_to_global = self._get_rotation_matrix(
+                self.vec_global, self.vec_local
+            )
+        else:
+            self._R_to_local = None
+            self._R_to_global = None
+
     @classmethod
     def init_from_dict(cls, surf_dict):
         """Initialize surface from a dict."""
@@ -183,61 +206,45 @@ class Surface(DeepObj):
         newton_convergence = self.newton_convergence
         newton_step_bound = self.newton_step_bound
 
-        # Tolerance
-        if self.tolerancing:
-            d_surf = self.d_error
-        else:
-            d_surf = 0.0
+        # Ray direction components (reused across iterations)
+        dxdt, dydt, dzdt = ray.d[..., 0], ray.d[..., 1], ray.d[..., 2]
 
         # Initial guess of t (can also use spherical surface for initial guess)
-        t = - ray.o[..., 2] / ray.d[..., 2]
+        t = -ray.o[..., 2] / dzdt
 
-        # 1. Non-differentiable Newton's iterations to find the intersection points
+        # 1. Non-differentiable Newton's iterations to find the intersection
+        #    Run (maxiter - 1) iterations; the differentiable step below acts as
+        #    the final iteration while also enabling gradient flow.
         with torch.no_grad():
-            it = 0
-            ft = 1e6 * torch.ones_like(ray.o[..., 2])
-            while it < newton_maxiter:
-                # Converged
-                if (torch.abs(ft) < newton_convergence).all():
-                    break
-
-                # One Newton step
-                it += 1
-
+            for _ in range(newton_maxiter - 1):
                 new_o = ray.o + ray.d * t.unsqueeze(-1)
                 new_x, new_y = new_o[..., 0], new_o[..., 1]
                 valid = self.is_within_data_range(new_x, new_y) & (ray.is_valid > 0)
 
-                ft = self.sag(new_x, new_y, valid) - new_o[..., 2]
-                dxdt, dydt, dzdt = ray.d[..., 0], ray.d[..., 1], ray.d[..., 2]
-                dfdx, dfdy, dfdz = self.dfdxyz(new_x, new_y, valid)
-                dfdt = dfdx * dxdt + dfdy * dydt + dfdz * dzdt
+                x, y = new_x * valid, new_y * valid
+                ft = self._sag(x, y) - new_o[..., 2]
+                dfdx, dfdy = self._dfdxy(x, y)
+                dfdt = dfdx * dxdt + dfdy * dydt - dzdt
                 t = t - torch.clamp(
                     ft / (dfdt + EPSILON), -newton_step_bound, newton_step_bound
                 )
 
-        # 2. One more (differentiable) Newton step to gain gradients
+        # 2. One differentiable Newton step (final iteration + gradient flow)
         new_o = ray.o + ray.d * t.unsqueeze(-1)
         new_x, new_y = new_o[..., 0], new_o[..., 1]
         valid = self.is_valid(new_x, new_y) & (ray.is_valid > 0)
 
-        ft = self.sag(new_x, new_y, valid) - new_o[..., 2]
-        dxdt, dydt, dzdt = ray.d[..., 0], ray.d[..., 1], ray.d[..., 2]
-        dfdx, dfdy, dfdz = self.dfdxyz(new_x, new_y, valid)
-        dfdt = dfdx * dxdt + dfdy * dydt + dfdz * dzdt
+        x, y = new_x * valid, new_y * valid
+        ft = self._sag(x, y) - new_o[..., 2]
+        dfdx, dfdy = self._dfdxy(x, y)
+        dfdt = dfdx * dxdt + dfdy * dydt - dzdt
         t = t - torch.clamp(
             ft / (dfdt + EPSILON), -newton_step_bound, newton_step_bound
         )
 
-        # 3. Determine valid solutions
+        # 3. Determine valid solutions — reuse ft and valid from the diff step
         with torch.no_grad():
-            # Solution within the surface boundary. Ray is allowed to go back
-            new_x, new_y = new_o[..., 0], new_o[..., 1]
-            valid = self.is_valid(new_x, new_y) & (ray.is_valid > 0)
-
-            # Solution accurate enough
-            ft = self.sag(new_x, new_y, valid) - new_o[..., 2]
-            valid = valid & (torch.abs(ft) < newton_convergence)
+            valid = valid & (ft.abs() < newton_convergence)
 
         return t, valid
 
@@ -345,11 +352,10 @@ class Surface(DeepObj):
         ray.o[..., 1] = ray.o[..., 1] - self.pos_y
         ray.o[..., 2] = ray.o[..., 2] - self.d
 
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_local, self.vec_global)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate ray origin and direction (using cached matrix)
+        if self._R_to_local is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_local)
+            ray.d = self._apply_rotation(ray.d, self._R_to_local)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         return ray
@@ -363,11 +369,10 @@ class Surface(DeepObj):
         Returns:
             ray (Ray): transformed ray in global coordinate system.
         """
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_global, self.vec_local)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate ray origin and direction (using cached matrix)
+        if self._R_to_global is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_global)
+            ray.d = self._apply_rotation(ray.d, self._R_to_global)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         # Shift ray origin back to global coordinates
