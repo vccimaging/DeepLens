@@ -54,7 +54,7 @@ def forward_integral(ray, ps, ks, pointc=None):
         pointc = (points * valid.unsqueeze(-1)).sum(-2) / valid.unsqueeze(-1).sum(
             -2
         ).add(EPSILON)
-    points_shift = points - pointc.unsqueeze(-2).repeat(1, points.shape[-2], 1)
+    points_shift = points - pointc.unsqueeze(-2)  # broadcasts [N, 1, 2] to [N, spp, 2]
 
     # Remove invalid points
     field_range = [
@@ -77,7 +77,7 @@ def forward_integral(ray, ps, ks, pointc=None):
         phase = torch.fmod((opl - opl_min) / wvln_mm, 1) * (2 * torch.pi)  # [N, spp]
         value = amp * torch.exp(1j * phase)  # [N, spp], complex amplitude
     else:
-        value = torch.ones_like(valid)  # [N, spp], intensity
+        value = valid.new_ones(valid.shape)  # [N, spp], intensity (allocates on correct device/dtype)
 
     # Monte Carlo integral (loop over N points)
     field = []
@@ -132,78 +132,49 @@ def assign_points_to_pixels(
     x_min, x_max = x_range
     y_min, y_max = y_range
 
-    # Normalize points to the range [0, 1]
-    points_normalized = torch.zeros_like(points)
-    points_normalized[:, 0] = (points[:, 1] - y_max) / (y_min - y_max)
-    points_normalized[:, 1] = (points[:, 0] - x_min) / (x_max - x_min)
+    # Normalize points to the range [0, 1] (direct computation, no intermediate allocation)
+    norm_0 = (points[:, 1] - y_max) / (y_min - y_max)
+    norm_1 = (points[:, 0] - x_min) / (x_max - x_min)
 
     # Check if points are within valid range
-    valid_points = (points_normalized >= 0) & (points_normalized <= 1)
-    valid_points = valid_points.all(dim=1)
+    valid_points = (norm_0 >= 0) & (norm_0 <= 1) & (norm_1 >= 0) & (norm_1 <= 1)
     mask = mask * valid_points
 
     if interpolate:
-        # Compute weight (range [0, 1])
-        pixel_indices_float = points_normalized * (ks - 1)
-        w_b = pixel_indices_float[:, 0] - pixel_indices_float[:, 0].floor()
-        w_r = pixel_indices_float[:, 1] - pixel_indices_float[:, 1].floor()
+        # Compute float pixel indices
+        pix_0 = norm_0 * (ks - 1)
+        pix_1 = norm_1 * (ks - 1)
+        pix_0_floor = pix_0.floor()
+        pix_1_floor = pix_1.floor()
 
-        # Compute pixel indices
-        pixel_indices_tl = pixel_indices_float.floor().long()
-        pixel_indices_tr = (
-            torch.stack(
-                (pixel_indices_float[:, 0], pixel_indices_float[:, 1] + 1), dim=-1
-            )
-            .floor()
-            .long()
-        )
-        pixel_indices_bl = (
-            torch.stack(
-                (pixel_indices_float[:, 0] + 1, pixel_indices_float[:, 1]), dim=-1
-            )
-            .floor()
-            .long()
-        )
-        pixel_indices_br = pixel_indices_tl + 1
+        # Bilinear weights
+        w_b = pix_0 - pix_0_floor
+        w_r = pix_1 - pix_1_floor
+        w_b_1 = 1 - w_b
+        w_r_1 = 1 - w_r
 
-        # Clamp indices to valid range
-        pixel_indices_tl = torch.clamp(pixel_indices_tl, 0, ks - 1)
-        pixel_indices_tr = torch.clamp(pixel_indices_tr, 0, ks - 1)
-        pixel_indices_bl = torch.clamp(pixel_indices_bl, 0, ks - 1)
-        pixel_indices_br = torch.clamp(pixel_indices_br, 0, ks - 1)
+        # Pixel indices for 4 corners (clamped)
+        r0 = pix_0_floor.long().clamp(0, ks - 1)
+        c0 = pix_1_floor.long().clamp(0, ks - 1)
+        r1 = (r0 + 1).clamp(0, ks - 1)
+        c1 = (c0 + 1).clamp(0, ks - 1)
+
+        # Pre-compute masked value once
+        masked_value = mask * value
 
         # Use advanced indexing to increment the count for each corresponding pixel
-        grid = torch.zeros(ks, ks, dtype=value.dtype).to(device)
-        grid.index_put_(
-            tuple(pixel_indices_tl.t()),
-            (1 - w_b) * (1 - w_r) * mask * value,
-            accumulate=True,
-        )
-        grid.index_put_(
-            tuple(pixel_indices_tr.t()),
-            (1 - w_b) * w_r * mask * value,
-            accumulate=True,
-        )
-        grid.index_put_(
-            tuple(pixel_indices_bl.t()),
-            w_b * (1 - w_r) * mask * value,
-            accumulate=True,
-        )
-        grid.index_put_(
-            tuple(pixel_indices_br.t()),
-            w_b * w_r * mask * value,
-            accumulate=True,
-        )
+        grid = torch.zeros(ks, ks, dtype=value.dtype, device=device)
+        grid.index_put_((r0, c0), w_b_1 * w_r_1 * masked_value, accumulate=True)
+        grid.index_put_((r0, c1), w_b_1 * w_r * masked_value, accumulate=True)
+        grid.index_put_((r1, c0), w_b * w_r_1 * masked_value, accumulate=True)
+        grid.index_put_((r1, c1), w_b * w_r * masked_value, accumulate=True)
 
     else:
-        pixel_indices_float = points_normalized * (ks - 1)
-        pixel_indices_tl = pixel_indices_float.floor().long()
+        pix_0 = (norm_0 * (ks - 1)).floor().long().clamp(0, ks - 1)
+        pix_1 = (norm_1 * (ks - 1)).floor().long().clamp(0, ks - 1)
 
-        # Clamp indices to valid range
-        pixel_indices_tl = torch.clamp(pixel_indices_tl, 0, ks - 1)
-
-        grid = torch.zeros(ks, ks, dtype=value.dtype).to(device)
-        grid.index_put_(tuple(pixel_indices_tl.t()), mask * value, accumulate=True)
+        grid = torch.zeros(ks, ks, dtype=value.dtype, device=device)
+        grid.index_put_((pix_0, pix_1), mask * value, accumulate=True)
 
     return grid
 

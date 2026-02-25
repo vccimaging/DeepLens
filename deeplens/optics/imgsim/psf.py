@@ -167,6 +167,8 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
     psf_map_flipped = torch.flip(psf_map, dims=(-2, -1))
 
     # Pre-compute depth interpolation weights (shared across all patches)
+    # Ensure psf_depths is on the same device as depth to avoid GPU-CPU sync
+    psf_depths = psf_depths.to(depth.device)
     depth_flat = depth.flatten(1)  # [B, H*W]
     depth_flat = depth_flat.clamp(psf_depths[0] + DELTA, psf_depths[-1] - DELTA)
     indices = torch.searchsorted(psf_depths, depth_flat, right=True)  # [B, H*W]
@@ -217,9 +219,7 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
             ]
 
             # Expand patch for all depths: [B, C, patch_h+pad, patch_w+pad] -> [B, num_depths*C, ...]
-            img_patch_expanded = img_pad_patch.unsqueeze(1).expand(B, num_depths, C, -1, -1).reshape(
-                B, num_depths * C, img_pad_patch.shape[2], img_pad_patch.shape[3]
-            )
+            img_patch_expanded = img_pad_patch.repeat(1, num_depths, 1, 1)
 
             # PSF kernels for this grid cell: [num_depths*C, 1, ks, ks]
             psf_stacked = psf_map_flipped[i, j].reshape(num_depths * C, 1, ks, ks)
@@ -302,7 +302,7 @@ def conv_psf_depth_interp(img, depth, psf_kernels, psf_depths, interp_mode="dept
     img_padded_small = F.pad(img, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="reflect")
 
     # Expand padded img: [B, C, H+pad, W+pad] -> [B, num_depths*C, H+pad, W+pad]
-    img_padded = img_padded_small.unsqueeze(1).expand(B, num_depths, C, -1, -1).reshape(B, num_depths * C, img_padded_small.shape[2], img_padded_small.shape[3])
+    img_padded = img_padded_small.repeat(1, num_depths, 1, 1)
     
     # Grouped convolution: each of the num_depths*C channels is convolved with its own kernel
     imgs_blur = F.conv2d(img_padded, psf_stacked, groups=num_depths * C)  # [B, num_depths*C, H, W]
@@ -314,6 +314,8 @@ def conv_psf_depth_interp(img, depth, psf_kernels, psf_depths, interp_mode="dept
     # Depth/Disparity interpolation
     # =================================
     B, _, H, W = depth.shape
+    # Ensure psf_depths is on the same device as depth to avoid GPU-CPU sync
+    psf_depths = psf_depths.to(depth.device)
     depth_flat = depth.flatten(1)  # shape [B, H*W]
     depth_flat = depth_flat.clamp(psf_depths[0] + DELTA, psf_depths[-1] - DELTA)
     indices = torch.searchsorted(psf_depths, depth_flat, right=True)  # shape [B, H*W]
