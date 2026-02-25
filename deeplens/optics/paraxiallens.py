@@ -118,18 +118,15 @@ class ParaxialLens(Lens):
         coc_pixel = torch.clamp(
             coc_values / self.pixel_size, min=0.5
         )  # Shape [N], minimum 0.5 pixels
-        coc_pixel = (
-            coc_pixel.unsqueeze(-1).unsqueeze(-1).repeat(1, ks, ks)
-        )  # Shape [N, ks, ks]
+        coc_pixel = coc_pixel.unsqueeze(-1).unsqueeze(-1)  # Shape [N, 1, 1], broadcasts with [ks, ks]
         coc_pixel_radius = coc_pixel / 2
 
         # Create coordinate meshgrid
         x, y = torch.meshgrid(
-            torch.linspace(-ks / 2 + 1 / 2, ks / 2 - 1 / 2, ks),
-            torch.linspace(-ks / 2 + 1 / 2, ks / 2 - 1 / 2, ks),
+            torch.linspace(-ks / 2 + 1 / 2, ks / 2 - 1 / 2, ks, device=self.device),
+            torch.linspace(-ks / 2 + 1 / 2, ks / 2 - 1 / 2, ks, device=self.device),
             indexing="xy",
         )
-        x, y = x.to(self.device), y.to(self.device)
         distance_sq = x**2 + y**2
 
         # Create PSF
@@ -284,29 +281,19 @@ class ParaxialLens(Lens):
         l_mask[:, 0:l_pixel] = 0  # Block right side for left PSF
         r_mask[:, r_pixel:] = 0  # Block left side for right PSF
 
-        # Expand masks to match batch dimension [N, ks, ks]
-        l_mask = l_mask.unsqueeze(0).repeat(N, 1, 1)
-        r_mask = r_mask.unsqueeze(0).repeat(N, 1, 1)
-
         # Determine focus positions
         depth = depth.to(device)
         foc_dist = torch.tensor(self.foc_dist, device=device, dtype=depth.dtype)
         near_focus_pos = depth > foc_dist  # Shape [N]
 
-        # Create left and right PSFs from base PSF
-        psf_l = psf_base.clone()
-        psf_r = psf_base.clone()
-
-        # Apply masks based on focus position (this creates the depth-dependent asymmetry)
+        # Apply masks based on focus position (vectorized)
         # For near focus: left PSF gets left mask, right PSF gets right mask
         # For far focus: masks are swapped to create opposite asymmetry
-        for i in range(N):
-            if near_focus_pos[i]:
-                psf_l[i] = psf_l[i] * l_mask[i]
-                psf_r[i] = psf_r[i] * r_mask[i]
-            else:
-                psf_l[i] = psf_l[i] * r_mask[i]  # Swap masks for far focus
-                psf_r[i] = psf_r[i] * l_mask[i]
+        nfp = near_focus_pos.unsqueeze(-1).unsqueeze(-1)  # [N, 1, 1]
+        mask_l = torch.where(nfp, l_mask, r_mask)  # [N, ks, ks]
+        mask_r = torch.where(nfp, r_mask, l_mask)  # [N, ks, ks]
+        psf_l = psf_base * mask_l
+        psf_r = psf_base * mask_r
 
         # Normalize PSFs
         psf_l = psf_l / (psf_l.sum(dim=(-1, -2), keepdim=True) + EPSILON)
@@ -430,7 +417,7 @@ class ParaxialLens(Lens):
         psf_ks = PSF_KS
 
         # Calculate dual-pixel PSF at reference depths
-        depths_ref = torch.linspace(depth_min, depth_max, num_depth).to(self.device)
+        depths_ref = torch.linspace(depth_min, depth_max, num_depth, device=self.device)
         points = torch.stack(
             [
                 torch.full_like(depths_ref, patch_center[0]),

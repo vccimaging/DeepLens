@@ -188,22 +188,22 @@ class Lens(DeepObj):
         """
         # Compute point source grid
         if grid[0] == 1:
-            x, y = torch.tensor([[0.0]]), torch.tensor([[0.0]])
+            x, y = torch.tensor([[0.0]], device=self.device), torch.tensor([[0.0]], device=self.device)
             assert not quater, "Quater should be False when grid is 1."
         else:
             if center:
                 # Use center of each patch
                 half_bin_size = 1 / 2 / (grid[0] - 1)
                 x, y = torch.meshgrid(
-                    torch.linspace(-1 + half_bin_size, 1 - half_bin_size, grid[0]),
-                    torch.linspace(1 - half_bin_size, -1 + half_bin_size, grid[1]),
+                    torch.linspace(-1 + half_bin_size, 1 - half_bin_size, grid[0], device=self.device),
+                    torch.linspace(1 - half_bin_size, -1 + half_bin_size, grid[1], device=self.device),
                     indexing="xy",
                 )
             else:
                 # Use corner of image sensor
                 x, y = torch.meshgrid(
-                    torch.linspace(-0.98, 0.98, grid[0]),
-                    torch.linspace(0.98, -0.98, grid[1]),
+                    torch.linspace(-0.98, 0.98, grid[0], device=self.device),
+                    torch.linspace(0.98, -0.98, grid[1], device=self.device),
                     indexing="xy",
                 )
 
@@ -367,14 +367,14 @@ class Lens(DeepObj):
             point_source: Shape of [grid, 3].
         """
         if grid == 1:
-            x = torch.tensor([0.0])
+            x = torch.tensor([0.0], device=self.device)
         else:
             # Select center of bin to calculate PSF
             if center:
                 half_bin_size = 1 / 2 / (grid - 1)
-                x = torch.linspace(0, 1 - half_bin_size, grid)
+                x = torch.linspace(0, 1 - half_bin_size, grid, device=self.device)
             else:
-                x = torch.linspace(0, 0.98, grid)
+                x = torch.linspace(0, 0.98, grid, device=self.device)
 
         z = torch.full_like(x, depth)
         point_source = torch.stack([x, x, z], dim=-1)
@@ -587,17 +587,17 @@ class Lens(DeepObj):
             total_range = near_range + far_range
 
             if total_range < 1e-10:
-                disp_ref = torch.full((num_layers,), focal_disp).to(self.device)
+                disp_ref = torch.full((num_layers,), focal_disp, device=self.device)
             else:
                 n_far  = max(1, round((num_layers - 1) * far_range / total_range))
                 n_near = num_layers - 1 - n_far
 
-                far_disps  = torch.linspace(disp_far, focal_disp, n_far + 1)        # includes focal
-                near_disps = torch.linspace(focal_disp, disp_near, n_near + 1)[1:]   # exclude duplicate focal
-                disp_ref = torch.cat([far_disps, near_disps]).to(self.device)
+                far_disps  = torch.linspace(disp_far, focal_disp, n_far + 1, device=self.device)        # includes focal
+                near_disps = torch.linspace(focal_disp, disp_near, n_near + 1, device=self.device)[1:]   # exclude duplicate focal
+                disp_ref = torch.cat([far_disps, near_disps])
         else:
             # Fallback: uniform disparity sampling
-            disp_ref = torch.linspace(1.0 / float(depth_max), 1.0 / float(depth_min), num_layers).to(self.device)
+            disp_ref = torch.linspace(1.0 / float(depth_max), 1.0 / float(depth_min), num_layers, device=self.device)
 
         depths_ref = -1.0 / disp_ref
         return disp_ref, depths_ref

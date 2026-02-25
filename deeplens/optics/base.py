@@ -66,17 +66,17 @@ class DeepObj:
 
         for key, val in vars(self).items():
             if torch.is_tensor(val):
-                exec(f"self.{key} = self.{key}.to(device)")
+                setattr(self, key, val.to(device))
             elif isinstance(val, nn.Module):
-                exec(f"self.{key}.to(device)")
+                val.to(device)
             elif issubclass(type(val), DeepObj):
-                exec(f"self.{key}.to(device)")
+                val.to(device)
             elif val.__class__.__name__ in ("list", "tuple"):
                 for i, v in enumerate(val):
                     if torch.is_tensor(v):
-                        exec(f"self.{key}[{i}] = self.{key}[{i}].to(device)")
+                        val[i] = v.to(device)
                     elif issubclass(type(v), DeepObj):
-                        exec(f"self.{key}[{i}].to(device)")
+                        v.to(device)
         return self
 
     def astype(self, dtype):
@@ -113,13 +113,13 @@ class DeepObj:
         self.dtype = dtype
         for key, val in vars(self).items():
             if torch.is_tensor(val) and val.dtype in dtype_ls:
-                exec(f"self.{key} = self.{key}.to(dtype)")
+                setattr(self, key, val.to(dtype))
             elif issubclass(type(val), DeepObj):
-                exec(f"self.{key}.astype(dtype)")
+                val.astype(dtype)
             elif issubclass(type(val), list):
                 for i, v in enumerate(val):
                     if torch.is_tensor(v) and v.dtype in dtype_ls:
-                        exec(f"self.{key}[{i}] = self.{key}[{i}].to(dtype)")
+                        val[i] = v.to(dtype)
                     elif issubclass(type(v), DeepObj):
-                        exec(f"self.{key}[{i}].astype(dtype)")
+                        v.astype(dtype)
         return self

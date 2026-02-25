@@ -330,8 +330,10 @@ class GeoLens(
             Ray: Sampled rays with shape ``(\\*points.shape[:-1], num_rays, 3)``.
         """
         # Ray origin is given
-        ray_o = torch.tensor(points) if not torch.is_tensor(points) else points
-        ray_o = ray_o.to(self.device)
+        if not torch.is_tensor(points):
+            ray_o = torch.tensor(points, device=self.device)
+        else:
+            ray_o = points.to(self.device)
 
         # Sample points on the pupil
         pupilz, pupilr = self.get_entrance_pupil()
@@ -407,8 +409,8 @@ class GeoLens(
         if y_scalar:
             fov_y = [float(fov_y)]
 
-        fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x]).to(self.device)
-        fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y]).to(self.device)
+        fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
+        fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
 
         # Sample ray origins on the pupil
         if entrance_pupil:
@@ -477,8 +479,8 @@ class GeoLens(
             pupilz, pupilr = 0, self.surfaces[0].r
 
         # Sample grid points with given field angles, shape [len(fov_y), len(fov_x), 3]
-        fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x]).to(self.device)
-        fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y]).to(self.device)
+        fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
+        fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
         fov_x_grid, fov_y_grid = torch.meshgrid(fov_x, fov_y, indexing="xy")
         x, y = torch.tan(fov_x_grid) * depth, torch.tan(fov_y_grid) * depth
 
@@ -531,7 +533,7 @@ class GeoLens(
             )[1:],
             indexing="xy",
         )
-        z1 = torch.full_like(x1, self.d_sensor.item())
+        z1 = torch.full_like(x1, self.d_sensor)
 
         # Sample second points on the pupil
         pupilz, pupilr = self.get_exit_pupil()
@@ -544,11 +546,11 @@ class GeoLens(
         # Sub-pixel sampling for more realistic rendering
         if sub_pixel:
             delta_ox = (
-                torch.rand((ray_o[:, :, :, 0].clone().shape), device=device)
+                torch.rand(ray_o.shape[:-1], device=device)
                 * self.pixel_size
             )
             delta_oy = (
-                -torch.rand((ray_o[:, :, :, 1].clone().shape), device=device)
+                -torch.rand(ray_o.shape[:-1], device=device)
                 * self.pixel_size
             )
             delta_oz = torch.zeros_like(delta_ox)
@@ -609,7 +611,7 @@ class GeoLens(
         if surf_range is None:
             surf_range = range(0, len(self.surfaces))
 
-        if (ray.d[..., 2].unsqueeze(-1) > 0).any():
+        if (ray.d[..., 2] > 0).any():
             ray_out, ray_o_rec = self.forward_tracing(ray, surf_range, record=record)
         else:
             ray_out, ray_o_rec = self.backward_tracing(ray, surf_range, record=record)
@@ -641,7 +643,7 @@ class GeoLens(
             ray_o_record (list): list of intersection points.
         """
         # Manually propagate ray to a shallow depth to avoid numerical instability
-        if (ray.o[..., 2].min() < -100.0).any():
+        if ray.o[..., 2].min() < -100.0:
             ray = ray.prop_to(-10.0)
 
         # Trace rays
@@ -1043,8 +1045,8 @@ class GeoLens(
         device = self.device
 
         # Sample point source rays from sensor center
-        o1 = torch.tensor([0, 0, self.d_sensor.item()]).repeat(SPP_CALC, 1)
-        o1 = o1.to(device)
+        o1 = torch.zeros(SPP_CALC, 3, device=device)
+        o1[:, 2] = self.d_sensor
 
         # Sample the first surface as pupil
         # o2 = self.sample_circle(self.surfaces[0].r, z=0.0, shape=[SPP_CALC])
@@ -1090,7 +1092,7 @@ class GeoLens(
             )
         else:
             ray = self.sample_from_points(
-                points=torch.tensor([0.0, 0.0, depth]),
+                points=torch.tensor([0.0, 0.0, depth], device=self.device),
                 num_rays=SPP_CALC,
                 wvln=DEFAULT_WAVE,
             )
@@ -1293,12 +1295,12 @@ class GeoLens(
         aper_r = self.surfaces[aper_idx].r
 
         if paraxial:
-            ray_o = torch.tensor([[DELTA_PARAXIAL, 0, aper_z]]).repeat(32, 1)
-            phi_rad = torch.linspace(-0.01, 0.01, 32)
+            ray_o = torch.tensor([[DELTA_PARAXIAL, 0, aper_z]], device=self.device).repeat(32, 1)
+            phi_rad = torch.linspace(-0.01, 0.01, 32, device=self.device)
         else:
-            ray_o = torch.tensor([[aper_r, 0, aper_z]]).repeat(SPP_CALC, 1)
+            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(SPP_CALC, 1)
             rfov = float(np.arctan(self.r_sensor / self.foclen))
-            phi_rad = torch.linspace(-rfov / 2, rfov / 2, SPP_CALC)
+            phi_rad = torch.linspace(-rfov / 2, rfov / 2, SPP_CALC, device=self.device)
 
         d = torch.stack(
             (torch.sin(phi_rad), torch.zeros_like(phi_rad), torch.cos(phi_rad)), axis=-1
