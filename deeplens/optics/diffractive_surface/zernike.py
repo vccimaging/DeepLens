@@ -107,105 +107,98 @@ def calculate_zernike_phase(z_coeff, grid=256):
         torch.linspace(1, -1, grid, device=device),
         indexing="xy",
     )
-    r = torch.sqrt(x**2 + y**2)
+
+    # Pre-compute radial powers (each computed once, reused across terms)
+    r2 = x * x + y * y
+    r = torch.sqrt(r2)
+    r3 = r2 * r
+    r4 = r2 * r2
+    r5 = r4 * r
+    r6 = r4 * r2
+    r7 = r6 * r
+    r8 = r4 * r4
+
+    # Pre-compute trigonometric terms via angle-addition recurrence
+    # sin(alpha), cos(alpha) from atan2
     alpha = torch.atan2(y, x)
+    s1 = torch.sin(alpha)
+    c1 = torch.cos(alpha)
+    # sin(2a) = 2*sin(a)*cos(a), cos(2a) = 2*cos²(a) - 1
+    s2 = 2 * s1 * c1
+    c2 = 2 * c1 * c1 - 1
+    # sin(3a) = sin(2a)*cos(a) + cos(2a)*sin(a), etc.
+    s3 = s2 * c1 + c2 * s1
+    c3 = c2 * c1 - s2 * s1
+    s4 = s3 * c1 + c3 * s1
+    c4 = c3 * c1 - s3 * s1
+    s5 = s4 * c1 + c4 * s1
+    c5 = c4 * c1 - s4 * s1
+    s6 = s5 * c1 + c5 * s1
+    c6 = c5 * c1 - s5 * s1
+    s7 = s6 * c1 + c6 * s1
+    c7 = c6 * c1 - s6 * s1
 
-    # Calculate Zernike polynomials
-    Z1 = z_coeff[0] * 1
-    Z2 = z_coeff[1] * 2 * r * torch.sin(alpha)
-    Z3 = z_coeff[2] * 2 * r * torch.cos(alpha)
-    Z4 = z_coeff[3] * math.sqrt(3) * (2 * r**2 - 1)
-    Z5 = z_coeff[4] * math.sqrt(6) * r**2 * torch.sin(2 * alpha)
-    Z6 = z_coeff[5] * math.sqrt(6) * r**2 * torch.cos(2 * alpha)
-    Z7 = z_coeff[6] * math.sqrt(8) * (3 * r**3 - 2 * r) * torch.sin(alpha)
-    Z8 = z_coeff[7] * math.sqrt(8) * (3 * r**3 - 2 * r) * torch.cos(alpha)
-    Z9 = z_coeff[8] * math.sqrt(8) * r**3 * torch.sin(3 * alpha)
-    Z10 = z_coeff[9] * math.sqrt(8) * r**3 * torch.cos(3 * alpha)
-    Z11 = z_coeff[10] * math.sqrt(5) * (6 * r**4 - 6 * r**2 + 1)
-    Z12 = z_coeff[11] * math.sqrt(10) * (4 * r**4 - 3 * r**2) * torch.cos(2 * alpha)
-    Z13 = z_coeff[12] * math.sqrt(10) * (4 * r**4 - 3 * r**2) * torch.sin(2 * alpha)
-    Z14 = z_coeff[13] * math.sqrt(10) * r**4 * torch.cos(4 * alpha)
-    Z15 = z_coeff[14] * math.sqrt(10) * r**4 * torch.sin(4 * alpha)
-    Z16 = (
-        z_coeff[15] * math.sqrt(12) * (10 * r**5 - 12 * r**3 + 3 * r) * torch.cos(alpha)
-    )
-    Z17 = (
-        z_coeff[16] * math.sqrt(12) * (10 * r**5 - 12 * r**3 + 3 * r) * torch.sin(alpha)
-    )
-    Z18 = z_coeff[17] * math.sqrt(12) * (5 * r**5 - 4 * r**3) * torch.cos(3 * alpha)
-    Z19 = z_coeff[18] * math.sqrt(12) * (5 * r**5 - 4 * r**3) * torch.sin(3 * alpha)
-    Z20 = z_coeff[19] * math.sqrt(12) * r**5 * torch.cos(5 * alpha)
-    Z21 = z_coeff[20] * math.sqrt(12) * r**5 * torch.sin(5 * alpha)
-    Z22 = z_coeff[21] * math.sqrt(7) * (20 * r**6 - 30 * r**4 + 12 * r**2 - 1)
-    Z23 = (
-        z_coeff[22]
-        * math.sqrt(14)
-        * (15 * r**6 - 20 * r**4 + 6 * r**2)
-        * torch.sin(2 * alpha)
-    )
-    Z24 = (
-        z_coeff[23]
-        * math.sqrt(14)
-        * (15 * r**6 - 20 * r**4 + 6 * r**2)
-        * torch.cos(2 * alpha)
-    )
-    Z25 = z_coeff[24] * math.sqrt(14) * (6 * r**6 - 5 * r**4) * torch.sin(4 * alpha)
-    Z26 = z_coeff[25] * math.sqrt(14) * (6 * r**6 - 5 * r**4) * torch.cos(4 * alpha)
-    Z27 = z_coeff[26] * math.sqrt(14) * r**6 * torch.sin(6 * alpha)
-    Z28 = z_coeff[27] * math.sqrt(14) * r**6 * torch.cos(6 * alpha)
-    Z29 = z_coeff[28] * 4 * (35 * r**7 - 60 * r**5 + 30 * r**3 - 4) * torch.sin(alpha)
-    Z30 = z_coeff[29] * 4 * (35 * r**7 - 60 * r**5 + 30 * r**3 - 4) * torch.cos(alpha)
-    Z31 = z_coeff[30] * 4 * (21 * r**7 - 30 * r**5 + 10 * r**3) * torch.sin(3 * alpha)
-    Z32 = z_coeff[31] * 4 * (21 * r**7 - 30 * r**5 + 10 * r**3) * torch.cos(3 * alpha)
-    Z33 = z_coeff[32] * 4 * (7 * r**7 - 6 * r**5) * torch.sin(5 * alpha)
-    Z34 = z_coeff[33] * 4 * (7 * r**7 - 6 * r**5) * torch.cos(5 * alpha)
-    Z35 = z_coeff[34] * 4 * r**7 * torch.sin(7 * alpha)
-    Z36 = z_coeff[35] * 4 * r**7 * torch.cos(7 * alpha)
-    Z37 = z_coeff[36] * 3 * (70 * r**8 - 140 * r**6 + 90 * r**4 - 20 * r**2 + 1)
+    # Pre-compute shared radial polynomials
+    sqrt3 = math.sqrt(3)
+    sqrt5 = math.sqrt(5)
+    sqrt6 = math.sqrt(6)
+    sqrt7 = math.sqrt(7)
+    sqrt8 = math.sqrt(8)
+    sqrt10 = math.sqrt(10)
+    sqrt12 = math.sqrt(12)
+    sqrt14 = math.sqrt(14)
 
-    # Sum all Zernike terms
-    ZW = (
-        Z1
-        + Z2
-        + Z3
-        + Z4
-        + Z5
-        + Z6
-        + Z7
-        + Z8
-        + Z9
-        + Z10
-        + Z11
-        + Z12
-        + Z13
-        + Z14
-        + Z15
-        + Z16
-        + Z17
-        + Z18
-        + Z19
-        + Z20
-        + Z21
-        + Z22
-        + Z23
-        + Z24
-        + Z25
-        + Z26
-        + Z27
-        + Z28
-        + Z29
-        + Z30
-        + Z31
-        + Z32
-        + Z33
-        + Z34
-        + Z35
-        + Z36
-        + Z37
-    )
+    poly_3r3_2r = 3 * r3 - 2 * r
+    poly_4r4_3r2 = 4 * r4 - 3 * r2
+    poly_10r5_12r3_3r = 10 * r5 - 12 * r3 + 3 * r
+    poly_5r5_4r3 = 5 * r5 - 4 * r3
+    poly_15r6_20r4_6r2 = 15 * r6 - 20 * r4 + 6 * r2
+    poly_6r6_5r4 = 6 * r6 - 5 * r4
+    poly_35r7_60r5_30r3 = 35 * r7 - 60 * r5 + 30 * r3
+    poly_21r7_30r5_10r3 = 21 * r7 - 30 * r5 + 10 * r3
+    poly_7r7_6r5 = 7 * r7 - 6 * r5
 
-    # Apply circular mask
-    mask = torch.gt(x**2 + y**2, 1)
-    ZW[mask] = 0.0
+    # Accumulate Zernike terms directly (avoids 37 intermediate tensors)
+    c = z_coeff
+    ZW = c[0] * 1
+    ZW = ZW + c[1] * (2 * r * s1)
+    ZW = ZW + c[2] * (2 * r * c1)
+    ZW = ZW + c[3] * (sqrt3 * (2 * r2 - 1))
+    ZW = ZW + c[4] * (sqrt6 * r2 * s2)
+    ZW = ZW + c[5] * (sqrt6 * r2 * c2)
+    ZW = ZW + c[6] * (sqrt8 * poly_3r3_2r * s1)
+    ZW = ZW + c[7] * (sqrt8 * poly_3r3_2r * c1)
+    ZW = ZW + c[8] * (sqrt8 * r3 * s3)
+    ZW = ZW + c[9] * (sqrt8 * r3 * c3)
+    ZW = ZW + c[10] * (sqrt5 * (6 * r4 - 6 * r2 + 1))
+    ZW = ZW + c[11] * (sqrt10 * poly_4r4_3r2 * c2)
+    ZW = ZW + c[12] * (sqrt10 * poly_4r4_3r2 * s2)
+    ZW = ZW + c[13] * (sqrt10 * r4 * c4)
+    ZW = ZW + c[14] * (sqrt10 * r4 * s4)
+    ZW = ZW + c[15] * (sqrt12 * poly_10r5_12r3_3r * c1)
+    ZW = ZW + c[16] * (sqrt12 * poly_10r5_12r3_3r * s1)
+    ZW = ZW + c[17] * (sqrt12 * poly_5r5_4r3 * c3)
+    ZW = ZW + c[18] * (sqrt12 * poly_5r5_4r3 * s3)
+    ZW = ZW + c[19] * (sqrt12 * r5 * c5)
+    ZW = ZW + c[20] * (sqrt12 * r5 * s5)
+    ZW = ZW + c[21] * (sqrt7 * (20 * r6 - 30 * r4 + 12 * r2 - 1))
+    ZW = ZW + c[22] * (sqrt14 * poly_15r6_20r4_6r2 * s2)
+    ZW = ZW + c[23] * (sqrt14 * poly_15r6_20r4_6r2 * c2)
+    ZW = ZW + c[24] * (sqrt14 * poly_6r6_5r4 * s4)
+    ZW = ZW + c[25] * (sqrt14 * poly_6r6_5r4 * c4)
+    ZW = ZW + c[26] * (sqrt14 * r6 * s6)
+    ZW = ZW + c[27] * (sqrt14 * r6 * c6)
+    ZW = ZW + c[28] * (4 * (poly_35r7_60r5_30r3 - 4) * s1)
+    ZW = ZW + c[29] * (4 * (poly_35r7_60r5_30r3 - 4) * c1)
+    ZW = ZW + c[30] * (4 * poly_21r7_30r5_10r3 * s3)
+    ZW = ZW + c[31] * (4 * poly_21r7_30r5_10r3 * c3)
+    ZW = ZW + c[32] * (4 * poly_7r7_6r5 * s5)
+    ZW = ZW + c[33] * (4 * poly_7r7_6r5 * c5)
+    ZW = ZW + c[34] * (4 * r7 * s7)
+    ZW = ZW + c[35] * (4 * r7 * c7)
+    ZW = ZW + c[36] * (3 * (70 * r8 - 140 * r6 + 90 * r4 - 20 * r2 + 1))
+
+    # Apply circular mask (reuse r2 instead of recomputing x**2 + y**2)
+    ZW = torch.where(r2 <= 1, ZW, torch.zeros(1, device=device))
 
     return ZW

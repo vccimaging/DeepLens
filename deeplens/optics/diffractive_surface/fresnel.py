@@ -48,6 +48,9 @@ class Fresnel(DiffractiveSurface):
         else:
             self.f0 = torch.tensor(f0)
 
+        # Cache static r² grid (x, y never change after init)
+        self.r2 = self.x**2 + self.y**2
+
         self.to(device)
 
     @classmethod
@@ -66,7 +69,7 @@ class Fresnel(DiffractiveSurface):
     def phase_func(self):
         """Get the phase map at design wavelength."""
         wvln0_mm = self.wvln0 * 1e-3
-        phase = -2 * torch.pi * (self.x**2 + self.y**2) / (2 * self.f0 * wvln0_mm)
+        phase = -2 * torch.pi * self.r2 / (2 * self.f0 * wvln0_mm)
         return phase
 
     # =======================================

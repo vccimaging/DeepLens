@@ -39,6 +39,9 @@ class Binary2(DiffractiveSurface):
             indexing="xy",
         )
 
+        # Cache static r² grid (x, y never change after init)
+        self.r2 = self.x**2 + self.y**2
+
         self.to(device)
 
     @classmethod
@@ -55,18 +58,12 @@ class Binary2(DiffractiveSurface):
 
     def phase_func(self):
         """Get the phase map at design wavelength."""
-        # Calculate radial distance
-        r2 = self.x**2 + self.y**2
-
-        # Calculate phase using Binary DOE formula
-        phase = torch.pi * (
-            self.alpha2 * r2
-            + self.alpha4 * r2**2
-            + self.alpha6 * r2**3
-            + self.alpha8 * r2**4
-            + self.alpha10 * r2**5
+        # Horner's method: r2*(a2 + r2*(a4 + r2*(a6 + r2*(a8 + r2*a10))))
+        r2 = self.r2
+        phase = torch.pi * r2 * (
+            self.alpha2
+            + r2 * (self.alpha4 + r2 * (self.alpha6 + r2 * (self.alpha8 + r2 * self.alpha10)))
         )
-
         return phase
 
     # =======================================

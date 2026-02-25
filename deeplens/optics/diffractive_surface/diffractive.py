@@ -119,14 +119,15 @@ class DiffractiveSurface(DeepObj):
         n = self.mat.refractive_index(wvln)
         phase_map = phase_map0 * (self.wvln0 / wvln) * (n - 1) / (self.n0 - 1)
 
-        # Interpolate to the desired resolution
-        phase_map = (
-            F.interpolate(
-                phase_map.unsqueeze(0).unsqueeze(0), size=self.res, mode="nearest"
+        # Interpolate to the desired resolution (skip if already matching)
+        if phase_map.shape[-2:] != (self.res[0], self.res[1]):
+            phase_map = (
+                F.interpolate(
+                    phase_map.unsqueeze(0).unsqueeze(0), size=self.res, mode="nearest"
+                )
+                .squeeze(0)
+                .squeeze(0)
             )
-            .squeeze(0)
-            .squeeze(0)
-        )
 
         return phase_map
 
@@ -256,7 +257,8 @@ class DiffractiveSurface(DeepObj):
         Reference: Quantization-aware Deep Optics for Diffractive Snapshot Hyperspectral Imaging
         """
         pmap = self.get_phase_map0()
-        pmap_q = self.pmap_quantize(bits)
+        step = 2 * torch.pi / bits
+        pmap_q = torch.round(pmap / step) * step
         loss = torch.mean(torch.abs(pmap - pmap_q))
         return loss
 
@@ -312,7 +314,8 @@ class DiffractiveSurface(DeepObj):
     def draw_phase_map_fab(self, save_name="./DOE_phase_map.png"):
         """Draw phase map. Range from [0, 2pi]."""
         pmap = self.get_phase_map0()
-        pmap_q = self.pmap_quantize()
+        step = 2 * torch.pi / 16
+        pmap_q = torch.round(pmap / step) * step
 
         fig, ax = plt.subplots(1, 2, figsize=(10, 5))
         ax[0].imshow(pmap.cpu().numpy(), vmin=0, vmax=2 * float(np.pi))
