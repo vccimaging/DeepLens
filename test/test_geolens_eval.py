@@ -30,7 +30,6 @@ class TestRMSMap:
 class TestDistortion:
     """Tests for distortion analysis."""
 
-    @pytest.mark.skip(reason="calc_chief_ray_infinite has rfovs referenced before assignment (source bug)")
     def test_calc_distortion_2D(self, sample_singlet_lens):
         """calc_distortion_2D returns a distortion array."""
         lens = sample_singlet_lens
@@ -97,12 +96,11 @@ class TestDrawSmoke:
         lens.draw_spot_radial(save_name=path, num_fov=2, num_rays=64)
         assert os.path.exists(path)
 
-    @pytest.mark.skip(reason="draw_spot_map passes num_grid to both matplotlib and sample_grid_rays with conflicting type needs (source bug)")
     def test_draw_spot_map(self, sample_singlet_lens, test_output_dir):
         """draw_spot_map produces a file."""
         lens = sample_singlet_lens
         path = os.path.join(test_output_dir, "test_spot_map.png")
-        lens.draw_spot_map(save_name=path, num_grid=(2, 2), num_rays=64)
+        lens.draw_spot_map(save_name=path, num_grid=2, num_rays=64)
         assert os.path.exists(path)
 
     def test_draw_distortion_radial(self, sample_singlet_lens, test_output_dir):
@@ -119,7 +117,6 @@ class TestDrawSmoke:
         lens.draw_mtf(save_name=path)
         assert os.path.exists(path)
 
-    @pytest.mark.skip(reason="draw_vignetting calls vignetting with int num_grid internally (source bug)")
     def test_draw_vignetting(self, sample_singlet_lens, test_output_dir):
         """draw_vignetting produces a file."""
         lens = sample_singlet_lens

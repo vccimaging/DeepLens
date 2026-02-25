@@ -73,7 +73,7 @@ class DiffractiveLens(Lens):
             self.sensor_size = (8.0, 8.0)
             self.sensor_res = (2000, 2000)
 
-        self.double()
+        self.astype(torch.float64)
 
     @classmethod
     def load_example1(cls):

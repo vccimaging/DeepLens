@@ -709,10 +709,11 @@ class Surface(DeepObj):
             [1] Page 10 from: https://wp.optics.arizona.edu/optomech/wp-content/uploads/sites/53/2016/08/8-Tolerancing-1.pdf
         """
         score_dict = {}
+        idx = getattr(self, "surf_idx", id(self))
         score_dict.update(
             {
-                f"surf{self.surf_idx}_d_grad": round(self.d.grad.item(), 6),
-                f"surf{self.surf_idx}_d_score": round(
+                f"surf{idx}_d_grad": round(self.d.grad.item(), 6),
+                f"surf{idx}_d_score": round(
                     (self.d_tole**2 * self.d.grad**2).item(), 6
                 ),
             }

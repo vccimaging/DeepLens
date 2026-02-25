@@ -863,8 +863,8 @@ class GeoLensEval:
         vignetting = 0.5 + 0.5 * vignetting
 
         fig, ax = plt.subplots()
-        ax.imshow(vignetting.cpu().numpy(), cmap="gray", vmin=0.5, vmax=1.0)
-        ax.colorbar(ticks=[0.5, 0.75, 1.0])
+        im = ax.imshow(vignetting.cpu().numpy(), cmap="gray", vmin=0.5, vmax=1.0)
+        fig.colorbar(im, ax=ax, ticks=[0.5, 0.75, 1.0])
 
         if show:
             plt.show()
@@ -979,9 +979,13 @@ class GeoLensEval:
             if len(rfov) == 1:
                 return chief_ray_o, chief_ray_d
 
-        if len(rfov) > 1:
+        # Extract non-zero rfov entries for processing
+        if torch.any(rfov == 0):
             rfovs = rfov[1:]
             depths = depth[1:]
+        else:
+            rfovs = rfov
+            depths = depth
 
         if self.aper_idx == 0:
             if plane == "sagittal":

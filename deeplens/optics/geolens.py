@@ -226,6 +226,10 @@ class GeoLens(
         Returns:
             ray (Ray object): Ray object. Shape [num_grid[1], num_grid[0], num_rays, 3]
         """
+        # Normalize num_grid to a tuple if it's an int
+        if isinstance(num_grid, int):
+            num_grid = (num_grid, num_grid)
+
         # Calculate field angles for grid source. Top-left field has positive fov_x and negative fov_y
         x_list = [x for x in np.linspace(1, -1, num_grid[0])]
         y_list = [y for y in np.linspace(-1, 1, num_grid[1])]

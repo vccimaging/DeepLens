@@ -440,15 +440,15 @@ class GeoLensOptim:
         V_min = 30
         loss_mat = torch.tensor(0.0, device=self.device)
         for i in range(len(self.surfaces)):
-            if self.surfaces[i].mat1.name != "air":
-                if self.surfaces[i].mat1.n > n_max:
-                    loss_mat += (self.surfaces[i].mat1.n - n_max) / (n_max - n_min)
-                if self.surfaces[i].mat1.n < n_min:
-                    loss_mat += (n_min - self.surfaces[i].mat1.n) / (n_max - n_min)
-                if self.surfaces[i].mat1.V > V_max:
-                    loss_mat += (self.surfaces[i].mat1.V - V_max) / (V_max - V_min)
-                if self.surfaces[i].mat1.V < V_min:
-                    loss_mat += (V_min - self.surfaces[i].mat1.V) / (V_max - V_min)
+            if self.surfaces[i].mat2.name != "air":
+                if self.surfaces[i].mat2.n > n_max:
+                    loss_mat += (self.surfaces[i].mat2.n - n_max) / (n_max - n_min)
+                if self.surfaces[i].mat2.n < n_min:
+                    loss_mat += (n_min - self.surfaces[i].mat2.n) / (n_max - n_min)
+                if self.surfaces[i].mat2.V > V_max:
+                    loss_mat += (self.surfaces[i].mat2.V - V_max) / (V_max - V_min)
+                if self.surfaces[i].mat2.V < V_min:
+                    loss_mat += (V_min - self.surfaces[i].mat2.V) / (V_max - V_min)
         
         return loss_mat
 
