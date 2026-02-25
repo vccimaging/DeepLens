@@ -184,20 +184,16 @@ def sample_hybridlens(device_auto):
 def sample_diffraclens():
     """Create a diffractive lens for testing."""
     from deeplens import DiffractiveLens
-    from deeplens.optics.lens import Lens
     from deeplens.optics.diffractive_surface import Fresnel
 
-    # Build via object.__new__ to avoid DiffractiveLens.__init__ calling
-    # self.double() which doesn't exist on the base class
-    lens = object.__new__(DiffractiveLens)
-    Lens.__init__(lens, device="cpu")
+    old_dtype = torch.get_default_dtype()
+    lens = DiffractiveLens()
     lens.surfaces = [Fresnel(f0=50, d=0, res=500, fab_ps=0.008)]
-    lens.d_sensor = torch.tensor(50.0)
+    lens.d_sensor = torch.tensor(50.0, dtype=torch.float64)
     lens.sensor_size = (4.0, 4.0)
     lens.sensor_res = (500, 500)
     lens.pixel_size = lens.sensor_size[0] / lens.sensor_res[0]
-    # astype changes global default dtype, so save and restore
-    old_dtype = torch.get_default_dtype()
-    lens.astype(torch.float64)
+    # Move surfaces to the lens device (may be CUDA)
+    lens.surfaces[0].to(lens.device)
     torch.set_default_dtype(old_dtype)
     return lens

@@ -189,11 +189,14 @@ class Cubic(Surface):
     # =========================================
     def surf_dict(self):
         """Return surface parameters."""
-        return {
+        d = {
             "type": "Cubic",
             "b3": self.b3.item(),
-            "b5": self.b5.item(),
-            "b7": self.b7.item(),
             "r": self.r,
             "(d)": round(self.d.item(), 4),
         }
+        if self.b_degree >= 2:
+            d["b5"] = self.b5.item()
+        if self.b_degree >= 3:
+            d["b7"] = self.b7.item()
+        return d

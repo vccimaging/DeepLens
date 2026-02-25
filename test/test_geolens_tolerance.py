@@ -48,7 +48,6 @@ class TestToleranceSampling:
 class TestTolerancingAnalysis:
     """Tests for tolerancing analysis methods."""
 
-    @pytest.mark.skip(reason="tolerancing_sensitivity calls loss_rms with int num_grid (source bug)")
     def test_tolerancing_sensitivity(self, sample_singlet_lens):
         """tolerancing_sensitivity returns dict with 'loss_rss'."""
         lens = sample_singlet_lens

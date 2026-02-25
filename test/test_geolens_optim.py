@@ -103,7 +103,6 @@ class TestLossFunctions:
         assert isinstance(loss, torch.Tensor)
         assert loss.dim() == 0
 
-    @pytest.mark.skip(reason="loss_mat references mat1 which doesn't exist on surfaces (source bug)")
     def test_loss_mat_scalar(self, sample_singlet_lens):
         """loss_mat returns a scalar >= 0."""
         lens = sample_singlet_lens

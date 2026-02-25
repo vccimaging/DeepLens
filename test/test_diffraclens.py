@@ -7,13 +7,16 @@ import torch
 class TestDiffractiveLensInit:
     """Tests for DiffractiveLens initialization."""
 
-    @pytest.mark.skip(reason="DiffractiveLens.__init__ calls self.double() which doesn't exist (source bug)")
     def test_init_empty(self):
         """DiffractiveLens can be created without a file."""
         from deeplens import DiffractiveLens
 
+        old_dtype = torch.get_default_dtype()
         lens = DiffractiveLens()
+        torch.set_default_dtype(old_dtype)
         assert lens.surfaces == []
+        assert lens.sensor_size == (8.0, 8.0)
+        assert lens.sensor_res == (2000, 2000)
 
     def test_init_with_surfaces(self, sample_diffraclens):
         """sample_diffraclens fixture creates a valid lens."""
