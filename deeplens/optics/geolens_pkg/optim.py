@@ -824,3 +824,285 @@ class GeoLensOptim:
         optimizer = torch.optim.Adam(params)
         # optimizer = torch.optim.SGD(params)
         return optimizer
+
+    # ====================================================================================
+    # Aspheric surface management
+    # ====================================================================================
+    @torch.no_grad()
+    def add_aspheric(self, surf_idx=None, ai_degree=4):
+        """Convert a spherical surface to aspheric for improved aberration correction.
+
+        If ``surf_idx`` is given, converts that specific surface. Otherwise,
+        automatically selects the best candidate following established optical
+        design principles:
+
+        1. First asphere: placed near the aperture stop (corrects spherical
+           aberration).
+        2. Subsequent aspheres: placed far from the stop (corrects field-dependent
+           aberrations like coma, astigmatism, distortion).
+        3. Prefer air-glass interfaces over cemented surfaces.
+        4. Among candidates at similar stop-distances, prefer larger semi-diameter
+           (higher marginal ray height → more SA contribution).
+
+        The new surface starts with ``k=0`` and all polynomial coefficients at
+        zero, so it is initially identical to the original spherical surface.
+
+        Note:
+            After calling this method, any existing optimizer is stale.
+            Call ``get_optimizer()`` again to include the new parameters.
+
+        Args:
+            surf_idx (int or None): Surface index to convert. If ``None``,
+                auto-selects the best candidate.
+            ai_degree (int): Number of even-order aspheric coefficients
+                ``[a2, a4, a6, ...]``. Defaults to 4.
+
+        Returns:
+            int: Index of the converted surface.
+
+        Raises:
+            IndexError: If ``surf_idx`` is out of range.
+            ValueError: If ``surf_idx`` points to a non-Spheric surface, or no
+                eligible candidate exists for auto-selection.
+
+        References:
+            Design principles from ``research/aspheric_design_principles.md``.
+        """
+        if surf_idx is not None:
+            if surf_idx < 0 or surf_idx >= len(self.surfaces):
+                raise IndexError(
+                    f"surf_idx={surf_idx} out of range [0, {len(self.surfaces) - 1}]."
+                )
+            if not isinstance(self.surfaces[surf_idx], Spheric):
+                raise ValueError(
+                    f"Surface {surf_idx} is {type(self.surfaces[surf_idx]).__name__}, "
+                    f"expected Spheric. To add higher-order terms to an existing "
+                    f"Aspheric surface, use increase_aspheric_order(surf_idx={surf_idx})."
+                )
+            self._spheric_to_aspheric(surf_idx, ai_degree)
+            logging.info(
+                f"Converted surface {surf_idx} from Spheric to Aspheric "
+                f"(ai_degree={ai_degree})."
+            )
+            return surf_idx
+
+        # Auto-select best candidate
+        surf_idx = self._find_best_asphere_candidate()
+        self._spheric_to_aspheric(surf_idx, ai_degree)
+        logging.info(
+            f"Auto-selected surface {surf_idx} as best asphere candidate. "
+            f"Converted to Aspheric (ai_degree={ai_degree})."
+        )
+        return surf_idx
+
+    def _find_best_asphere_candidate(self):
+        """Select the best Spheric surface to convert to Aspheric.
+
+        Strategy based on classical aspheric placement theory:
+
+        * **No existing aspheres** → nearest to aperture stop (maximises
+          spherical aberration correction, analogous to Schmidt corrector).
+        * **Asphere(s) already near stop** → farthest from stop (corrects
+          field-dependent aberrations).
+        * Ties broken by larger semi-diameter (proxy for marginal ray height).
+        * Only air-glass interfaces are considered (cemented surfaces excluded).
+
+        Returns:
+            int: Surface index of the best candidate.
+
+        Raises:
+            ValueError: If no eligible Spheric surfaces exist.
+        """
+        # Ensure aperture index is known
+        if not hasattr(self, "aper_idx") or self.aper_idx is None:
+            self.calc_pupil()
+        aper_idx = self.aper_idx
+
+        if aper_idx is not None:
+            aper_z = self.surfaces[aper_idx].d.item()
+        else:
+            # No explicit aperture; approximate with system midpoint
+            aper_z = (self.surfaces[0].d.item() + self.surfaces[-1].d.item()) / 2.0
+
+        # Collect candidates: Spheric surfaces at air-glass boundaries
+        candidates = []
+        for i, surf in enumerate(self.surfaces):
+            if not isinstance(surf, Spheric):
+                continue
+            if not self._is_air_glass_interface(i):
+                continue
+            dist_from_stop = abs(surf.d.item() - aper_z)
+            candidates.append((i, dist_from_stop, surf.r))
+
+        if not candidates:
+            raise ValueError(
+                "No eligible Spheric surfaces found for aspherization. "
+                "All surfaces are either already aspheric, apertures, or cemented."
+            )
+
+        # Count existing aspheric surfaces
+        num_existing = sum(
+            1 for s in self.surfaces if isinstance(s, (Aspheric, AsphericNorm))
+        )
+
+        if num_existing == 0:
+            # First asphere → nearest to stop, break ties by larger radius
+            candidates.sort(key=lambda x: (x[1], -x[2]))
+        else:
+            # Subsequent → farthest from stop, break ties by larger radius
+            candidates.sort(key=lambda x: (-x[1], -x[2]))
+
+        best_idx = candidates[0][0]
+        logging.info(
+            f"Asphere candidates (idx, dist_from_stop, radius): "
+            f"{[(c[0], round(c[1], 2), round(c[2], 2)) for c in candidates]}. "
+            f"Selected surface {best_idx}."
+        )
+        return best_idx
+
+    def _is_air_glass_interface(self, surf_idx):
+        """Check whether a surface sits at an air-glass boundary.
+
+        Looks past adjacent Aperture surfaces when determining the medium
+        on the incident side.
+
+        Args:
+            surf_idx (int): Surface index.
+
+        Returns:
+            bool: ``True`` if exactly one side is air (or occluder) and the
+                other is glass.
+        """
+        # Material before: walk backwards past aperture surfaces
+        mat_before = "air"
+        for j in range(surf_idx - 1, -1, -1):
+            if not isinstance(self.surfaces[j], Aperture):
+                mat_before = self.surfaces[j].mat2.get_name()
+                break
+
+        mat_after = self.surfaces[surf_idx].mat2.get_name()
+
+        _AIR_NAMES = ("air", "occluder", "vacuum")
+        before_is_air = mat_before in _AIR_NAMES
+        after_is_air = mat_after in _AIR_NAMES
+        return before_is_air != after_is_air
+
+    def _spheric_to_aspheric(self, surf_idx, ai_degree=4):
+        """Replace a Spheric surface with an equivalent Aspheric in-place.
+
+        The new surface has ``k=0`` and all ``ai`` coefficients set to zero,
+        preserving the original sag profile exactly.
+
+        Args:
+            surf_idx (int): Index of the surface to convert.
+            ai_degree (int): Number of even-order polynomial terms.
+
+        Raises:
+            ValueError: If the surface is not Spheric.
+        """
+        surf = self.surfaces[surf_idx]
+        if not isinstance(surf, Spheric):
+            raise ValueError(
+                f"Surface {surf_idx} is {type(surf).__name__}, not Spheric."
+            )
+
+        new_surf = Aspheric(
+            r=surf.r,
+            d=surf.d.item(),
+            c=surf.c.item(),
+            k=0.0,
+            ai=[0.0] * ai_degree,
+            mat2=surf.mat2.get_name(),
+            pos_xy=[surf.pos_x.item(), surf.pos_y.item()],
+            vec_local=surf.vec_local.tolist(),
+            is_square=surf.is_square,
+            device=surf.d.device,
+        )
+        self.surfaces[surf_idx] = new_surf
+
+    @torch.no_grad()
+    def increase_aspheric_order(self, surf_idx=None, increment=1):
+        """Add higher-order polynomial terms to existing Aspheric surfaces.
+
+        Appends ``increment`` additional even-order coefficients (initialised
+        to zero). For example, degree 4 ``[a2, a4, a6, a8]`` becomes degree 5
+        ``[a2, a4, a6, a8, a10]`` after ``increment=1``.
+
+        Follows the principle of *start low, add incrementally*: increase
+        order only when residual higher-order aberrations persist after
+        optimisation at the current order.
+
+        Note:
+            After calling this method, any existing optimizer is stale.
+            Call ``get_optimizer()`` again to include the new parameters.
+
+        Args:
+            surf_idx (int or None): Surface index. If ``None``, increases
+                order on **all** existing Aspheric surfaces.
+            increment (int): Number of additional coefficients to add.
+                Defaults to 1.
+
+        Returns:
+            list[int]: Indices of surfaces whose order was increased.
+
+        Raises:
+            IndexError: If ``surf_idx`` is out of range.
+            ValueError: If ``surf_idx`` is given but is not Aspheric, if
+                no Aspheric surfaces exist when ``surf_idx`` is ``None``,
+                or if ``increment`` < 1.
+        """
+        if increment < 1:
+            raise ValueError(f"increment must be >= 1, got {increment}.")
+        if surf_idx is not None:
+            if surf_idx < 0 or surf_idx >= len(self.surfaces):
+                raise IndexError(
+                    f"surf_idx={surf_idx} out of range [0, {len(self.surfaces) - 1}]."
+                )
+            targets = [surf_idx]
+        else:
+            targets = [
+                i for i, s in enumerate(self.surfaces)
+                if isinstance(s, (Aspheric, AsphericNorm))
+            ]
+
+        if not targets:
+            raise ValueError("No Aspheric surfaces found to increase order.")
+
+        for idx in targets:
+            surf = self.surfaces[idx]
+            if not isinstance(surf, (Aspheric, AsphericNorm)):
+                raise ValueError(
+                    f"Surface {idx} is {type(surf).__name__}, expected Aspheric."
+                )
+            old_degree = surf.ai_degree
+            self._increase_surface_order(surf, increment)
+            logging.info(
+                f"Surface {idx}: aspheric order {old_degree} -> {surf.ai_degree}."
+            )
+
+        return targets
+
+    def _increase_surface_order(self, surf, increment=1):
+        """Append zero-initialised higher-order coefficients to a surface.
+
+        Updates ``ai_degree``, individual ``ai{2*i}`` attributes, and the
+        ``ai`` tensor consistently.
+
+        Args:
+            surf (Aspheric or AsphericNorm): Surface to modify.
+            increment (int): Number of additional coefficients.
+        """
+        old_degree = surf.ai_degree
+        new_degree = old_degree + increment
+        device = surf.d.device
+
+        # Add new zero-initialised coefficient attributes
+        for i in range(old_degree + 1, new_degree + 1):
+            setattr(surf, f"ai{2 * i}", torch.tensor(0.0, device=device))
+
+        # Rebuild the full ai tensor and update degree
+        ai_list = []
+        for i in range(1, new_degree + 1):
+            ai_list.append(getattr(surf, f"ai{2 * i}").item())
+        surf.ai = torch.tensor(ai_list, device=device)
+        surf.ai_degree = new_degree
