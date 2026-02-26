@@ -1035,13 +1035,13 @@ class GeoLensOptim:
             Call ``get_optimizer()`` again to include the new parameters.
 
         Args:
-            surf_idx (int or None): Surface index. If ``None``, increases
-                order on **all** existing Aspheric surfaces.
+            surf_idx (int or None): Surface index. If ``None``, auto-selects
+                the best candidate (see ``_find_best_order_increase_candidate``).
             increment (int): Number of additional coefficients to add.
                 Defaults to 1.
 
         Returns:
-            list[int]: Indices of surfaces whose order was increased.
+            int: Index of the surface whose order was increased.
 
         Raises:
             IndexError: If ``surf_idx`` is out of range.
@@ -1056,29 +1056,71 @@ class GeoLensOptim:
                 raise IndexError(
                     f"surf_idx={surf_idx} out of range [0, {len(self.surfaces) - 1}]."
                 )
-            targets = [surf_idx]
         else:
-            targets = [
-                i for i, s in enumerate(self.surfaces)
-                if isinstance(s, (Aspheric, AsphericNorm))
-            ]
+            surf_idx = self._find_best_order_increase_candidate()
 
-        if not targets:
+        surf = self.surfaces[surf_idx]
+        if not isinstance(surf, (Aspheric, AsphericNorm)):
+            raise ValueError(
+                f"Surface {surf_idx} is {type(surf).__name__}, expected Aspheric."
+            )
+        old_degree = surf.ai_degree
+        self._increase_surface_order(surf, increment)
+        logging.info(
+            f"Surface {surf_idx}: aspheric order {old_degree} -> {surf.ai_degree}."
+        )
+
+        return surf_idx
+
+    def _find_best_order_increase_candidate(self):
+        """Select the best Aspheric surface to increase polynomial order.
+
+        Follows Principle 5 (*one surface, one term at a time*) from
+        aspheric design theory.  Ranking criteria (in priority order):
+
+        1. **Lowest current ``ai_degree``** — the surface with fewest
+           polynomial terms benefits most from an additional term.
+        2. **Largest semi-diameter ``r``** — proxy for marginal ray height;
+           higher-order terms have more leverage on surfaces where the
+           beam is widest (Principle 1).
+        3. **Highest refractive-index contrast ``Δn``** — larger Δn at
+           the interface amplifies the aspheric correction (Principle 2).
+
+        Returns:
+            int: Surface index of the best candidate.
+
+        Raises:
+            ValueError: If no Aspheric surfaces exist.
+        """
+        candidates = []
+        for i, surf in enumerate(self.surfaces):
+            if not isinstance(surf, (Aspheric, AsphericNorm)):
+                continue
+
+            # Compute Δn at this interface using mat2.n from surface objects
+            n_before = 1.0  # default: air
+            for j in range(i - 1, -1, -1):
+                if not isinstance(self.surfaces[j], Aperture):
+                    n_before = self.surfaces[j].mat2.n
+                    break
+            n_after = surf.mat2.n
+            delta_n = abs(n_after - n_before)
+
+            candidates.append((i, surf.ai_degree, surf.r, delta_n))
+
+        if not candidates:
             raise ValueError("No Aspheric surfaces found to increase order.")
 
-        for idx in targets:
-            surf = self.surfaces[idx]
-            if not isinstance(surf, (Aspheric, AsphericNorm)):
-                raise ValueError(
-                    f"Surface {idx} is {type(surf).__name__}, expected Aspheric."
-                )
-            old_degree = surf.ai_degree
-            self._increase_surface_order(surf, increment)
-            logging.info(
-                f"Surface {idx}: aspheric order {old_degree} -> {surf.ai_degree}."
-            )
+        # Sort: lowest ai_degree first, then largest r, then highest Δn
+        candidates.sort(key=lambda x: (x[1], -x[2], -x[3]))
 
-        return targets
+        best_idx = candidates[0][0]
+        logging.info(
+            f"Order-increase candidates (idx, degree, r, Δn): "
+            f"{[(c[0], c[1], round(c[2], 2), round(c[3], 3)) for c in candidates]}. "
+            f"Selected surface {best_idx}."
+        )
+        return best_idx
 
     def _increase_surface_order(self, surf, increment=1):
         """Append zero-initialised higher-order coefficients to a surface.

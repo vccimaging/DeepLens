@@ -136,28 +136,33 @@ def test_increase_aspheric_order():
     print("\n  [PASS] All order increases verified.")
 
 
-def test_increase_all_aspheric():
-    """Test increasing order on all aspheric surfaces at once."""
+def test_increase_auto_select():
+    """Test auto-selection of best surface for order increase."""
     print("\n" + "#"*60)
-    print("# TEST 5: increase_aspheric_order on all surfaces")
+    print("# TEST 5: increase_aspheric_order auto-selection")
     print("#"*60)
 
     lens = GeoLens(filename="./datasets/lenses/cooke.json")
 
-    # Add two aspheric surfaces
+    # Add two aspheric surfaces with different degrees
     lens.add_aspheric(surf_idx=0, ai_degree=4)
-    lens.add_aspheric(surf_idx=6, ai_degree=4)
-    print_surfaces(lens, "After adding 2 aspheric surfaces")
+    lens.add_aspheric(surf_idx=6, ai_degree=3)
+    print_surfaces(lens, "After adding 2 aspheric surfaces (degree 4 and 3)")
 
-    # Increase all
-    updated = lens.increase_aspheric_order(increment=2)
-    print(f"\n  Updated surfaces: {updated}")
-    for idx in updated:
-        surf = lens.surfaces[idx]
-        assert surf.ai_degree == 6, f"Surface {idx} should have degree 6, got {surf.ai_degree}"
-        assert hasattr(surf, "ai14"), f"Surface {idx} should have ai14"
-    print_surfaces(lens, "After increasing all by 2")
-    print("\n  [PASS] All surfaces increased to degree 6.")
+    # Auto-select: should pick surface 6 (lower ai_degree=3)
+    idx = lens.increase_aspheric_order(increment=1)
+    print(f"\n  Auto-selected surface {idx} for order increase")
+    assert idx == 6, f"Should pick surface 6 (lowest degree), got {idx}"
+    assert lens.surfaces[6].ai_degree == 4, "Surface 6 should now have degree 4"
+    print(f"  Surface 6 degree: {lens.surfaces[6].ai_degree}")
+
+    # Now both are degree 4, should pick by largest semi-diameter (tied here)
+    idx2 = lens.increase_aspheric_order(increment=1)
+    print(f"  Second auto-select: surface {idx2}")
+    assert isinstance(lens.surfaces[idx2], Aspheric), f"Surface {idx2} should be Aspheric"
+    assert lens.surfaces[idx2].ai_degree == 5, f"Selected surface should now have degree 5"
+    print_surfaces(lens, "After two auto-increases")
+    print("\n  [PASS] Auto-selection picks best candidate.")
 
 
 def test_ray_tracing_still_works():
@@ -220,7 +225,7 @@ if __name__ == "__main__":
     test_add_aspheric_auto()
     test_add_aspheric_error()
     test_increase_aspheric_order()
-    test_increase_all_aspheric()
+    test_increase_auto_select()
     test_ray_tracing_still_works()
     test_increase_order_error()
 
