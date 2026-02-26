@@ -971,7 +971,7 @@
 <h2 id="optics">Optics</h2>
 <p>The <code>deeplens.optics</code> module contains differentiable lens models that simulate how light passes through an optical system. Each lens computes a point spread function (PSF) and renders images via PSF convolution.</p>
 <ul>
-<li><strong><code>GeoLens</code></strong> — Multi-element refractive lens via differentiable ray tracing. The primary lens model, supporting Zemax/Code V/JSON file I/O. Uses a mixin architecture for evaluation, optimization, visualization, and tolerancing.</li>
+<li><strong><code>GeoLens</code></strong> — Multi-element refractive lens via differentiable ray tracing. The primary lens model, supporting Zemax/Code V/JSON file I/O. Uses a mixin architecture for PSF computation, evaluation, optimization, visualization, and tolerancing.</li>
 <li><strong><code>HybridLens</code></strong> — Refractive lens (<code>GeoLens</code>) combined with a diffractive optical element (DOE). Coherent ray tracing to the DOE plane, then Angular Spectrum Method (ASM) propagation to the sensor.</li>
 <li><strong><code>DiffractiveLens</code></strong> — Pure wave-optics lens using diffractive surfaces and scalar diffraction.</li>
 <li><strong><code>PSFNetLens</code></strong> — Neural surrogate wrapping a <code>GeoLens</code> with an MLP for fast PSF prediction.</li>
