@@ -317,9 +317,10 @@ class GeoLensEval:
         Returns:
             distortion (float): distortion at the specific field angle
         """
-        # Calculate ideal image height
-        eff_foclen = self.foclen
-        ideal_imgh = eff_foclen * np.tan(rfov * np.pi / 180)
+        # Calculate ideal image height (ensure pure numpy to avoid tensor deprecation)
+        eff_foclen = float(self.foclen)
+        rfov_np = np.asarray(rfov) if not isinstance(rfov, (int, float)) else rfov
+        ideal_imgh = eff_foclen * np.tan(rfov_np * np.pi / 180)
 
         # Calculate chief ray
         chief_ray_o, chief_ray_d = self.calc_chief_ray_infinite(
@@ -340,12 +341,11 @@ class GeoLensEval:
 
         # Calculate distortion
         actual_imgh = actual_imgh.cpu().numpy()
-        ideal_imgh = ideal_imgh.cpu().numpy()
-        distortion = (actual_imgh - ideal_imgh) / ideal_imgh
 
         # Handle the case where ideal_imgh is 0 or very close to 0
-        mask = abs(ideal_imgh) < EPSILON
-        distortion[mask] = 0.0
+        ideal_imgh = np.asarray(ideal_imgh)
+        mask = np.abs(ideal_imgh) < EPSILON
+        distortion = np.where(mask, 0.0, (actual_imgh - ideal_imgh) / np.where(mask, 1.0, ideal_imgh))
 
         return distortion
 

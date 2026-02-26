@@ -75,8 +75,8 @@ class Cubic(Surface):
         else:
             raise ValueError("Unsupported cubic degree!")
 
-        if len(z.size()) == 0:
-            z = torch.tensor(z).to(self.device)
+        if z.dim() == 0:
+            z = z.clone().detach().to(self.device)
 
         if self.rotate_angle != 0:
             x = x * float(np.cos(self.rotate_angle)) + y * float(
