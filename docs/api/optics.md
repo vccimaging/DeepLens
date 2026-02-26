@@ -20,9 +20,11 @@ Abstract base class for all lens types. Defines the shared interface: `psf()`, `
 
 Differentiable multi-element refractive lens via geometric ray tracing. This is the primary lens model in DeepLens.
 
-`GeoLens` uses a mixin architecture — functionality is split across `GeoLensEval`, `GeoLensOptim`, `GeoLensVis`, `GeoLensIO`, `GeoLensTolerance`, and `GeoLensVis3D`.
+`GeoLens` uses a mixin architecture — functionality is split across `GeoLensPSF`, `GeoLensEval`, `GeoLensOptim`, `GeoLensVis`, `GeoLensIO`, `GeoLensTolerance`, and `GeoLensVis3D`.
 
 ::: deeplens.optics.GeoLens
+
+::: deeplens.optics.geolens_pkg.psf_compute.GeoLensPSF
 
 ::: deeplens.optics.geolens_pkg.eval.GeoLensEval
 
