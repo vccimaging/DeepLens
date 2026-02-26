@@ -970,8 +970,7 @@ class GeoLensOptim:
             surf_idx (int): Surface index.
 
         Returns:
-            bool: ``True`` if exactly one side is air (or occluder) and the
-                other is glass.
+            bool: ``True`` if exactly one side is air and the other is glass.
         """
         # Material before: walk backwards past aperture surfaces
         mat_before = "air"
@@ -982,9 +981,8 @@ class GeoLensOptim:
 
         mat_after = self.surfaces[surf_idx].mat2.get_name()
 
-        _AIR_NAMES = ("air", "occluder", "vacuum")
-        before_is_air = mat_before in _AIR_NAMES
-        after_is_air = mat_after in _AIR_NAMES
+        before_is_air = mat_before == "air"
+        after_is_air = mat_after == "air"
         return before_is_air != after_is_air
 
     def _spheric_to_aspheric(self, surf_idx, ai_degree=4):

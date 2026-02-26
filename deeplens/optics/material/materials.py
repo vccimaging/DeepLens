@@ -106,11 +106,13 @@ class Material(DeepObj):
                 Accepted forms:
 
                 * Glass catalog name, e.g. ``"N-BK7"``, ``"H-K9L"``
-                * ``"air"`` or ``"vacuum"`` (n = 1, non-dispersive)
+                * ``"air"`` (n = 1, non-dispersive). Legacy names
+                  ``"vacuum"`` and ``"occluder"`` are accepted and
+                  normalised to ``"air"``.
                 * Inline Cauchy, e.g. ``"1.5168/64.17"``
                 * Custom name registered in ``materials_data.json``
 
-                Defaults to ``None`` (treated as ``"vacuum"``).
+                Defaults to ``None`` (treated as ``"air"``).
             device (str, optional): Compute device. Defaults to ``"cpu"``.
 
         Raises:
@@ -120,7 +122,9 @@ class Material(DeepObj):
             >>> mat = Material("N-BK7")
             >>> n_green = mat.get_ri(0.587)  # refractive index at 587 nm
         """
-        self.name = "vacuum" if name is None else name.lower()
+        raw = "air" if name is None else name.lower()
+        # Normalise legacy aliases to "air"
+        self.name = "air" if raw in ("vacuum", "occluder") else raw
         self.load_dispersion()
         self.device = device
 
@@ -135,8 +139,8 @@ class Material(DeepObj):
     # -------------------------------------------
     def load_dispersion(self):
         """Load material dispersion equation."""
-        # Air, vacuum, occluder are special cases
-        if self.name == "air" or self.name == "vacuum" or self.name == "occluder":
+        # Air (n=1, non-dispersive)
+        if self.name == "air":
             self.dispersion = "sellmeier"
             self.k1, self.l1, self.k2, self.l2, self.k3, self.l3 = 0, 0, 0, 0, 0, 0
             self.n, self.V = 1.0, 1e38

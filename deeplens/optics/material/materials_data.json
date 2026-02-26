@@ -7,9 +7,7 @@
     "CDMGs": "Cheng Du Guang Ming is a glass company in China. I select the most common glasses with stock (MA category) from their catalog. Some glasses may have different names, for example, BK7 glass uses another name in the catalog."
   },
   "MATERIAL_TABLE": {
-    "vacuum": [1.0000, 1e38],
     "air": [1.0000, 1e38],
-    "occluder": [1.0000, 1e38],
     "pmma": [1.4918, 57.44],
     "n-pk52": [1.4970, 81.63],
     "bk10": [1.4978, 66.95],
@@ -61,8 +59,6 @@
   },
   "SELLMEIER_TABLE": {
     "air": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    "vacuum": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    "occluder": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     "bk1": [1.0425, 6.1656e-3, 2.0838e-1, 2.1215e-2, 9.8014e-1, 1.0906e2],
     "bk7": [1.0396, 6.0006e-3, 2.3179e-1, 2.0017e-2, 1.0104, 1.0356e2],
     "d-k59": [1.1209, 6.5791e-3, 1.5269e-1, 2.3572e-2, 1.0750000, 1.0631e2],
