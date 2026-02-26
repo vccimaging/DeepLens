@@ -54,5 +54,10 @@ Documentation = "https://vccimaging.github.io/DeepLens/"
 [tool.setuptools.package-data]
 deeplens = ["optics/material/*.AGF", "optics/material/*.json"]
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
