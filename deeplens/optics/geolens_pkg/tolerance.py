@@ -146,17 +146,23 @@ class GeoLensTolerance:
         """
 
         def merit_func(lens, fov=0.0, depth=DEPTH):
-            # Calculate MTF at a specific field of view
+            """Evaluate MTF merit at a single field point."""
             point = [0, -fov / lens.rfov, depth]
             psf = lens.psf(points=point, recenter=True)
             freq, mtf_tan, mtf_sag = lens.psf2mtf(psf, pixel_size=lens.pixel_size)
 
-            # Evaluate MTF at a specific frequency
+            # Evaluate MTF at quarter-Nyquist frequency
             nyquist_freq = 0.5 / lens.pixel_size
             eval_freq = 0.25 * nyquist_freq
             idx = torch.argmin(torch.abs(torch.tensor(freq) - eval_freq))
             score = (mtf_tan[idx] + mtf_sag[idx]) / 2
             return score.item()
+
+        def multi_field_merit(lens, depth=DEPTH):
+            """Evaluate average MTF merit across multiple field positions."""
+            fov_points = [0.0, 0.5, 1.0]
+            scores = [merit_func(lens, fov=fov, depth=depth) for fov in fov_points]
+            return float(np.mean(scores))
 
         # Initialize tolerance
         self.init_tolerance(tolerance_params=tolerance_params)
@@ -168,8 +174,8 @@ class GeoLensTolerance:
                 # Sample a random perturbation
                 self.sample_tolerance()
 
-                # Evaluate perturbed performance
-                perturbed_merit = merit_func(lens=self, fov=0.0, depth=DEPTH)
+                # Evaluate perturbed performance across multiple field positions
+                perturbed_merit = multi_field_merit(lens=self, depth=DEPTH)
                 merit_ls.append(perturbed_merit)
 
                 # Clear perturbation
@@ -177,10 +183,9 @@ class GeoLensTolerance:
 
         merit_ls = np.array(merit_ls)
 
-        # Baseline merit
+        # Baseline merit (nominal lens)
         self.refocus()
-        baseline_merit = merit_func(lens=self, fov=0.0, depth=DEPTH)
-        # merit_ls /= baseline_merit
+        baseline_merit = multi_field_merit(lens=self, depth=DEPTH)
 
         # Results plot
         sorted_merit = np.sort(merit_ls)
@@ -209,7 +214,7 @@ class GeoLensTolerance:
                 "90% > ": round(float(np.percentile(merit_ls, 10)), 4),
                 "80% > ": round(float(np.percentile(merit_ls, 20)), 4),
                 "70% > ": round(float(np.percentile(merit_ls, 30)), 4),
-                "60% > ": round(float(np.percentile(merit_ls, 60)), 4),
+                "60% > ": round(float(np.percentile(merit_ls, 40)), 4),
                 "50% > ": round(float(np.percentile(merit_ls, 50)), 4),
             },
             "merit_percentile": {

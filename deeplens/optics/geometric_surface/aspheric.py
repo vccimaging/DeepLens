@@ -152,7 +152,7 @@ class Aspheric(Surface):
         # Aspheric polynomial: ai2*r² + ai4*r⁴ + ai6*r⁶ + ...
         r_pow = r2
         for i in range(1, self.ai_degree + 1):
-            total_surface = total_surface + getattr(self, f"ai{2*i}") * r_pow
+            total_surface = total_surface + getattr(self, f"ai{2 * i}") * r_pow
             r_pow = r_pow * r2
 
         return total_surface
@@ -172,7 +172,7 @@ class Aspheric(Surface):
         # Derivative of aspheric polynomial w.r.t. r²: ai2 + 2*ai4*r² + 3*ai6*r⁴ + ...
         r_pow = 1
         for i in range(1, self.ai_degree + 1):
-            dsdr2 = dsdr2 + i * getattr(self, f"ai{2*i}") * r_pow
+            dsdr2 = dsdr2 + i * getattr(self, f"ai{2 * i}") * r_pow
             r_pow = r_pow * r2
 
         return dsdr2 * 2 * x, dsdr2 * 2 * y
@@ -261,8 +261,12 @@ class Aspheric(Surface):
             [2] https://www.edmundoptics.com/knowledge-center/application-notes/optics/all-about-aspheric-lenses/?srsltid=AfmBOoon8AUXVALojol2s5K20gQk7W1qUisc6cE4WzZp3ATFY5T1pK8q
         """
         super().init_tolerance(tolerance_params)
+        if tolerance_params is None:
+            tolerance_params = {}
         self.c_tole = tolerance_params.get("c_tole", 0.001)
         self.k_tole = tolerance_params.get("k_tole", 0.001)
+        self.c_error = 0.0
+        self.k_error = 0.0
 
     def sample_tolerance(self):
         """Randomly perturb surface parameters to simulate manufacturing errors."""
@@ -279,24 +283,19 @@ class Aspheric(Surface):
     def sensitivity_score(self):
         """Tolerance squared sum."""
         score_dict = super().sensitivity_score()
+        idx = getattr(self, "surf_idx", id(self))
 
-        score_dict.update(
-            {
-                "c_grad": round(self.c.grad.item(), 6),
-                "c_score": round(
-                    (self.c_tole**2 * self.c.grad**2).item(), 6
-                ),
-            }
-        )
+        if self.c.grad is not None:
+            score_dict[f"surf{idx}_c_grad"] = round(self.c.grad.item(), 6)
+            score_dict[f"surf{idx}_c_score"] = round(
+                (self.c_tole**2 * self.c.grad**2).item(), 6
+            )
 
-        score_dict.update(
-            {
-                "k_grad": round(self.k.grad.item(), 6),
-                "k_score": round(
-                    (self.k_tole**2 * self.k.grad**2).item(), 6
-                ),
-            }
-        )
+        if self.k.grad is not None:
+            score_dict[f"surf{idx}_k_grad"] = round(self.k.grad.item(), 6)
+            score_dict[f"surf{idx}_k_score"] = round(
+                (self.k_tole**2 * self.k.grad**2).item(), 6
+            )
         return score_dict
 
     # =======================================
