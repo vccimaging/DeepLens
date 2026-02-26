@@ -80,11 +80,11 @@ def curriculum_design(
     """Optimize the lens by minimizing rms errors."""
     # Preparation
     depth = DEPTH
-    num_ring = 8
+    num_ring = 16
     num_arm = 8
     spp = 2048
 
-    aper_start = self.surfaces[self.aper_idx].r * 0.2
+    aper_start = self.surfaces[self.aper_idx].r * 0.25
     aper_final = self.surfaces[self.aper_idx].r
 
     # Log
@@ -96,7 +96,9 @@ def curriculum_design(
 
     # Optimizer
     optimizer = self.get_optimizer(lrs, decay=decay, optim_mat=optim_mat)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=iterations)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=iterations // 4, T_mult=1
+    )
 
     # Training loop
     pbar = tqdm(
@@ -168,7 +170,7 @@ def curriculum_design(
                     weight_mask /= weight_mask.mean()
 
                     # Drop out (20% of weight mask)
-                    dropout_mask = torch.rand_like(weight_mask) < 0.2
+                    dropout_mask = torch.rand_like(weight_mask) < 0.1
                     weight_mask = weight_mask * (~dropout_mask)
 
             # Loss on rms error, shape of [num_grid, num_grid]
@@ -184,10 +186,12 @@ def curriculum_design(
         # RMS loss for all wavelengths
         loss_rms = sum(loss_rms) / len(loss_rms)
 
-        # Add lens design constraint
+        # Add focus loss and lens design constraint
+        w_focus = 0.1
+        loss_focus = self.loss_infocus()
         loss_reg, loss_dict = self.loss_reg()
         w_reg = 0.05
-        L_total = loss_rms + w_reg * loss_reg
+        L_total = loss_rms + w_focus * loss_focus + w_reg * loss_reg
 
         # Gradient-based optimization
         optimizer.zero_grad()
