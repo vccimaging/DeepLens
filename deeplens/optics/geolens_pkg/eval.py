@@ -1243,6 +1243,7 @@ class GeoLensEval:
         self,
         save_name="./lens",
         depth=float("inf"),
+        full_eval=False,
         render=False,
         render_unwarp=False,
         lens_title=None,
@@ -1253,6 +1254,9 @@ class GeoLensEval:
         Args:
             save_name (str): save name.
             depth (float): object depth distance.
+            full_eval (bool): whether to perform comprehensive optical evaluation
+                (spot diagram, MTF, distortion, field curvature, vignetting).
+                If False, only draws layout and calculates RMS.
             render (bool): whether render an image.
             render_unwarp (bool): whether unwarp the rendered image.
             lens_title (str): lens title
@@ -1266,26 +1270,53 @@ class GeoLensEval:
             show=show,
         )
 
-        # Draw spot diagram
-        self.draw_spot_radial(
-            save_name=f"{save_name}_spot.png",
-            depth=depth,
-            show=show,
-        )
-
-        # Draw MTF
-        if depth == float("inf"):
-            # This is a hack to draw MTF for infinite depth
-            self.draw_mtf(
-                depth_list=[DEPTH], save_name=f"{save_name}_mtf.png", show=show
-            )
-        else:
-            self.draw_mtf(
-                depth_list=[depth], save_name=f"{save_name}_mtf.png", show=show
-            )
-
         # Calculate RMS error
         self.analysis_spot(depth=depth)
+
+        # Comprehensive optical evaluation
+        if full_eval:
+            # Draw spot diagram
+            self.draw_spot_radial(
+                save_name=f"{save_name}_spot.png",
+                depth=depth,
+                show=show,
+            )
+
+            # Draw MTF
+            if depth == float("inf"):
+                self.draw_mtf(
+                    depth_list=[DEPTH],
+                    save_name=f"{save_name}_mtf.png",
+                    show=show,
+                )
+            else:
+                self.draw_mtf(
+                    depth_list=[depth],
+                    save_name=f"{save_name}_mtf.png",
+                    show=show,
+                )
+
+            # Draw distortion
+            rfov_deg = float(self.rfov) * 180.0 / np.pi
+            self.draw_distortion_radial(
+                rfov=rfov_deg,
+                save_name=f"{save_name}_distortion.png",
+                show=show,
+            )
+
+            # Draw field curvature
+            self.draw_field_curvature(
+                save_name=f"{save_name}_field_curvature.png",
+                show=show,
+            )
+
+            # Draw vignetting
+            eval_depth = DEPTH if depth == float("inf") else depth
+            self.draw_vignetting(
+                filename=f"{save_name}_vignetting.png",
+                depth=eval_depth,
+                show=show,
+            )
 
         # Render an image, compute PSNR and SSIM
         if render:
