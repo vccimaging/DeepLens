@@ -1,12 +1,9 @@
 """DeepObj base class for all differentiable optical objects."""
 
 import copy
-import logging
 
 import torch
 import torch.nn as nn
-
-logger = logging.getLogger(__name__)
 
 
 class DeepObj:
@@ -111,7 +108,7 @@ class DeepObj:
 
         if torch.get_default_dtype() != dtype:
             torch.set_default_dtype(dtype)
-            logger.info(f"Set {dtype} as default torch dtype.")
+            print(f"Set {dtype} as default torch dtype.")
 
         self.dtype = dtype
         for key, val in vars(self).items():

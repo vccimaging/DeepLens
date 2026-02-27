@@ -42,7 +42,6 @@ Functions:
         - calc_chief_ray_infinite(): Compute chief ray for infinite object distance
 """
 
-import logging
 import math
 
 import matplotlib.pyplot as plt
@@ -65,8 +64,6 @@ from ..config import (
     WAVE_RGB,
 )
 from ..light import Ray
-
-logger = logging.getLogger(__name__)
 
 # RGB color definitions for wavelength visualization
 RGB_RED = "#CC0000"
@@ -719,7 +716,7 @@ class GeoLensEval:
             spp (int, optional): Number of rays per field point. Defaults to SPP_CALC.
             show (bool, optional): If True, display plot interactively. Defaults to False.
         """
-        logger.warning("This function is not optimized for the best speed.")
+        print("This function is not optimized for the best speed.")
         device = self.device
         # Convert maximum field angle to degrees
         rfov_deg = float(self.rfov) * 180.0 / np.pi
@@ -1131,7 +1128,7 @@ class GeoLensEval:
         render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
         render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
         render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
-        logger.info("Rendered image: PSNR=%.3f, SSIM=%.4f", render_psnr, render_ssim)
+        print(f"Rendered image: PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}")
 
         # Save image
         if save_name is not None:
@@ -1145,8 +1142,8 @@ class GeoLensEval:
             render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
             render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
             render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
-            logger.info(
-                "Rendered image (unwarped): PSNR=%.3f, SSIM=%.4f", render_psnr, render_ssim
+            print(
+                f"Rendered image (unwarped): PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}"
             )
 
             if save_name is not None:
@@ -1213,14 +1210,12 @@ class GeoLensEval:
         avg_geo_radius_um = torch.stack(geo_radius_fields, dim=0).mean(dim=0) * 1000.0
 
         # Print results
-        logger.info("Ray spot analysis results for depth %s:", depth)
-        logger.info(
-            "RMS radius: FoV (0.0) %.3f um, FoV (0.5) %.3f um, FoV (1.0) %.3f um",
-            avg_rms_radius_um[0], avg_rms_radius_um[num_field // 2], avg_rms_radius_um[-1],
+        print(f"Ray spot analysis results for depth {depth}:")
+        print(
+            f"RMS radius: FoV (0.0) {avg_rms_radius_um[0]:.3f} um, FoV (0.5) {avg_rms_radius_um[num_field // 2]:.3f} um, FoV (1.0) {avg_rms_radius_um[-1]:.3f} um"
         )
-        logger.info(
-            "Geo radius: FoV (0.0) %.3f um, FoV (0.5) %.3f um, FoV (1.0) %.3f um",
-            avg_geo_radius_um[0], avg_geo_radius_um[num_field // 2], avg_geo_radius_um[-1],
+        print(
+            f"Geo radius: FoV (0.0) {avg_geo_radius_um[0]:.3f} um, FoV (0.5) {avg_geo_radius_um[num_field // 2]:.3f} um, FoV (1.0) {avg_geo_radius_um[-1]:.3f} um"
         )
 
         # Save to dict

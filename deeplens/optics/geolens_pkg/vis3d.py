@@ -12,14 +12,11 @@ GeoLensVis3D class:
     - save_lens_obj(): Save lens geometry and rays as .obj files
 """
 
-import logging
 import os
 from typing import List, Optional
 
 import numpy as np
 import torch
-
-logger = logging.getLogger(__name__)
 
 from ..config import DEFAULT_WAVE
 from ..light import Ray
@@ -435,7 +432,7 @@ def geolens_ray_poly(
             rays_poly.append(curve_from_trace(lens, center_ray))
         else:
             for fov_phi in fov_phis:
-                logger.debug(f"fov: {fov}, fov_phi: {fov_phi}")
+                print(f"fov: {fov}, fov_phi: {fov_phi}")
                 # Sample rays on the fov
                 ray = sample_parallel_3D(
                     lens,
@@ -888,14 +885,14 @@ class GeoLensVis3D:
         # Save individual lens elements (surfaces + bridges merged)
         if save_elements:
             for i, pair in enumerate(element_groups):
-                logger.debug(f"Running in pair {i} with pair length {len(pair)}")
+                print(f"Running in pair {i} with pair length {len(pair)}")
                 # Collect surface polydata
                 surf_polydata_list = [surf_meshes[idx].get_polydata() for idx in pair]
 
                 # Collect bridge polydata if available
                 bridge_polydata_list = []
                 if i < len(bridge_meshes) and len(bridge_meshes[i]) > 0:
-                    logger.debug(f"Bridge mesh group number: {len(bridge_meshes[i])}")
+                    print(f"Bridge mesh group number: {len(bridge_meshes[i])}")
                     bridge_polydata_list = [b.get_polydata() for b in bridge_meshes[i]]
 
                 # Merge surfaces and bridges together

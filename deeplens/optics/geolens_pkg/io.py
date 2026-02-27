@@ -21,16 +21,12 @@ Functions:
 """
 
 import json
-import logging
 import math
-import traceback
 
 import torch
 
 from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Cubic, Plane, Spheric, ThinLens
 from ..phase_surface import Phase
-
-logger = logging.getLogger(__name__)
 
 
 class GeoLensIO:
@@ -180,7 +176,7 @@ class GeoLensIO:
                     )
 
                 else:
-                    logger.warning(f"Surface type {surf_dict['TYPE']} not implemented.")
+                    print(f"Surface type {surf_dict['TYPE']} not implemented.")
                     continue
 
                 self.surfaces.append(s)
@@ -268,7 +264,7 @@ class GeoLensIO:
         with open(filename, "w") as f:
             f.writelines(lens_zmx_str)
             f.close()
-            logger.info(f"Lens written to {filename}")
+            print(f"Lens written to {filename}")
 
     # ====================================================================================
     # CODE V Format (.seq)
@@ -287,24 +283,24 @@ class GeoLensIO:
         Returns:
             GeoLens: ``self``, for method chaining.
         """
-        logger.debug(f"\n{'=' * 60}")
-        logger.debug(f"Start reading CODE V file: {filename}")
-        logger.debug(f"{'=' * 60}\n")
+        print(f"\n{'=' * 60}")
+        print(f"Start reading CODE V file: {filename}")
+        print(f"{'=' * 60}\n")
 
         # Read .seq file
         try:
             with open(filename, "r", encoding="utf-8") as file:
                 lines = file.readlines()
-            logger.debug("File read successfully (UTF-8)")
+            print(f"File read successfully (UTF-8)")
         except UnicodeDecodeError:
             try:
                 with open(filename, "r", encoding="latin-1") as file:
                     lines = file.readlines()
-                logger.debug("File read successfully (Latin-1)")
+                print(f"File read successfully (Latin-1)")
             except Exception as e:
-                logger.error(f"Failed to read file: {e}")
+                print(f"Failed to read file: {e}")
                 return self
-        logger.debug(f"Total lines: {len(lines)}\n")
+        print(f"Total lines: {len(lines)}\n")
 
         # ============ Step 1: Parse file structure ============
         surfaces = []
@@ -312,7 +308,7 @@ class GeoLensIO:
         surface_index = 0
         global_diameter = None
 
-        logger.debug("Beginning to parse surface data...\n")
+        print("Beginning to parse surface data...\n")
 
         for line_num, line in enumerate(lines, 1):
             line = line.strip()
@@ -343,7 +339,7 @@ class GeoLensIO:
                 self.enpd = float(line.split()[1])
                 self.float_enpd = False
                 global_diameter = self.enpd / 2.0
-                logger.debug(
+                print(
                     f"[Line {line_num}] EPD={self.enpd} -> default radius={global_diameter}"
                 )
                 continue
@@ -354,7 +350,7 @@ class GeoLensIO:
                     self.hfov = max(angles)
                     # Also set rfov in radians for consistency with write functions
                     self.rfov = self.hfov * math.pi / 180.0
-                    logger.debug(f"[Line {line_num}] Max field of view={self.hfov} deg")
+                    print(f"[Line {line_num}] Max field of view={self.hfov} deg")
                 continue
             # Object surface
             if line.startswith("SO"):
@@ -367,7 +363,7 @@ class GeoLensIO:
                     "index": surface_index,
                 }
                 surfaces.append(current_surface)
-                logger.debug(f"[Line {line_num}] Object surface: T={thickness}")
+                print(f"[Line {line_num}] Object surface: T={thickness}")
                 surface_index += 1
                 current_surface = {}
                 continue
@@ -402,7 +398,7 @@ class GeoLensIO:
                     "is_stop": False,
                 }
 
-                logger.debug(
+                print(
                     f"[Line {line_num}] Surface{surface_index}: R={radius_value:.4f} → C={curvature:.6f}, T={thickness}, Mat={material}"
                 )
                 continue
@@ -421,7 +417,7 @@ class GeoLensIO:
                     "diameter": None,  # Set to None first, wait for CIR line to update
                     "index": surface_index,
                 }
-                logger.debug(f"[Line {line_num}] Image surface")
+                print(f"[Line {line_num}] Image surface")
                 continue
             # Handle surface attributes (CIR, STO, ASP, K, A~J, etc.)
             if current_surface:
@@ -429,19 +425,19 @@ class GeoLensIO:
                     current_surface["diameter"] = float(
                         line.split()[1].replace(";", "")
                     )
-                    logger.debug(f"[Line {line_num}]   → CIR={current_surface['diameter']}")
+                    print(f"[Line {line_num}]   → CIR={current_surface['diameter']}")
 
                 elif line.startswith("STO"):
                     current_surface["is_stop"] = True
-                    logger.debug(f"[Line {line_num}]   → Aperture stop flag")
+                    print(f"[Line {line_num}]   → Aperture stop flag")
 
                 elif line.startswith("ASP"):
                     current_surface["type"] = "ASPHERIC"
-                    logger.debug(f"[Line {line_num}]   → Aspheric surface")
+                    print(f"[Line {line_num}]   → Aspheric surface")
 
                 elif line.startswith("K "):
                     current_surface["conic"] = float(line.split()[1].replace(";", ""))
-                    logger.debug(f"[Line {line_num}]   → K={current_surface['conic']}")
+                    print(f"[Line {line_num}]   → K={current_surface['conic']}")
 
                 # Only extract single-letter coefficients A-J
                 elif any(
@@ -479,21 +475,21 @@ class GeoLensIO:
                             ]:
                                 value = float(parts[i + 1])
                                 current_surface["asph_coeffs"][key] = value
-                                logger.debug(f"[Line {line_num}]   → {key}={value}")
+                                print(f"[Line {line_num}]   → {key}={value}")
                             i += 2
-                        except (ValueError, IndexError):
+                        except:
                             i += 1
 
         # Save the last surface
         if current_surface:
             surfaces.append(current_surface)
 
-        logger.debug(f"\nParsing complete, total {len(surfaces)} surfaces\n")
+        print(f"\nParsing complete, total {len(surfaces)} surfaces\n")
 
         # ============ Step 2: Create surface objects ============
-        logger.debug(f"{'=' * 60}")
-        logger.debug("Start creating surface objects:")
-        logger.debug(f"{'=' * 60}\n")
+        print(f"{'=' * 60}")
+        print("Start creating surface objects:")
+        print(f"{'=' * 60}\n")
 
         self.surfaces = []
         d = 0.0  # Cumulative distance from the first optical surface to the current surface
@@ -503,19 +499,19 @@ class GeoLensIO:
             surf_idx = surf["index"]
             surf_type = surf["type"]
 
-            logger.debug(f"{'=' * 50}")
-            logger.debug(f"Processing surface{surf_idx} ({surf_type}), current d={d:.4f}")
+            print(f"{'=' * 50}")
+            print(f"Processing surface{surf_idx} ({surf_type}), current d={d:.4f}")
 
             # Handle object surface
             if surf_type == "OBJECT":
                 obj_thickness = surf["thickness"]
                 if obj_thickness < 1e9:  # Finite object distance
                     d += obj_thickness
-                    logger.debug(
+                    print(
                         f"   Object surface thickness={obj_thickness} → accumulated d={d:.4f}"
                     )
                 else:
-                    logger.debug("   Object surface at infinity")
+                    print("   Object surface at infinity")
                 previous_material = "air"
                 continue
 
@@ -526,7 +522,7 @@ class GeoLensIO:
                 self.r_sensor = (
                     surf.get("diameter") if surf.get("diameter") is not None else 18.0
                 )
-                logger.debug(
+                print(
                     f"   Image plane position: d_sensor={d:.4f}, r_sensor={self.r_sensor:.4f}"
                 )
                 break
@@ -543,9 +539,9 @@ class GeoLensIO:
             d_next = surf.get("thickness", 0.0)
             is_stop = surf.get("is_stop", False)
 
-            logger.debug(f"   C={c:.6f}, R_aperture={r:.4f}, T={d_next:.4f}")
-            logger.debug(f"   Material: {previous_material} → {current_material}")
-            logger.debug(f"   is_stop={is_stop}")
+            print(f"   C={c:.6f}, R_aperture={r:.4f}, T={d_next:.4f}")
+            print(f"   Material: {previous_material} → {current_material}")
+            print(f"   is_stop={is_stop}")
 
             # Create surface object
             try:
@@ -553,7 +549,7 @@ class GeoLensIO:
                 if is_stop and current_material == "air" and previous_material == "air":
                     aperture = Aperture(r=r, d=d)
                     self.surfaces.append(aperture)
-                    logger.debug(f"   Created pure aperture: Aperture(r={r:.4f}, d={d:.4f})")
+                    print(f"   Created pure aperture: Aperture(r={r:.4f}, d={d:.4f})")
 
                 # Case 2: refractive surface (material change)
                 elif current_material != previous_material:
@@ -561,7 +557,7 @@ class GeoLensIO:
                         s = Spheric(c=c, r=r, d=d, mat2=current_material)
                         self.surfaces.append(s)
                         status = " (stop surface)" if is_stop else ""
-                        logger.debug(
+                        print(
                             f"   Created spherical surface{status}: Spheric(c={c:.6f}, r={r:.4f}, d={d:.4f}, mat2='{current_material}')"
                         )
 
@@ -596,34 +592,36 @@ class GeoLensIO:
                         s = Aspheric(c=c, r=r, d=d, ai=ai, k=k, mat2=current_material)
                         self.surfaces.append(s)
                         status = " (stop surface)" if is_stop else ""
-                        logger.debug(
+                        print(
                             f"   Created aspheric surface{status}: Aspheric(c={c:.6f}, r={r:.4f}, d={d:.4f}, k={k}, mat2='{current_material}')"
                         )
                         if any(
                             ai[1:]
                         ):  # If there are non-zero higher-order terms (starting from ai[1])
-                            logger.debug(
+                            print(
                                 f"      Aspheric coefficients: A={ai[1]:.2e}, B={ai[2]:.2e}, C={ai[3]:.2e}, D={ai[4]:.2e}"
                             )
 
                 else:
-                    logger.debug("   Skipped (same material on both sides and no stop flag)")
+                    print(f"   Skipped (same material on both sides and no stop flag)")
 
             except Exception as e:
-                logger.error(f"   Failed to create surface: {e}")
-                logger.error(traceback.format_exc())
+                print(f"   Failed to create surface: {e}")
+                import traceback
+
+                traceback.print_exc()
 
             # Key: accumulate distance at the end of the loop
             d += d_next
-            logger.debug(f"   After accumulation: d={d:.4f}")
+            print(f"   After accumulation: d={d:.4f}")
             previous_material = current_material
 
-        logger.debug(f"\n{'=' * 60}")
-        logger.debug(f"   Done! Created {len(self.surfaces)} objects")
-        logger.debug(f"   d_sensor={self.d_sensor:.4f}")
-        logger.debug(f"   r_sensor={self.r_sensor:.4f}")
-        logger.debug(f"   hfov={self.hfov:.4f}°")
-        logger.debug(f"{'=' * 60}\n")
+        print(f"\n{'=' * 60}")
+        print(f"   Done! Created {len(self.surfaces)} objects")
+        print(f"   d_sensor={self.d_sensor:.4f}")
+        print(f"   r_sensor={self.r_sensor:.4f}")
+        print(f"   hfov={self.hfov:.4f}°")
+        print(f"{'=' * 60}\n")
 
         return self
 
@@ -739,7 +737,7 @@ class GeoLensIO:
         with open(filename, "w") as f:
             f.write(lens_seq_str)
 
-        logger.info(f"Lens written to CODE V file: {filename}")
+        print(f"Lens written to CODE V file: {filename}")
         return self
 
     # ====================================================================================
@@ -859,4 +857,4 @@ class GeoLensIO:
 
         with open(filename, "w") as f:
             json.dump(data, f, indent=4)
-        logger.info(f"Lens written to {filename}")
+        print(f"Lens written to {filename}")

@@ -28,9 +28,6 @@ Functions:
 """
 
 import logging
-
-logger = logging.getLogger(__name__)
-
 import os
 from datetime import datetime
 
@@ -85,7 +82,7 @@ class GeoLensOptim:
         # In the future, we want to use constraint_params to set the constraints.
         if constraint_params is None:
             constraint_params = {}
-            logger.info("Lens design constraints initialized with default values.")
+            print("Lens design constraints initialized with default values.")
 
         if self.r_sensor < 12.0:
             self.is_cellphone = True
@@ -606,7 +603,8 @@ class GeoLensOptim:
             result_dir = f"./results/{datetime.now().strftime('%m%d-%H%M%S')}-DesignLens"
 
         os.makedirs(result_dir, exist_ok=True)
-        if not logger.hasHandlers():
+        if not logging.getLogger().hasHandlers():
+            logger = logging.getLogger()
             logger.setLevel("DEBUG")
             fmt = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s", "%Y-%m-%d %H:%M:%S")
             sh = logging.StreamHandler()
@@ -617,8 +615,8 @@ class GeoLensOptim:
             fh.setLevel("INFO")
             logger.addHandler(sh)
             logger.addHandler(fh)
-        logger.info(f"lr:{lrs}, iterations:{iterations}, num_ring:{num_ring}, num_arm:{num_arm}, rays_per_fov:{spp}.")
-        logger.info("If Out-of-Memory, try to reduce num_ring, num_arm, and rays_per_fov.")
+        logging.info(f"lr:{lrs}, iterations:{iterations}, num_ring:{num_ring}, num_arm:{num_arm}, rays_per_fov:{spp}.")
+        logging.info("If Out-of-Memory, try to reduce num_ring, num_arm, and rays_per_fov.")
 
         # Optimizer and scheduler
         optimizer = self.get_optimizer(lrs, decay=decay, optim_mat=optim_mat)

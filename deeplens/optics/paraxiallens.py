@@ -11,16 +11,12 @@ Reference:
     [2] https://en.wikipedia.org/wiki/Ray_transfer_matrix_analysis
 """
 
-import logging
-
 import numpy as np
 import torch
 
 from .lens import Lens
 from .config import DEPTH, EPSILON, PSF_KS
 from .imgsim import conv_psf_depth_interp, conv_psf_occlusion
-
-logger = logging.getLogger(__name__)
 
 
 class ParaxialLens(Lens):
@@ -57,13 +53,13 @@ class ParaxialLens(Lens):
         # Sensor size and resolution with defaults
         if sensor_size is None:
             sensor_size = (8.0, 8.0)
-            logger.warning(
+            print(
                 f"Sensor_size not provided. Using default: {sensor_size} mm. "
                 "Use set_sensor() to change."
             )
         if sensor_res is None:
             sensor_res = (2000, 2000)
-            logger.warning(
+            print(
                 f"Sensor_res not provided. Using default: {sensor_res} pixels. "
                 "Use set_sensor() to change."
             )

@@ -7,13 +7,10 @@
 """Glass and plastic materials for optical lenses."""
 
 import json
-import logging
 import os
 import re
 
 import torch
-
-logger = logging.getLogger(__name__)
 
 from ..base import DeepObj
 
@@ -73,7 +70,7 @@ def read_custom_mat(file_path):
         with open(file_path, "r") as f:
             return json.load(f)
     except FileNotFoundError:
-        logger.warning(f"Materials data file not found at {file_path}")
+        print(f"Warning: Materials data file not found at {file_path}")
         return {}
 
 
@@ -177,7 +174,7 @@ class Material(DeepObj):
                 self.n = CUSTOM_data["MATERIAL_TABLE"][self.name][0]
                 self.V = CUSTOM_data["MATERIAL_TABLE"][self.name][1]
             except KeyError:
-                logger.warning(f"{self.name} found in SELLMEIER_TABLE but not in MATERIAL_TABLE.")
+                print(f"Warning: {self.name} found in SELLMEIER_TABLE but not in MATERIAL_TABLE.")
 
         elif self.name in CUSTOM_data["SCHOTT_TABLE"]:
             self.dispersion = "schott"
@@ -188,7 +185,7 @@ class Material(DeepObj):
                 self.n = CUSTOM_data["MATERIAL_TABLE"][self.name][0]
                 self.V = CUSTOM_data["MATERIAL_TABLE"][self.name][1]
             except KeyError:
-                logger.warning(f"{self.name} found in SCHOTT_TABLE but not in MATERIAL_TABLE.")
+                print(f"Warning: {self.name} found in SCHOTT_TABLE but not in MATERIAL_TABLE.")
 
         elif self.name in CUSTOM_data["MATERIAL_TABLE"]:
             self.dispersion = "cauchy"
@@ -227,7 +224,7 @@ class Material(DeepObj):
             self.n = material["nd"]
             self.V = material["vd"]
         else:
-            logger.error(f"Material {material_name} not found in catalog.")
+            print(f"error: not {material_name}")
 
     def set_sellmeier_param(self, params=None):
         """Manually set sellmeier parameters k1, l1, k2, l2, k3, l3.
@@ -340,7 +337,7 @@ class Material(DeepObj):
         if not self.name == "air":
             # Material match table
             if mat_table is None:
-                logger.warning("No material table provided. Using CDGM common glasses as default.")
+                print("No material table provided. Using CDGM common glasses as default.")
                 mat_table = CUSTOM_data["CDGM_GLASS"]
             elif mat_table == "CDGM":
                 # CDGM common glasses

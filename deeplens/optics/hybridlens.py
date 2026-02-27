@@ -11,15 +11,12 @@ Technical Paper:
 """
 
 import json
-import logging
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
-
-logger = logging.getLogger(__name__)
 
 from .config import (
     DEFAULT_WAVE,
@@ -97,7 +94,7 @@ class HybridLens(Lens):
             # Set default sensor size and resolution if no file provided
             self.sensor_size = (8.0, 8.0)
             self.sensor_res = (2000, 2000)
-            logger.warning(
+            print(
                 f"No lens file provided. Using default sensor_size: {self.sensor_size} mm, "
                 f"sensor_res: {self.sensor_res} pixels. Use set_sensor() to change."
             )

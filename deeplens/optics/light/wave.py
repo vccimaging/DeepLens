@@ -11,8 +11,6 @@ This file contains:
     2. Wave field propagation functions (ASM, Rayleigh Sommerfeld, Fresnel, Fraunhofer, etc.)
 """
 
-import logging
-
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -23,8 +21,6 @@ from tqdm import tqdm
 
 from ..config import DELTA
 from ..base import DeepObj
-
-logger = logging.getLogger(__name__)
 
 
 # ===================================
@@ -76,7 +72,7 @@ class ComplexWave(DeepObj):
         """
         if u is not None:
             if not u.dtype == torch.complex128:
-                logger.warning(
+                print(
                     "A complex wave field is created with single precision. In the future, we want to always use double precision."
                 )
 
