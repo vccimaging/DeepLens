@@ -693,91 +693,122 @@ class GeoLensEval:
     def draw_field_curvature(
         self,
         save_name=None,
-        num_points=32,
+        num_points=64,
         z_span=1.0,
-        z_steps=1001,
+        z_steps=201,
         wvln_list=WAVE_RGB,
-        spp=SPP_CALC,
+        spp=256,
         show=False,
     ):
         """Draw field curvature: best-focus defocus vs field angle, RGB overlaid.
 
-        For each wavelength and field angle, sweeps defocus positions around the
-        sensor plane and finds the position that minimizes the tangential ray spread.
-        Plots tangential curves as solid lines.
+        For each wavelength, batches all field angles into a single ray tensor
+        and traces them in one call, then vectorizes the defocus sweep to find
+        the best-focus position per field angle.
 
         Args:
             save_name (str, optional): Path to save the figure. Defaults to
                 ``'./field_curvature.png'``.
-            num_points (int, optional): Number of field angle samples. Defaults to 32.
+            num_points (int, optional): Number of field angle samples. Defaults to 64.
             z_span (float, optional): Half-range of defocus sweep in mm. Defaults to 1.0.
-            z_steps (int, optional): Number of defocus steps. Defaults to 1001.
+            z_steps (int, optional): Number of defocus steps. Defaults to 201.
             wvln_list (list, optional): Wavelengths to evaluate. Defaults to WAVE_RGB.
-            spp (int, optional): Number of rays per field point. Defaults to SPP_CALC.
+            spp (int, optional): Number of rays per field point. Defaults to 256.
             show (bool, optional): If True, display plot interactively. Defaults to False.
         """
-        print("This function is not optimized for the best speed.")
         device = self.device
-        # Convert maximum field angle to degrees
         rfov_deg = float(self.rfov) * 180.0 / np.pi
 
-        # Sample field angles [0, rfov_deg]
+        # Sample field angles [0, rfov_deg], shape [F]
         rfov_samples = torch.linspace(0.0, rfov_deg, num_points, device=device)
 
-        # Prepare containers
-        delta_z_tan = []  # list of numpy arrays per wavelength
+        # Entrance pupil (computed once)
+        pupilz, pupilr = self.get_entrance_pupil()
 
-        # Defocus sweep grid (around current sensor plane)
+        # Defocus sweep grid, shape [Z]
         d_sensor = self.d_sensor
         z_grid = d_sensor + torch.linspace(-z_span, z_span, z_steps, device=device)
 
-        # Helper to compute best focus along a given axis (0=x sagittal, 1=y tangential)
-        def best_focus_delta_z(ray, axis_idx: int):
-            # ray: after lens surfaces (image space)
-            # Vectorized intersection with planes z_grid
-            oz = ray.o[..., 2:3]
-            dz = ray.d[..., 2:3]
-            t = (z_grid.unsqueeze(0) - oz) / (dz + 1e-12)  # [N, Z]
+        delta_z_tan = []
 
-            oa = ray.o[..., axis_idx : axis_idx + 1]
-            da = ray.d[..., axis_idx : axis_idx + 1]
-            pos_axis = (oa + da * t).squeeze(-1)  # [N, Z]
+        for wvln in wvln_list:
+            # --- Batch ray construction for all field angles ---
+            # Pupil positions: shape [spp]
+            pupil_y = torch.linspace(-pupilr, pupilr, spp, device=device) * 0.99
 
-            w = ray.is_valid.unsqueeze(-1).float()  # [N, 1] -> [N, Z] by broadcast
-            pos_axis = pos_axis * w
-            w_sum = w.sum(0)  # [Z]
-            centroid = pos_axis.sum(0) / (w_sum + EPSILON)  # [Z]
-            ms = (((pos_axis - centroid.unsqueeze(0)) ** 2) * w).sum(0) / (
+            # Ray origins: shape [F, spp, 3] (meridional plane: x=0)
+            ray_o = torch.zeros(num_points, spp, 3, device=device)
+            ray_o[..., 1] = pupil_y.unsqueeze(0)  # y = pupil sample
+            ray_o[..., 2] = pupilz  # z = entrance pupil z
+
+            # Ray directions: shape [F, spp, 3] (meridional: dx=0)
+            fov_rad = rfov_samples * (np.pi / 180.0)  # [F]
+            sin_fov = torch.sin(fov_rad)  # [F]
+            cos_fov = torch.cos(fov_rad)  # [F]
+            ray_d = torch.zeros(num_points, spp, 3, device=device)
+            ray_d[..., 1] = sin_fov.unsqueeze(-1)  # [F, 1] -> [F, spp]
+            ray_d[..., 2] = cos_fov.unsqueeze(-1)
+
+            # Create batched ray and trace all field angles at once
+            ray = Ray(ray_o, ray_d, wvln=wvln, device=device)
+            ray, _ = self.trace(ray)
+
+            # --- Vectorized best-focus for all field angles ---
+            # ray.o: [F, spp, 3], ray.d: [F, spp, 3]
+            oz = ray.o[..., 2:3]  # [F, spp, 1]
+            dz = ray.d[..., 2:3]  # [F, spp, 1]
+            t = (z_grid.view(1, 1, -1) - oz) / (dz + EPSILON)  # [F, spp, Z]
+
+            oa = ray.o[..., 1:2]  # y-axis (tangential)
+            da = ray.d[..., 1:2]
+            pos_y = oa + da * t  # [F, spp, Z]
+
+            w = ray.is_valid.unsqueeze(-1).float()  # [F, spp, 1]
+            pos_y = pos_y * w  # mask invalid rays
+            w_sum = w.sum(dim=1)  # [F, 1]
+
+            centroid = pos_y.sum(dim=1) / (w_sum + EPSILON)  # [F, Z]
+            ms = (((pos_y - centroid.unsqueeze(1)) ** 2) * w).sum(dim=1) / (
                 w_sum + EPSILON
-            )  # [Z]
-            best_idx = torch.argmin(ms)
-            return (z_grid[best_idx] - d_sensor).item()
+            )  # [F, Z]
 
-        # Loop wavelengths and field angles
-        for w_idx, wvln in enumerate(wvln_list):
-            dz_tan = []
-            for i in range(len(rfov_samples)):
-                fov_deg = rfov_samples[i].item()
+            best_idx = torch.argmin(ms, dim=1)  # [F]
 
-                # Tangential (meridional plane: y-z plane -> minimize y spread)
-                ray_t = self.sample_parallel_2D(
-                    fov=fov_deg,
-                    num_rays=spp,
-                    wvln=wvln,
-                    plane="meridional",
-                    entrance_pupil=True,
+            # Warn if best focus hits z_span boundary
+            boundary_hit = (best_idx == 0) | (best_idx == z_steps - 1)
+            if boundary_hit.any():
+                n_boundary = boundary_hit.sum().item()
+                print(
+                    f"Warning: {n_boundary}/{num_points} field angles hit z_span "
+                    f"boundary. Consider increasing z_span (currently {z_span} mm)."
                 )
-                ray_t, _ = self.trace(ray_t)
-                dz_tan.append(best_focus_delta_z(ray_t, axis_idx=1))  # y-axis
 
-            delta_z_tan.append(np.asarray(dz_tan))
+            # Parabolic interpolation for sub-grid precision
+            idx_c = best_idx.clamp(1, z_steps - 2)  # avoid boundary
+            f_range = torch.arange(num_points, device=device)
+            y_l = ms[f_range, idx_c - 1]
+            y_c = ms[f_range, idx_c]
+            y_r = ms[f_range, idx_c + 1]
+            denom = 2.0 * (y_l - 2.0 * y_c + y_r)
+            shift = (y_l - y_r) / (denom + EPSILON)  # fractional index offset
+            shift = shift.clamp(-0.5, 0.5)  # safety clamp
+
+            z_step_size = (2.0 * z_span) / (z_steps - 1)
+            best_z = z_grid[idx_c] + shift * z_step_size  # [F]
+            dz_tan = (best_z - d_sensor).cpu().numpy()
+
+            # Mark fully-vignetted field angles as NaN (gaps in plot)
+            valid_count = w.sum(dim=1).squeeze(-1)  # [F]
+            fully_vignetted = (valid_count < 2).cpu().numpy()
+            dz_tan[fully_vignetted] = np.nan
+
+            delta_z_tan.append(dz_tan)
 
         # Plot
         fov_np = rfov_samples.detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(7, 6))
         ax.set_title("Field Curvature (Δz vs Field Angle)")
 
-        # Determine x range (tangential only)
         all_vals = np.abs(np.concatenate(delta_z_tan)) if len(delta_z_tan) > 0 else np.array([0.0])
         x_range = float(max(0.2, all_vals.max() * 1.2)) if all_vals.size > 0 else 0.2
 
