@@ -1132,7 +1132,6 @@ class GeoLensEval:
         depth=DEPTH,
         spp=SPP_RENDER,
         unwarp=False,
-        noise=0.0,
         method="ray_tracing",
         show=False,
     ):
@@ -1144,7 +1143,6 @@ class GeoLensEval:
             depth (float, optional): Depth of object image. Defaults to DEPTH.
             spp (int, optional): Sample per pixel. Defaults to SPP_RENDER.
             unwarp (bool, optional): If True, unwarp the image to correct distortion. Defaults to False.
-            noise (float, optional): Gaussian noise standard deviation. Defaults to 0.0.
             method (str, optional): Rendering method ('ray_tracing', etc.). Defaults to 'ray_tracing'.
             show (bool, optional): If True, display the rendered image. Defaults to False.
 
@@ -1164,11 +1162,6 @@ class GeoLensEval:
 
         # Image rendering
         img_render = self.render(img, depth=depth, method=method, spp=spp)
-
-        # Add noise (a very simple Gaussian noise model)
-        if noise > 0:
-            img_render = img_render + torch.randn_like(img_render) * noise
-            img_render = torch.clamp(img_render, 0, 1)
 
         # Compute PSNR and SSIM
         img_np = img.squeeze(0).permute(1, 2, 0).cpu().numpy()
@@ -1369,6 +1362,5 @@ class GeoLensEval:
                 spp=SPP_RENDER,
                 unwarp=render_unwarp,
                 save_name=f"{save_name}_render",
-                noise=0.01,
                 show=show,
             )
