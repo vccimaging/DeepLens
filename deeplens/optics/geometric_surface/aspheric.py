@@ -16,14 +16,10 @@ Reference:
     [1] https://en.wikipedia.org/wiki/Aspheric_lens.
 """
 
-import logging
-
 import numpy as np
 import torch
 
 from .base import EPSILON, Surface
-
-logger = logging.getLogger(__name__)
 
 
 class Aspheric(Surface):
@@ -137,10 +133,9 @@ class Aspheric(Surface):
         # New files written by this code set use_ai2 explicitly.
         if surf_dict.get("use_ai2", True) and len(ai) > 0:
             if "use_ai2" not in surf_dict:
-                logger.debug(
-                    "Surface dict lacks 'use_ai2'; assuming ai[0]=%.4g is the "
-                    "2nd-order coefficient (legacy format).",
-                    ai[0],
+                print(
+                    f"Surface dict lacks 'use_ai2'; assuming ai[0]={ai[0]:.4g} is the "
+                    "2nd-order coefficient (legacy format)."
                 )
             ai2_val = ai[0]  # Extract the a2 coefficient
             ai = ai[1:]      # Remaining: [a4, a6, a8, ...]
