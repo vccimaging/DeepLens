@@ -6,19 +6,24 @@
 
 """Aspheric surface.
 
-The ``ai`` coefficient list starts from the 4th-order term (a4) by default,
-because the 2nd-order term (a2) is redundant with base curvature ``c`` and
-should not be optimised.  Legacy JSON files that include a2 are handled
-transparently via the ``use_ai2`` flag in ``init_from_dict``.
+The ``ai`` coefficient list starts from the 4th-order term (a4) by default.
+Legacy JSON files that include a 2nd-order term (a2) are loaded via the
+``use_ai2`` flag in ``init_from_dict``.  When present, ``a2`` is stored
+separately and included in the sag computation but is **not** optimised
+(it competes with the base curvature ``c``).
 
 Reference:
     [1] https://en.wikipedia.org/wiki/Aspheric_lens.
 """
 
+import logging
+
 import numpy as np
 import torch
 
 from .base import EPSILON, Surface
+
+logger = logging.getLogger(__name__)
 
 
 class Aspheric(Surface):
@@ -41,6 +46,7 @@ class Aspheric(Surface):
     Attributes:
         c (torch.Tensor): Base curvature [1/mm].
         k (torch.Tensor): Conic constant.
+        ai2 (torch.Tensor or None): 2nd-order aspheric coefficient (legacy).
         ai (torch.Tensor): Even-order aspheric coefficients
             ``[a4, a6, a8, ...]``.
     """
@@ -53,6 +59,7 @@ class Aspheric(Surface):
         k,
         ai,
         mat2,
+        ai2=None,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
         is_square=False,
@@ -69,6 +76,9 @@ class Aspheric(Surface):
                 starting from the 4th-order term: ``[a4, a6, a8, ...]``.
                 Pass ``None`` or an empty list for a pure conic.
             mat2 (str or Material): Material on the transmission side.
+            ai2 (float or None, optional): 2nd-order aspheric coefficient
+                from legacy data.  Included in sag but not optimised.
+                Defaults to ``None``.
             pos_xy (list[float], optional): Lateral offset ``[x, y]`` [mm].
                 Defaults to ``[0.0, 0.0]``.
             vec_local (list[float], optional): Local normal direction.
@@ -90,6 +100,13 @@ class Aspheric(Surface):
 
         self.c = torch.tensor(c)
         self.k = torch.tensor(k)
+
+        # 2nd-order coefficient (legacy, not optimised)
+        if ai2 is not None:
+            self.ai2 = torch.tensor(float(ai2))
+        else:
+            self.ai2 = None
+
         if ai is not None and len(ai) > 0:
             self.ai = torch.tensor(ai)
             self.ai_degree = len(ai)
@@ -114,10 +131,19 @@ class Aspheric(Surface):
             c = surf_dict["c"]
 
         ai = surf_dict.get("ai", [])
+        ai2_val = None
 
-        # Backward compatibility: old format includes a2 as first element
+        # Backward compatibility: old format includes a2 as first element.
+        # New files written by this code set use_ai2 explicitly.
         if surf_dict.get("use_ai2", True) and len(ai) > 0:
-            ai = ai[1:]  # Strip the a2 coefficient
+            if "use_ai2" not in surf_dict:
+                logger.debug(
+                    "Surface dict lacks 'use_ai2'; assuming ai[0]=%.4g is the "
+                    "2nd-order coefficient (legacy format).",
+                    ai[0],
+                )
+            ai2_val = ai[0]  # Extract the a2 coefficient
+            ai = ai[1:]      # Remaining: [a4, a6, a8, ...]
 
         return cls(
             r=surf_dict["r"],
@@ -125,6 +151,7 @@ class Aspheric(Surface):
             c=c,
             k=surf_dict["k"],
             ai=ai,
+            ai2=ai2_val,
             mat2=surf_dict["mat2"],
         )
 
@@ -138,7 +165,7 @@ class Aspheric(Surface):
         """Compute surface sag (height) z = sag(x, y).
 
         The aspheric surface is defined as:
-            z = r²c / (1 + sqrt(1 - (1+k)r²c²)) + Σ a_{2i} * r^{2i}
+            z = r²c / (1 + sqrt(1 - (1+k)r²c²)) + [a2*r²] + Σ a_{2i} * r^{2i}
 
         where r² = x² + y², c is curvature, k is conic constant, and ai are
         the aspheric coefficients (ai4, ai6, ai8, ...).
@@ -147,6 +174,10 @@ class Aspheric(Surface):
 
         r2 = x**2 + y**2
         total_surface = r2 * c / (1 + torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON))
+
+        # Legacy a2 term: a2 * r²
+        if self.ai2 is not None:
+            total_surface = total_surface + self.ai2 * r2
 
         # Aspheric polynomial: ai4*r⁴ + ai6*r⁶ + ai8*r⁸ + ...
         r_pow = r2 * r2  # starts at r^4
@@ -167,6 +198,10 @@ class Aspheric(Surface):
         r2 = x**2 + y**2
         sf = torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON)
         dsdr2 = (1 + sf + (1 + k) * r2 * c**2 / 2 / sf) * c / (1 + sf) ** 2
+
+        # d(a2*r²)/dr² = a2
+        if self.ai2 is not None:
+            dsdr2 = dsdr2 + self.ai2
 
         # Derivative of aspheric polynomial w.r.t. r²: 2*ai4*r² + 3*ai6*r⁴ + ...
         r_pow = r2
@@ -303,6 +338,7 @@ class Aspheric(Surface):
     # =======================================
     def surf_dict(self):
         """Return a dict of surface."""
+        has_ai2 = self.ai2 is not None
         surf_dict = {
             "type": "Aspheric",
             "r": round(self.r, 4),
@@ -311,9 +347,16 @@ class Aspheric(Surface):
             "d": round(self.d.item(), 4),
             "k": round(self.k.item(), 4),
             "ai": [],
-            "use_ai2": False,
+            "use_ai2": has_ai2,
             "mat2": self.mat2.get_name(),
         }
+
+        # Prepend a2 to ai list if present (ai2 key is informational;
+        # deserialization reads ai[0] when use_ai2=True)
+        if has_ai2:
+            surf_dict["ai2"] = float(format(self.ai2.item(), ".6e"))
+            surf_dict["ai"].append(float(format(self.ai2.item(), ".6e")))
+
         for i in range(self.ai_degree):
             order = i + 2
             coeff = getattr(self, f"ai{2 * order}")
@@ -331,8 +374,8 @@ class Aspheric(Surface):
             "Spheric surface is re-implemented in Spheric class."
         )
 
-        # Collect absolute ai values, PARM 1 = a2 (always 0), PARM 2+ = a4, a6, ...
-        abs_ai = [0.0]  # a2 = 0 for Zemax PARM 1
+        # Collect absolute ai values, PARM 1 = a2, PARM 2+ = a4, a6, ...
+        abs_ai = [self.ai2.item() if self.ai2 is not None else 0.0]
         for i in range(self.ai_degree):
             abs_ai.append(getattr(self, f"ai{2 * (i + 2)}").item())
 

@@ -769,8 +769,7 @@ class GeoLensIO:
                     s = Aperture.init_from_dict(surf_dict)
 
                 elif surf_dict["type"] == "Aspheric":
-                    # s = Aspheric.init_from_dict(surf_dict)
-                    s = AsphericNorm.init_from_dict(surf_dict)
+                    s = Aspheric.init_from_dict(surf_dict)
 
                 elif surf_dict["type"] == "Cubic":
                     s = Cubic.init_from_dict(surf_dict)
