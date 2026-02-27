@@ -31,6 +31,7 @@ from .geolens_pkg.eval import GeoLensEval
 from .geolens_pkg.io import GeoLensIO
 from .geolens_pkg.optim import GeoLensOptim
 from .geolens_pkg.psf_compute import GeoLensPSF
+from .geolens_pkg.seidel import GeoLensSeidel
 from .geolens_pkg.surf_ops import GeoLensSurfOps
 from .geolens_pkg.tolerance import GeoLensTolerance
 from .geolens_pkg.view_3d import GeoLensVis3D
@@ -43,6 +44,7 @@ from .light import Ray
 class GeoLens(
     GeoLensPSF,
     GeoLensEval,
+    GeoLensSeidel,
     GeoLensOptim,
     GeoLensSurfOps,
     GeoLensVis,

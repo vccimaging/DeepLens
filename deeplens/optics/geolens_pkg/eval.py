@@ -36,7 +36,6 @@ Functions:
     Wavefront & Aberration (placeholders):
         - wavefront_error(): Compute wavefront error
         - field_curvature(): Compute field curvature
-        - aberration_histogram(): Compute aberration histogram
 
     Chief Ray & Ray Aiming:
         - calc_chief_ray(): Compute chief ray for an incident angle
@@ -886,13 +885,6 @@ class GeoLensEval:
 
     def field_curvature(self):
         """Compute field curvature (best-focus defocus vs field angle).
-
-        Not yet implemented.
-        """
-        pass
-
-    def aberration_histogram(self):
-        """Compute aberration histogram (Seidel or Zernike decomposition).
 
         Not yet implemented.
         """
