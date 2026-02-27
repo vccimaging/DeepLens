@@ -31,10 +31,10 @@ from .geolens_pkg.eval import GeoLensEval
 from .geolens_pkg.io import GeoLensIO
 from .geolens_pkg.optim import GeoLensOptim
 from .geolens_pkg.psf_compute import GeoLensPSF
-from .geolens_pkg.seidel import GeoLensSeidel
-from .geolens_pkg.surf_ops import GeoLensSurfOps
-from .geolens_pkg.tolerance import GeoLensTolerance
-from .geolens_pkg.view_3d import GeoLensVis3D
+from .geolens_pkg.eval_seidel import GeoLensSeidel
+from .geolens_pkg.optim_ops import GeoLensSurfOps
+from .geolens_pkg.eval_tolerance import GeoLensTolerance
+from .geolens_pkg.vis3d import GeoLensVis3D
 from .geolens_pkg.vis import GeoLensVis
 from .lens import Lens
 from .geometric_surface import Aperture
@@ -68,16 +68,16 @@ class GeoLens(
       performance evaluation (spot, MTF, distortion, vignetting).
     * :class:`~deeplens.optics.geolens_pkg.optim.GeoLensOptim` – loss
       functions and gradient-based optimisation.
-    * :class:`~deeplens.optics.geolens_pkg.surf_ops.GeoLensSurfOps` –
+    * :class:`~deeplens.optics.geolens_pkg.optim_ops.GeoLensSurfOps` –
       surface geometry operations (aspheric conversion, pruning, shape
-      correction).
+      correction, material matching).
     * :class:`~deeplens.optics.geolens_pkg.vis.GeoLensVis` – 2-D layout
       and ray visualisation.
     * :class:`~deeplens.optics.geolens_pkg.io.GeoLensIO` – read/write
       JSON, Zemax ``.zmx``.
-    * :class:`~deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance` –
+    * :class:`~deeplens.optics.geolens_pkg.eval_tolerance.GeoLensTolerance` –
       manufacturing tolerance analysis.
-    * :class:`~deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D` – 3-D
+    * :class:`~deeplens.optics.geolens_pkg.vis3d.GeoLensVis3D` – 3-D
       mesh visualisation.
 
     **Key differentiability trick**: Ray-surface intersection
@@ -1581,14 +1581,4 @@ class GeoLens(
         """
         self.rfov = rfov
 
-    @torch.no_grad()
-    def match_materials(self, mat_table="CDGM"):
-        """Match lens materials to a glass catalog.
-
-        Args:
-            mat_table (str, optional): Glass catalog name. Common options include
-                'CDGM', 'SCHOTT', 'OHARA'. Defaults to 'CDGM'.
-        """
-        for surf in self.surfaces:
-            surf.mat2.match_material(mat_table=mat_table)
 

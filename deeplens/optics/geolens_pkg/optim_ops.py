@@ -651,3 +651,14 @@ class GeoLensSurfOps:
         if shape_changed:
             print("Surface shape corrected.")
         return shape_changed
+
+    @torch.no_grad()
+    def match_materials(self, mat_table="CDGM"):
+        """Match lens materials to a glass catalog.
+
+        Args:
+            mat_table (str, optional): Glass catalog name. Common options include
+                'CDGM', 'SCHOTT', 'OHARA'. Defaults to 'CDGM'.
+        """
+        for surf in self.surfaces:
+            surf.mat2.match_material(mat_table=mat_table)

@@ -34,9 +34,9 @@ Differentiable multi-element refractive lens via geometric ray tracing. This is 
 
 ::: deeplens.optics.geolens_pkg.vis.GeoLensVis
 
-::: deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance
+::: deeplens.optics.geolens_pkg.eval_tolerance.GeoLensTolerance
 
-::: deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D
+::: deeplens.optics.geolens_pkg.vis3d.GeoLensVis3D
 
 Combines a `GeoLens` with a diffractive optical element (DOE). Performs coherent ray tracing to the DOE plane, then Angular Spectrum Method (ASM) propagation to the sensor.
 
