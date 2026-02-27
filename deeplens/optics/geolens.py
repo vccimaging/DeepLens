@@ -31,6 +31,7 @@ from .geolens_pkg.eval import GeoLensEval
 from .geolens_pkg.io import GeoLensIO
 from .geolens_pkg.optim import GeoLensOptim
 from .geolens_pkg.psf_compute import GeoLensPSF
+from .geolens_pkg.surf_ops import GeoLensSurfOps
 from .geolens_pkg.tolerance import GeoLensTolerance
 from .geolens_pkg.view_3d import GeoLensVis3D
 from .geolens_pkg.vis import GeoLensVis
@@ -43,6 +44,7 @@ class GeoLens(
     GeoLensPSF,
     GeoLensEval,
     GeoLensOptim,
+    GeoLensSurfOps,
     GeoLensVis,
     GeoLensIO,
     GeoLensTolerance,
@@ -55,7 +57,7 @@ class GeoLens(
     (and partially reflective) systems loaded from JSON, Zemax ``.zmx``, or
     Code V ``.seq`` files.  Accuracy is aligned with Zemax OpticStudio.
 
-    Uses a **mixin architecture** – seven specialised mixin classes are
+    Uses a **mixin architecture** – eight specialised mixin classes are
     composed at class definition time to keep each concern isolated:
 
     * :class:`~deeplens.optics.geolens_pkg.psf_compute.GeoLensPSF` – PSF
@@ -64,6 +66,9 @@ class GeoLens(
       performance evaluation (spot, MTF, distortion, vignetting).
     * :class:`~deeplens.optics.geolens_pkg.optim.GeoLensOptim` – loss
       functions and gradient-based optimisation.
+    * :class:`~deeplens.optics.geolens_pkg.surf_ops.GeoLensSurfOps` –
+      surface geometry operations (aspheric conversion, pruning, shape
+      correction).
     * :class:`~deeplens.optics.geolens_pkg.vis.GeoLensVis` – 2-D layout
       and ray visualisation.
     * :class:`~deeplens.optics.geolens_pkg.io.GeoLensIO` – read/write
@@ -1573,271 +1578,6 @@ class GeoLens(
             rfov (float): Half-diagonal FoV in radians.
         """
         self.rfov = rfov
-
-    @torch.no_grad()
-    def prune_surf(self, expand_factor=None, mounting_margin=None):
-        """Prune surfaces to allow all valid rays to go through.
-
-        Determines the clear aperture for each surface by ray tracing, then
-        applies margins and enforces manufacturability constraints (edge
-        thickness and air-gap clearance).
-
-        Args:
-            expand_factor (float, optional): Fractional expansion applied to
-                the ray-traced clear aperture radius.  Auto-selected if None:
-                5 % for cellphone lenses (r_sensor < 10 mm), 10 % otherwise.
-            mounting_margin (float, optional): Absolute margin [mm] added to
-                the clear aperture for mechanical mounting.  When given, this
-                replaces the proportional ``expand_factor`` expansion.
-        """
-        surface_range = self.find_diff_surf()
-        num_surfs = len(self.surfaces)
-
-        # Set expansion factor
-        if self.r_sensor < 10.0:
-            expand_factor = 0.05 if expand_factor is None else expand_factor
-        else:
-            expand_factor = 0.10 if expand_factor is None else expand_factor
-
-        # ------------------------------------------------------------------
-        # 1. Temporarily remove radius limits so the trace is unclipped
-        # ------------------------------------------------------------------
-        saved_radii = [self.surfaces[i].r for i in range(num_surfs)]
-        for i in surface_range:
-            self.surfaces[i].r = self.surfaces[i].max_height()
-
-        # ------------------------------------------------------------------
-        # 2. Trace rays at full FoV to find maximum ray height per surface
-        # ------------------------------------------------------------------
-        if self.rfov is not None:
-            fov_deg = self.rfov * 180 / torch.pi
-        else:
-            fov = np.arctan(self.r_sensor / self.foclen)
-            fov_deg = float(fov) * 180 / torch.pi
-            print(f"Using fov_deg: {fov_deg} during surface pruning.")
-
-        fov_y = [f * fov_deg / 10 for f in range(0, 11)]
-        ray = self.sample_parallel(
-            fov_x=[0.0], fov_y=fov_y, num_rays=SPP_CALC, scale_pupil=1.5
-        )
-        _, ray_o_record = self.trace2sensor(ray=ray, record=True)
-
-        # Ray record, shape [num_rays, num_surfaces + 2, 3]
-        ray_o_record = torch.stack(ray_o_record, dim=-2)
-        ray_o_record = torch.nan_to_num(ray_o_record, 0.0)
-        ray_o_record = ray_o_record.reshape(-1, ray_o_record.shape[-2], 3)
-
-        # Compute the maximum ray height for each surface
-        ray_r_record = (ray_o_record[..., :2] ** 2).sum(-1).sqrt()
-        surf_r_max = ray_r_record.max(dim=0)[0][1:-1]
-
-        # Restore original radii before updating
-        for i in range(num_surfs):
-            self.surfaces[i].r = saved_radii[i]
-
-        # ------------------------------------------------------------------
-        # 3. Set new surface radii = ray-traced clear aperture + margin
-        # ------------------------------------------------------------------
-        for i in surface_range:
-            if surf_r_max[i] > 0:
-                r_clear = surf_r_max[i].item()
-                if mounting_margin is not None:
-                    r_new = r_clear + mounting_margin
-                else:
-                    r_expand = r_clear * expand_factor
-                    r_expand = max(min(r_expand, 2.0), 0.1)
-                    r_new = r_clear + r_expand
-                self.surfaces[i].update_r(r_new)
-            else:
-                print(f"No valid rays for Surf {i}, expand existing radius.")
-                if mounting_margin is not None:
-                    self.surfaces[i].update_r(self.surfaces[i].r + mounting_margin)
-                else:
-                    r_expand = self.surfaces[i].r * expand_factor
-                    r_expand = max(min(r_expand, 2.0), 0.1)
-                    self.surfaces[i].update_r(self.surfaces[i].r + r_expand)
-
-        # ------------------------------------------------------------------
-        # 4. Edge thickness enforcement
-        #    For each glass element (pair of surfaces bounding glass), ensure
-        #    the edge thickness at the pruned radius is at least the minimum.
-        #    If violated, shrink the clear aperture of both surfaces.
-        # ------------------------------------------------------------------
-        if self.r_sensor < 10.0:
-            et_min = 0.25  # mm, cellphone lens
-        else:
-            et_min = 1.0  # mm, camera lens
-
-        for i in range(num_surfs - 1):
-            # Glass element: surface i has a non-air material on its back side
-            if self.surfaces[i].mat2.name == "air":
-                continue
-            if isinstance(self.surfaces[i], Aperture):
-                continue
-
-            front = self.surfaces[i]
-            back = self.surfaces[i + 1]
-            r_check = min(front.r, back.r)
-
-            if r_check <= 0:
-                continue
-
-            r_t = torch.tensor(r_check, device=self.device)
-            z_front = front.surface_with_offset(r_t, 0.0, valid_check=False).item()
-            z_back = back.surface_with_offset(r_t, 0.0, valid_check=False).item()
-            edge_thickness = z_back - z_front
-
-            if edge_thickness < et_min:
-                # Shrink radius until edge thickness is met (binary search)
-                r_lo, r_hi = 0.0, r_check
-                for _ in range(20):
-                    r_mid = (r_lo + r_hi) / 2
-                    r_t = torch.tensor(r_mid, device=self.device)
-                    z_f = front.surface_with_offset(r_t, 0.0, valid_check=False).item()
-                    z_b = back.surface_with_offset(r_t, 0.0, valid_check=False).item()
-                    if (z_b - z_f) >= et_min:
-                        r_lo = r_mid
-                    else:
-                        r_hi = r_mid
-
-                r_safe = r_lo
-                if r_safe > 0 and r_safe < r_check:
-                    print(
-                        f"Surf {i}-{i+1}: edge thickness {edge_thickness:.3f} mm "
-                        f"< {et_min} mm, shrinking radius {r_check:.3f} -> {r_safe:.3f} mm."
-                    )
-                    if front.r > r_safe:
-                        front.update_r(r_safe)
-                    if back.r > r_safe:
-                        back.update_r(r_safe)
-
-        # ------------------------------------------------------------------
-        # 5. Air gap clearance check
-        #    For each air gap (surface i with mat2 = "air"), ensure that
-        #    surfaces do not physically intersect at the clear aperture edge.
-        # ------------------------------------------------------------------
-        if self.r_sensor < 10.0:
-            air_gap_min = 0.05  # mm
-        else:
-            air_gap_min = 0.1  # mm
-
-        for i in range(num_surfs - 1):
-            if self.surfaces[i].mat2.name != "air":
-                continue
-            if isinstance(self.surfaces[i], Aperture):
-                continue
-
-            curr = self.surfaces[i]
-            nxt = self.surfaces[i + 1]
-            r_check = min(curr.r, nxt.r)
-
-            if r_check <= 0:
-                continue
-
-            # Check gap at multiple radial points along the edge
-            r_pts = torch.linspace(0.5 * r_check, r_check, 8, device=self.device)
-            z_curr = curr.surface_with_offset(r_pts, 0.0, valid_check=False)
-            z_nxt = nxt.surface_with_offset(r_pts, 0.0, valid_check=False)
-            min_gap = (z_nxt - z_curr).min().item()
-
-            if min_gap < air_gap_min:
-                # Shrink radius until air gap is met (binary search)
-                r_lo, r_hi = 0.0, r_check
-                for _ in range(20):
-                    r_mid = (r_lo + r_hi) / 2
-                    r_pts = torch.linspace(0.5 * r_mid, r_mid, 8, device=self.device)
-                    z_c = curr.surface_with_offset(r_pts, 0.0, valid_check=False)
-                    z_n = nxt.surface_with_offset(r_pts, 0.0, valid_check=False)
-                    if (z_n - z_c).min().item() >= air_gap_min:
-                        r_lo = r_mid
-                    else:
-                        r_hi = r_mid
-
-                r_safe = r_lo
-                if r_safe > 0 and r_safe < r_check:
-                    print(
-                        f"Surf {i}-{i+1}: air gap {min_gap:.3f} mm "
-                        f"< {air_gap_min} mm, shrinking radius {r_check:.3f} -> {r_safe:.3f} mm."
-                    )
-                    if curr.r > r_safe:
-                        curr.update_r(r_safe)
-                    if nxt.r > r_safe:
-                        nxt.update_r(r_safe)
-
-        # ------------------------------------------------------------------
-        # 6. Validate aperture radius consistency
-        #    The aperture (stop) radius should not exceed the clear aperture
-        #    of its neighboring surfaces.
-        # ------------------------------------------------------------------
-        if self.aper_idx is not None:
-            aper = self.surfaces[self.aper_idx]
-            # Find neighboring non-aperture surfaces
-            neighbor_r = []
-            if self.aper_idx > 0:
-                neighbor_r.append(self.surfaces[self.aper_idx - 1].r)
-            if self.aper_idx < num_surfs - 1:
-                neighbor_r.append(self.surfaces[self.aper_idx + 1].r)
-
-            if neighbor_r:
-                max_aper_r = min(neighbor_r)
-                if aper.r > max_aper_r:
-                    print(
-                        f"Aperture radius {aper.r:.3f} mm exceeds neighbor "
-                        f"clear aperture {max_aper_r:.3f} mm, clamping."
-                    )
-                    aper.r = max_aper_r
-
-    @torch.no_grad()
-    def correct_shape(self, expand_factor=None, mounting_margin=None):
-        """Correct wrong lens shape during lens design optimization.
-
-        Applies correction rules to ensure valid lens geometry:
-            1. Move the first surface to z = 0.0
-            2. Fix aperture distance if aperture is at the front
-            3. Prune all surfaces to allow valid rays through
-
-        Args:
-            expand_factor (float, optional): Height expansion factor for surface pruning.
-                If None, auto-selects based on lens type. Defaults to None.
-            mounting_margin (float, optional): Absolute mounting margin [mm] for
-                surface pruning.  Passed through to :meth:`prune_surf`.
-
-        Returns:
-            bool: True if any shape corrections were made, False otherwise.
-        """
-        aper_idx = self.aper_idx
-        optim_surf_range = self.find_diff_surf()
-        shape_changed = False
-
-        # Rule 1: Move the first surface to z = 0.0
-        move_dist = self.surfaces[0].d.item()
-        for surf in self.surfaces:
-            surf.d -= move_dist
-        self.d_sensor -= move_dist
-
-        # Rule 2: Fix aperture distance to the first surface if aperture in the front.
-        if aper_idx == 0:
-            d_aper = 0.05
-
-            # If the first surface is concave, use the maximum negative sag.
-            aper_r = torch.tensor(self.surfaces[aper_idx].r, device=self.device)
-            sag1 = -self.surfaces[aper_idx + 1].sag(aper_r, 0).item()
-
-            if sag1 > 0:
-                d_aper += sag1
-
-            # Update position of all surfaces.
-            delta_aper = self.surfaces[1].d.item() - d_aper
-            for i in optim_surf_range:
-                self.surfaces[i].d -= delta_aper
-            self.d_sensor -= delta_aper
-
-        # Rule 4: Prune all surfaces
-        self.prune_surf(expand_factor=expand_factor, mounting_margin=mounting_margin)
-
-        if shape_changed:
-            print("Surface shape corrected.")
-        return shape_changed
 
     @torch.no_grad()
     def match_materials(self, mat_table="CDGM"):
