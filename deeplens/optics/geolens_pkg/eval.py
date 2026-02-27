@@ -369,24 +369,24 @@ class GeoLensEval:
             plane: Meridional or sagittal. Defaults to meridional.
             ray_aiming: Whether to use ray aiming. Defaults to True.
         """
-        # Sample view angles starting from a small positive angle to avoid
-        # numerical instability at near-zero FOV (distortion is 0 by definition
-        # at FOV=0). Prepend 0 explicitly.
-        min_fov = max(0.5, rfov / (num_points - 1))  # at least 0.5 degrees
-        min_fov = min(min_fov, rfov * 0.25)  # don't skip more than 25% of range
-        rfov_inner = torch.linspace(min_fov, rfov, num_points - 1)
-        rfov_samples = torch.cat([torch.zeros(1), rfov_inner])
+        # Sample view angles uniformly from 0 to rfov.
+        # For the on-axis point (FOV=0), distortion is 0/0. We compute it at a
+        # tiny positive angle to obtain the correct limit, which may be non-zero
+        # when the sensor is not at the paraxial focus.
+        rfov_samples = torch.linspace(0, rfov, num_points)
+        rfov_compute = rfov_samples.clone()
+        if rfov_compute[0] == 0:
+            rfov_compute[0] = min(0.01, rfov_samples[1].item() * 0.01)
 
-        # Calculate distortion (skip the zero-angle point, set it to 0)
-        distortions_inner = self.calc_distortion_2D(
-            rfov=rfov_inner,
-            wvln=wvln,
-            plane=plane,
-            ray_aiming=ray_aiming,
+        # Calculate distortion at all field angles
+        distortions = np.asarray(
+            self.calc_distortion_2D(
+                rfov=rfov_compute,
+                wvln=wvln,
+                plane=plane,
+                ray_aiming=ray_aiming,
+            )
         )
-
-        # Prepend 0 distortion for the on-axis point
-        distortions = np.concatenate([[0.0], np.asarray(distortions_inner)])
 
         # Handle possible NaN values and convert to percentage
         values = np.nan_to_num(distortions * 100, nan=0.0).tolist()
