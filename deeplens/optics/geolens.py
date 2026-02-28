@@ -937,7 +937,7 @@ class GeoLens(
             img_unwarpped (tensor): Unwarped image tensor. Shape of [N, C, H, W].
         """
         # Calculate distortion map, shape (num_grid, num_grid, 2)
-        distortion_map = self.distortion_map(depth=depth, num_grid=num_grid)
+        distortion_map = self.calc_distortion_map(depth=depth, num_grid=num_grid)
 
         # Interpolate distortion map to image resolution
         distortion_map = distortion_map.permute(2, 0, 1).unsqueeze(1)

@@ -500,8 +500,8 @@ class TestGeoLensDistortion:
     def test_geolens_distortion_map(self, sample_cellphone_lens):
         """Should compute distortion map."""
         lens = sample_cellphone_lens
-        
-        distortion_map = lens.distortion_map(num_grid=(5, 5), depth=DEPTH)
+
+        distortion_map = lens.calc_distortion_map(num_grid=(5, 5), depth=DEPTH)
         
         assert distortion_map.shape == (5, 5, 2)
         # Distortion values should be normalized to approximately [-1, 1]
