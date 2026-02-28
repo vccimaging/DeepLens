@@ -25,7 +25,7 @@ import math
 
 import torch
 
-from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Cubic, Plane, Spheric, ThinLens
+from ..geometric_surface import Aperture, Aspheric, Cubic, Plane, Spheric, ThinLens
 from ..phase_surface import Phase
 
 

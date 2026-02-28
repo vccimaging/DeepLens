@@ -17,7 +17,6 @@ The following surfaces are available, all inheriting from the `Surface` base cla
 
 -   `Surface`: The basic surface.
     -   `Aspheric`: An aspheric surface, defined by a polynomial expansion.
-    -   `AsphericNorm`: An aspheric surface with normalized polynomial parameters.
     -   `Cubic`: A surface with a cubic shape.
     -   `QTypeFreeform`: A Q-type (Forbes Qbfs polynomial) freeform surface, using orthogonal polynomials for optimal representation of rotationally symmetric departures.
     -   `Spheric`: A spherical surface, a common element in lenses.

@@ -45,7 +45,7 @@ from ..config import (
     SPP_PSF,
     WAVE_RGB,
 )
-from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Plane, Spheric, ThinLens
+from ..geometric_surface import Aperture, Aspheric, Plane, Spheric, ThinLens
 from ..phase_surface import Phase
 
 
@@ -746,11 +746,6 @@ class GeoLensOptim:
                 params += surf.get_optimizer_params(lrs=[lrs[0]])
 
             elif isinstance(surf, Aspheric):
-                params += surf.get_optimizer_params(
-                    lrs=lrs[:4], optim_mat=optim_mat
-                )
-
-            elif isinstance(surf, AsphericNorm):
                 params += surf.get_optimizer_params(
                     lrs=lrs[:4], optim_mat=optim_mat
                 )

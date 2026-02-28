@@ -3,7 +3,7 @@
 ## Architecture
 
 - **Core optics**: `deeplens/optics/` — GeoLens, surfaces, optimization
-- **Surface types**: `geometric_surface/` — `Aspheric`, `AsphericNorm`, `Spheric`, `Aperture`, etc.
+- **Surface types**: `geometric_surface/` — `Aspheric`, `Spheric`, `Aperture`, etc.
 - **Optimization**: `geolens_pkg/optim.py` (losses, optimizer), `optim_ops.py` (correct_shape, prune_surf)
 
 ## Known Issues & Fixes
@@ -18,17 +18,13 @@ Additionally, `prune_surf` (called inside `correct_shape`) oscillates surface se
 
 **Fix** (`aspheric.py:get_optimizer_params`): Scale each aspheric coefficient's learning rate by `1 / max(r, 1)^{2n}`, so the lr-weighted gradient product is constant (`lr_base`) regardless of surface size. This decouples Adam's moment estimates from geometry changes during `prune_surf`. The `decay` parameter is NOT applied on top of `1/r^{2n}` — the r-scaling already normalizes across orders, so every order contributes equally to sag evolution (~lr_base mm/step). Applying both would double-suppress higher orders, freezing ai6/ai8/ai10.
 
-**Contrast with `AsphericNorm`**: The `AsphericNorm` class solves this at the representation level — it stores `norm_ai4 = ai4 * r^4` and computes sag as `norm_ai4 * (r/norm_r)^4`, giving O(1) gradients naturally. It also uses constant lr for all orders (no decay). The `Aspheric` lr-normalization fix achieves the same effect without changing the parameter representation.
-
 **Key files**:
 - `deeplens/optics/geometric_surface/aspheric.py` — lr scaling fix
-- `deeplens/optics/geometric_surface/aspheric_norm.py` — reference normalized implementation
 - `deeplens/optics/geolens_pkg/optim.py` — main optimization loop
 - `deeplens/optics/geolens_pkg/optim_ops.py` — `correct_shape`, `prune_surf`
 
 ## Optimization Tips
 
-- For camera lenses (r > 10mm), aspheric gradient magnitudes scale as r^{2n}. Always use lr normalization or `AsphericNorm`.
-- For cellphone lenses (r < 5mm), raw `Aspheric` coefficients are manageable but `AsphericNorm` is still preferred.
+- For camera lenses (r > 10mm), aspheric gradient magnitudes scale as r^{2n}. Always use lr normalization.
 - `prune_surf` changes surface radii at each eval step — optimizer state (Adam moments) may become stale after radius changes.
 - The `loss_intersec` in `loss_reg` penalizes surface self-intersection but with default weight 0.05, it may not prevent fast-growing geometry errors.

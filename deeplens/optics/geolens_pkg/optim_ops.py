@@ -18,7 +18,7 @@ import numpy as np
 import torch
 
 from ..config import SPP_CALC
-from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Spheric
+from ..geometric_surface import Aperture, Aspheric, Spheric
 
 
 class GeoLensSurfOps:
@@ -167,7 +167,7 @@ class GeoLensSurfOps:
 
         # Count existing aspheric surfaces
         num_existing = sum(
-            1 for s in self.surfaces if isinstance(s, (Aspheric, AsphericNorm))
+            1 for s in self.surfaces if isinstance(s, Aspheric)
         )
 
         if num_existing == 0:
@@ -296,7 +296,7 @@ class GeoLensSurfOps:
             surf_idx = self._find_best_order_increase_candidate()
 
         surf = self.surfaces[surf_idx]
-        if not isinstance(surf, (Aspheric, AsphericNorm)):
+        if not isinstance(surf, Aspheric):
             raise ValueError(
                 f"Surface {surf_idx} is {type(surf).__name__}, expected Aspheric."
             )
@@ -330,7 +330,7 @@ class GeoLensSurfOps:
         """
         candidates = []
         for i, surf in enumerate(self.surfaces):
-            if not isinstance(surf, (Aspheric, AsphericNorm)):
+            if not isinstance(surf, Aspheric):
                 continue
 
             # Compute Δn at this interface using mat2.n from surface objects
@@ -366,7 +366,7 @@ class GeoLensSurfOps:
         term (a4): ``[a4, a6, a8, ...]``.
 
         Args:
-            surf (Aspheric or AsphericNorm): Surface to modify.
+            surf (Aspheric): Surface to modify.
             increment (int): Number of additional coefficients.
         """
         old_degree = surf.ai_degree

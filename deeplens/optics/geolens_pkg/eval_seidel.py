@@ -22,13 +22,13 @@ import numpy as np
 import torch
 
 from ..config import WVLN_C, WVLN_F, WVLN_d
-from ..geometric_surface import Aperture, Aspheric, AsphericNorm
+from ..geometric_surface import Aperture, Aspheric
 from ..material import Material
 
 logger = logging.getLogger(__name__)
 
 # Aspheric surface types (both have c, k, ai attributes)
-_ASPHERIC_TYPES = (Aspheric, AsphericNorm)
+_ASPHERIC_TYPES = (Aspheric,)
 
 
 def _get_c(surf) -> float:

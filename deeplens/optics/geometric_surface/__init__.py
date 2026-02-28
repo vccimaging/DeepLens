@@ -2,7 +2,6 @@ from .base import Surface
 
 from .aperture import Aperture
 from .aspheric import Aspheric
-from .aspheric_norm import AsphericNorm
 from .cubic import Cubic
 from .mirror import Mirror
 from .plane import Plane
@@ -16,7 +15,6 @@ __all__ = [
     "Surface",
     "Aperture",
     "Aspheric",
-    "AsphericNorm",
     "Cubic",
     "Mirror",
     "Plane",

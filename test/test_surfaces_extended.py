@@ -1,13 +1,12 @@
 """Tests for geometric surfaces not covered in test_surfaces.py.
 
-Covers: AsphericNorm, Cubic, Mirror, ThinLens, QTypeFreeform, Spiral.
+Covers: Cubic, Mirror, ThinLens, QTypeFreeform, Spiral.
 """
 
 import pytest
 import torch
 
 from deeplens.optics.geometric_surface import (
-    AsphericNorm,
     Cubic,
     Mirror,
     QTypeFreeform,
@@ -15,53 +14,6 @@ from deeplens.optics.geometric_surface import (
     ThinLens,
 )
 from deeplens.optics.light import Ray
-
-
-class TestAsphericNorm:
-    """Tests for AsphericNorm surface."""
-
-    def test_init(self):
-        """AsphericNorm can be initialized."""
-        s = AsphericNorm(r=5.0, d=0.0, c=0.1, k=-1.0, ai=[0.0, 0.0, 0.0], mat2="bk7")
-        assert s.r == 5.0
-        assert s.ai_degree == 3
-
-    def test_sag_center_zero(self):
-        """Sag at center should be zero."""
-        s = AsphericNorm(r=5.0, d=0.0, c=0.1, k=0.0, ai=[0.0], mat2="bk7")
-        x = torch.tensor(0.0)
-        y = torch.tensor(0.0)
-        z = s.sag(x, y)
-        assert z.abs().item() < 1e-6
-
-    def test_reduces_to_spheric(self):
-        """With ai=0 and k=0, should match spheric sag."""
-        c = 0.05
-        s = AsphericNorm(r=5.0, d=0.0, c=c, k=0.0, ai=[0.0, 0.0], mat2="bk7")
-        x = torch.tensor(1.0)
-        y = torch.tensor(0.0)
-        sag = s.sag(x, y)
-        # Spheric sag: c*r^2 / (1 + sqrt(1 - c^2*r^2))
-        r2 = 1.0
-        expected = c * r2 / (1 + (1 - c**2 * r2) ** 0.5)
-        assert sag.item() == pytest.approx(expected, abs=1e-4)
-
-    def test_surf_dict_roundtrip(self):
-        """surf_dict returns dict that can reconstruct the surface."""
-        s = AsphericNorm(r=5.0, d=1.0, c=0.1, k=-0.5, ai=[1e-4, 2e-6], mat2="bk7")
-        d = s.surf_dict()
-        assert d["type"] == "Aspheric"
-        assert "ai" in d
-        assert len(d["ai"]) == 2
-
-    def test_optimizer_params(self):
-        """get_optimizer_params returns parameter groups."""
-        s = AsphericNorm(r=5.0, d=0.0, c=0.1, k=0.0, ai=[1e-4, 2e-6], mat2="bk7")
-        params = s.get_optimizer_params()
-        assert len(params) > 0
-        for p in params:
-            assert "params" in p
-            assert "lr" in p
 
 
 class TestCubic:

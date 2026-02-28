@@ -25,7 +25,7 @@ import yaml
 from tqdm import tqdm
 
 from deeplens.optics import GeoLens
-from deeplens.optics.geometric_surface import Aspheric, AsphericNorm
+from deeplens.optics.geometric_surface import Aspheric
 from deeplens.optics.geolens_pkg.utils import create_lens
 from deeplens.optics.config import DEPTH, EPSILON, WAVE_RGB
 from deeplens.utils import create_video_from_images, set_logger, set_seed
@@ -211,7 +211,7 @@ def curriculum_aspheric_design(
 
                 elif stage_names[next_stage] == "Order increase":
                     has_asphere = any(
-                        isinstance(s, (Aspheric, AsphericNorm))
+                        isinstance(s, Aspheric)
                         for s in self.surfaces
                     )
                     if has_asphere:
@@ -361,7 +361,7 @@ if __name__ == "__main__":
     for elem in args["surf_list"]:
         if isinstance(elem, list):
             spherical_surf_list.append(
-                ["Spheric" if s in ("Aspheric", "AsphericNorm") else s for s in elem]
+                ["Spheric" if s == "Aspheric" else s for s in elem]
             )
         else:
             spherical_surf_list.append(elem)
