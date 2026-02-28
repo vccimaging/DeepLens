@@ -1562,6 +1562,7 @@ class GeoLens(
             self.rfov = rfov
 
         self.foclen = self.r_sensor / math.tan(self.rfov)
+        self.eqfl = 21.63 / math.tan(self.rfov)
         self.fnum = fnum
         aper_r = self.foclen / fnum / 2
         self.surfaces[self.aper_idx].update_r(float(aper_r))
@@ -1580,5 +1581,6 @@ class GeoLens(
             rfov (float): Half-diagonal FoV in radians.
         """
         self.rfov = rfov
+        self.eqfl = 21.63 / math.tan(self.rfov)
 
 
