@@ -15,9 +15,10 @@ class TestRMSMap:
     def test_rms_map_shape(self, sample_singlet_lens):
         """rms_map returns a grid of positive RMS values."""
         lens = sample_singlet_lens
-        rms = lens.rms_map(num_grid=(3, 3))
+        rms, centroid = lens.rms_map(num_grid=(3, 3))
         assert rms.shape == (3, 3)
         assert (rms >= 0).all()
+        assert centroid.shape == (3, 3, 2)
 
     def test_rms_map_rgb_shape(self, sample_singlet_lens):
         """rms_map_rgb returns [3, grid_h, grid_w] with 3 RGB channels."""

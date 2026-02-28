@@ -317,6 +317,64 @@ class GeoLensEval:
     # RMS map
     # ================================================================
     @torch.no_grad()
+    def rms_map(self, num_grid=32, depth=DEPTH, wvln=DEFAULT_WAVE, center=None):
+        """Compute per-field-position RMS spot radius for a single wavelength.
+
+        Traces ``SPP_PSF`` rays per grid cell and computes the root-mean-square
+        distance of valid ray hits from a reference centroid.  When ``center``
+        is ``None``, each cell uses its own centroid (monochromatic blur).
+        When an external ``center`` is provided (e.g. the green-channel
+        centroid), the RMS includes the chromatic shift from that reference.
+
+        Algorithm:
+            1. ``self.sample_grid_rays()`` → ``[num_grid, num_grid, SPP_PSF, 3]``.
+            2. ``self.trace2sensor()`` to get sensor-plane positions.
+            3. If ``center`` is ``None``, compute per-cell centroid
+               ``c = mean(valid ray_xy)``; otherwise use the provided ``center``.
+            4. ``RMS = sqrt( mean( ||ray_xy - c||^2 ) )``.
+
+        Args:
+            num_grid (int): Spatial resolution of the field sampling grid.
+                Defaults to 32.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            center (torch.Tensor | None): External reference centroid with shape
+                ``[num_grid, num_grid, 2]``.  If ``None``, each cell's own
+                centroid is used. Defaults to ``None``.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]:
+                - **rms**: RMS spot error map, shape ``[num_grid, num_grid]``,
+                  in mm.
+                - **centroid**: Per-cell centroid used as reference, shape
+                  ``[num_grid, num_grid, 2]``.  Useful for passing as
+                  ``center`` to subsequent calls (e.g. in ``rms_map_rgb``).
+        """
+        # Sample and trace rays, shape [num_grid, num_grid, spp, 3]
+        ray = self.sample_grid_rays(
+            depth=depth, num_grid=num_grid, num_rays=SPP_PSF, wvln=wvln
+        )
+        ray = self.trace2sensor(ray)
+        ray_xy = ray.o[..., :2]  # [num_grid, num_grid, spp, 2]
+        ray_valid = ray.is_valid  # [num_grid, num_grid, spp]
+
+        # Compute centroid for this wavelength, shape [num_grid, num_grid, 2]
+        centroid = (ray_xy * ray_valid.unsqueeze(-1)).sum(-2) / ray_valid.sum(
+            -1
+        ).add(EPSILON).unsqueeze(-1)
+
+        # Use external center if provided, otherwise own centroid
+        ref = center if center is not None else centroid
+
+        # RMS relative to reference, shape [num_grid, num_grid]
+        rms = torch.sqrt(
+            (((ray_xy - ref.unsqueeze(-2)) ** 2).sum(-1) * ray_valid).sum(-1)
+            / (ray_valid.sum(-1) + EPSILON)
+        )
+
+        return rms, centroid
+
+    @torch.no_grad()
     def rms_map_rgb(self, num_grid=32, depth=DEPTH):
         """Compute per-field-position RMS spot radius for R, G, B wavelengths.
 
@@ -331,12 +389,12 @@ class GeoLensEval:
         as a polychromatic image-quality metric.
 
         Algorithm:
-            1. Iterate wavelengths in the order **G → R → B**.
-            2. For green: compute the weighted centroid ``c_G`` per grid cell.
-            3. For each wavelength w:
-               ``RMS_w = sqrt( mean( ||ray_xy - c_G||^2 ) )``
-               where the mean is taken over valid rays only.
-            4. Stack the three maps as ``[R, G, B]``.
+            1. Call ``rms_map(wvln=green)`` to get the green RMS map **and**
+               the green centroid.
+            2. Call ``rms_map(wvln=red, center=green_centroid)`` and
+               ``rms_map(wvln=blue, center=green_centroid)`` to measure R/B
+               blur relative to the green reference.
+            3. Stack as ``[R, G, B]``.
 
         Args:
             num_grid (int): Spatial resolution of the field sampling grid.
@@ -348,92 +406,20 @@ class GeoLensEval:
                 (channels ordered R, G, B). Units are mm (same as sensor
                 coordinates).
         """
-        all_rms_maps = []
-
-        # Iterate G, R, B
-        for i, wvln in enumerate([WAVE_RGB[1], WAVE_RGB[0], WAVE_RGB[2]]):
-            # Sample and trace rays, shape [num_grid, num_grid, spp, 3]
-            ray = self.sample_grid_rays(
-                depth=depth, num_grid=num_grid, num_rays=SPP_PSF, wvln=wvln
-            )
-
-            ray = self.trace2sensor(ray)
-            ray_xy = ray.o[..., :2]
-            ray_valid = ray.is_valid
-
-            # Calculate green centroid as reference, shape [num_grid, num_grid, 2]
-            if i == 0:
-                ray_xy_center_green = (ray_xy * ray_valid.unsqueeze(-1)).sum(
-                    -2
-                ) / ray_valid.sum(-1).add(EPSILON).unsqueeze(-1)
-
-            # Calculate RMS relative to green centroid, shape [num_grid, num_grid]
-            rms_map = torch.sqrt(
-                (
-                    ((ray_xy - ray_xy_center_green.unsqueeze(-2)) ** 2).sum(-1)
-                    * ray_valid
-                ).sum(-1)
-                / (ray_valid.sum(-1) + EPSILON)
-            )
-            all_rms_maps.append(rms_map)
-
-        # Stack the RMS maps for R, G, B channels, shape [3, num_grid, num_grid]
-        rms_map_rgb = torch.stack(
-            [all_rms_maps[1], all_rms_maps[0], all_rms_maps[2]], dim=0
+        # Green first to obtain the shared reference centroid
+        rms_g, green_centroid = self.rms_map(
+            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[1]
         )
 
-        return rms_map_rgb
-
-    @torch.no_grad()
-    def rms_map(self, num_grid=32, depth=DEPTH, wvln=DEFAULT_WAVE):
-        """Compute per-field-position RMS spot radius for a single wavelength.
-
-        Unlike ``rms_map_rgb``, each field position uses its **own** centroid as
-        reference, so the result is purely monochromatic blur (no chromatic
-        shift component).  This makes the map suitable as a spatially-varying
-        weight mask during lens optimization — regions with larger RMS can be
-        penalized more heavily.
-
-        Algorithm:
-            1. ``self.sample_grid_rays()`` → ``[num_grid, num_grid, SPP_PSF, 3]``.
-            2. ``self.trace2sensor()`` to get sensor-plane positions.
-            3. Per-cell centroid ``c = mean(valid ray_xy)``.
-            4. ``RMS = sqrt( mean( ||ray_xy - c||^2 ) )``.
-
-        Args:
-            num_grid (int): Spatial resolution of the field sampling grid.
-                Defaults to 32.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
-
-        Returns:
-            torch.Tensor: RMS spot error map with shape ``[num_grid, num_grid]``.
-                Units are mm.
-
-        Note:
-            Currently unused in the optimization loop but available as a utility.
-        """
-        # Sample and trace rays, shape [num_grid, num_grid, spp, 3]
-        ray = self.sample_grid_rays(
-            depth=depth, num_grid=num_grid, num_rays=SPP_PSF, wvln=wvln
+        # Red and blue relative to the green centroid
+        rms_r, _ = self.rms_map(
+            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[0], center=green_centroid
         )
-        ray = self.trace2sensor(ray)
-        ray_xy = ray.o[..., :2]  # Shape [num_grid, num_grid, spp, 2]
-        ray_valid = ray.is_valid  # Shape [num_grid, num_grid, spp]
-
-        # Calculate centroid for each field point for this wavelength
-        ray_xy_center = (ray_xy * ray_valid.unsqueeze(-1)).sum(-2) / ray_valid.sum(
-            -1
-        ).add(EPSILON).unsqueeze(-1)
-        # Shape [num_grid, num_grid, 2]
-
-        # Calculate RMS error relative to its own centroid, shape [num_grid, num_grid]
-        rms_map = torch.sqrt(
-            (((ray_xy - ray_xy_center.unsqueeze(-2)) ** 2).sum(-1) * ray_valid).sum(-1)
-            / (ray_valid.sum(-1) + EPSILON)
+        rms_b, _ = self.rms_map(
+            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[2], center=green_centroid
         )
 
-        return rms_map
+        return torch.stack([rms_r, rms_g, rms_b], dim=0)
 
     # ================================================================
     # Distortion
