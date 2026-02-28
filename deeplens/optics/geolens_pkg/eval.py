@@ -153,12 +153,11 @@ class GeoLensEval:
     # ================================================================
     @torch.no_grad()
     def spot_points(self, points, num_rays=SPP_PSF, wvln=DEFAULT_WAVE):
-        """Trace rays from object points to sensor and return hit positions.
+        """Trace rays from object points to sensor and return the traced Ray.
 
         Samples rays from each physical object point toward the entrance pupil,
         traces through all lens surfaces (refraction + clipping), and returns
-        the transverse (x, y) positions on the sensor plane together with a
-        per-ray validity mask.
+        the resulting Ray object on the sensor plane.
 
         This is the shared computational core for spot diagrams
         (``draw_spot_radial``, ``draw_spot_map``) and RMS error maps
@@ -170,8 +169,6 @@ class GeoLensEval:
                pupil.
             2. ``self.trace2sensor()`` propagates through all surfaces and
                clips vignetted rays.
-            3. The transverse (x, y) sensor positions and per-ray validity are
-               returned.
 
         Args:
             points (torch.Tensor): Physical 3D object-space coordinates with
@@ -188,15 +185,14 @@ class GeoLensEval:
                 Defaults to ``DEFAULT_WAVE``.
 
         Returns:
-            tuple[torch.Tensor, torch.Tensor]:
-                - **ray_xy**: Sensor-plane (x, y) positions, shape
-                  ``[..., num_rays, 2]``.
-                - **ray_valid**: Boolean validity mask, shape
-                  ``[..., num_rays]``.
+            Ray: Traced ray on the sensor plane, with shape
+                ``[..., num_rays, 3]`` for positions and ``[..., num_rays]``
+                for validity mask. Use ``ray.o[..., :2]`` for transverse
+                positions and ``ray.is_valid`` for the validity mask.
+                ``ray.centroid()`` gives the weighted centroid.
         """
         ray = self.sample_from_points(points=points, num_rays=num_rays, wvln=wvln)
-        ray = self.trace2sensor(ray)
-        return ray.o[..., :2], ray.is_valid
+        return self.trace2sensor(ray)
 
     @torch.no_grad()
     def draw_spot_radial(
@@ -257,9 +253,9 @@ class GeoLensEval:
 
         # Trace and draw each wavelength separately, overlaying results
         for wvln_idx, wvln in enumerate(wvln_list):
-            ray_xy, ray_valid = self.spot_points(points, num_rays=num_rays, wvln=wvln)
-            ray_o = ray_xy.cpu().numpy()
-            ray_valid_np = ray_valid.cpu().numpy()
+            ray = self.spot_points(points, num_rays=num_rays, wvln=wvln)
+            ray_o = ray.o[..., :2].cpu().numpy()
+            ray_valid_np = ray.is_valid.cpu().numpy()
 
             color = RGB_COLORS[wvln_idx % len(RGB_COLORS)]
 
@@ -337,11 +333,11 @@ class GeoLensEval:
 
         # Loop wavelengths and overlay scatters
         for wvln_idx, wvln in enumerate(wvln_list):
-            ray_xy, ray_valid = self.spot_points(points, num_rays=num_rays, wvln=wvln)
+            ray = self.spot_points(points, num_rays=num_rays, wvln=wvln)
 
             # Convert to numpy, shape [grid_h, grid_w, num_rays, 2]
-            ray_o = -ray_xy.cpu().numpy()
-            ray_valid_np = ray_valid.cpu().numpy()
+            ray_o = -ray.o[..., :2].cpu().numpy()
+            ray_valid_np = ray.is_valid.cpu().numpy()
 
             color = RGB_COLORS[wvln_idx % len(RGB_COLORS)]
 
@@ -411,17 +407,17 @@ class GeoLensEval:
 
         # Generate physical grid points and trace rays to sensor
         points = self.point_source_grid(depth=depth, grid=num_grid, normalized=False)
-        ray_xy, ray_valid = self.spot_points(points, num_rays=SPP_PSF, wvln=wvln)
+        ray = self.spot_points(points, num_rays=SPP_PSF, wvln=wvln)
 
-        # Compute centroid, shape [grid_h, grid_w, 2]
-        centroid = (ray_xy * ray_valid.unsqueeze(-1)).sum(-2) / ray_valid.sum(
-            -1
-        ).add(EPSILON).unsqueeze(-1)
+        # Reuse Ray.centroid() — shape [grid_h, grid_w, 3], slice to [grid_h, grid_w, 2]
+        centroid = ray.centroid()[..., :2]
 
         # Use external center if provided, otherwise own centroid
         ref = center if center is not None else centroid
 
         # RMS relative to reference, shape [grid_h, grid_w]
+        ray_xy = ray.o[..., :2]
+        ray_valid = ray.is_valid
         rms = torch.sqrt(
             (((ray_xy - ref.unsqueeze(-2)) ** 2).sum(-1) * ray_valid).sum(-1)
             / (ray_valid.sum(-1) + EPSILON)
