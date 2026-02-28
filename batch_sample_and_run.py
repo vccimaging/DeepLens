@@ -326,7 +326,7 @@ def run_experiment(cfg: Dict[str, Any], curriculum_iters: int, finetune_iters: i
         foclen=cfg["foclen"],
         fov=cfg["fov"],
         fnum=cfg["fnum"],
-        flange=cfg["flange"],
+        bfl=cfg["flange"],
         thickness=cfg["thickness"],
         surf_list=cfg["surf_list"],
         save_dir=result_dir,

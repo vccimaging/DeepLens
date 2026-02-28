@@ -92,14 +92,14 @@ class GeoLensOptim:
             self.air_min_center = 0.05
             self.thick_min_edge = 0.25
             self.thick_min_center = 0.4
-            self.flange_min = 0.8
+            self.bfl_min = 0.8
 
             # Air gap and thickness upper bounds
             self.air_max_edge = 3.0
             self.air_max_center = 0.5
             self.thick_max_edge = 2.0
             self.thick_max_center = 3.0
-            self.flange_max = 3.0
+            self.bfl_max = 3.0
 
             # Surface shape constraints
             self.sag2diam_max = 0.1
@@ -119,14 +119,14 @@ class GeoLensOptim:
             self.air_min_center = 0.1
             self.thick_min_edge = 1.0
             self.thick_min_center = 2.0
-            self.flange_min = 5.0
+            self.bfl_min = 5.0
             
             # Air gap and thickness upper bounds
             self.air_max_edge = 100.0  # float("inf")
             self.air_max_center = 100.0  # float("inf")
             self.thick_max_edge = 20.0
             self.thick_max_center = 20.0
-            self.flange_max = 100.0  # float("inf")
+            self.bfl_max = 100.0  # float("inf")
 
             # Surface shape constraints
             self.sag2diam_max = 0.2
@@ -275,7 +275,7 @@ class GeoLensOptim:
         air_min_edge = self.air_min_edge
         thick_min_center = self.thick_min_center
         thick_min_edge = self.thick_min_edge
-        flange_min = self.flange_min
+        bfl_min = self.bfl_min
 
         # Loss
         loss = torch.tensor(0.0, device=self.device)
@@ -316,14 +316,14 @@ class GeoLensOptim:
                 if dist_edge < thick_min_edge:
                     loss += dist_edge
 
-        # Distance to sensor (flange)
+        # Distance to sensor (back focal length)
         last_surf = self.surfaces[-1]
         r = torch.linspace(0.0, 1.0, 32, device=self.device) * last_surf.r
         z_last_surf = self.d_sensor - last_surf.surface_with_offset(r, 0.0)
-        
-        flange = torch.min(z_last_surf)
-        if flange < flange_min:
-            loss += flange
+
+        bfl = torch.min(z_last_surf)
+        if bfl < bfl_min:
+            loss += bfl
 
         # Loss, maximize loss
         return -loss
@@ -339,7 +339,7 @@ class GeoLensOptim:
         air_max_edge = self.air_max_edge
         thick_max_center = self.thick_max_center
         thick_max_edge = self.thick_max_edge
-        flange_max = self.flange_max
+        bfl_max = self.bfl_max
 
         # Loss
         loss = torch.tensor(0.0, device=self.device)
@@ -382,14 +382,14 @@ class GeoLensOptim:
                 if dist_edge > thick_max_edge:
                     loss += dist_edge
 
-        # Distance to sensor (flange)
+        # Distance to sensor (back focal length)
         last_surf = self.surfaces[-1]
         r = torch.linspace(0.0, 1.0, 32, device=self.device) * last_surf.r
         z_last_surf = self.d_sensor - last_surf.surface_with_offset(r, 0.0)
-        
-        flange = torch.max(z_last_surf)
-        if flange > flange_max:
-            loss += flange
+
+        bfl = torch.max(z_last_surf)
+        if bfl > bfl_max:
+            loss += bfl
 
         # Loss, minimize loss
         return loss

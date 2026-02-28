@@ -372,7 +372,7 @@ if __name__ == "__main__":
         foclen=args["foclen"],
         fov=args["fov"],
         fnum=args["fnum"],
-        flange=args["flange"],
+        bfl=args["flange"],
         thickness=args["thickness"],
         surf_list=spherical_surf_list,
         save_dir=result_dir,
