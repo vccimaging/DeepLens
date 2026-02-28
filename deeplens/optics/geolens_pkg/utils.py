@@ -17,9 +17,8 @@ import random
 import numpy as np
 import torch
 
-from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Spheric, ThinLens, Plane
+from ..geometric_surface import Aperture, Aspheric, Spheric, ThinLens, Plane
 from ..material import MATERIAL_data
-from ..config import WAVE_RGB
 
 # Common optical glasses for random material selection
 COMMON_GLASSES = [
