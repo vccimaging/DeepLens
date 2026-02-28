@@ -165,41 +165,35 @@ def test_increase_auto_select():
     print("\n  [PASS] Auto-selection picks best candidate.")
 
 
-def test_outermost_surface_excluded():
-    """Test that 2nd asphere auto-selection excludes outermost surfaces."""
+def test_first_element_excluded():
+    """Test that 2nd asphere auto-selection excludes first element and last surface."""
     print("\n" + "#"*60)
-    print("# TEST 5b: outermost surface exclusion")
+    print("# TEST 5b: first element + last surface exclusion")
     print("#"*60)
 
     lens = GeoLens(filename="./datasets/lenses/cooke.json")
     lens.calc_pupil()
     print_surfaces(lens, "All-spherical Cooke triplet")
 
-    # Identify outermost refractive surfaces
-    first_refractive = None
-    last_refractive = None
-    for i, surf in enumerate(lens.surfaces):
-        if not isinstance(surf, Aperture):
-            if first_refractive is None:
-                first_refractive = i
-            last_refractive = i
-    print(f"\n  Outermost refractive surfaces: {first_refractive}, {last_refractive}")
+    # Identify excluded surfaces: first element (2 surfaces) + last refractive
+    refractive_indices = [
+        i for i, s in enumerate(lens.surfaces) if not isinstance(s, Aperture)
+    ]
+    excluded = {refractive_indices[0], refractive_indices[1], refractive_indices[-1]}
+    print(f"\n  Excluded surfaces (first element + last): {sorted(excluded)}")
 
     # Add first asphere (near stop)
     idx1 = lens.add_aspheric()
     print(f"  1st asphere auto-selected: surface {idx1}")
 
-    # Add second asphere (away from stop, should exclude outermost)
+    # Add second asphere (away from stop, should exclude first element + last)
     idx2 = lens.add_aspheric()
     print(f"  2nd asphere auto-selected: surface {idx2}")
 
-    assert idx2 != first_refractive, (
-        f"2nd asphere should NOT be first refractive surface {first_refractive}, got {idx2}"
+    assert idx2 not in excluded, (
+        f"2nd asphere should NOT be in excluded set {sorted(excluded)}, got {idx2}"
     )
-    assert idx2 != last_refractive, (
-        f"2nd asphere should NOT be last refractive surface {last_refractive}, got {idx2}"
-    )
-    print(f"\n  [PASS] 2nd asphere ({idx2}) correctly avoids outermost surfaces ({first_refractive}, {last_refractive}).")
+    print(f"\n  [PASS] 2nd asphere ({idx2}) correctly avoids first element + last surface.")
 
 
 def test_ray_tracing_still_works():

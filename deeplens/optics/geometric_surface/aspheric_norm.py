@@ -189,9 +189,7 @@ class AsphericNorm(Surface):
     # =======================================
     # Optimization
     # =======================================
-    def get_optimizer_params(
-        self, lrs=[1e-4, 1e-4, 1e-2, 1e-4], decay=0.001, optim_mat=False
-    ):
+    def get_optimizer_params(self, lrs=[1e-4, 1e-4, 1e-2, 1e-4], optim_mat=False):
         """Get optimizer parameters for different parameters.
 
         Args:

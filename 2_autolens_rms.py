@@ -69,7 +69,6 @@ def config():
 def curriculum_design(
     self: GeoLens,
     lrs=[1e-4, 1e-4, 1e-2, 1e-4],
-    decay=0.01,
     iterations=5000,
     test_per_iter=100,
     optim_mat=False,
@@ -95,7 +94,7 @@ def curriculum_design(
     )
 
     # Optimizer
-    optimizer = self.get_optimizer(lrs, decay=decay, optim_mat=optim_mat)
+    optimizer = self.get_optimizer(lrs, optim_mat=optim_mat)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer, T_0=iterations // 4, T_mult=1
     )
@@ -218,7 +217,7 @@ if __name__ == "__main__":
         foclen=args["foclen"],
         fov=args["fov"],
         fnum=args["fnum"],
-        bfl=args["flange"],
+        bfl=args["bfl"],
         thickness=args["thickness"],
         surf_list=args["surf_list"],
         save_dir=result_dir,
@@ -235,7 +234,6 @@ if __name__ == "__main__":
     # Curriculum learning is used to find an optimization path when starting from scratch, where the optimization difficulty is high and the gradients are unstable. 3000 iterations is a good starting value, while increasing the number of iterations will improve the optical performance. Also, we can choose to optimize materials in this stage.
     lens.curriculum_design(
         lrs=[float(lr) for lr in args["lrs"]],
-        decay=float(args["decay"]),
         iterations=2000,
         test_per_iter=50,
         optim_mat=True,
@@ -253,7 +251,6 @@ if __name__ == "__main__":
     lens = GeoLens(filename=f"{result_dir}/curriculum_final.json")
     lens.optimize(
         lrs=[float(lr) * 0.1 for lr in args["lrs"]],
-        decay=float(args["decay"]),
         iterations=5000,
         test_per_iter=100,
         centroid=False,

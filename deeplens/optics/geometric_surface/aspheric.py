@@ -225,9 +225,7 @@ class Aspheric(Surface):
     # Optimization
     # =======================================
 
-    def get_optimizer_params(
-        self, lrs=[1e-4, 1e-4, 1e-2, 1e-4], decay=0.001, optim_mat=False
-    ):
+    def get_optimizer_params(self, lrs=[1e-4, 1e-4, 1e-2, 1e-4], optim_mat=False):
         """Get optimizer parameters for different parameters.
 
         The learning rate for each aspheric coefficient ``a_{2n}`` is scaled
@@ -237,14 +235,8 @@ class Aspheric(Surface):
         as ``O(r^{2n})`` and can reach ``10^5`` for camera-sized surfaces,
         causing NaN within a few dozen iterations.
 
-        The ``decay`` parameter is **not** applied on top of the r-scaling,
-        because ``1/r^{2n}`` already normalises across orders (matching
-        ``AsphericNorm`` behaviour where all orders share the same lr).
-
         Args:
             lrs (list, optional): learning rates for ``[d, c, k, ai]``.
-            decay (float, optional): kept for API compatibility but unused
-                when r-normalisation is active.
             optim_mat (bool, optional): whether to optimize material.
                 Defaults to False.
         """

@@ -29,7 +29,7 @@ set_logger(result_dir)
 foclen = 50.0
 fov = 47.0
 fnum = 1.8
-flange = 18.0
+bfl = 18.0
 thickness = 75.0
 
 # 6 elements, all spherical start, aperture in the middle (Double Gauss style)
@@ -44,10 +44,8 @@ surf_list = [
 ]
 
 # Camera lens LRs: conservative k and ai to avoid aggressive aspheric shapes.
-# decay=0.001 ensures higher-order ai terms (ai6, ai8, ...) get much smaller LRs.
-#   ai4_lr = 1e-5, ai6_lr = 1e-5 * 0.001 = 1e-8, ai8_lr = 1e-5 * 0.001^2 = 1e-11
+# Aspheric lr is auto-normalised by 1/r^{2n} inside get_optimizer_params.
 lrs = [1e-3, 1e-4, 1e-4, 1e-5]
-decay = 0.001
 
 logging.info(f"Target: {foclen}mm f/{fnum}, FoV {fov}deg, 6 elements, full frame")
 logging.info(f"Result dir: {result_dir}")
@@ -57,7 +55,7 @@ lens = create_lens(
     foclen=foclen,
     fov=fov,
     fnum=fnum,
-    bfl=flange,
+    bfl=bfl,
     thickness=thickness,
     surf_list=surf_list,
     save_dir=result_dir,
@@ -71,7 +69,6 @@ logging.info(f"Lens created with {len(lens.surfaces)} surfaces")
 # Run aspheric curriculum pipeline
 lens.curriculum_aspheric_design(
     lrs=lrs,
-    decay=decay,
     iterations=3000,
     test_per_iter=50,
     num_asphere=2,
@@ -93,7 +90,6 @@ logging.info("Curriculum stage complete. Starting fine-tune...")
 lens = GeoLens(filename=f"{result_dir}/curriculum_final.json")
 lens.optimize(
     lrs=[lr * 0.1 for lr in lrs],
-    decay=decay,
     iterations=3000,
     test_per_iter=100,
     centroid=False,

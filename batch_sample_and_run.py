@@ -31,10 +31,10 @@ from deeplens.utils import create_video_from_images, set_logger, set_seed
 
 CATEGORY_PARAMS = {
     "camera_spheric": {
-        "foclen": (25.0, 100.0),
+        "imgh": (24.0, 44.0),  # APS-C to full-frame sensor diagonal
         "fov": (20.0, 80.0),
         "fnum_choices": [1.4, 1.8, 2.0, 2.8, 4.0, 5.6],
-        "flange": (16.0, 20.0),
+        "bfl": (16.0, 20.0),
         "elements": (4, 8),
         "surface_type": "Spheric",
         "doublet_prob": 0.25,
@@ -43,13 +43,12 @@ CATEGORY_PARAMS = {
         "thickness_mult": (0.8, 2.0),
         "thickness_min": 40.0,
         "lrs": [1e-3, 1e-4, 1e-2, 1e-4],
-        "decay": 0.001,
     },
     "camera_aspheric": {
-        "foclen": (20.0, 50.0),
+        "imgh": (20.0, 44.0),  # APS-C to full-frame sensor diagonal
         "fov": (40.0, 90.0),
         "fnum_choices": [1.4, 1.8, 2.0, 2.8, 4.0],
-        "flange": (16.0, 20.0),
+        "bfl": (16.0, 20.0),
         "elements": (4, 7),
         "surface_type": "Aspheric",
         "doublet_prob": 0.0,
@@ -58,13 +57,12 @@ CATEGORY_PARAMS = {
         "thickness_mult": (0.8, 2.0),
         "thickness_min": 40.0,
         "lrs": [1e-3, 1e-3, 1e-2, 1e-4],
-        "decay": 0.001,
     },
     "mobile": {
-        "foclen": (2.5, 8.0),
+        "imgh": (5.0, 16.0),  # 1/3" to 1" mobile sensor diagonal
         "fov": (60.0, 120.0),
         "fnum_choices": [1.6, 1.8, 2.0, 2.4, 2.8],
-        "flange": (0.5, 2.0),
+        "bfl": (0.5, 2.0),
         "elements": (4, 7),
         "surface_type": "Aspheric",
         "doublet_prob": 0.0,
@@ -73,7 +71,6 @@ CATEGORY_PARAMS = {
         "thickness_mult": (1.5, 3.0),
         "thickness_min": 5.0,
         "lrs": [1e-3, 1e-3, 1e-2, 1e-3],
-        "decay": 0.01,
     },
 }
 
@@ -85,11 +82,15 @@ def sample_config(category: str) -> Dict[str, Any]:
 
     p = CATEGORY_PARAMS[category]
 
-    foclen = round(random.uniform(*p["foclen"]), 1)
+    imgh = round(random.uniform(*p["imgh"]), 2)
     fov = round(random.uniform(*p["fov"]), 1)
     fnum = random.choice(p["fnum_choices"])
-    flange = round(random.uniform(*p["flange"]), 1)
+    bfl = round(random.uniform(*p["bfl"]), 1)
     n_elements = random.randint(*p["elements"])
+
+    # Derive focal length for thickness estimation
+    half_fov = math.radians(fov / 2)
+    foclen = imgh / 2 / math.tan(half_fov)
 
     # Thickness
     t_mult = random.uniform(*p["thickness_mult"])
@@ -107,14 +108,13 @@ def sample_config(category: str) -> Dict[str, Any]:
 
     return {
         "category": category,
-        "foclen": foclen,
+        "imgh": imgh,
         "fov": fov,
         "fnum": fnum,
-        "flange": flange,
+        "bfl": bfl,
         "thickness": thickness,
         "surf_list": surf_list,
         "lrs": p["lrs"],
-        "decay": p["decay"],
     }
 
 
@@ -165,7 +165,6 @@ def build_surf_list(
 def curriculum_design(
     self: GeoLens,
     lrs: List[float] = [1e-4, 1e-4, 1e-2, 1e-4],
-    decay: float = 0.01,
     iterations: int = 5000,
     test_per_iter: int = 100,
     optim_mat: bool = False,
@@ -189,7 +188,7 @@ def curriculum_design(
         f"num_ring:{num_ring}, num_arm:{num_arm}."
     )
 
-    optimizer = self.get_optimizer(lrs, decay=decay, optim_mat=optim_mat)
+    optimizer = self.get_optimizer(lrs, optim_mat=optim_mat)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer, T_0=iterations // 4, T_mult=1
     )
@@ -318,15 +317,15 @@ def run_experiment(cfg: Dict[str, Any], curriculum_iters: int, finetune_iters: i
 
     # Create lens
     logging.info(
-        f"==> Design target: foclen={cfg['foclen']}mm, "
+        f"==> Design target: imgh={cfg['imgh']}mm, "
         f"FoV={cfg['fov']}deg, F/{cfg['fnum']}, "
         f"category={cfg['category']}"
     )
     lens = create_lens(
-        foclen=cfg["foclen"],
+        imgh=cfg["imgh"],
         fov=cfg["fov"],
         fnum=cfg["fnum"],
-        bfl=cfg["flange"],
+        bfl=cfg["bfl"],
         thickness=cfg["thickness"],
         surf_list=cfg["surf_list"],
         save_dir=result_dir,
@@ -341,7 +340,6 @@ def run_experiment(cfg: Dict[str, Any], curriculum_iters: int, finetune_iters: i
     test_per_iter = max(curriculum_iters // 40, 1)
     lens.curriculum_design(
         lrs=[float(lr) for lr in cfg["lrs"]],
-        decay=float(cfg["decay"]),
         iterations=curriculum_iters,
         test_per_iter=test_per_iter,
         optim_mat=True,
@@ -361,7 +359,6 @@ def run_experiment(cfg: Dict[str, Any], curriculum_iters: int, finetune_iters: i
     finetune_test_per_iter = max(finetune_iters // 50, 1)
     lens.optimize(
         lrs=[float(lr) * 0.1 for lr in cfg["lrs"]],
-        decay=float(cfg["decay"]),
         iterations=finetune_iters,
         test_per_iter=finetune_test_per_iter,
         centroid=False,
@@ -402,8 +399,8 @@ def main():
     parser.add_argument(
         "--finetune-iters",
         type=int,
-        default=5000,
-        help="Fine-tuning iterations (default: 5000)",
+        default=3000,
+        help="Fine-tuning iterations (default: 3000)",
     )
     args = parser.parse_args()
 

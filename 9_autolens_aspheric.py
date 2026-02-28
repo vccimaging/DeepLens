@@ -77,7 +77,6 @@ def config():
 def curriculum_aspheric_design(
     self: GeoLens,
     lrs=[1e-4, 1e-4, 1e-2, 1e-4],
-    decay=0.01,
     iterations=5000,
     test_per_iter=100,
     num_asphere=2,
@@ -103,7 +102,6 @@ def curriculum_aspheric_design(
 
     Args:
         lrs (list): Learning rates for [d, c, k, ai] parameter groups.
-        decay (float): Decay factor for higher-order aspheric coefficients.
         iterations (int): Total training iterations across all stages.
         test_per_iter (int): Evaluate and save every N iterations.
         num_asphere (int): Number of aspheric surfaces to introduce (1 or 2).
@@ -165,7 +163,7 @@ def curriculum_aspheric_design(
     # ------------------------------------------------------------------
     # Build initial optimizer
     # ------------------------------------------------------------------
-    optimizer = self.get_optimizer(lrs, decay=decay, optim_mat=optim_mat)
+    optimizer = self.get_optimizer(lrs, optim_mat=optim_mat)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer, T_0=max(stage_iters[0][1] - stage_iters[0][0], 1), T_mult=1
     )
@@ -233,7 +231,7 @@ def curriculum_aspheric_design(
                 self.analysis(f"{result_dir}/stage{next_stage}_start")
 
             # Rebuild optimizer with new parameters
-            optimizer = self.get_optimizer(lrs, decay=decay, optim_mat=optim_mat)
+            optimizer = self.get_optimizer(lrs, optim_mat=optim_mat)
             stage_len = max(
                 stage_iters[next_stage][1] - stage_iters[next_stage][0], 1
             )
@@ -372,7 +370,7 @@ if __name__ == "__main__":
         foclen=args["foclen"],
         fov=args["fov"],
         fnum=args["fnum"],
-        bfl=args["flange"],
+        bfl=args["bfl"],
         thickness=args["thickness"],
         surf_list=spherical_surf_list,
         save_dir=result_dir,
@@ -389,7 +387,6 @@ if __name__ == "__main__":
     # Stage 1: Aspheric curriculum pipeline
     lens.curriculum_aspheric_design(
         lrs=[float(lr) for lr in args["lrs"]],
-        decay=float(args["decay"]),
         iterations=3000,
         test_per_iter=50,
         num_asphere=2,
@@ -410,7 +407,6 @@ if __name__ == "__main__":
     lens = GeoLens(filename=f"{result_dir}/curriculum_final.json")
     lens.optimize(
         lrs=[float(lr) * 0.1 for lr in args["lrs"]],
-        decay=float(args["decay"]),
         iterations=3000,
         test_per_iter=100,
         centroid=False,

@@ -553,7 +553,6 @@ class GeoLensOptim:
     def optimize(
         self,
         lrs=[1e-3, 1e-4, 1e-1, 1e-4],
-        decay=0.01,
         iterations=5000,
         test_per_iter=100,
         centroid=False,
@@ -570,8 +569,6 @@ class GeoLensOptim:
         Args:
             lrs (list, optional): Learning rates for [d, c, k, a] parameter groups.
                 Defaults to [1e-3, 1e-4, 1e-1, 1e-4].
-            decay (float, optional): Decay factor for higher-order aspheric coefficients.
-                Defaults to 0.01.
             iterations (int, optional): Total training iterations. Defaults to 5000.
             test_per_iter (int, optional): Evaluate and save every N iterations.
                 Defaults to 100.
@@ -619,7 +616,7 @@ class GeoLensOptim:
         logging.info("If Out-of-Memory, try to reduce num_ring, num_arm, and rays_per_fov.")
 
         # Optimizer and scheduler
-        optimizer = self.get_optimizer(lrs, decay=decay, optim_mat=optim_mat)
+        optimizer = self.get_optimizer(lrs, optim_mat=optim_mat)
         scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=100, num_training_steps=iterations)
 
         # Training loop
@@ -712,7 +709,6 @@ class GeoLensOptim:
     def get_optimizer_params(
         self,
         lrs=[1e-4, 1e-4, 1e-2, 1e-4],
-        decay=0.01,
         optim_mat=False,
         optim_surf_range=None,
     ):
@@ -724,7 +720,6 @@ class GeoLensOptim:
 
         Args:
             lrs (list): learning rate for different parameters.
-            decay (float): decay rate for higher order a. Defaults to 0.01.
             optim_mat (bool): whether to optimize material. Defaults to False.
             optim_surf_range (list): surface indices to be optimized. Defaults to None.
 
@@ -752,12 +747,12 @@ class GeoLensOptim:
 
             elif isinstance(surf, Aspheric):
                 params += surf.get_optimizer_params(
-                    lrs=lrs[:4], decay=decay, optim_mat=optim_mat
+                    lrs=lrs[:4], optim_mat=optim_mat
                 )
 
             elif isinstance(surf, AsphericNorm):
                 params += surf.get_optimizer_params(
-                    lrs=lrs[:4], decay=decay, optim_mat=optim_mat
+                    lrs=lrs[:4], optim_mat=optim_mat
                 )
 
             elif isinstance(surf, Phase):
@@ -799,7 +794,6 @@ class GeoLensOptim:
     def get_optimizer(
         self,
         lrs=[1e-4, 1e-4, 1e-1, 1e-4],
-        decay=0.01,
         optim_surf_range=None,
         optim_mat=False,
     ):
@@ -807,7 +801,6 @@ class GeoLensOptim:
 
         Args:
             lrs (list): learning rate for different parameters [c, d, k, a]. Defaults to [1e-4, 1e-4, 0, 1e-4].
-            decay (float): decay rate for higher order a. Defaults to 0.2.
             optim_surf_range (list): surface indices to be optimized. Defaults to None.
             optim_mat (bool): whether to optimize material. Defaults to False.
 
@@ -819,7 +812,7 @@ class GeoLensOptim:
 
         # Get optimizer
         params = self.get_optimizer_params(
-            lrs=lrs, decay=decay, optim_surf_range=optim_surf_range, optim_mat=optim_mat
+            lrs=lrs, optim_surf_range=optim_surf_range, optim_mat=optim_mat
         )
         optimizer = torch.optim.Adam(params)
         # optimizer = torch.optim.SGD(params)
