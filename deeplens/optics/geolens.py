@@ -383,6 +383,60 @@ class GeoLens(
         return rays
 
     @torch.no_grad()
+    def sample_from_points_by_fov(
+        self,
+        fov_x=[0.0],
+        fov_y=[0.0],
+        depth=DEPTH,
+        num_rays=SPP_PSF,
+        wvln=DEFAULT_WAVE,
+        scale_pupil=1.0,
+    ):
+        """Sample point-source rays specified by field angles and depth.
+
+        Converts field angles to physical object-space coordinates, then
+        delegates to :meth:`sample_from_points`.
+
+        Args:
+            fov_x (float or list): Field angle(s) in the xz plane (degrees).
+            fov_y (float or list): Field angle(s) in the yz plane (degrees).
+            depth (float): Object distance in mm. Default: ``DEPTH``.
+            num_rays (int): Number of rays per field point. Default: SPP_PSF.
+            wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
+            scale_pupil (float): Scale factor for pupil radius. Default: 1.0.
+
+        Returns:
+            Ray:
+                Rays with shape [..., num_rays, 3], where leading dims follow
+                the same scalar-squeeze convention as :meth:`sample_from_fov`.
+        """
+        x_scalar = isinstance(fov_x, (float, int))
+        y_scalar = isinstance(fov_y, (float, int))
+        if x_scalar:
+            fov_x = [float(fov_x)]
+        if y_scalar:
+            fov_y = [float(fov_y)]
+
+        fov_x_rad = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
+        fov_y_rad = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
+        fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
+        x = torch.tan(fov_x_grid) * depth
+        y = torch.tan(fov_y_grid) * depth
+        z = torch.full_like(x, depth)
+        points = torch.stack((x, y, z), dim=-1)  # [len(fov_y), len(fov_x), 3]
+
+        # Squeeze scalar dims before sample_from_points so the Ray is
+        # constructed with the right shape (avoids post-hoc attribute edits).
+        if x_scalar:
+            points = points.squeeze(-2)
+        if y_scalar:
+            points = points.squeeze(0)
+
+        return self.sample_from_points(
+            points=points, num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil
+        )
+
+    @torch.no_grad()
     def sample_from_fov(
         self,
         fov_x=[0.0],
@@ -420,6 +474,14 @@ class GeoLens(
                 - both lists: [len(fov_y), len(fov_x), num_rays, 3]
                 Ordered as (u, v).
         """
+        # Finite depth: delegate to sample_from_points_by_fov
+        if depth != float("inf"):
+            return self.sample_from_points_by_fov(
+                fov_x=fov_x, fov_y=fov_y, depth=depth,
+                num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil,
+            )
+
+        # --- Infinite depth: collimated parallel rays ---
         # Remember whether inputs were scalar
         x_scalar = isinstance(fov_x, (float, int))
         y_scalar = isinstance(fov_y, (float, int))
@@ -430,28 +492,6 @@ class GeoLens(
         if y_scalar:
             fov_y = [float(fov_y)]
 
-        # --- Finite depth: convert fov→points, delegate to sample_from_points ---
-        if depth != float("inf"):
-            fov_x_rad = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
-            fov_y_rad = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
-            fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
-            x = torch.tan(fov_x_grid) * depth
-            y = torch.tan(fov_y_grid) * depth
-            z = torch.full_like(x, depth)
-            points = torch.stack((x, y, z), dim=-1)  # [len(fov_y), len(fov_x), 3]
-
-            # Squeeze scalar dims before sample_from_points so the Ray is
-            # constructed with the right shape (avoids post-hoc attribute edits).
-            if x_scalar:
-                points = points.squeeze(-2)
-            if y_scalar:
-                points = points.squeeze(0)
-
-            return self.sample_from_points(
-                points=points, num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil
-            )
-
-        # --- Infinite depth: collimated parallel rays ---
         fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
         fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
 
