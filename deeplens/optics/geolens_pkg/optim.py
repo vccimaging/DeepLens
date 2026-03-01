@@ -192,7 +192,7 @@ class GeoLensOptim:
         loss = torch.tensor(0.0, device=self.device)
 
         # Ray tracing and calculate RMS error
-        ray = self.sample_parallel(fov_x=0.0, fov_y=0.0, wvln=WAVE_RGB[1], num_rays=SPP_CALC)
+        ray = self.sample_from_fov(fov_x=0.0, fov_y=0.0, wvln=WAVE_RGB[1], num_rays=SPP_CALC)
         ray = self.trace2sensor(ray)
         rms_error = ray.rms_error()
 
