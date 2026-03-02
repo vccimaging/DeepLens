@@ -431,7 +431,7 @@ class GeoLensSurfOps:
 
         fov_y = [f * fov_deg / 10 for f in range(0, 11)]
         ray = self.sample_from_fov(
-            fov_x=[0.0], fov_y=fov_y, num_rays=SPP_CALC, scale_pupil=1.5
+            fov_x=[0.0], fov_y=fov_y, num_rays=SPP_CALC, scale_pupil=1.0
         )
         _, ray_o_record = self.trace2sensor(ray=ray, record=True)
 
