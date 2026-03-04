@@ -22,7 +22,7 @@ The package is organized into the following modules:
 -   `eval.py`: The core module for classical optical performance evaluation. It includes functions for analyzing spot diagrams, distortion, MTF, and more.
 -   `optim.py`: Contains tools and functions for optimizing `GeoLens` systems.
 -   `vis.py`: Provides utilities for plotting and visualizing the results of various optical analyses.
--   `view_3d.py`: Includes functionalities for creating and displaying 3D renderings of lens systems.
--   `tolerance.py`: Implements functions for performing tolerance analysis on lens parameters.
+-   `vis3d.py`: Includes functionalities for creating and displaying 3D renderings of lens systems.
+-   `eval_tolerance.py`: Implements functions for performing tolerance analysis on lens parameters.
 -   `io.py`: A set of helper functions for input/output operations, such as loading and saving lens data.
 -   `utils.py`: Contains various utility functions used across the package.

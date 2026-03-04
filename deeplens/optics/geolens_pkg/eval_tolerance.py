@@ -26,7 +26,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from ..config import DEPTH
+from ..config import DEPTH, SPP_CALC
 
 
 class GeoLensTolerance:
@@ -128,17 +128,22 @@ class GeoLensTolerance:
         return sensitivity_results
 
     @torch.no_grad()
-    def tolerancing_monte_carlo(self, trials=1000, tolerance_params=None):
+    def tolerancing_monte_carlo(self, trials=200, spp=SPP_CALC, tolerance_params=None):
         """Use Monte Carlo simulation to compute the tolerance.
 
-        Note: we can multiplex sampled rays to improve the speed.
+        The default ``trials=200`` is tuned for ~3 min runtime on GPU.
+        For production-quality yield estimates (especially 95th/99th
+        percentile tails), increase to 1000+.
 
         Args:
-            trials (int): Number of Monte Carlo trials
-            tolerance_params (dict): Tolerance parameters
+            trials (int): Number of Monte Carlo trials. Defaults to 200.
+            spp (int): Samples per pixel for PSF calculation. Lower values
+                run faster at the cost of noisier MTF estimates. Defaults to
+                SPP_CALC (1024), which is ~16x faster than the full SPP_PSF.
+            tolerance_params (dict): Tolerance parameters.
 
         Returns:
-            dict: Monte Carlo tolerance analysis results
+            dict: Monte Carlo tolerance analysis results.
 
         References:
             [1] https://optics.ansys.com/hc/en-us/articles/43071088477587-How-to-analyze-your-tolerance-results
@@ -146,17 +151,27 @@ class GeoLensTolerance:
         """
 
         def merit_func(lens, fov=0.0, depth=DEPTH):
-            # Calculate MTF at a specific field of view
-            point = [0, -fov / lens.rfov, depth]
-            psf = lens.psf(points=point, recenter=True)
-            freq, mtf_tan, mtf_sag = lens.psf2mtf(psf, pixel_size=lens.pixel_size)
+            """Evaluate MTF merit at a single field point."""
+            try:
+                point = [0, -fov / lens.rfov, depth]
+                psf = lens.psf(points=point, spp=spp, recenter=True)
+                freq, mtf_tan, mtf_sag = lens.psf2mtf(psf, pixel_size=lens.pixel_size)
 
-            # Evaluate MTF at a specific frequency
-            nyquist_freq = 0.5 / lens.pixel_size
-            eval_freq = 0.25 * nyquist_freq
-            idx = torch.argmin(torch.abs(torch.tensor(freq) - eval_freq))
-            score = (mtf_tan[idx] + mtf_sag[idx]) / 2
-            return score.item()
+                # Evaluate MTF at quarter-Nyquist frequency
+                nyquist_freq = 0.5 / lens.pixel_size
+                eval_freq = 0.25 * nyquist_freq
+                idx = torch.argmin(torch.abs(torch.tensor(freq) - eval_freq))
+                score = (mtf_tan[idx] + mtf_sag[idx]) / 2
+                return score.item()
+            except RuntimeError:
+                # Perturbed lens may block all rays at extreme fields
+                return 0.0
+
+        def multi_field_merit(lens, depth=DEPTH):
+            """Evaluate average MTF merit across multiple field positions."""
+            fov_points = [0.0, 0.5, 1.0]
+            scores = [merit_func(lens, fov=fov, depth=depth) for fov in fov_points]
+            return float(np.mean(scores))
 
         # Initialize tolerance
         self.init_tolerance(tolerance_params=tolerance_params)
@@ -165,36 +180,87 @@ class GeoLensTolerance:
         merit_ls = []
         with torch.no_grad():
             for i in tqdm(range(trials)):
-                # Sample a random perturbation
-                self.sample_tolerance()
+                # Sample a random perturbation and refocus sensor only
+                # (skip full post_computation — focal length, pupil, and FoV
+                # don't change meaningfully under small tolerance errors).
+                for surf in self.surfaces:
+                    surf.sample_tolerance()
+                self.d_sensor = self.calc_sensor_plane()
 
-                # Evaluate perturbed performance
-                perturbed_merit = merit_func(lens=self, fov=0.0, depth=DEPTH)
+                # Evaluate perturbed performance across multiple field positions
+                perturbed_merit = multi_field_merit(lens=self, depth=DEPTH)
                 merit_ls.append(perturbed_merit)
 
-                # Clear perturbation
-                self.zero_tolerance()
+                # Clear perturbation (no refocus needed — next iteration
+                # will set sensor position after sampling).
+                for surf in self.surfaces:
+                    surf.zero_tolerance()
 
         merit_ls = np.array(merit_ls)
 
-        # Baseline merit
+        # Baseline merit (nominal lens)
         self.refocus()
-        baseline_merit = merit_func(lens=self, fov=0.0, depth=DEPTH)
-        # merit_ls /= baseline_merit
+        baseline_merit = multi_field_merit(lens=self, depth=DEPTH)
 
-        # Results plot
+        # Results plot — histogram + CDF
+        fig, ax1 = plt.subplots(figsize=(9, 5))
+
+        # Histogram
+        ax1.hist(
+            merit_ls,
+            bins=30,
+            color="#4C72B0",
+            alpha=0.6,
+            edgecolor="white",
+            label="Frequency",
+        )
+        ax1.set_xlabel("MTF Merit Score (higher is better)", fontsize=12)
+        ax1.set_ylabel("Count", fontsize=12, color="#4C72B0")
+        ax1.tick_params(axis="y", labelcolor="#4C72B0")
+
+        # CDF on secondary axis
+        ax2 = ax1.twinx()
         sorted_merit = np.sort(merit_ls)
-        cumulative_prob = (1 - np.arange(len(sorted_merit)) / len(sorted_merit)) * 100
-        plt.figure(figsize=(8, 6))
-        plt.xlabel("Merit Score", fontsize=12)
-        plt.ylabel("Cumulative Probability (%)", fontsize=12)
-        plt.title("Cumulative Probability beyond Merit Score", fontsize=14)
-        plt.plot(sorted_merit, cumulative_prob, linewidth=2)
-        plt.gca().invert_xaxis()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig("Monte_Carlo_Cumulative_Prob.png", dpi=150, bbox_inches="tight")
-        plt.close()
+        cdf = np.arange(1, len(sorted_merit) + 1) / len(sorted_merit) * 100
+        ax2.plot(sorted_merit, cdf, color="#C44E52", linewidth=2, label="CDF")
+        ax2.set_ylabel("Cumulative % of Lenses", fontsize=12, color="#C44E52")
+        ax2.tick_params(axis="y", labelcolor="#C44E52")
+        ax2.set_ylim(0, 105)
+
+        # Baseline reference
+        ax1.axvline(
+            baseline_merit,
+            color="green",
+            linestyle="--",
+            linewidth=1.5,
+            label=f"Nominal = {baseline_merit:.3f}",
+        )
+
+        # Yield annotations — 90% and 50% yield lines
+        p90 = float(np.percentile(merit_ls, 10))  # 90% of lenses exceed this
+        p50 = float(np.percentile(merit_ls, 50))
+        ax1.axvline(
+            p90, color="orange", linestyle=":", linewidth=1.5,
+            label=f"90% yield > {p90:.3f}",
+        )
+        ax1.axvline(
+            p50, color="gray", linestyle=":", linewidth=1.5,
+            label=f"50% yield > {p50:.3f}",
+        )
+
+        # Title and legend
+        ax1.set_title(
+            f"Monte Carlo Tolerance Analysis  ({trials} trials)",
+            fontsize=13,
+            fontweight="bold",
+        )
+        ax1.legend(loc="upper left", fontsize=9, framealpha=0.9)
+        ax1.grid(True, alpha=0.2)
+        fig.tight_layout()
+        fig.savefig(
+            "Monte_Carlo_Tolerance.png", dpi=300, bbox_inches="tight"
+        )
+        plt.close(fig)
 
         # Results dict
         results = {
@@ -209,7 +275,7 @@ class GeoLensTolerance:
                 "90% > ": round(float(np.percentile(merit_ls, 10)), 4),
                 "80% > ": round(float(np.percentile(merit_ls, 20)), 4),
                 "70% > ": round(float(np.percentile(merit_ls, 30)), 4),
-                "60% > ": round(float(np.percentile(merit_ls, 60)), 4),
+                "60% > ": round(float(np.percentile(merit_ls, 40)), 4),
                 "50% > ": round(float(np.percentile(merit_ls, 50)), 4),
             },
             "merit_percentile": {

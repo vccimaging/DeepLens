@@ -212,8 +212,6 @@ class Lens(DeepObj):
 
         # Use quater of the sensor plane to save memory
         if quater:
-            z = torch.full_like(x, depth)
-            point_source = torch.stack([x, y, z], dim=-1)
             bound_i = grid[0] // 2 if grid[0] % 2 == 0 else grid[0] // 2 + 1
             bound_j = grid[1] // 2
             point_source = point_source[0:bound_i, bound_j:, :]
@@ -357,27 +355,57 @@ class Lens(DeepObj):
             plt.savefig(save_name, dpi=300, bbox_inches="tight", pad_inches=0)
             plt.close(fig)
 
-    def point_source_radial(self, depth, grid=9, center=False):
-        """Compute point radial [0, 1] in the object space to compute PSF grid.
+    def point_source_radial(self, depth, grid=9, center=False, direction="diagonal", normalized=True):
+        """Generate radial point sources from center to edge of the field.
+
+        Produces ``grid`` evenly-spaced points along a chosen radial direction
+        (diagonal, meridional, or sagittal) in normalized or physical object-space
+        coordinates.
 
         Args:
-            grid (int, optional): Grid size. Defaults to 9.
+            depth (float): Object depth (z-coordinate) in mm.
+            grid (int): Number of sample points. Defaults to 9.
+            center (bool): If ``True``, offset positions to bin centers.
+                Defaults to ``False``.
+            direction (str): Sampling direction —
+                ``"diagonal"`` (x = y, 45°, default),
+                ``"y"`` (meridional, x = 0),
+                ``"x"`` (sagittal, y = 0).
+            normalized (bool): If ``True``, return coordinates in [0, 1].
+                If ``False``, scale to physical object-space positions (mm).
+                Defaults to ``True``.
 
         Returns:
-            point_source: Shape of [grid, 3].
+            torch.Tensor: Point source positions, shape ``[grid, 3]``.
         """
         if grid == 1:
-            x = torch.tensor([0.0], device=self.device)
+            r = torch.tensor([0.0], device=self.device)
         else:
             # Select center of bin to calculate PSF
             if center:
                 half_bin_size = 1 / 2 / (grid - 1)
-                x = torch.linspace(0, 1 - half_bin_size, grid, device=self.device)
+                r = torch.linspace(0, 1 - half_bin_size, grid, device=self.device)
             else:
-                x = torch.linspace(0, 0.98, grid, device=self.device)
+                r = torch.linspace(0, 0.98, grid, device=self.device)
 
-        z = torch.full_like(x, depth)
-        point_source = torch.stack([x, x, z], dim=-1)
+        # Map radial coordinate to (x, y) based on direction
+        if direction == "diagonal":
+            px, py = r, r
+        elif direction == "y":
+            px, py = torch.zeros_like(r), r
+        elif direction == "x":
+            px, py = r, torch.zeros_like(r)
+        else:
+            raise ValueError(f"Invalid direction: {direction!r}. Use 'diagonal', 'x', or 'y'.")
+
+        z = torch.full_like(px, depth)
+        point_source = torch.stack([px, py, z], dim=-1)
+
+        if not normalized:
+            scale = self.calc_scale(depth)
+            point_source[..., 0] = point_source[..., 0] * scale * self.sensor_size[0] / 2
+            point_source[..., 1] = point_source[..., 1] * scale * self.sensor_size[1] / 2
+
         return point_source
 
     @torch.no_grad()

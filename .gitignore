@@ -1,6 +1,7 @@
 .vscode/
 __pycache__/
 .DS_Store
+CLAUDE.md
 deeplens.egg-info/
 0_test.py
 *.png

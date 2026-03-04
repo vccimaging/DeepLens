@@ -75,6 +75,11 @@ class DiffractiveLens(Lens):
 
         self.astype(torch.float64)
 
+        # Use total track length (first element to sensor) as focal length
+        if hasattr(self, "d_sensor"):
+            self.foclen = float(self.d_sensor)
+            self.calc_fov()
+
     @classmethod
     def load_example1(cls):
         """Create an example diffractive lens with a single Fresnel DOE.
@@ -90,6 +95,8 @@ class DiffractiveLens(Lens):
 
         # Sensor
         self.d_sensor = torch.tensor(50)
+        self.foclen = float(self.d_sensor)
+        self.calc_fov()
 
         self.to(self.device)
         return self
@@ -114,6 +121,8 @@ class DiffractiveLens(Lens):
         self.d_sensor = torch.tensor(50)
         self.sensor_size = (8.0, 8.0)
         self.sensor_res = (2000, 2000)
+        self.foclen = float(self.d_sensor)
+        self.calc_fov()
 
         self.to(self.device)
         return self

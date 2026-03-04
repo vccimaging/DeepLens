@@ -69,6 +69,7 @@ class PSFNetLens(Lens):
         # Load lens (sensor_size and sensor_res are read from the lens file)
         self.lens_path = lens_path
         self.lens = GeoLens(filename=lens_path, device=self.device)
+        self.foclen = self.lens.foclen
         self.rfov = self.lens.rfov
 
         # Init PSF network

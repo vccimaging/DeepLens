@@ -558,7 +558,7 @@ class HybridLens(Lens):
     # Optimization
     # =====================================================================
     def get_optimizer(
-        self, doe_lr=1e-4, lens_lr=[1e-4, 1e-4, 1e-2, 1e-5], lr_decay=0.01
+        self, doe_lr=1e-4, lens_lr=[1e-4, 1e-4, 1e-2, 1e-5]
     ):
         """Build an Adam optimiser for joint lens + DOE design.
 
@@ -574,15 +574,13 @@ class HybridLens(Lens):
                 rates for the GeoLens, ordered as
                 ``[thickness_d, curvature_c, conic_k, aspheric_a]``.
                 Defaults to ``[1e-4, 1e-4, 1e-2, 1e-5]``.
-            lr_decay (float, optional): Multiplicative decay applied to
-                higher-order aspheric coefficients.  Defaults to ``0.01``.
 
         Returns:
             torch.optim.Adam: Configured optimiser over all trainable
                 parameters.
         """
         params = []
-        params += self.geolens.get_optimizer_params(lrs=lens_lr, decay=lr_decay)
+        params += self.geolens.get_optimizer_params(lrs=lens_lr)
         params += self.doe.get_optimizer_params(lr=doe_lr)
 
         optimizer = torch.optim.Adam(params)

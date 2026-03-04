@@ -23,6 +23,11 @@ EPSILON = 1e-12  # replace 0 with EPSILON in some cases
 DEFAULT_WAVE = 0.587  # [um] default wavelength
 WAVE_RGB = [0.656, 0.587, 0.486]  # [um] R, G, B wavelength
 
+# Fraunhofer wavelengths [µm] — standard reference lines for chromatic aberration
+WVLN_d = 0.5876
+WVLN_F = 0.4861
+WVLN_C = 0.6563
+
 WAVE_RED = [0.620, 0.660, 0.700]  # [um] narrow band red spectrum
 WAVE_GREEN = [0.500, 0.530, 0.560]  # [um] narrow band green spectrum
 WAVE_BLUE = [0.450, 0.470, 0.490]  # [um] narrow band blue spectrum

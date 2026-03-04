@@ -4,43 +4,86 @@
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
-"""Classical optical performance evaluation for geometric lens systems. Accuracy aligned with Zemax.
+"""Classical optical performance evaluation for geometric lens systems.
+
+This module provides a mixin class ``GeoLensEval`` that adds Zemax-equivalent
+optical evaluation capabilities to ``GeoLens``.  Every metric is computed via
+geometric ray tracing: rays are sampled from object space, propagated through
+all lens surfaces (refraction + clipping), and analyzed at the sensor plane.
+
+Coordinate convention (shared with the rest of DeepLens):
+    - **z-axis**: optical axis, light travels in +z direction.
+    - **y-axis**: meridional (tangential) plane.
+    - **x-axis**: sagittal plane.
+    - Sensor plane is at ``z = self.d_sensor``.
+
+Key dependencies consumed from the parent ``GeoLens`` instance:
+    - ``self.sample_radial_rays()``, ``self.sample_grid_rays()``: ray sampling.
+    - ``self.trace(ray)``, ``self.trace2sensor(ray)``: sequential ray tracing.
+    - ``self.psf()``, ``self.psf_rgb()``: point-spread-function computation.
+    - ``self.render()``: image-plane rendering via ray tracing or PSF convolution.
+    - ``self.d_sensor``, ``self.sensor_size``, ``self.pixel_size``, ``self.rfov``,
+      ``self.foclen``, ``self.device``: lens geometry attributes.
 
 Functions:
     Spot Diagram:
-        - draw_spot_radial(): Draw spot diagrams at different field angles along meridional direction
-        - draw_spot_map(): Draw spot diagram grid at different field angles
+        spot_points: Core ray-tracing function — samples rays from physical
+            object points, traces through the lens, returns sensor positions.
+            Shared by draw_spot_radial, draw_spot_map, and rms_map.
+        draw_spot_radial: Spot diagrams at evenly-spaced field angles along a
+            chosen direction (meridional/sagittal/diagonal), with RGB overlay.
+        draw_spot_map: 2-D grid of spot diagrams across the full field of view.
 
-    RMS Error:
-        - rms_map_rgb(): Calculate RMS spot error map for RGB wavelengths
-        - rms_map(): Calculate RMS spot error map for a specific wavelength
+    RMS Spot Error:
+        rms_map_rgb: Per-pixel RMS spot radius for R/G/B, referenced to the
+            green-channel centroid (chromatic shift included).
+        rms_map: Per-pixel RMS spot radius for a single wavelength, referenced
+            to its own centroid.
 
     Distortion:
-        - calc_distortion_2D(): Calculate distortion at a specific field angle
-        - draw_distortion_radial(): Draw distortion curve vs field angle (Zemax format)
-        - distortion_map(): Compute distortion map at a given depth
-        - draw_distortion(): Draw distortion map visualization
+        calc_distortion_radial: Fractional distortion at evenly-spaced field
+            angles along the meridional direction
+        draw_distortion_radial: Distortion-vs-field-angle curve (Zemax style).
+        calc_distortion_map: 2-D grid of actual-vs-ideal image positions.
+        draw_distortion_map: Scatter plot of the distortion grid.
+        distortion_center: Normalized centroid positions for arbitrary object
+            points (used for warp/unwarp).
 
     MTF (Modulation Transfer Function):
-        - mtf(): Calculate MTF at a specific field of view
-        - psf2mtf(): Convert PSF to MTF (static method)
-        - draw_mtf(): Draw grid of MTF curves for multiple depths/FOVs and RGB wavelengths
+        mtf: Geometric MTF (tangential + sagittal) at a single field position
+            via PSF → FFT.
+        psf2mtf: Static utility converting a 2-D PSF array to tangential and
+            sagittal MTF curves.
+        draw_mtf: Grid of tangential MTF curves for multiple depths, FOVs, and
+            RGB wavelengths.
 
     Field Curvature:
-        - draw_field_curvature(): Draw field curvature visualization
+        field_curvature: Placeholder for field-curvature computation.
+        draw_field_curvature: Best-focus defocus vs field angle for RGB, found
+            by a vectorized defocus sweep with parabolic interpolation.
 
     Vignetting:
-        - vignetting(): Compute vignetting map
-        - draw_vignetting(): Draw vignetting visualization
+        vignetting: Fractional ray-throughput map across the field.
+        draw_vignetting: Grayscale image of relative illumination.
 
-    Wavefront & Aberration (placeholders):
-        - wavefront_error(): Compute wavefront error
-        - field_curvature(): Compute field curvature
-        - aberration_histogram(): Compute aberration histogram
+    Wavefront & Aberration:
+        wavefront_error: OPD at exit pupil for a given field position (RMS, PV, Strehl).
+        rms_wavefront_error: Scalar RMS wavefront error convenience wrapper.
+        draw_wavefront_error: OPD maps at multiple field positions.
 
     Chief Ray & Ray Aiming:
-        - calc_chief_ray(): Compute chief ray for an incident angle
-        - calc_chief_ray_infinite(): Compute chief ray for infinite object distance
+        calc_chief_ray: Find the chief ray (ray through aperture center) for a
+            given field angle by tracing a fan and picking the closest to axis.
+        calc_chief_ray_infinite: Batched chief-ray computation with optional
+            iterative ray aiming for accurate distortion measurement.
+
+    Comprehensive Analysis:
+        analysis_spot: RMS and geometric spot radii averaged over RGB at
+            multiple field positions.
+        analysis_rendering: Render a test image through the lens and report
+            PSNR / SSIM.
+        analysis: One-call entry point that chains layout drawing, spot
+            analysis, and (optionally) full evaluation + rendering.
 """
 
 import math
@@ -60,10 +103,12 @@ from ..config import (
     EPSILON,
     GEO_GRID,
     SPP_CALC,
+    SPP_COHERENT,
     SPP_PSF,
     SPP_RENDER,
     WAVE_RGB,
 )
+from ..imgsim import assign_points_to_pixels
 from ..light import Ray
 
 # RGB color definitions for wavelength visualization
@@ -75,40 +120,132 @@ RGB_LABELS = ["R", "G", "B"]
 
 
 class GeoLensEval:
-    """Mixin providing classical optical performance evaluation for ``GeoLens``.
+    """Mixin that adds classical optical evaluation methods to ``GeoLens``.
 
-    Provides spot diagrams, RMS error maps, MTF curves, distortion analysis,
-    vignetting, and field curvature — results are accuracy-aligned with
-    Zemax OpticStudio.
+    This class is **never instantiated on its own**.  It is mixed into
+    ``GeoLens`` via multiple inheritance, so every method can access lens
+    geometry (``self.d_sensor``, ``self.rfov``, …) and ray-tracing routines
+    (``self.trace()``, ``self.trace2sensor()``, …) directly through ``self``.
 
-    This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.optics.geolens.GeoLens`.
+    All evaluation functions follow the same pattern:
+        1. Sample rays from object space (parallel / grid / radial).
+        2. Trace rays through the lens (``self.trace`` or ``self.trace2sensor``).
+        3. Analyze ray positions / directions at the sensor plane.
+        4. Optionally produce a matplotlib figure saved to disk.
+
+    Results are accuracy-aligned with Zemax OpticStudio for the same lens
+    prescriptions and ray-sampling densities.
+
+    Attributes consumed from ``GeoLens`` (via ``self``):
+        d_sensor (float): Axial position of the sensor plane (mm).
+        sensor_size (tuple[float, float]): Sensor (width, height) in mm.
+        pixel_size (float): Pixel pitch in mm.
+        sensor_res (tuple[int, int]): Sensor resolution (H, W) in pixels.
+        rfov (float): Half field-of-view in **radians**.
+        foclen (float): Equivalent focal length in mm.
+        fnum (float): F-number.
+        aper_idx (int): Index of the aperture stop surface.
+        device (torch.device): Compute device (CPU / CUDA).
     """
 
     # ================================================================
     # Spot diagram
     # ================================================================
     @torch.no_grad()
+    def spot_points(self, points, num_rays=SPP_PSF, wvln=DEFAULT_WAVE):
+        """Trace rays from object points to sensor and return the traced Ray.
+
+        Samples rays from each physical object point toward the entrance pupil,
+        traces through all lens surfaces (refraction + clipping), and returns
+        the resulting Ray object on the sensor plane.
+
+        This is the shared computational core for spot diagrams
+        (``draw_spot_radial``, ``draw_spot_map``) and RMS error maps
+        (``rms_map``, ``rms_map_rgb``).
+
+        Algorithm:
+            1. ``self.sample_from_points(points, num_rays, wvln)`` generates a
+               fan of ``num_rays`` rays per object point, aimed at the entrance
+               pupil.
+            2. ``self.trace2sensor()`` propagates through all surfaces and
+               clips vignetted rays.
+
+        Args:
+            points (torch.Tensor): Physical 3D object-space coordinates with
+                shape ``[..., 3]`` (mm).  Supported layouts:
+                - ``[3]`` — single point.
+                - ``[N, 3]`` — N points (e.g. radial field positions).
+                - ``[H, W, 3]`` — 2-D field grid.
+                Generated by ``self.point_source_grid(normalized=False)`` for
+                grid sampling, or ``self.point_source_radial(normalized=False)``
+                for radial sampling.
+            num_rays (int): Number of rays sampled per object point.
+                Defaults to ``SPP_PSF``.
+            wvln (float): Wavelength in micrometers.
+                Defaults to ``DEFAULT_WAVE``.
+
+        Returns:
+            Ray: Traced ray on the sensor plane, with shape
+                ``[..., num_rays, 3]`` for positions and ``[..., num_rays]``
+                for validity mask. Use ``ray.o[..., :2]`` for transverse
+                positions and ``ray.is_valid`` for the validity mask.
+                ``ray.centroid()`` gives the weighted centroid.
+        """
+        ray = self.sample_from_points(points=points, num_rays=num_rays, wvln=wvln)
+        return self.trace2sensor(ray)
+
+    @torch.no_grad()
     def draw_spot_radial(
         self,
         save_name="./lens_spot_radial.png",
         num_fov=5,
-        depth=float("inf"),
+        depth=DEPTH,
         num_rays=SPP_PSF,
         wvln_list=WAVE_RGB,
+        direction="y",
         show=False,
     ):
-        """Draw spot diagram of the lens at different field angles along meridional (y) direction.
+        """Draw spot diagrams at evenly-spaced field angles along a chosen direction.
+
+        A *spot diagram* visualizes the transverse ray-intercept distribution on
+        the sensor plane for a point source at a given field angle and depth.
+        It reveals the combined effect of all aberrations (spherical, coma,
+        astigmatism, field curvature, chromatic, …).
+
+        Algorithm:
+            For each wavelength in ``wvln_list``:
+                1. ``self.point_source_radial(direction, normalized=False)``
+                   generates physical object-space points along the chosen
+                   direction.
+                2. ``self.spot_points()`` samples rays and traces to sensor.
+                3. Valid ray (x, y) positions are scatter-plotted per subplot.
+            All wavelengths are overlaid in a single figure with RGB coloring.
 
         Args:
-            save_name (string, optional): filename to save. Defaults to "./lens_spot_radial.png".
-            num_fov (int, optional): field of view number. Defaults to 4.
-            depth (float, optional): depth of the point source. Defaults to float("inf").
-            num_rays (int, optional): number of rays to sample. Defaults to SPP_PSF.
-            wvln_list (list, optional): wavelength list to render.
-            show (bool, optional): whether to show the plot. Defaults to False.
+            save_name (str): File path for the output PNG.
+                Defaults to ``'./lens_spot_radial.png'``.
+            num_fov (int): Number of field positions sampled uniformly from
+                on-axis (0) to full-field. Defaults to 5.
+            depth (float): Object distance in mm (negative = real object).
+                Defaults to ``DEPTH``.
+            num_rays (int): Rays per field position per wavelength.
+                Defaults to ``SPP_PSF``.
+            wvln_list (list[float]): Wavelengths in micrometers.
+                Defaults to ``WAVE_RGB`` (red, green, blue).
+            direction (str): Sampling direction —
+                ``"y"`` (meridional, default), ``"x"`` (sagittal),
+                ``"diagonal"`` (45°).
+            show (bool): If ``True``, display the figure interactively instead
+                of saving to disk. Defaults to ``False``.
         """
         assert isinstance(wvln_list, list), "wvln_list must be a list"
+        if depth == float("inf"):
+            depth = DEPTH
+
+        # Generate physical object-space points along the chosen direction
+        points = self.point_source_radial(
+            depth=depth, grid=num_fov, direction=direction, normalized=False
+        )
 
         # Prepare figure
         fig, axs = plt.subplots(1, num_fov, figsize=(num_fov * 3.5, 3))
@@ -116,26 +253,20 @@ class GeoLensEval:
 
         # Trace and draw each wavelength separately, overlaying results
         for wvln_idx, wvln in enumerate(wvln_list):
-            # Sample rays along meridional (y) direction, shape [num_fov, num_rays, 3]
-            ray = self.sample_radial_rays(
-                num_field=num_fov, depth=depth, num_rays=num_rays, wvln=wvln
-            )
-
-            # Trace rays to sensor plane, shape [num_fov, num_rays, 3]
-            ray = self.trace2sensor(ray)
-            ray_o = ray.o.cpu().numpy()
-            ray_valid = ray.is_valid.cpu().numpy()
+            ray = self.spot_points(points, num_rays=num_rays, wvln=wvln)
+            ray_o = ray.o[..., :2].cpu().numpy()
+            ray_valid_np = ray.is_valid.cpu().numpy()
 
             color = RGB_COLORS[wvln_idx % len(RGB_COLORS)]
 
             # Plot multiple spot diagrams in one figure
             for i in range(num_fov):
-                valid = ray_valid[i, :]
-                x, y = ray_o[i, :, 0], ray_o[i, :, 1]
+                valid = ray_valid_np[i, :]
+                xi, yi = ray_o[i, :, 0], ray_o[i, :, 1]
 
                 # Filter valid rays
                 mask = valid > 0
-                x_valid, y_valid = x[mask], y[mask]
+                x_valid, y_valid = xi[mask], yi[mask]
 
                 # Plot points and center of mass for this wavelength
                 axs[i].scatter(x_valid, y_valid, 2, color=color, alpha=0.5)
@@ -159,48 +290,66 @@ class GeoLensEval:
         wvln_list=WAVE_RGB,
         show=False,
     ):
-        """Draw spot diagram of the lens at different field angles.
+        """Draw a 2-D grid of spot diagrams across the full field of view.
+
+        Unlike ``draw_spot_radial`` (which samples only a radial slice),
+        this method samples a ``num_grid × num_grid`` grid of field positions
+        covering both the x (sagittal) and y (meridional) axes, revealing
+        off-axis aberrations that are invisible in a 1-D radial scan.
+
+        Algorithm:
+            For each wavelength in ``wvln_list``:
+                1. ``self.point_source_grid(normalized=False)`` creates physical
+                   object-space grid points, shape ``[grid_h, grid_w, 3]``.
+                2. ``self.spot_points()`` samples rays and traces to sensor.
+                3. Valid (x, y) positions are scatter-plotted in the
+                   corresponding subplot of the ``num_grid × num_grid`` figure.
+            All wavelengths are overlaid with RGB coloring.
 
         Args:
-            save_name (string, optional): filename to save. Defaults to "./lens_spot_map.png".
-            num_grid (int, optional): number of grid points. Defaults to 5.
-            depth (float, optional): depth of the point source. Defaults to DEPTH.
-            num_rays (int, optional): number of rays to sample. Defaults to SPP_PSF.
-            wvln_list (list, optional): wavelength list to render. Defaults to WAVE_RGB.
-            show (bool, optional): whether to show the plot. Defaults to False.
+            save_name (str): File path for the output PNG.
+                Defaults to ``'./lens_spot_map.png'``.
+            num_grid (int | tuple[int, int]): Number of grid points along each
+                axis. Total subplots = ``grid_w * grid_h``. Defaults to 5.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            num_rays (int): Rays per grid cell per wavelength.
+                Defaults to ``SPP_PSF``.
+            wvln_list (list[float]): Wavelengths in micrometers.
+                Defaults to ``WAVE_RGB``.
+            show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         assert isinstance(wvln_list, list), "wvln_list must be a list"
+        if isinstance(num_grid, int):
+            num_grid = (num_grid, num_grid)
 
-        # Plot multiple spot diagrams in one figure
+        # Generate physical object-space grid points, shape [grid_h, grid_w, 3]
+        points = self.point_source_grid(depth=depth, grid=num_grid, normalized=False)
+
+        grid_w, grid_h = num_grid
         fig, axs = plt.subplots(
-            num_grid, num_grid, figsize=(num_grid * 3, num_grid * 3)
+            grid_h, grid_w, figsize=(grid_w * 3, grid_h * 3)
         )
         axs = np.atleast_2d(axs)
 
         # Loop wavelengths and overlay scatters
         for wvln_idx, wvln in enumerate(wvln_list):
-            # Sample rays per wavelength, shape [num_grid, num_grid, num_rays, 3]
-            ray = self.sample_grid_rays(
-                depth=depth, num_grid=num_grid, num_rays=num_rays, wvln=wvln
-            )
-            # Trace rays to sensor
-            ray = self.trace2sensor(ray)
+            ray = self.spot_points(points, num_rays=num_rays, wvln=wvln)
 
-            # Convert to numpy, shape [num_grid, num_grid, num_rays, 3]
-            ray_o = -ray.o.cpu().numpy()
-            ray_valid = ray.is_valid.cpu().numpy()
+            # Convert to numpy, shape [grid_h, grid_w, num_rays, 2]
+            ray_o = -ray.o[..., :2].cpu().numpy()
+            ray_valid_np = ray.is_valid.cpu().numpy()
 
             color = RGB_COLORS[wvln_idx % len(RGB_COLORS)]
 
             # Draw per grid cell
-            for i in range(num_grid):
-                for j in range(num_grid):
-                    valid = ray_valid[i, j, :]
-                    x, y = ray_o[i, j, :, 0], ray_o[i, j, :, 1]
+            for i in range(grid_h):
+                for j in range(grid_w):
+                    valid = ray_valid_np[i, j, :]
+                    xi, yi = ray_o[i, j, :, 0], ray_o[i, j, :, 1]
 
                     # Filter valid rays
                     mask = valid > 0
-                    x_valid, y_valid = x[mask], y[mask]
+                    x_valid, y_valid = xi[mask], yi[mask]
 
                     # Plot points for this wavelength
                     axs[i, j].scatter(x_valid, y_valid, 2, color=color, alpha=0.5)
@@ -218,120 +367,188 @@ class GeoLensEval:
     # RMS map
     # ================================================================
     @torch.no_grad()
-    def rms_map_rgb(self, num_grid=32, depth=DEPTH):
-        """Calculate the RMS spot error map across RGB wavelengths. Reference to the centroid of green rays.
+    def rms_map(self, num_grid=32, depth=DEPTH, wvln=DEFAULT_WAVE, center=None):
+        """Compute per-field-position RMS spot radius for a single wavelength.
+
+        Traces ``SPP_PSF`` rays per grid cell and computes the root-mean-square
+        distance of valid ray hits from a reference centroid.  When ``center``
+        is ``None``, each cell uses its own centroid (monochromatic blur).
+        When an external ``center`` is provided (e.g. the green-channel
+        centroid), the RMS includes the chromatic shift from that reference.
+
+        Algorithm:
+            1. ``self.point_source_grid(normalized=False)`` generates physical
+               object points on a ``[num_grid, num_grid]`` field grid.
+            2. ``self.spot_points()`` samples ``SPP_PSF`` rays per point and
+               traces to sensor.
+            3. If ``center`` is ``None``, compute per-cell centroid
+               ``c = mean(valid ray_xy)``; otherwise use the provided ``center``.
+            4. ``RMS = sqrt( mean( ||ray_xy - c||^2 ) )``.
 
         Args:
-            num_grid (int, optional): Number of grid points. Defaults to 64.
-            depth (float, optional): Depth of the point source. Defaults to DEPTH.
+            num_grid (int | tuple[int, int]): Spatial resolution of the field
+                sampling grid. Defaults to 32.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            center (torch.Tensor | None): External reference centroid with shape
+                ``[grid_h, grid_w, 2]``.  If ``None``, each cell's own
+                centroid is used. Defaults to ``None``.
 
         Returns:
-            rms_map (torch.Tensor): RMS map for RGB channels. Shape [3, num_grid, num_grid].
+            tuple[torch.Tensor, torch.Tensor]:
+                - **rms**: RMS spot error map, shape ``[grid_h, grid_w]``,
+                  in mm.
+                - **centroid**: Per-cell centroid used as reference, shape
+                  ``[grid_h, grid_w, 2]``.  Useful for passing as
+                  ``center`` to subsequent calls (e.g. in ``rms_map_rgb``).
         """
-        all_rms_maps = []
+        if isinstance(num_grid, int):
+            num_grid = (num_grid, num_grid)
 
-        # Iterate G, R, B
-        for i, wvln in enumerate([WAVE_RGB[1], WAVE_RGB[0], WAVE_RGB[2]]):
-            # Sample and trace rays, shape [num_grid, num_grid, spp, 3]
-            ray = self.sample_grid_rays(
-                depth=depth, num_grid=num_grid, num_rays=SPP_PSF, wvln=wvln
-            )
+        # Generate physical grid points and trace rays to sensor
+        points = self.point_source_grid(depth=depth, grid=num_grid, normalized=False)
+        ray = self.spot_points(points, num_rays=SPP_PSF, wvln=wvln)
 
-            ray = self.trace2sensor(ray)
-            ray_xy = ray.o[..., :2]
-            ray_valid = ray.is_valid
+        # Reuse Ray.centroid() — shape [grid_h, grid_w, 3], slice to [grid_h, grid_w, 2]
+        centroid = ray.centroid()[..., :2]
 
-            # Calculate green centroid as reference, shape [num_grid, num_grid, 2]
-            if i == 0:
-                ray_xy_center_green = (ray_xy * ray_valid.unsqueeze(-1)).sum(
-                    -2
-                ) / ray_valid.sum(-1).add(EPSILON).unsqueeze(-1)
+        # Use external center if provided, otherwise own centroid
+        ref = center if center is not None else centroid
 
-            # Calculate RMS relative to green centroid, shape [num_grid, num_grid]
-            rms_map = torch.sqrt(
-                (
-                    ((ray_xy - ray_xy_center_green.unsqueeze(-2)) ** 2).sum(-1)
-                    * ray_valid
-                ).sum(-1)
-                / (ray_valid.sum(-1) + EPSILON)
-            )
-            all_rms_maps.append(rms_map)
-
-        # Stack the RMS maps for R, G, B channels, shape [3, num_grid, num_grid]
-        rms_map_rgb = torch.stack(
-            [all_rms_maps[1], all_rms_maps[0], all_rms_maps[2]], dim=0
-        )
-
-        return rms_map_rgb
-
-    @torch.no_grad()
-    def rms_map(self, num_grid=32, depth=DEPTH, wvln=DEFAULT_WAVE):
-        """Calculate the RMS spot error map for a specific wavelength.
-
-        Currently this function is not used, but it can be used as the weight mask during optimization.
-
-        Args:
-            num_grid (int, optional): Resolution of the grid used for sampling fields/points. Defaults to 64.
-            depth (float, optional): Depth of the point source. Defaults to DEPTH.
-            wvln (float, optional): Wavelength of the ray. Defaults to DEFAULT_WAVE.
-
-        Returns:
-            rms_map (torch.Tensor): RMS map for the specified wavelength. Shape [num_grid, num_grid].
-        """
-        # Sample and trace rays, shape [num_grid, num_grid, spp, 3]
-        ray = self.sample_grid_rays(
-            depth=depth, num_grid=num_grid, num_rays=SPP_PSF, wvln=wvln
-        )
-        ray = self.trace2sensor(ray)
-        ray_xy = ray.o[..., :2]  # Shape [num_grid, num_grid, spp, 2]
-        ray_valid = ray.is_valid  # Shape [num_grid, num_grid, spp]
-
-        # Calculate centroid for each field point for this wavelength
-        ray_xy_center = (ray_xy * ray_valid.unsqueeze(-1)).sum(-2) / ray_valid.sum(
-            -1
-        ).add(EPSILON).unsqueeze(-1)
-        # Shape [num_grid, num_grid, 2]
-
-        # Calculate RMS error relative to its own centroid, shape [num_grid, num_grid]
-        rms_map = torch.sqrt(
-            (((ray_xy - ray_xy_center.unsqueeze(-2)) ** 2).sum(-1) * ray_valid).sum(-1)
+        # RMS relative to reference, shape [grid_h, grid_w]
+        ray_xy = ray.o[..., :2]
+        ray_valid = ray.is_valid
+        rms = torch.sqrt(
+            (((ray_xy - ref.unsqueeze(-2)) ** 2).sum(-1) * ray_valid).sum(-1)
             / (ray_valid.sum(-1) + EPSILON)
         )
 
-        return rms_map
+        return rms, centroid
+
+    @torch.no_grad()
+    def rms_map_rgb(self, num_grid=32, depth=DEPTH):
+        """Compute per-field-position RMS spot radius for R, G, B wavelengths.
+
+        The RMS spot radius is a standard measure of geometrical image quality.
+        For each field position in a ``num_grid × num_grid`` grid, this method
+        traces ``SPP_PSF`` rays per wavelength and computes the root-mean-square
+        distance of valid ray hits from a **common** reference centroid.
+
+        The reference centroid is the green-channel centroid.  Using a common
+        reference means the returned RMS values include *lateral chromatic
+        aberration* (the shift between R/G/B centroids), making the map useful
+        as a polychromatic image-quality metric.
+
+        Algorithm:
+            1. Call ``rms_map(wvln=green)`` to get the green RMS map **and**
+               the green centroid.
+            2. Call ``rms_map(wvln=red, center=green_centroid)`` and
+               ``rms_map(wvln=blue, center=green_centroid)`` to measure R/B
+               blur relative to the green reference.
+            3. Stack as ``[R, G, B]``.
+
+        Args:
+            num_grid (int): Spatial resolution of the field sampling grid.
+                Defaults to 32.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+
+        Returns:
+            torch.Tensor: RMS spot error map with shape ``[3, num_grid, num_grid]``
+                (channels ordered R, G, B). Units are mm (same as sensor
+                coordinates).
+        """
+        # Green first to obtain the shared reference centroid
+        rms_g, green_centroid = self.rms_map(
+            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[1]
+        )
+
+        # Red and blue relative to the green centroid
+        rms_r, _ = self.rms_map(
+            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[0], center=green_centroid
+        )
+        rms_b, _ = self.rms_map(
+            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[2], center=green_centroid
+        )
+
+        return torch.stack([rms_r, rms_g, rms_b], dim=0)
 
     # ================================================================
     # Distortion
     # ================================================================
-    def calc_distortion_2D(
-        self, rfov, wvln=DEFAULT_WAVE, plane="meridional", ray_aiming=True
+    @torch.no_grad()
+    def calc_distortion_radial(
+        self,
+        num_points=GEO_GRID,
+        wvln=DEFAULT_WAVE,
+        plane="meridional",
+        ray_aiming=True,
     ):
-        """Calculate distortion at a specific field angle.
+        """Compute fractional distortion at evenly-spaced field angles along the meridional direction.
+
+        Distortion is defined as ``(h_actual - h_ideal) / h_ideal``, where
+        ``h_ideal = f * tan(theta)`` (rectilinear projection) and ``h_actual``
+        is the chief-ray image height on the sensor.  A positive value means
+        pincushion distortion; negative means barrel distortion.
+
+        This is the computational counterpart to ``draw_spot_radial``: it
+        samples ``num_points`` field angles uniformly from 0 to ``self.rfov``
+        and returns both the sampled angles and the corresponding distortion
+        values, making it easy to pair with other radial evaluation functions.
+
+        Algorithm:
+            1. Derive ``rfov_deg`` from ``self.rfov`` (radians → degrees).
+            2. Sample ``num_points`` field angles uniformly in
+               ``[0, rfov_deg]``.  The on-axis sample (0°) is replaced by a
+               tiny positive angle to avoid 0/0.
+            3. Compute ``h_ideal = foclen * tan(angle)`` for each sample.
+            4. Trace the chief ray (via ``calc_chief_ray_infinite``) through the
+               full lens to the sensor plane.
+            5. Extract ``h_actual`` from the appropriate transverse coordinate
+               (x for sagittal, y for meridional).
+            6. Return ``(h_actual - h_ideal) / h_ideal``.
 
         Args:
-            rfov (float): view angle (degree)
-            wvln (float): wavelength
-            plane (str): meridional or sagittal
-            ray_aiming (bool): whether the chief ray through the center of the stop.
+            num_points (int): Number of evenly-spaced field-angle samples from
+                on-axis (0°) to full-field (``self.rfov``).
+                Defaults to ``GEO_GRID``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            plane (str): ``'meridional'`` (y-axis) or ``'sagittal'`` (x-axis).
+                Defaults to ``'meridional'``.
+            ray_aiming (bool): If ``True``, the chief ray is aimed to pass
+                through the center of the aperture stop (more accurate for
+                wide-angle lenses). Defaults to ``True``.
 
         Returns:
-            distortion (float): distortion at the specific field angle
+            tuple[np.ndarray, np.ndarray]:
+                - **rfov_samples**: Field angles in degrees, shape ``[num_points]``.
+                - **distortions**: Fractional distortion at each angle, shape
+                  ``[num_points]``.  Dimensionless (multiply by 100 for
+                  percent).
         """
-        # Calculate ideal image height (ensure pure numpy to avoid tensor deprecation)
-        eff_foclen = float(self.foclen)
-        rfov_np = np.asarray(rfov) if not isinstance(rfov, (int, float)) else rfov
-        ideal_imgh = eff_foclen * np.tan(rfov_np * np.pi / 180)
+        rfov_deg = float(self.rfov) * 180.0 / np.pi
 
-        # Calculate chief ray
+        # Sample field angles uniformly from 0 to rfov_deg.
+        # For the on-axis point (FOV=0), distortion is 0/0.  We compute it at a
+        # tiny positive angle to obtain the correct limit, which may be non-zero
+        # when the sensor is not at the paraxial focus.
+        rfov_samples = torch.linspace(0, rfov_deg, num_points)
+        rfov_compute = rfov_samples.clone()
+        if rfov_compute[0] == 0:
+            rfov_compute[0] = min(0.01, rfov_samples[1].item() * 0.01)
+
+        # Ideal image height: h_ideal = f * tan(theta)
+        eff_foclen = float(self.foclen)
+        ideal_imgh = eff_foclen * np.tan(rfov_compute.numpy() * np.pi / 180)
+
+        # Trace chief rays to the sensor plane
         chief_ray_o, chief_ray_d = self.calc_chief_ray_infinite(
-            rfov=rfov, wvln=wvln, plane=plane, ray_aiming=ray_aiming
+            rfov=rfov_compute, wvln=wvln, plane=plane, ray_aiming=ray_aiming
         )
         ray = Ray(chief_ray_o, chief_ray_d, wvln=wvln, device=self.device)
-
         ray, _ = self.trace(ray)
         t = (self.d_sensor - ray.o[..., 2]) / ray.d[..., 2]
 
-        # Calculate actual image height
+        # Actual image height from the appropriate transverse coordinate
         if plane == "sagittal":
             actual_imgh = (ray.o[..., 0] + ray.d[..., 0] * t).abs()
         elif plane == "meridional":
@@ -339,19 +556,20 @@ class GeoLensEval:
         else:
             raise ValueError(f"Invalid plane: {plane}")
 
-        # Calculate distortion
         actual_imgh = actual_imgh.cpu().numpy()
 
-        # Handle the case where ideal_imgh is 0 or very close to 0
+        # Fractional distortion, with safe handling of the on-axis singularity
         ideal_imgh = np.asarray(ideal_imgh)
         mask = np.abs(ideal_imgh) < EPSILON
-        distortion = np.where(mask, 0.0, (actual_imgh - ideal_imgh) / np.where(mask, 1.0, ideal_imgh))
+        distortions = np.where(
+            mask, 0.0, (actual_imgh - ideal_imgh) / np.where(mask, 1.0, ideal_imgh)
+        )
 
-        return distortion
+        return rfov_samples.numpy(), distortions
 
+    @torch.no_grad()
     def draw_distortion_radial(
         self,
-        rfov,
         save_name=None,
         num_points=GEO_GRID,
         wvln=DEFAULT_WAVE,
@@ -359,30 +577,37 @@ class GeoLensEval:
         ray_aiming=True,
         show=False,
     ):
-        """Draw distortion. zemax format(default): ray_aiming = False.
+        """Draw distortion-vs-field-angle curve in Zemax style.
 
-        Note: this function is provided by a community contributor.
+        Produces a plot with field angle on the y-axis and percent distortion
+        on the x-axis, matching the layout convention used in Zemax OpticStudio.
+        Useful for quick visual assessment of barrel / pincushion distortion.
+
+        Algorithm:
+            1. Call ``calc_distortion_radial`` to obtain field angles and
+               fractional distortion values.
+            2. Convert distortion to percent and plot.
 
         Args:
-            rfov: view angle (degrees)
-            save_name: Save filename. Defaults to None.
-            num_points: Number of points. Defaults to GEO_GRID.
-            plane: Meridional or sagittal. Defaults to meridional.
-            ray_aiming: Whether to use ray aiming. Defaults to False.
+            save_name (str | None): File path for the output PNG.  If ``None``,
+                auto-generates ``'./{plane}_distortion_inf.png'``.
+            num_points (int): Number of field-angle samples.
+                Defaults to ``GEO_GRID``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            plane (str): ``'meridional'`` or ``'sagittal'``.
+                Defaults to ``'meridional'``.
+            ray_aiming (bool): Whether to use ray aiming for chief-ray
+                computation. Defaults to ``True``.
+            show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
-        # Sample view angles
-        rfov_samples = torch.linspace(0, rfov, num_points)
-        distortions = []
+        rfov_deg = float(self.rfov) * 180.0 / np.pi
 
-        # Calculate distortion
-        distortions = self.calc_distortion_2D(
-            rfov=rfov_samples,
-            wvln=wvln,
-            plane=plane,
-            ray_aiming=ray_aiming,
+        # Calculate distortion at evenly-spaced field angles
+        rfov_samples, distortions = self.calc_distortion_radial(
+            num_points=num_points, wvln=wvln, plane=plane, ray_aiming=ray_aiming
         )
 
-        # Handle possible NaN values and convert to percentage
+        # Convert to percentage and handle NaN
         values = np.nan_to_num(distortions * 100, nan=0.0).tolist()
 
         # Create figure
@@ -405,7 +630,7 @@ class GeoLensEval:
 
         # Set ticks
         x_ticks = np.linspace(-value, value, 3)
-        y_ticks = np.linspace(0, rfov, 3)
+        y_ticks = np.linspace(0, rfov_deg, 3)
 
         ax.set_xticks(x_ticks)
         ax.set_yticks(y_ticks)
@@ -423,7 +648,7 @@ class GeoLensEval:
 
         # Set axis range
         ax.set_xlim(x_min, x_max)
-        ax.set_ylim(0, rfov)
+        ax.set_ylim(0, rfov_deg)
 
         if show:
             plt.show()
@@ -434,16 +659,27 @@ class GeoLensEval:
         plt.close(fig)
 
     @torch.no_grad()
-    def distortion_map(self, num_grid=16, depth=DEPTH, wvln=DEFAULT_WAVE):
-        """Compute distortion map at a given depth.
+    def calc_distortion_map(self, num_grid=16, depth=DEPTH, wvln=DEFAULT_WAVE):
+        """Compute a 2-D distortion grid mapping ideal to actual image positions.
+
+        For each cell in a ``num_grid × num_grid`` field grid, rays are traced
+        to the sensor and their centroid is computed.  The centroid is then
+        normalized to ``[-1, 1]`` sensor coordinates, producing a map that
+        shows how each ideal image point is displaced by lens distortion.
+
+        This map can be used with ``torch.nn.functional.grid_sample`` to warp
+        or unwarp rendered images.
 
         Args:
-            num_grid (int): number of grid points.
-            depth (float): depth of the point source.
-            wvln (float): wavelength.
+            num_grid (int): Grid resolution along each axis. Defaults to 16.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
 
         Returns:
-            distortion_grid (torch.Tensor): distortion map. shape (grid_size, grid_size, 2)
+            torch.Tensor: Distortion grid with shape ``[num_grid, num_grid, 2]``.
+                Each entry ``(dx, dy)`` is in normalized sensor coordinates
+                ``[-1, 1]``, representing the actual centroid position for the
+                corresponding ideal grid position.
         """
         # Sample and trace rays, shape (grid_size, grid_size, num_rays, 3)
         ray = self.sample_grid_rays(depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False)
@@ -457,15 +693,29 @@ class GeoLensEval:
         return distortion_grid
 
     def distortion_center(self, points):
-        """Calculate the distortion center for given normalized points.
+        """Compute the distorted image centroid for arbitrary normalized object points.
+
+        Given object points in normalized coordinates, this method converts them
+        to physical object-space positions, traces rays from each point through
+        the lens, and returns the ray centroid on the sensor in normalized
+        ``[-1, 1]`` coordinates.  This is the inverse mapping needed for
+        distortion correction (unwarping).
+
+        Algorithm:
+            1. Convert normalized ``(x, y)`` ∈ [-1, 1] to physical object-space
+               positions using ``self.calc_scale(depth)`` and ``self.sensor_size``.
+            2. ``self.sample_from_points()`` generates rays from each point.
+            3. ``self.trace2sensor()`` propagates rays.
+            4. Compute centroid and normalize back to ``[-1, 1]``.
 
         Args:
-            points: Normalized point source positions. Shape [N, 3] or [..., 3].
-                x, y in [-1, 1], z (depth) in [-Inf, 0].
+            points (torch.Tensor): Normalized point source positions with shape
+                ``[N, 3]`` or ``[..., 3]``.  ``x, y`` ∈ [-1, 1] encode the
+                field position; ``z`` ∈ (-∞, 0] is the object depth in mm.
 
         Returns:
-            distortion_center: Normalized distortion center positions. Shape [N, 2] or [..., 2].
-                x, y in [-1, 1].
+            torch.Tensor: Normalized distortion centroid positions with shape
+                ``[N, 2]`` or ``[..., 2]``.  ``x, y`` ∈ [-1, 1].
         """
         sensor_w, sensor_h = self.sensor_size
 
@@ -487,20 +737,27 @@ class GeoLensEval:
         distortion_center = torch.stack((distortion_center_x, distortion_center_y), dim=-1)
         return distortion_center
 
-    def draw_distortion(
+    @torch.no_grad()
+    def draw_distortion_map(
         self, save_name=None, num_grid=16, depth=DEPTH, wvln=DEFAULT_WAVE, show=False
     ):
-        """Draw distortion map.
+        """Draw a scatter plot of the distortion grid.
+
+        Visualizes the output of ``calc_distortion_map()`` as a scatter plot on
+        ``[-1, 1]`` normalized sensor coordinates.  An undistorted lens would
+        show a perfect rectilinear grid; deviations reveal barrel or pincushion
+        distortion.
 
         Args:
-            save_name (str, optional): filename to save. Defaults to None.
-            num_grid (int, optional): number of grid points. Defaults to 16.
-            depth (float, optional): depth of the point source. Defaults to DEPTH.
-            wvln (float, optional): wavelength. Defaults to DEFAULT_WAVE.
-            show (bool, optional): whether to show the plot. Defaults to False.
+            save_name (str | None): File path for the output PNG.  If ``None``,
+                auto-generates ``'./distortion_{depth}.png'``.
+            num_grid (int): Grid resolution per axis. Defaults to 16.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         # Ray tracing to calculate distortion map
-        distortion_grid = self.distortion_map(num_grid=num_grid, depth=depth, wvln=wvln)
+        distortion_grid = self.calc_distortion_map(num_grid=num_grid, depth=depth, wvln=wvln)
         x1 = distortion_grid[..., 0].cpu().numpy()
         y1 = distortion_grid[..., 1].cpu().numpy()
 
@@ -528,20 +785,35 @@ class GeoLensEval:
     # MTF
     # ================================================================
     def mtf(self, fov, wvln=DEFAULT_WAVE):
-        """Calculate Modulation Transfer Function at a specific field of view.
+        """Compute the geometric MTF at a single field position.
 
-        Computes the geometric MTF by first generating a PSF at the given field
-        position, then converting it to tangential and sagittal MTF curves via FFT.
+        The *Modulation Transfer Function* describes how well the lens preserves
+        contrast as a function of spatial frequency.  MTF = 1 at low frequencies
+        (perfect contrast) and falls toward 0 near the diffraction limit or the
+        Nyquist frequency of the sensor.
+
+        This implementation uses the *geometric* (ray-based) approach:
+            1. Compute the PSF at the given field position via ``self.psf()``.
+            2. Convert PSF → MTF via ``psf2mtf()`` (project onto tangential and
+               sagittal axes, then take the magnitude of the 1-D FFT).
+
+        Tangential MTF captures resolution in the meridional (radial) direction;
+        sagittal MTF captures resolution perpendicular to it.  The difference
+        between the two indicates astigmatism.
 
         Args:
-            fov (float): Field of view angle in radians.
-            wvln (float, optional): Wavelength in micrometers. Defaults to DEFAULT_WAVE.
+            fov (float): Field position as a **fraction** of ``self.rfov``
+                (0 = on-axis, 1 = full field).  Internally mapped to a
+                normalized point ``[0, -fov/rfov, DEPTH]``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
 
         Returns:
-            tuple: (freq, mtf_tan, mtf_sag) where:
-                - freq (ndarray): Spatial frequency axis in cycles/mm.
-                - mtf_tan (ndarray): Tangential (meridional) MTF values.
-                - mtf_sag (ndarray): Sagittal MTF values.
+            tuple[np.ndarray, np.ndarray, np.ndarray]:
+                - **freq**: Spatial frequency axis in cycles/mm (positive
+                  frequencies only, excluding DC).
+                - **mtf_tan**: Tangential (meridional) MTF values, normalized
+                  so that MTF → 1 at low frequency.
+                - **mtf_sag**: Sagittal MTF values, same normalization.
         """
         point = [0, -fov / self.rfov, DEPTH]
         psf = self.psf(points=point, recenter=True, wvln=wvln)
@@ -550,20 +822,37 @@ class GeoLensEval:
 
     @staticmethod
     def psf2mtf(psf, pixel_size):
-        """Calculate MTF from PSF.
+        """Convert a 2-D point-spread function to tangential and sagittal MTF curves.
+
+        The MTF is the magnitude of the optical transfer function (OTF), which
+        is the Fourier transform of the PSF.  For separable 1-D analysis:
+            1. Integrate the PSF along the x-axis → *tangential* line-spread
+               function (LSF_tan).
+            2. Integrate the PSF along the y-axis → *sagittal* LSF_sag.
+            3. Take ``|FFT(LSF)|`` and normalize by the DC component so that
+               MTF(0) = 1.
+
+        Only positive frequencies (excluding DC) are returned, following the
+        convention used in Zemax MTF plots.
 
         Args:
-            psf (tensor): 2D PSF tensor (e.g., ks x ks). Assumes standard orientation where the array's y-axis corresponds to the tangential/meridional direction and the x-axis to the sagittal direction.
-            pixel_size (float): Pixel size in mm.
+            psf (torch.Tensor | np.ndarray): 2-D PSF with shape ``[H, W]``.
+                The array's y-axis (rows) corresponds to the **tangential**
+                (meridional) direction; x-axis (columns) to the **sagittal**
+                direction.
+            pixel_size (float): Pixel pitch in mm.  Determines the frequency
+                axis scaling: ``Nyquist = 0.5 / pixel_size`` cycles/mm.
 
         Returns:
-            freq (ndarray): Frequency axis (cycles/mm).
-            tangential_mtf (ndarray): Tangential MTF.
-            sagittal_mtf (ndarray): Sagittal MTF.
+            tuple[np.ndarray, np.ndarray, np.ndarray]:
+                - **freq**: Spatial frequency in cycles/mm (positive, excluding
+                  DC).  Length is roughly ``H // 2``.
+                - **mtf_tan**: Tangential MTF, normalized to 1 at DC.
+                - **mtf_sag**: Sagittal MTF, normalized to 1 at DC.
 
-        Reference:
-            [1] https://en.wikipedia.org/wiki/Optical_transfer_function
-            [2] https://www.edmundoptics.com/knowledge-center/application-notes/optics/introduction-to-modulation-transfer-function/?srsltid=AfmBOoq09vVDVlh_uuwWnFoMTg18JVgh18lFSw8Ci4Sdlry-AmwGkfDd
+        References:
+            - https://en.wikipedia.org/wiki/Optical_transfer_function
+            - Edmund Optics: Introduction to Modulation Transfer Function.
         """
         # Convert to numpy (supports torch tensors and numpy arrays)
         try:
@@ -611,16 +900,32 @@ class GeoLensEval:
         psf_ks=128,
         show=False,
     ):
-        """Draw a grid of MTF curves.
-        Each subplot in the grid corresponds to a specific (depth, FOV) combination.
-        Each subplot displays MTF curves for R, G, B wavelengths.
+        """Draw a grid of tangential MTF curves for multiple depths and field positions.
+
+        Produces a ``len(depth_list) × len(relative_fov_list)`` subplot grid.
+        Each subplot shows the tangential MTF for R, G, B wavelengths plus a
+        vertical line at the sensor Nyquist frequency
+        (``0.5 / pixel_size`` cycles/mm).
+
+        Algorithm per subplot:
+            1. Compute the RGB PSF via ``self.psf_rgb()`` at the specified
+               ``(depth, relative_fov)`` with kernel size ``psf_ks``.
+            2. For each wavelength channel, call ``psf2mtf()`` to obtain the
+               tangential MTF curve.
+            3. Plot frequency vs MTF with RGB coloring.
 
         Args:
-            relative_fov_list (list, optional): List of relative field of view values. Defaults to [0.0, 0.7, 1.0].
-            depth_list (list, optional): List of depth values. Defaults to [DEPTH].
-            save_name (str, optional): Filename to save the plot. Defaults to "./mtf_grid.png".
-            psf_ks (int, optional): Kernel size for intermediate PSF calculation. Defaults to 256.
-            show (bool, optional): whether to show the plot. Defaults to False.
+            save_name (str): File path for the output PNG.
+                Defaults to ``'./lens_mtf.png'``.
+            relative_fov_list (list[float]): Relative field positions in
+                ``[0, 1]``, where 0 = on-axis and 1 = full field.
+                Defaults to ``[0.0, 0.7, 1.0]``.
+            depth_list (list[float]): Object distances in mm.
+                ``float('inf')`` is automatically replaced by ``DEPTH``.
+                Defaults to ``[DEPTH]``.
+            psf_ks (int): PSF kernel size in pixels (controls frequency
+                resolution of the resulting MTF). Defaults to 128.
+            show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         pixel_size = self.pixel_size
         nyquist_freq = 0.5 / pixel_size
@@ -694,91 +999,142 @@ class GeoLensEval:
     def draw_field_curvature(
         self,
         save_name=None,
-        num_points=32,
+        num_points=64,
         z_span=1.0,
-        z_steps=1001,
+        z_steps=201,
         wvln_list=WAVE_RGB,
-        spp=SPP_CALC,
+        spp=256,
         show=False,
     ):
-        """Draw field curvature: best-focus defocus vs field angle, RGB overlaid.
+        """Draw field curvature: best-focus defocus (Δz) vs field angle for RGB.
 
-        For each wavelength and field angle, sweeps defocus positions around the
-        sensor plane and finds the position that minimizes the tangential ray spread.
-        Plots tangential curves as solid lines.
+        *Field curvature* (Petzval curvature) causes off-axis image points to
+        focus on a curved surface rather than the flat sensor.  This method
+        finds the axial position of minimum RMS spot size at each field angle
+        and plots the deviation from the nominal sensor plane.
+
+        Algorithm (fully vectorized per wavelength):
+            1. Construct a meridional ray fan at ``num_points`` field angles,
+               each with ``spp`` rays spanning the entrance pupil.
+            2. Trace all rays through the lens in a single batched call.
+            3. For each of ``z_steps`` defocus planes within ``±z_span`` mm of
+               ``self.d_sensor``, propagate rays analytically (linear
+               extension) and compute the variance of the y-coordinate.
+            4. The defocus with minimum variance is the best-focus plane.
+               Parabolic interpolation on the three-point neighborhood gives
+               sub-grid-step precision.
+            5. Repeat for each wavelength; overlay R/G/B curves on a single plot.
 
         Args:
-            save_name (str, optional): Path to save the figure. Defaults to
-                ``'./field_curvature.png'``.
-            num_points (int, optional): Number of field angle samples. Defaults to 32.
-            z_span (float, optional): Half-range of defocus sweep in mm. Defaults to 1.0.
-            z_steps (int, optional): Number of defocus steps. Defaults to 1001.
-            wvln_list (list, optional): Wavelengths to evaluate. Defaults to WAVE_RGB.
-            spp (int, optional): Number of rays per field point. Defaults to SPP_CALC.
-            show (bool, optional): If True, display plot interactively. Defaults to False.
+            save_name (str | None): File path for the output PNG.  If ``None``,
+                defaults to ``'./field_curvature.png'``.
+            num_points (int): Number of field-angle samples from 0 to
+                ``self.rfov``. Defaults to 64.
+            z_span (float): Half-range of the defocus sweep in mm.  If the
+                best-focus hits the boundary, a warning is printed.
+                Defaults to 1.0.
+            z_steps (int): Number of uniformly-spaced defocus planes within
+                ``±z_span``. Higher values give finer axial resolution.
+                Defaults to 201.
+            wvln_list (list[float]): Wavelengths in micrometers.
+                Defaults to ``WAVE_RGB``.
+            spp (int): Rays per field point (sampled uniformly across the
+                entrance pupil in the meridional plane). Defaults to 256.
+            show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
-        print("This function is not optimized for the best speed.")
         device = self.device
-        # Convert maximum field angle to degrees
         rfov_deg = float(self.rfov) * 180.0 / np.pi
 
-        # Sample field angles [0, rfov_deg]
+        # Sample field angles [0, rfov_deg], shape [F]
         rfov_samples = torch.linspace(0.0, rfov_deg, num_points, device=device)
 
-        # Prepare containers
-        delta_z_tan = []  # list of numpy arrays per wavelength
+        # Entrance pupil (computed once)
+        pupilz, pupilr = self.get_entrance_pupil()
 
-        # Defocus sweep grid (around current sensor plane)
+        # Defocus sweep grid, shape [Z]
         d_sensor = self.d_sensor
         z_grid = d_sensor + torch.linspace(-z_span, z_span, z_steps, device=device)
 
-        # Helper to compute best focus along a given axis (0=x sagittal, 1=y tangential)
-        def best_focus_delta_z(ray, axis_idx: int):
-            # ray: after lens surfaces (image space)
-            # Vectorized intersection with planes z_grid
-            oz = ray.o[..., 2:3]
-            dz = ray.d[..., 2:3]
-            t = (z_grid.unsqueeze(0) - oz) / (dz + 1e-12)  # [N, Z]
+        delta_z_tan = []
 
-            oa = ray.o[..., axis_idx : axis_idx + 1]
-            da = ray.d[..., axis_idx : axis_idx + 1]
-            pos_axis = (oa + da * t).squeeze(-1)  # [N, Z]
+        for wvln in wvln_list:
+            # --- Batch ray construction for all field angles ---
+            # Pupil positions: shape [spp]
+            pupil_y = torch.linspace(-pupilr, pupilr, spp, device=device) * 0.99
 
-            w = ray.is_valid.unsqueeze(-1).float()  # [N, 1] -> [N, Z] by broadcast
-            pos_axis = pos_axis * w
-            w_sum = w.sum(0)  # [Z]
-            centroid = pos_axis.sum(0) / (w_sum + EPSILON)  # [Z]
-            ms = (((pos_axis - centroid.unsqueeze(0)) ** 2) * w).sum(0) / (
+            # Ray origins: shape [F, spp, 3] (meridional plane: x=0)
+            ray_o = torch.zeros(num_points, spp, 3, device=device)
+            ray_o[..., 1] = pupil_y.unsqueeze(0)  # y = pupil sample
+            ray_o[..., 2] = pupilz  # z = entrance pupil z
+
+            # Ray directions: shape [F, spp, 3] (meridional: dx=0)
+            fov_rad = rfov_samples * (np.pi / 180.0)  # [F]
+            sin_fov = torch.sin(fov_rad)  # [F]
+            cos_fov = torch.cos(fov_rad)  # [F]
+            ray_d = torch.zeros(num_points, spp, 3, device=device)
+            ray_d[..., 1] = sin_fov.unsqueeze(-1)  # [F, 1] -> [F, spp]
+            ray_d[..., 2] = cos_fov.unsqueeze(-1)
+
+            # Create batched ray and trace all field angles at once
+            ray = Ray(ray_o, ray_d, wvln=wvln, device=device)
+            ray, _ = self.trace(ray)
+
+            # --- Vectorized best-focus for all field angles ---
+            # ray.o: [F, spp, 3], ray.d: [F, spp, 3]
+            oz = ray.o[..., 2:3]  # [F, spp, 1]
+            dz = ray.d[..., 2:3]  # [F, spp, 1]
+            t = (z_grid.view(1, 1, -1) - oz) / (dz + EPSILON)  # [F, spp, Z]
+
+            oa = ray.o[..., 1:2]  # y-axis (tangential)
+            da = ray.d[..., 1:2]
+            pos_y = oa + da * t  # [F, spp, Z]
+
+            w = ray.is_valid.unsqueeze(-1).float()  # [F, spp, 1]
+            pos_y = pos_y * w  # mask invalid rays
+            w_sum = w.sum(dim=1)  # [F, 1]
+
+            centroid = pos_y.sum(dim=1) / (w_sum + EPSILON)  # [F, Z]
+            ms = (((pos_y - centroid.unsqueeze(1)) ** 2) * w).sum(dim=1) / (
                 w_sum + EPSILON
-            )  # [Z]
-            best_idx = torch.argmin(ms)
-            return (z_grid[best_idx] - d_sensor).item()
+            )  # [F, Z]
 
-        # Loop wavelengths and field angles
-        for w_idx, wvln in enumerate(wvln_list):
-            dz_tan = []
-            for i in range(len(rfov_samples)):
-                fov_deg = rfov_samples[i].item()
+            best_idx = torch.argmin(ms, dim=1)  # [F]
 
-                # Tangential (meridional plane: y-z plane -> minimize y spread)
-                ray_t = self.sample_parallel_2D(
-                    fov=fov_deg,
-                    num_rays=spp,
-                    wvln=wvln,
-                    plane="meridional",
-                    entrance_pupil=True,
+            # Warn if best focus hits z_span boundary
+            boundary_hit = (best_idx == 0) | (best_idx == z_steps - 1)
+            if boundary_hit.any():
+                n_boundary = boundary_hit.sum().item()
+                print(
+                    f"Warning: {n_boundary}/{num_points} field angles hit z_span "
+                    f"boundary. Consider increasing z_span (currently {z_span} mm)."
                 )
-                ray_t, _ = self.trace(ray_t)
-                dz_tan.append(best_focus_delta_z(ray_t, axis_idx=1))  # y-axis
 
-            delta_z_tan.append(np.asarray(dz_tan))
+            # Parabolic interpolation for sub-grid precision
+            idx_c = best_idx.clamp(1, z_steps - 2)  # avoid boundary
+            f_range = torch.arange(num_points, device=device)
+            y_l = ms[f_range, idx_c - 1]
+            y_c = ms[f_range, idx_c]
+            y_r = ms[f_range, idx_c + 1]
+            denom = 2.0 * (y_l - 2.0 * y_c + y_r)
+            shift = (y_l - y_r) / (denom + EPSILON)  # fractional index offset
+            shift = shift.clamp(-0.5, 0.5)  # safety clamp
+
+            z_step_size = (2.0 * z_span) / (z_steps - 1)
+            best_z = z_grid[idx_c] + shift * z_step_size  # [F]
+            dz_tan = (best_z - d_sensor).cpu().numpy()
+
+            # Mark fully-vignetted field angles as NaN (gaps in plot)
+            valid_count = w.sum(dim=1).squeeze(-1)  # [F]
+            fully_vignetted = (valid_count < 2).cpu().numpy()
+            dz_tan[fully_vignetted] = np.nan
+
+            delta_z_tan.append(dz_tan)
 
         # Plot
         fov_np = rfov_samples.detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(7, 6))
         ax.set_title("Field Curvature (Δz vs Field Angle)")
 
-        # Determine x range (tangential only)
         all_vals = np.abs(np.concatenate(delta_z_tan)) if len(delta_z_tan) > 0 else np.array([0.0])
         x_range = float(max(0.2, all_vals.max() * 1.2)) if all_vals.size > 0 else 0.2
 
@@ -813,22 +1169,42 @@ class GeoLensEval:
     # ================================================================
     # Vignetting
     # ================================================================
-    def vignetting(self, depth=DEPTH, num_grid=64):
-        """Compute relative illumination (vignetting) map.
+    @torch.no_grad()
+    def vignetting(self, depth=DEPTH, num_grid=32, num_rays=512):
+        """Compute the relative-illumination (vignetting) map across the field.
 
-        Measures the fraction of rays that successfully reach the sensor for each
-        field position, indicating light falloff from center to edge.
+        Vignetting measures how much light is lost at each field position due to
+        rays being clipped by lens apertures or barrel edges.  It is computed as
+        the fraction of traced rays that remain valid (not vignetted) at each
+        grid cell, normalized by the total number of launched rays.
+
+        A value of 1.0 means all rays reach the sensor (no vignetting); 0.0
+        means complete light blockage.  Real lenses typically show 1.0 on-axis
+        and fall off toward the field edges due to mechanical vignetting and the
+        cos⁴ illumination law.
+
+        Algorithm:
+            1. ``self.sample_grid_rays()`` with ``uniform_fov=False`` (uniform
+               image-space sampling) to ensure correct sensor-plane mapping.
+            2. ``self.trace2sensor()`` propagates rays and marks clipped ones as
+               invalid.
+            3. Per-cell throughput = ``count(valid) / num_rays``.
 
         Args:
-            depth (float, optional): Object distance. Defaults to DEPTH.
-            num_grid (int, optional): Grid resolution for field sampling. Defaults to 64.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            num_grid (int): Grid resolution per axis. Defaults to 32.
+            num_rays (int): Rays launched per grid cell.  Higher values reduce
+                Monte-Carlo noise. Defaults to 512.
 
         Returns:
-            Tensor: Vignetting map with values in [0, 1]. Shape [num_grid, num_grid].
-                A value of 1.0 means no vignetting; 0.0 means fully vignetted.
+            torch.Tensor: Vignetting map with shape ``[num_grid, num_grid]``,
+                values in ``[0, 1]``.
         """
-        # Sample rays, shape [num_grid, num_grid, num_rays, 3]
-        ray = self.sample_grid_rays(depth=depth, num_grid=num_grid)
+        # Sample rays in uniform image space (not FOV angles) for correct sensor mapping
+        # shape [num_grid, num_grid, num_rays, 3]
+        ray = self.sample_grid_rays(
+            depth=depth, num_grid=num_grid, num_rays=num_rays, uniform_fov=False
+        )
 
         # Trace rays to sensor
         ray = self.trace2sensor(ray)
@@ -837,16 +1213,21 @@ class GeoLensEval:
         vignetting = ray.is_valid.sum(-1) / (ray.is_valid.shape[-1])
         return vignetting
 
+    @torch.no_grad()
     def draw_vignetting(self, filename=None, depth=DEPTH, resolution=512, show=False):
-        """Draw vignetting (relative illumination) map as a grayscale image.
+        """Draw the vignetting map as a grayscale image with a colorbar.
+
+        Computes the vignetting map via ``self.vignetting()``, bilinearly
+        upsamples it to ``resolution × resolution``, and displays it as a
+        grayscale image where white = no vignetting and black = fully vignetted.
 
         Args:
-            filename (str, optional): Path to save the figure. If None, auto-generates
-                a name based on depth. Defaults to None.
-            depth (float, optional): Object distance. Defaults to DEPTH.
-            resolution (int, optional): Output image resolution in pixels. Defaults to 512.
-            show (bool, optional): If True, display the plot interactively.
-                Defaults to False.
+            filename (str | None): File path for the output PNG.  If ``None``,
+                auto-generates ``'./vignetting_{depth}.png'``.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            resolution (int): Output image size in pixels (square).
+                Defaults to 512.
+            show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         # Calculate vignetting map
         vignetting = self.vignetting(depth=depth)
@@ -859,12 +1240,10 @@ class GeoLensEval:
             align_corners=False,
         ).squeeze()
 
-        # Scale vignetting to [0.5, 1] range
-        vignetting = 0.5 + 0.5 * vignetting
-
         fig, ax = plt.subplots()
-        im = ax.imshow(vignetting.cpu().numpy(), cmap="gray", vmin=0.5, vmax=1.0)
-        fig.colorbar(im, ax=ax, ticks=[0.5, 0.75, 1.0])
+        ax.set_title("Relative Illumination (Vignetting)")
+        im = ax.imshow(vignetting.cpu().numpy(), cmap="gray", vmin=0.0, vmax=1.0)
+        fig.colorbar(im, ax=ax, ticks=[0.0, 0.25, 0.5, 0.75, 1.0])
 
         if show:
             plt.show()
@@ -877,24 +1256,304 @@ class GeoLensEval:
     # ================================================================
     # Wavefront error
     # ================================================================
-    def wavefront_error(self):
-        """Compute wavefront error across the field of view.
+    @torch.no_grad()
+    def wavefront_error(
+        self,
+        relative_fov=0.0,
+        depth=DEPTH,
+        wvln=DEFAULT_WAVE,
+        num_rays=SPP_COHERENT,
+        ks=256,
+    ):
+        """Compute wavefront error (OPD) at the exit pupil for a given field position.
 
-        Not yet implemented.
+        The wavefront error is the optical path difference between the actual
+        wavefront and the ideal spherical reference wavefront. The reference sphere
+        is centered at the ideal image point (chief ray intersection with the sensor)
+        and passes through the exit pupil center.
+
+        By Fermat's principle, a perfect lens has equal total optical path (object →
+        lens → image) for all rays. The deviation from this equal-path condition is
+        the wavefront error:
+
+            ``OPD(x,y) = [OPL(x,y) + r(x,y)] - mean_over_pupil``
+
+        where ``OPL(x,y)`` is the accumulated optical path from the object through
+        the lens to the exit pupil, and ``r(x,y)`` is the geometric distance from
+        the exit pupil point to the ideal image point. Piston (mean) is removed.
+
+        Uses the same coherent ray-tracing infrastructure as :meth:`pupil_field`.
+
+        Args:
+            relative_fov (float): Relative field of view in ``[-1, 1]`` along the
+                meridional (y) direction. ``0`` = on-axis, ``1`` = full field.
+            depth (float): Object distance [mm]. Use ``DEPTH`` for practical infinity.
+            wvln (float): Wavelength [µm].
+            num_rays (int): Number of rays to sample through the pupil.
+            ks (int): Grid resolution for the OPD map at the exit pupil.
+
+        Returns:
+            dict:
+                - ``opd_map`` (Tensor): OPD map on exit pupil grid, shape ``[ks, ks]``,
+                  in waves. Invalid (vignetted) regions are zero.
+                - ``rms`` (float): RMS wavefront error in waves (piston removed).
+                - ``pv`` (float): Peak-to-valley wavefront error in waves.
+                - ``valid_mask`` (Tensor): Boolean mask of valid pupil pixels ``[ks, ks]``.
+                - ``strehl`` (float): Maréchal approximation Strehl ratio.
+
+        Note:
+            This function sets the default dtype to ``torch.float64`` for phase
+            accuracy (consistent with :meth:`pupil_field`).
+
+        References:
+            [1] V. N. Mahajan, "Optical Imaging and Aberrations, Part II", Ch. 1.
+            [2] Zemax OpticStudio, "Wavefront Error Analysis".
         """
-        pass
+        # Float64 required for accurate OPL accumulation
+        self.astype(torch.float64)
+        device = self.device
+        sensor_w, sensor_h = self.sensor_size
+        wvln_mm = wvln * 1e-3
+
+        # Build normalized point: positive relative_fov -> negative y (convention)
+        point_norm = torch.tensor(
+            [0.0, -relative_fov, depth], dtype=torch.float64, device=device
+        )
+        points = point_norm.unsqueeze(0)  # [1, 3]
+
+        # Convert to physical object coordinates
+        scale = self.calc_scale(points[:, 2].item())
+        point_obj_x = points[:, 0] * scale * sensor_w / 2
+        point_obj_y = points[:, 1] * scale * sensor_h / 2
+        point_obj = torch.stack([point_obj_x, point_obj_y, points[:, 2]], dim=-1)
+
+        # Find ideal image point via chief ray
+        # psf_center returns negated centroid, so negate back to get actual image position
+        chief_pointc = self.psf_center(point_obj, method="chief_ray")  # [1, 2]
+        img_x = -chief_pointc[0, 0]
+        img_y = -chief_pointc[0, 1]
+        img_z = float(self.d_sensor)
+
+        # Sample rays and trace coherently to exit pupil
+        ray = self.sample_from_points(
+            points=point_obj, num_rays=num_rays, wvln=wvln
+        )
+        ray.coherent = True
+        ray = self.trace2exit_pupil(ray)
+
+        # Get exit pupil parameters
+        pupilz, pupilr = self.get_exit_pupil()
+        pupilr = float(pupilr)
+        pupilz = float(pupilz)
+
+        # Extract valid rays (squeeze batch dim since single point)
+        valid = ray.is_valid.squeeze(0) > 0  # [num_rays]
+        ray_x = ray.o[0, :, 0]  # [num_rays]
+        ray_y = ray.o[0, :, 1]
+        opl = ray.opl[0, :, 0]  # [num_rays]
+
+        if valid.sum() == 0:
+            raise RuntimeError(
+                f"No valid rays at relative_fov={relative_fov}. "
+                "The field may be fully vignetted."
+            )
+
+        # Distance from each ray's exit pupil position to ideal image point
+        dist_to_img = torch.sqrt(
+            (ray_x - img_x) ** 2
+            + (ray_y - img_y) ** 2
+            + (pupilz - img_z) ** 2
+        )
+
+        # Total optical path = OPL through lens to exit pupil + free-space to image
+        total_path = opl + dist_to_img  # [num_rays]
+
+        # Remove piston (mean over valid rays) to get wavefront error
+        total_path_valid = total_path[valid]
+        mean_path = total_path_valid.mean()
+        opd_mm = total_path - mean_path  # OPD in [mm]
+        opd_waves = opd_mm / wvln_mm  # OPD in [waves]
+
+        # Compute RMS and PV from per-ray values (more accurate than from grid)
+        opd_valid = opd_waves[valid]
+        rms_waves = torch.sqrt(torch.mean(opd_valid**2)).item()
+        pv_waves = (opd_valid.max() - opd_valid.min()).item()
+
+        # Maréchal approximation: Strehl ≈ exp(-(2π·σ)²)
+        strehl = math.exp(-(2 * math.pi * rms_waves) ** 2)
+
+        # Bin OPD values onto exit pupil grid using assign_points_to_pixels
+        # Grid covers [-pupilr, pupilr] x [-pupilr, pupilr]
+        pupil_range = [-pupilr, pupilr]
+        pupil_points = torch.stack([ray_x[valid], ray_y[valid]], dim=-1)  # [N, 2]
+        pupil_mask = torch.ones(pupil_points.shape[0], device=device)
+
+        # Sum of weighted OPD values
+        opd_sum = assign_points_to_pixels(
+            points=pupil_points,
+            mask=pupil_mask,
+            ks=ks,
+            x_range=pupil_range,
+            y_range=pupil_range,
+            value=opd_valid,
+        )
+        # Sum of weights (count)
+        count = assign_points_to_pixels(
+            points=pupil_points,
+            mask=pupil_mask,
+            ks=ks,
+            x_range=pupil_range,
+            y_range=pupil_range,
+            value=torch.ones_like(opd_valid),
+        )
+        valid_mask = count > 0
+        opd_map = torch.where(valid_mask, opd_sum / count, torch.zeros_like(opd_sum))
+
+        return {
+            "opd_map": opd_map,
+            "rms": rms_waves,
+            "pv": pv_waves,
+            "valid_mask": valid_mask,
+            "strehl": strehl,
+        }
+
+    @torch.no_grad()
+    def rms_wavefront_error(
+        self,
+        relative_fov=0.0,
+        depth=DEPTH,
+        wvln=DEFAULT_WAVE,
+        num_rays=SPP_COHERENT,
+    ):
+        """Compute scalar RMS wavefront error at a given field position.
+
+        Convenience wrapper around :meth:`wavefront_error`.
+
+        Args:
+            relative_fov (float): Relative field of view in ``[-1, 1]``.
+            depth (float): Object distance [mm].
+            wvln (float): Wavelength [µm].
+            num_rays (int): Number of rays to sample.
+
+        Returns:
+            float: RMS wavefront error in waves.
+        """
+        result = self.wavefront_error(
+            relative_fov=relative_fov,
+            depth=depth,
+            wvln=wvln,
+            num_rays=num_rays,
+        )
+        return result["rms"]
+
+    @torch.no_grad()
+    def draw_wavefront_error(
+        self,
+        save_name="./wavefront_error.png",
+        num_fov=5,
+        depth=DEPTH,
+        wvln=DEFAULT_WAVE,
+        num_rays=SPP_COHERENT,
+        ks=256,
+        show=False,
+    ):
+        """Draw wavefront error (OPD) maps at multiple field positions.
+
+        Evaluates the wavefront error along the meridional (y) direction from
+        on-axis to full field, and displays each OPD map with RMS and PV
+        annotations.
+
+        Args:
+            save_name (str): Filename to save the figure.
+            num_fov (int): Number of field positions to evaluate.
+            depth (float): Object distance [mm].
+            wvln (float): Wavelength [µm].
+            num_rays (int): Number of rays to sample per field position.
+            ks (int): Grid resolution for each OPD map.
+            show (bool): If True, display the figure interactively.
+        """
+        fov_list = torch.linspace(0, 1, num_fov).tolist()
+
+        fig, axs = plt.subplots(1, num_fov, figsize=(num_fov * 3.5, 3.5))
+        axs = np.atleast_1d(axs)
+
+        # Collect all OPD ranges to use a shared color scale
+        results = []
+        vmax = 0.0
+        for fov in fov_list:
+            try:
+                result = self.wavefront_error(
+                    relative_fov=fov,
+                    depth=depth,
+                    wvln=wvln,
+                    num_rays=num_rays,
+                    ks=ks,
+                )
+                results.append(result)
+                opd_valid = result["opd_map"][result["valid_mask"]]
+                if len(opd_valid) > 0:
+                    vmax = max(vmax, opd_valid.abs().max().item())
+            except RuntimeError:
+                results.append(None)
+
+        if vmax == 0:
+            vmax = 1.0  # fallback
+
+        for i, (fov, result) in enumerate(zip(fov_list, results)):
+            if result is None:
+                axs[i].set_title(f"FoV={fov:.2f}\n(vignetted)", fontsize=8)
+                axs[i].axis("off")
+                continue
+
+            opd = result["opd_map"].cpu().numpy()
+            mask = result["valid_mask"].cpu().numpy()
+            rms = result["rms"]
+            pv = result["pv"]
+
+            # Mask invalid regions with NaN for visualization
+            opd_vis = np.where(mask, opd, np.nan)
+
+            im = axs[i].imshow(
+                opd_vis,
+                cmap="RdBu_r",
+                vmin=-vmax,
+                vmax=vmax,
+                interpolation="bilinear",
+            )
+            axs[i].set_title(
+                f"FoV={fov:.2f}\nRMS={rms:.4f}λ  PV={pv:.3f}λ",
+                fontsize=8,
+            )
+            axs[i].axis("off")
+            fig.colorbar(
+                im,
+                ax=axs[i],
+                fraction=0.046,
+                pad=0.04,
+                label="OPD [waves]",
+            )
+
+        fig.suptitle(
+            f"Wavefront Error (λ={wvln}µm, depth={depth}mm)", fontsize=10
+        )
+        plt.tight_layout()
+
+        if show:
+            plt.show()
+        else:
+            assert save_name.endswith(".png"), "save_name must end with .png"
+            plt.savefig(save_name, bbox_inches="tight", format="png", dpi=300)
+        plt.close(fig)
 
     def field_curvature(self):
-        """Compute field curvature (best-focus defocus vs field angle).
+        """Compute field curvature data (best-focus defocus vs field angle).
 
-        Not yet implemented.
-        """
-        pass
+        Field curvature is the axial shift of the best-focus surface away from
+        the flat sensor plane as a function of field angle.  It is caused by
+        the Petzval sum of lens surface curvatures and refractive indices.
 
-    def aberration_histogram(self):
-        """Compute aberration histogram (Seidel or Zernike decomposition).
-
-        Not yet implemented.
+        Not yet implemented.  See ``draw_field_curvature()`` for a plotting
+        version that already performs the underlying computation.
         """
         pass
 
@@ -903,20 +1562,35 @@ class GeoLensEval:
     # ================================================================
     @torch.no_grad()
     def calc_chief_ray(self, fov, plane="sagittal"):
-        """Compute chief ray for an incident angle.
+        """Find the chief ray for a given field angle using 2-D ray tracing.
 
-        If chief ray is only used to determine the ideal image height, we can warp this function into the image height calculation function.
+        The *chief ray* (also called the *principal ray*) is the ray from an
+        off-axis object point that passes through the center of the aperture
+        stop.  It defines the image height for distortion calculations and sets
+        the reference axis for coma and lateral color analysis.
+
+        Algorithm:
+            1. Sample a fan of parallel rays at the specified ``fov`` in the
+               chosen plane, entering through the entrance pupil.
+            2. Trace the fan up to (but not through) the aperture stop.
+            3. Select the ray whose transverse position at the stop is closest
+               to the optical axis — this is the chief ray.
+            4. Return its *incident* (object-space) origin and direction.
 
         Args:
-            fov (float): incident angle in degree.
-            plane (str): "sagittal" or "meridional".
+            fov (float): Incident half-angle in **degrees**.
+            plane (str): ``'sagittal'`` (x-axis) or ``'meridional'`` (y-axis).
+                Defaults to ``'sagittal'``.
 
         Returns:
-            chief_ray_o (torch.Tensor): origin of chief ray.
-            chief_ray_d (torch.Tensor): direction of chief ray.
+            tuple[torch.Tensor, torch.Tensor]:
+                - **chief_ray_o**: Origin of the chief ray in object space,
+                  shape ``[3]``.
+                - **chief_ray_d**: Unit direction of the chief ray, shape ``[3]``.
 
         Note:
-            It is 2D ray tracing, for 3D chief ray, we can shrink the pupil, trace rays, calculate the centroid as the chief ray.
+            This is a 2-D (meridional or sagittal plane) search.  For a full
+            3-D chief ray, one would shrink the pupil and trace the centroid ray.
         """
         # Sample parallel rays from object space
         ray = self.sample_parallel_2D(
@@ -945,15 +1619,48 @@ class GeoLensEval:
         num_rays=SPP_CALC,
         ray_aiming=True,
     ):
-        """Compute chief ray for an incident angle.
+        """Compute chief rays for one or more field angles with optional ray aiming.
+
+        This is the batched, production version of ``calc_chief_ray``.  It
+        supports vectorized evaluation over multiple field angles and implements
+        *ray aiming* — an iterative procedure that launches a fan of rays
+        toward the entrance pupil and selects the one that passes closest to
+        the aperture-stop center.  Ray aiming is essential for accurate
+        distortion measurement in wide-angle or fisheye lenses where the
+        paraxial approximation breaks down.
+
+        Algorithm:
+            1. For on-axis (``rfov = 0``): chief ray is trivially along the
+               z-axis.
+            2. For off-axis angles with ``ray_aiming=False``: the chief ray is
+               aimed at the entrance pupil center (paraxial approximation).
+            3. For off-axis angles with ``ray_aiming=True``:
+               a. Estimate the object-space y (or x) position from the entrance
+                  pupil geometry.
+               b. Create a narrow fan of ``num_rays`` rays bracketing that
+                  estimate (width = 5 % of y_distance, clamped to
+                  ``0.05 * pupil_radius``).
+               c. Trace the fan to the aperture stop.
+               d. Pick the ray closest to the optical axis at the stop.
 
         Args:
-            rfov (float): incident angle in degree.
-            depth (float): depth of the object.
-            wvln (float): wavelength of the light.
-            plane (str): "sagittal" or "meridional".
-            num_rays (int): number of rays.
-            ray_aiming (bool): whether the chief ray through the center of the stop.
+            rfov (float | torch.Tensor): Field angle(s) in **degrees**.
+                A scalar is converted to ``[0, rfov]`` (two-element tensor).
+                A tensor of shape ``[N]`` is used directly.
+            depth (float | torch.Tensor): Object depth(s) in mm.
+                Defaults to 0.0 (object at the first surface).
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            plane (str): ``'sagittal'`` or ``'meridional'``.
+                Defaults to ``'meridional'``.
+            num_rays (int): Size of the search fan for ray aiming.
+                Defaults to ``SPP_CALC``.
+            ray_aiming (bool): If ``True``, perform iterative ray aiming for
+                accurate chief-ray identification. Defaults to ``True``.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]:
+                - **chief_ray_o**: Origins, shape ``[N, 3]``.
+                - **chief_ray_d**: Unit directions, shape ``[N, 3]``.
         """
         if isinstance(rfov, float) and rfov > 0:
             rfov = torch.linspace(0, rfov, 2)
@@ -980,27 +1687,30 @@ class GeoLensEval:
                 return chief_ray_o, chief_ray_d
 
         # Extract non-zero rfov entries for processing
-        if torch.any(rfov == 0):
+        has_zero = torch.any(rfov == 0)
+        if has_zero:
+            start_idx = 1
             rfovs = rfov[1:]
             depths = depth[1:]
         else:
+            start_idx = 0
             rfovs = rfov
             depths = depth
 
         if self.aper_idx == 0:
             if plane == "sagittal":
-                chief_ray_o[1:, ...] = torch.stack(
+                chief_ray_o[start_idx:, ...] = torch.stack(
                     [depths * torch.tan(rfovs), torch.zeros_like(rfovs), depths], dim=-1
                 )
-                chief_ray_d[1:, ...] = torch.stack(
+                chief_ray_d[start_idx:, ...] = torch.stack(
                     [torch.sin(rfovs), torch.zeros_like(rfovs), torch.cos(rfovs)],
                     dim=-1,
                 )
             else:
-                chief_ray_o[1:, ...] = torch.stack(
+                chief_ray_o[start_idx:, ...] = torch.stack(
                     [torch.zeros_like(rfovs), depths * torch.tan(rfovs), depths], dim=-1
                 )
-                chief_ray_d[1:, ...] = torch.stack(
+                chief_ray_d[start_idx:, ...] = torch.stack(
                     [torch.zeros_like(rfovs), torch.sin(rfovs), torch.cos(rfovs)],
                     dim=-1,
                 )
@@ -1008,27 +1718,28 @@ class GeoLensEval:
             return chief_ray_o, chief_ray_d
 
         # Scale factor
-        pupilz, _ = self.calc_entrance_pupil()
+        pupilz, pupilr = self.calc_entrance_pupil()
         y_distance = torch.tan(rfovs) * (abs(depths) + pupilz)
 
         if ray_aiming:
             scale = 0.05
-            delta = scale * y_distance
+            min_delta = 0.05 * pupilr  # minimum search range based on pupil radius
+            delta = torch.clamp(scale * y_distance, min=min_delta)
 
         if not ray_aiming:
             if plane == "sagittal":
-                chief_ray_o[1:, ...] = torch.stack(
+                chief_ray_o[start_idx:, ...] = torch.stack(
                     [-y_distance, torch.zeros_like(rfovs), depths], dim=-1
                 )
-                chief_ray_d[1:, ...] = torch.stack(
+                chief_ray_d[start_idx:, ...] = torch.stack(
                     [torch.sin(rfovs), torch.zeros_like(rfovs), torch.cos(rfovs)],
                     dim=-1,
                 )
             else:
-                chief_ray_o[1:, ...] = torch.stack(
+                chief_ray_o[start_idx:, ...] = torch.stack(
                     [torch.zeros_like(rfovs), -y_distance, depths], dim=-1
                 )
-                chief_ray_d[1:, ...] = torch.stack(
+                chief_ray_d[start_idx:, ...] = torch.stack(
                     [torch.zeros_like(rfovs), torch.sin(rfovs), torch.cos(rfovs)],
                     dim=-1,
                 )
@@ -1063,19 +1774,19 @@ class GeoLensEval:
             # Look for the ray that is closest to the optical axis
             if plane == "sagittal":
                 _, center_idx = torch.min(torch.abs(ray.o[..., 0]), dim=1)
-                chief_ray_o[1:, ...] = inc_ray.o[
+                chief_ray_o[start_idx:, ...] = inc_ray.o[
                     torch.arange(len(rfovs)), center_idx.long(), ...
                 ]
-                chief_ray_d[1:, ...] = torch.stack(
+                chief_ray_d[start_idx:, ...] = torch.stack(
                     [torch.sin(rfovs), torch.zeros_like(rfovs), torch.cos(rfovs)],
                     dim=-1,
                 )
             else:
                 _, center_idx = torch.min(torch.abs(ray.o[..., 1]), dim=1)
-                chief_ray_o[1:, ...] = inc_ray.o[
+                chief_ray_o[start_idx:, ...] = inc_ray.o[
                     torch.arange(len(rfovs)), center_idx.long(), ...
                 ]
-                chief_ray_d[1:, ...] = torch.stack(
+                chief_ray_d[start_idx:, ...] = torch.stack(
                     [torch.zeros_like(rfovs), torch.sin(rfovs), torch.cos(rfovs)],
                     dim=-1,
                 )
@@ -1093,24 +1804,46 @@ class GeoLensEval:
         depth=DEPTH,
         spp=SPP_RENDER,
         unwarp=False,
-        noise=0.0,
         method="ray_tracing",
         show=False,
     ):
-        """Render a single image for visualization and analysis.
+        """Render a test image through the lens and report PSNR / SSIM.
+
+        Simulates what the sensor would capture if the given image were placed
+        at the specified object distance.  The rendering accounts for all
+        geometric aberrations (blur, distortion, vignetting, chromatic effects).
+        Optionally applies an inverse distortion warp (``unwarp``) and reports
+        quality metrics for both the raw and unwarped renderings.
+
+        Algorithm:
+            1. Convert ``img_org`` to a ``[1, 3, H, W]`` float tensor and
+               temporarily set the sensor resolution to match.
+            2. Call ``self.render()`` with the chosen method (ray tracing or PSF
+               convolution).
+            3. Compute PSNR and SSIM between the original and rendered images.
+            4. If ``unwarp=True``, apply ``self.unwarp()`` to correct geometric
+               distortion and report metrics again.
+            5. Restore the original sensor resolution.
 
         Args:
-            img_org (Tensor): Original image with shape [H, W, 3].
-            save_name (str, optional): Path prefix for saving rendered images. Defaults to None.
-            depth (float, optional): Depth of object image. Defaults to DEPTH.
-            spp (int, optional): Sample per pixel. Defaults to SPP_RENDER.
-            unwarp (bool, optional): If True, unwarp the image to correct distortion. Defaults to False.
-            noise (float, optional): Gaussian noise standard deviation. Defaults to 0.0.
-            method (str, optional): Rendering method ('ray_tracing', etc.). Defaults to 'ray_tracing'.
-            show (bool, optional): If True, display the rendered image. Defaults to False.
+            img_org (np.ndarray | torch.Tensor): Source image with shape
+                ``[H, W, 3]``, either uint8 ``[0, 255]`` or float ``[0, 1]``.
+            save_name (str | None): Path prefix for saved PNGs.  If not
+                ``None``, saves ``'{save_name}.png'`` and (if unwarped)
+                ``'{save_name}_unwarped.png'``. Defaults to ``None``.
+            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            spp (int): Samples (rays) per pixel for rendering.
+                Defaults to ``SPP_RENDER``.
+            unwarp (bool): If ``True``, apply distortion correction after
+                rendering. Defaults to ``False``.
+            method (str): Rendering backend — ``'ray_tracing'`` or
+                ``'psf_conv'``. Defaults to ``'ray_tracing'``.
+            show (bool): If ``True``, display the result with matplotlib.
+                Defaults to ``False``.
 
         Returns:
-            Tensor: Rendered image tensor with shape [1, 3, H, W].
+            torch.Tensor: Rendered (and optionally unwarped) image with shape
+                ``[1, 3, H, W]``, float values in ``[0, 1]``.
         """
         # Change sensor resolution to match the image
         sensor_res_original = self.sensor_res
@@ -1125,11 +1858,6 @@ class GeoLensEval:
 
         # Image rendering
         img_render = self.render(img, depth=depth, method=method, spp=spp)
-
-        # Add noise (a very simple Gaussian noise model)
-        if noise > 0:
-            img_render = img_render + torch.randn_like(img_render) * noise
-            img_render = torch.clamp(img_render, 0, 1)
 
         # Compute PSNR and SSIM
         img_np = img.squeeze(0).permute(1, 2, 0).cpu().numpy()
@@ -1170,21 +1898,41 @@ class GeoLensEval:
 
         return img_render
 
+    @torch.no_grad()
     def analysis_spot(self, num_field=3, depth=float("inf")):
-        """Compute sensor plane ray spot RMS error and radius.
+        """Compute RMS and geometric spot radii at multiple field positions for RGB.
 
-        Analyzes spot sizes across the field of view for multiple wavelengths
-        (red, green, blue) and reports statistics.
+        Traces rays at ``num_field`` evenly-spaced field positions along the
+        meridional direction for three wavelengths (G, R, B), computes per-
+        wavelength RMS and maximum (geometric) spot radii referenced to the
+        **green centroid**, then averages the three wavelengths.
+
+        This provides a quick polychromatic spot-size summary used for design
+        comparisons and printed to stdout during ``analysis()``.
+
+        Algorithm:
+            1. For each wavelength (G first, then R, B):
+               a. ``self.sample_radial_rays()`` → ``[num_field, SPP_PSF, 3]``.
+               b. ``self.trace2sensor()`` → sensor-plane positions.
+               c. Green centroid ``c_G`` is computed on the first iteration and
+                  used as the common reference for all wavelengths.
+               d. ``RMS = sqrt(mean(||xy - c_G||^2))`` per field position.
+               e. ``radius = max(||xy - c_G||)`` per field position.
+            2. Average RMS and radius over the three wavelengths.
+            3. Convert from mm to μm (× 1000).
 
         Args:
-            num_field (int, optional): Number of field positions to analyze along the
-                radial direction. Defaults to 3.
-            depth (float, optional): Depth of the point source. Use float('inf') for
-                collimated light. Defaults to float('inf').
+            num_field (int): Number of field positions sampled from on-axis
+                to full-field. Defaults to 3.
+            depth (float): Object distance in mm.  Use ``float('inf')`` for
+                collimated light. Defaults to ``float('inf')``.
 
         Returns:
-            dict: Spot analysis results keyed by field position (e.g., 'fov0.0', 'fov0.5').
-                Each entry contains 'rms' (RMS radius in um) and 'radius' (geometric radius in um).
+            dict[str, dict[str, float]]: Spot analysis results keyed by field
+                position string (e.g., ``'fov0.0'``, ``'fov0.5'``, ``'fov1.0'``).
+                Each value is a dict with:
+                    - ``'rms'``: Polychromatic RMS spot radius in μm.
+                    - ``'radius'``: Polychromatic geometric spot radius in μm.
         """
         rms_radius_fields = []
         geo_radius_fields = []
@@ -1243,20 +1991,47 @@ class GeoLensEval:
         self,
         save_name="./lens",
         depth=float("inf"),
+        full_eval=False,
         render=False,
         render_unwarp=False,
         lens_title=None,
         show=False,
     ):
-        """Analyze the optical lens.
+        """Run a comprehensive optical analysis pipeline for the lens.
+
+        This is the main entry point for evaluating a lens design.  It chains
+        multiple evaluation steps in order, saving all plots with a common
+        ``save_name`` prefix.
+
+        Execution flow:
+            1. **Always**: draw the lens layout (``draw_layout``) and compute
+               polychromatic spot RMS/radius (``analysis_spot``).
+            2. **If** ``full_eval=True``: additionally generate:
+               - Spot diagram (``draw_spot_radial``).
+               - MTF grid (``draw_mtf``).
+               - Distortion curve (``draw_distortion_radial``).
+               - Field curvature plot (``draw_field_curvature``).
+               - Vignetting map (``draw_vignetting``).
+            3. **If** ``render=True``: render a test chart image through the
+               lens and report PSNR/SSIM (``analysis_rendering``).
 
         Args:
-            save_name (str): save name.
-            depth (float): object depth distance.
-            render (bool): whether render an image.
-            render_unwarp (bool): whether unwarp the rendered image.
-            lens_title (str): lens title
-            show (bool): whether to show the rendered image.
+            save_name (str): Path prefix for all output files.  Each plot
+                appends a suffix (e.g., ``'_spot.png'``, ``'_mtf.png'``).
+                Defaults to ``'./lens'``.
+            depth (float): Object distance in mm.  ``float('inf')`` is replaced
+                by ``DEPTH`` for rendering and vignetting.
+                Defaults to ``float('inf')``.
+            full_eval (bool): If ``True``, run all evaluation plots.  If
+                ``False``, only layout + spot RMS. Defaults to ``False``.
+            render (bool): If ``True``, render a test image through the lens.
+                Defaults to ``False``.
+            render_unwarp (bool): If ``True`` (and ``render=True``), also
+                produce an unwarped rendering. Defaults to ``False``.
+            lens_title (str | None): Title string for the layout plot.
+                Defaults to ``None``.
+            show (bool): If ``True``, display all plots interactively.
+                Defaults to ``False``.
         """
         # Draw lens layout and ray path
         self.draw_layout(
@@ -1266,26 +2041,51 @@ class GeoLensEval:
             show=show,
         )
 
-        # Draw spot diagram
-        self.draw_spot_radial(
-            save_name=f"{save_name}_spot.png",
-            depth=depth,
-            show=show,
-        )
-
-        # Draw MTF
-        if depth == float("inf"):
-            # This is a hack to draw MTF for infinite depth
-            self.draw_mtf(
-                depth_list=[DEPTH], save_name=f"{save_name}_mtf.png", show=show
-            )
-        else:
-            self.draw_mtf(
-                depth_list=[depth], save_name=f"{save_name}_mtf.png", show=show
-            )
-
         # Calculate RMS error
         self.analysis_spot(depth=depth)
+
+        # Comprehensive optical evaluation
+        if full_eval:
+            # Draw spot diagram
+            self.draw_spot_radial(
+                save_name=f"{save_name}_spot.png",
+                depth=depth,
+                show=show,
+            )
+
+            # Draw MTF
+            if depth == float("inf"):
+                self.draw_mtf(
+                    depth_list=[DEPTH],
+                    save_name=f"{save_name}_mtf.png",
+                    show=show,
+                )
+            else:
+                self.draw_mtf(
+                    depth_list=[depth],
+                    save_name=f"{save_name}_mtf.png",
+                    show=show,
+                )
+
+            # Draw distortion
+            self.draw_distortion_radial(
+                save_name=f"{save_name}_distortion.png",
+                show=show,
+            )
+
+            # Draw field curvature
+            self.draw_field_curvature(
+                save_name=f"{save_name}_field_curvature.png",
+                show=show,
+            )
+
+            # Draw vignetting
+            eval_depth = DEPTH if depth == float("inf") else depth
+            self.draw_vignetting(
+                filename=f"{save_name}_vignetting.png",
+                depth=eval_depth,
+                show=show,
+            )
 
         # Render an image, compute PSNR and SSIM
         if render:
@@ -1298,6 +2098,5 @@ class GeoLensEval:
                 spp=SPP_RENDER,
                 unwarp=render_unwarp,
                 save_name=f"{save_name}_render",
-                noise=0.01,
                 show=show,
             )

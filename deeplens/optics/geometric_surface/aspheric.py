@@ -6,6 +6,12 @@
 
 """Aspheric surface.
 
+The ``ai`` coefficient list starts from the 4th-order term (a4) by default.
+Legacy JSON files that include a 2nd-order term (a2) are loaded via the
+``use_ai2`` flag in ``init_from_dict``.  When present, ``a2`` is stored
+separately and included in the sag computation but is **not** optimised
+(it competes with the base curvature ``c``).
+
 Reference:
     [1] https://en.wikipedia.org/wiki/Aspheric_lens.
 """
@@ -24,8 +30,11 @@ class Aspheric(Surface):
     .. math::
 
         z(\\rho) = \\frac{c\\,\\rho^2}{1 + \\sqrt{1-(1+k)c^2\\rho^2}}
-                 + \\sum_{i=1}^{n} a_{2i}\\,\\rho^{2i},
+                 + \\sum_{i=2}^{n} a_{2i}\\,\\rho^{2i},
         \\quad \\rho^2 = x^2 + y^2
+
+    The polynomial starts at the 4th-order term (a4) because the 2nd-order
+    term competes with the base curvature ``c``.
 
     All coefficients ``c``, ``k``, and ``ai`` are differentiable torch
     tensors so they can be optimised with gradient descent.
@@ -33,8 +42,9 @@ class Aspheric(Surface):
     Attributes:
         c (torch.Tensor): Base curvature [1/mm].
         k (torch.Tensor): Conic constant.
+        ai2 (torch.Tensor or None): 2nd-order aspheric coefficient (legacy).
         ai (torch.Tensor): Even-order aspheric coefficients
-            ``[a2, a4, a6, ...]``.
+            ``[a4, a6, a8, ...]``.
     """
 
     def __init__(
@@ -45,6 +55,7 @@ class Aspheric(Surface):
         k,
         ai,
         mat2,
+        ai2=None,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
         is_square=False,
@@ -58,9 +69,12 @@ class Aspheric(Surface):
             c (float): Base curvature ``1/R`` [1/mm].
             k (float): Conic constant (``0`` = sphere, ``-1`` = paraboloid).
             ai (list[float] or None): Even-order aspheric coefficients
-                ``[a2, a4, a6, ...]``.  Pass ``None`` or an empty list for a
-                pure conic.
+                starting from the 4th-order term: ``[a4, a6, a8, ...]``.
+                Pass ``None`` or an empty list for a pure conic.
             mat2 (str or Material): Material on the transmission side.
+            ai2 (float or None, optional): 2nd-order aspheric coefficient
+                from legacy data.  Included in sag but not optimised.
+                Defaults to ``None``.
             pos_xy (list[float], optional): Lateral offset ``[x, y]`` [mm].
                 Defaults to ``[0.0, 0.0]``.
             vec_local (list[float], optional): Local normal direction.
@@ -82,30 +96,19 @@ class Aspheric(Surface):
 
         self.c = torch.tensor(c)
         self.k = torch.tensor(k)
-        if ai is not None:
+
+        # 2nd-order coefficient (legacy, not optimised)
+        if ai2 is not None:
+            self.ai2 = torch.tensor(float(ai2))
+        else:
+            self.ai2 = None
+
+        if ai is not None and len(ai) > 0:
             self.ai = torch.tensor(ai)
             self.ai_degree = len(ai)
-            if self.ai_degree == 4:
-                self.ai2 = torch.tensor(ai[0])
-                self.ai4 = torch.tensor(ai[1])
-                self.ai6 = torch.tensor(ai[2])
-                self.ai8 = torch.tensor(ai[3])
-            elif self.ai_degree == 5:
-                self.ai2 = torch.tensor(ai[0])
-                self.ai4 = torch.tensor(ai[1])
-                self.ai6 = torch.tensor(ai[2])
-                self.ai8 = torch.tensor(ai[3])
-                self.ai10 = torch.tensor(ai[4])
-            elif self.ai_degree == 6:
-                self.ai2 = torch.tensor(ai[0])
-                self.ai4 = torch.tensor(ai[1])
-                self.ai6 = torch.tensor(ai[2])
-                self.ai8 = torch.tensor(ai[3])
-                self.ai10 = torch.tensor(ai[4])
-                self.ai12 = torch.tensor(ai[5])
-            else:
-                for i, a in enumerate(ai):
-                    exec(f"self.ai{2 * i + 2} = torch.tensor({a})")
+            # ai[0] -> ai4, ai[1] -> ai6, ai[2] -> ai8, ...
+            for i, a in enumerate(ai):
+                setattr(self, f"ai{2 * (i + 2)}", torch.tensor(a))
         else:
             self.ai = None
             self.ai_degree = 0
@@ -116,16 +119,34 @@ class Aspheric(Surface):
     @classmethod
     def init_from_dict(cls, surf_dict):
         if "roc" in surf_dict:
-            c = 1 / surf_dict["roc"]
+            if surf_dict["roc"] != 0:
+                c = 1 / surf_dict["roc"]
+            else:
+                c = 0.0
         else:
             c = surf_dict["c"]
+
+        ai = surf_dict.get("ai", [])
+        ai2_val = None
+
+        # Backward compatibility: old format includes a2 as first element.
+        # New files written by this code set use_ai2 explicitly.
+        if surf_dict.get("use_ai2", True) and len(ai) > 0:
+            if "use_ai2" not in surf_dict:
+                print(
+                    f"Surface dict lacks 'use_ai2'; assuming ai[0]={ai[0]:.4g} is the "
+                    "2nd-order coefficient (legacy format)."
+                )
+            ai2_val = ai[0]  # Extract the a2 coefficient
+            ai = ai[1:]      # Remaining: [a4, a6, a8, ...]
 
         return cls(
             r=surf_dict["r"],
             d=surf_dict["d"],
             c=c,
             k=surf_dict["k"],
-            ai=surf_dict["ai"],
+            ai=ai,
+            ai2=ai2_val,
             mat2=surf_dict["mat2"],
         )
 
@@ -139,20 +160,24 @@ class Aspheric(Surface):
         """Compute surface sag (height) z = sag(x, y).
 
         The aspheric surface is defined as:
-            z = r²c / (1 + sqrt(1 - (1+k)r²c²)) + Σ ai_{2i} * r^{2i}
+            z = r²c / (1 + sqrt(1 - (1+k)r²c²)) + [a2*r²] + Σ a_{2i} * r^{2i}
 
         where r² = x² + y², c is curvature, k is conic constant, and ai are
-        the aspheric coefficients (ai2, ai4, ai6, ...).
+        the aspheric coefficients (ai4, ai6, ai8, ...).
         """
         c, k = self._get_curvature_params()
 
         r2 = x**2 + y**2
         total_surface = r2 * c / (1 + torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON))
 
-        # Aspheric polynomial: ai2*r² + ai4*r⁴ + ai6*r⁶ + ...
-        r_pow = r2
-        for i in range(1, self.ai_degree + 1):
-            total_surface = total_surface + getattr(self, f"ai{2*i}") * r_pow
+        # Legacy a2 term: a2 * r²
+        if self.ai2 is not None:
+            total_surface = total_surface + self.ai2 * r2
+
+        # Aspheric polynomial: ai4*r⁴ + ai6*r⁶ + ai8*r⁸ + ...
+        r_pow = r2 * r2  # starts at r^4
+        for i in range(self.ai_degree):
+            total_surface = total_surface + getattr(self, f"ai{2 * (i + 2)}") * r_pow
             r_pow = r_pow * r2
 
         return total_surface
@@ -160,8 +185,8 @@ class Aspheric(Surface):
     def _dfdxy(self, x, y):
         """Compute first-order height derivatives df/dx and df/dy.
 
-        For the aspheric polynomial Σ ai_{2i} * r^{2i}, the derivative w.r.t. r²
-        is Σ i * ai_{2i} * r^{2(i-1)}, i.e.: ai2 + 2*ai4*r² + 3*ai6*r⁴ + ...
+        For the aspheric polynomial Σ a_{2i} * r^{2i} (i >= 2), the derivative
+        w.r.t. r² is Σ i * a_{2i} * r^{2(i-1)}, i.e.: 2*a4*r² + 3*a6*r⁴ + ...
         """
         c, k = self._get_curvature_params()
 
@@ -169,10 +194,15 @@ class Aspheric(Surface):
         sf = torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON)
         dsdr2 = (1 + sf + (1 + k) * r2 * c**2 / 2 / sf) * c / (1 + sf) ** 2
 
-        # Derivative of aspheric polynomial w.r.t. r²: ai2 + 2*ai4*r² + 3*ai6*r⁴ + ...
-        r_pow = 1
-        for i in range(1, self.ai_degree + 1):
-            dsdr2 = dsdr2 + i * getattr(self, f"ai{2*i}") * r_pow
+        # d(a2*r²)/dr² = a2
+        if self.ai2 is not None:
+            dsdr2 = dsdr2 + self.ai2
+
+        # Derivative of aspheric polynomial w.r.t. r²: 2*ai4*r² + 3*ai6*r⁴ + ...
+        r_pow = r2
+        for i in range(self.ai_degree):
+            order = i + 2  # 2, 3, 4, ...
+            dsdr2 = dsdr2 + order * getattr(self, f"ai{2 * order}") * r_pow
             r_pow = r_pow * r2
 
         return dsdr2 * 2 * x, dsdr2 * 2 * y
@@ -195,49 +225,50 @@ class Aspheric(Surface):
     # Optimization
     # =======================================
 
-    def get_optimizer_params(
-        self, lrs=[1e-4, 1e-4, 1e-2, 1e-4], decay=0.001, optim_mat=False
-    ):
+    def get_optimizer_params(self, lrs=[1e-4, 1e-4, 1e-2, 1e-4], optim_mat=False):
         """Get optimizer parameters for different parameters.
 
-        Args:
-            lrs (list, optional): learning rates for d, c, k, ai2, (ai4, ai6, ai8, ai10, ai12).
-            optim_mat (bool, optional): whether to optimize material. Defaults to False.
-        """
-        # Broadcast learning rates to all aspheric coefficients
-        if len(lrs) == 4:
-            lrs = lrs + [
-                lrs[-1] * decay ** (ai_degree + 1)
-                for ai_degree in range(self.ai_degree - 1)
-            ]
+        The learning rate for each aspheric coefficient ``a_{2n}`` is scaled
+        by ``1 / max(r, 1)^{2n}`` so that the effective sag perturbation per
+        Adam step is approximately constant (~lr_base mm) regardless of
+        surface semi-diameter.  Without this normalisation, gradients scale
+        as ``O(r^{2n})`` and can reach ``10^5`` for camera-sized surfaces,
+        causing NaN within a few dozen iterations.
 
+        Args:
+            lrs (list, optional): learning rates for ``[d, c, k, ai]``.
+            optim_mat (bool, optional): whether to optimize material.
+                Defaults to False.
+        """
         params = []
-        param_idx = 0
 
         # Optimize distance
         self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[param_idx]})
-        param_idx += 1
+        params.append({"params": [self.d], "lr": lrs[0]})
 
         # Optimize curvature
         self.c.requires_grad_(True)
-        params.append({"params": [self.c], "lr": lrs[param_idx]})
-        param_idx += 1
+        params.append({"params": [self.c], "lr": lrs[1]})
 
         # Optimize conic constant
         self.k.requires_grad_(True)
-        params.append({"params": [self.k], "lr": lrs[param_idx]})
-        param_idx += 1
+        params.append({"params": [self.k], "lr": lrs[2]})
 
-        # Optimize aspheric coefficients
+        # Optimize aspheric coefficients with r-normalised learning rates.
+        # Gradient of sag w.r.t. a_{2n} scales as r^{2n}.  Dividing the lr
+        # by r^{2n} keeps the effective sag change per step ≈ lr_base,
+        # so every order contributes equally to surface shape evolution.
         if self.ai is not None:
             if self.ai_degree > 0:
-                for i in range(1, self.ai_degree + 1):
-                    p_name = f"ai{2 * i}"
+                r_norm = max(self.r, 1.0)
+                lr_base = lrs[3] if len(lrs) > 3 else 1e-4
+                for i in range(self.ai_degree):
+                    p_name = f"ai{2 * (i + 2)}"
                     p = getattr(self, p_name)
                     p.requires_grad_(True)
-                    params.append({"params": [p], "lr": lrs[param_idx]})
-                    param_idx += 1
+                    order = 2 * (i + 2)  # 4, 6, 8, 10, ...
+                    lr_ai = lr_base / r_norm**order
+                    params.append({"params": [p], "lr": lr_ai})
 
         # Optimize material parameters
         if optim_mat and self.mat2.get_name() != "air":
@@ -261,8 +292,12 @@ class Aspheric(Surface):
             [2] https://www.edmundoptics.com/knowledge-center/application-notes/optics/all-about-aspheric-lenses/?srsltid=AfmBOoon8AUXVALojol2s5K20gQk7W1qUisc6cE4WzZp3ATFY5T1pK8q
         """
         super().init_tolerance(tolerance_params)
+        if tolerance_params is None:
+            tolerance_params = {}
         self.c_tole = tolerance_params.get("c_tole", 0.001)
         self.k_tole = tolerance_params.get("k_tole", 0.001)
+        self.c_error = 0.0
+        self.k_error = 0.0
 
     def sample_tolerance(self):
         """Randomly perturb surface parameters to simulate manufacturing errors."""
@@ -279,24 +314,19 @@ class Aspheric(Surface):
     def sensitivity_score(self):
         """Tolerance squared sum."""
         score_dict = super().sensitivity_score()
+        idx = getattr(self, "surf_idx", id(self))
 
-        score_dict.update(
-            {
-                "c_grad": round(self.c.grad.item(), 6),
-                "c_score": round(
-                    (self.c_tole**2 * self.c.grad**2).item(), 6
-                ),
-            }
-        )
+        if self.c.grad is not None:
+            score_dict[f"surf{idx}_c_grad"] = round(self.c.grad.item(), 6)
+            score_dict[f"surf{idx}_c_score"] = round(
+                (self.c_tole**2 * self.c.grad**2).item(), 6
+            )
 
-        score_dict.update(
-            {
-                "k_grad": round(self.k.grad.item(), 6),
-                "k_score": round(
-                    (self.k_tole**2 * self.k.grad**2).item(), 6
-                ),
-            }
-        )
+        if self.k.grad is not None:
+            score_dict[f"surf{idx}_k_grad"] = round(self.k.grad.item(), 6)
+            score_dict[f"surf{idx}_k_score"] = round(
+                (self.k_tole**2 * self.k.grad**2).item(), 6
+            )
         return score_dict
 
     # =======================================
@@ -304,6 +334,7 @@ class Aspheric(Surface):
     # =======================================
     def surf_dict(self):
         """Return a dict of surface."""
+        has_ai2 = self.ai2 is not None
         surf_dict = {
             "type": "Aspheric",
             "r": round(self.r, 4),
@@ -312,13 +343,21 @@ class Aspheric(Surface):
             "d": round(self.d.item(), 4),
             "k": round(self.k.item(), 4),
             "ai": [],
+            "use_ai2": has_ai2,
             "mat2": self.mat2.get_name(),
         }
-        for i in range(1, self.ai_degree + 1):
-            exec(
-                f"surf_dict['(ai{2 * i})'] = float(format(self.ai{2 * i}.item(), '.6e'))"
-            )
-            surf_dict["ai"].append(float(format(eval(f"self.ai{2 * i}.item()"), ".6e")))
+
+        # Prepend a2 to ai list if present (ai2 key is informational;
+        # deserialization reads ai[0] when use_ai2=True)
+        if has_ai2:
+            surf_dict["ai2"] = float(format(self.ai2.item(), ".6e"))
+            surf_dict["ai"].append(float(format(self.ai2.item(), ".6e")))
+
+        for i in range(self.ai_degree):
+            order = i + 2
+            coeff = getattr(self, f"ai{2 * order}")
+            surf_dict[f"(ai{2 * order})"] = float(format(coeff.item(), ".6e"))
+            surf_dict["ai"].append(float(format(coeff.item(), ".6e")))
 
         return surf_dict
 
@@ -330,33 +369,43 @@ class Aspheric(Surface):
         assert self.ai is not None or self.k != 0, (
             "Spheric surface is re-implemented in Spheric class."
         )
+
+        # Collect absolute ai values, PARM 1 = a2, PARM 2+ = a4, a6, ...
+        abs_ai = [self.ai2.item() if self.ai2 is not None else 0.0]
+        for i in range(self.ai_degree):
+            abs_ai.append(getattr(self, f"ai{2 * (i + 2)}").item())
+
+        # Pad with zeros for Zemax PARM format (needs 6 PARMs)
+        while len(abs_ai) < 6:
+            abs_ai.append(0.0)
+
         if self.mat2.get_name() == "air":
-            zmx_str = f"""SURF {surf_idx} 
+            zmx_str = f"""SURF {surf_idx}
     TYPE EVENASPH
-    CURV {self.c.item()} 
+    CURV {self.c.item()}
     DISZ {d_next.item()}
     DIAM {self.r} 1 0 0 1 ""
     CONI {self.k}
-    PARM 1 {self.ai2.item()}
-    PARM 2 {self.ai4.item()}
-    PARM 3 {self.ai6.item()}
-    PARM 4 {self.ai8.item()}
-    PARM 5 {self.ai10.item()}
-    PARM 6 {self.ai12.item()}
+    PARM 1 {abs_ai[0]}
+    PARM 2 {abs_ai[1]}
+    PARM 3 {abs_ai[2]}
+    PARM 4 {abs_ai[3]}
+    PARM 5 {abs_ai[4]}
+    PARM 6 {abs_ai[5]}
 """
         else:
-            zmx_str = f"""SURF {surf_idx} 
-    TYPE EVENASPH 
-    CURV {self.c.item()} 
-    DISZ {d_next.item()} 
+            zmx_str = f"""SURF {surf_idx}
+    TYPE EVENASPH
+    CURV {self.c.item()}
+    DISZ {d_next.item()}
     GLAS ___BLANK 1 0 {self.mat2.n} {self.mat2.V}
     DIAM {self.r} 1 0 0 1 ""
     CONI {self.k}
-    PARM 1 {self.ai2.item()}
-    PARM 2 {self.ai4.item()}
-    PARM 3 {self.ai6.item()}
-    PARM 4 {self.ai8.item()}
-    PARM 5 {self.ai10.item()}
-    PARM 6 {self.ai12.item()}
+    PARM 1 {abs_ai[0]}
+    PARM 2 {abs_ai[1]}
+    PARM 3 {abs_ai[2]}
+    PARM 4 {abs_ai[3]}
+    PARM 5 {abs_ai[4]}
+    PARM 6 {abs_ai[5]}
 """
         return zmx_str

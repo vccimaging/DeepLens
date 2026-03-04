@@ -47,7 +47,7 @@ class TestZMXIO:
 
     def test_read_zmx(self, lenses_dir):
         """Load a .zmx file and verify it produces surfaces."""
-        zmx_path = os.path.join(lenses_dir, "camera/DoubleGauss_5degree_field.zmx")
+        zmx_path = os.path.join(lenses_dir, "camera/ef35mm_f2.0.zmx")
         if not os.path.exists(zmx_path):
             pytest.skip("ZMX test file not available")
 
