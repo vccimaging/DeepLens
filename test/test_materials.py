@@ -52,11 +52,11 @@ class TestMaterialInit:
         assert torch.allclose(n1, n2)
         assert torch.allclose(n2, n3)
 
-    def test_material_default_vacuum(self, device_auto):
-        """None name should default to vacuum."""
+    def test_material_default_air(self, device_auto):
+        """None name should default to air."""
         mat = Material(name=None, device=device_auto)
-        
-        assert mat.name == "vacuum"
+
+        assert mat.name == "air"
 
 
 class TestMaterialDispersion:

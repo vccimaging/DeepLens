@@ -7,6 +7,10 @@
 """Lens file IO for geometric lens systems.
 
 Functions:
+    JSON Format (.json):
+        - read_lens_json(): Load lens from DeepLens native JSON file
+        - write_lens_json(): Write lens to DeepLens native JSON file
+
     ZEMAX Format (.zmx):
         - read_lens_zmx(): Load lens from ZEMAX .zmx file
         - write_lens_zmx(): Write lens to ZEMAX .zmx file
@@ -21,7 +25,7 @@ import math
 
 import torch
 
-from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Cubic, Plane, Spheric, ThinLens
+from ..geometric_surface import Aperture, Aspheric, Cubic, Plane, Spheric, ThinLens
 from ..phase_surface import Phase
 
 
@@ -765,8 +769,7 @@ class GeoLensIO:
                     s = Aperture.init_from_dict(surf_dict)
 
                 elif surf_dict["type"] == "Aspheric":
-                    # s = Aspheric.init_from_dict(surf_dict)
-                    s = AsphericNorm.init_from_dict(surf_dict)
+                    s = Aspheric.init_from_dict(surf_dict)
 
                 elif surf_dict["type"] == "Cubic":
                     s = Cubic.init_from_dict(surf_dict)

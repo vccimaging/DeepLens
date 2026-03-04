@@ -31,8 +31,10 @@ from .geolens_pkg.eval import GeoLensEval
 from .geolens_pkg.io import GeoLensIO
 from .geolens_pkg.optim import GeoLensOptim
 from .geolens_pkg.psf_compute import GeoLensPSF
-from .geolens_pkg.tolerance import GeoLensTolerance
-from .geolens_pkg.view_3d import GeoLensVis3D
+from .geolens_pkg.eval_seidel import GeoLensSeidel
+from .geolens_pkg.optim_ops import GeoLensSurfOps
+from .geolens_pkg.eval_tolerance import GeoLensTolerance
+from .geolens_pkg.vis3d import GeoLensVis3D
 from .geolens_pkg.vis import GeoLensVis
 from .lens import Lens
 from .geometric_surface import Aperture
@@ -42,7 +44,9 @@ from .light import Ray
 class GeoLens(
     GeoLensPSF,
     GeoLensEval,
+    GeoLensSeidel,
     GeoLensOptim,
+    GeoLensSurfOps,
     GeoLensVis,
     GeoLensIO,
     GeoLensTolerance,
@@ -55,7 +59,7 @@ class GeoLens(
     (and partially reflective) systems loaded from JSON, Zemax ``.zmx``, or
     Code V ``.seq`` files.  Accuracy is aligned with Zemax OpticStudio.
 
-    Uses a **mixin architecture** – seven specialised mixin classes are
+    Uses a **mixin architecture** – eight specialised mixin classes are
     composed at class definition time to keep each concern isolated:
 
     * :class:`~deeplens.optics.geolens_pkg.psf_compute.GeoLensPSF` – PSF
@@ -64,13 +68,16 @@ class GeoLens(
       performance evaluation (spot, MTF, distortion, vignetting).
     * :class:`~deeplens.optics.geolens_pkg.optim.GeoLensOptim` – loss
       functions and gradient-based optimisation.
+    * :class:`~deeplens.optics.geolens_pkg.optim_ops.GeoLensSurfOps` –
+      surface geometry operations (aspheric conversion, pruning, shape
+      correction, material matching).
     * :class:`~deeplens.optics.geolens_pkg.vis.GeoLensVis` – 2-D layout
       and ray visualisation.
     * :class:`~deeplens.optics.geolens_pkg.io.GeoLensIO` – read/write
       JSON, Zemax ``.zmx``.
-    * :class:`~deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance` –
+    * :class:`~deeplens.optics.geolens_pkg.eval_tolerance.GeoLensTolerance` –
       manufacturing tolerance analysis.
-    * :class:`~deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D` – 3-D
+    * :class:`~deeplens.optics.geolens_pkg.vis3d.GeoLensVis3D` – 3-D
       mesh visualisation.
 
     **Key differentiability trick**: Ray-surface intersection
@@ -251,24 +258,15 @@ class GeoLens(
             fov_x_list = [float(np.rad2deg(fov_x)) for fov_x in fov_x_list]
             fov_y_list = [float(np.rad2deg(fov_y)) for fov_y in fov_y_list]
 
-        # Sample rays (parallel or point source)
-        if depth == float("inf"):
-            rays = self.sample_parallel(
-                fov_x=fov_x_list,
-                fov_y=fov_y_list,
-                num_rays=num_rays,
-                wvln=wvln,
-                scale_pupil=scale_pupil,
-            )
-        else:
-            rays = self.sample_point_source(
-                fov_x=fov_x_list,
-                fov_y=fov_y_list,
-                num_rays=num_rays,
-                wvln=wvln,
-                depth=depth,
-                scale_pupil=scale_pupil,
-            )
+        # Sample rays (collimated or point source via unified API)
+        rays = self.sample_from_fov(
+            fov_x=fov_x_list,
+            fov_y=fov_y_list,
+            depth=depth,
+            num_rays=num_rays,
+            wvln=wvln,
+            scale_pupil=scale_pupil,
+        )
         return rays
 
     @torch.no_grad()
@@ -278,37 +276,50 @@ class GeoLens(
         depth=float("inf"),
         num_rays=SPP_PSF,
         wvln=DEFAULT_WAVE,
+        direction="y",
     ):
-        """Sample radial (meridional, y direction) rays at different field angles.
-
-        This function is usually used for (1) PSF radial map, and (2) RMS error radial map calculation.
+        """Sample radial rays at evenly-spaced field angles along a chosen direction.
 
         Args:
-            num_field (int, optional): number of field angles. Defaults to 5.
-            depth (float, optional): sampling depth. Defaults to float("inf").
-            num_rays (int, optional): number of rays. Defaults to SPP_PSF.
-            wvln (float, optional): ray wvln. Defaults to DEFAULT_WAVE.
+            num_field (int): Number of field angles from on-axis to full-field.
+                Defaults to 5.
+            depth (float): Object distance in mm. Use ``float('inf')`` for
+                collimated light. Defaults to ``float('inf')``.
+            num_rays (int): Rays per field position. Defaults to ``SPP_PSF``.
+            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            direction (str): Sampling direction —
+                ``"y"`` (meridional, default),
+                ``"x"`` (sagittal),
+                ``"diagonal"`` (45°, x = y).
 
         Returns:
-            ray (Ray object): Ray object. Shape [num_field, num_rays, 3]
+            Ray: Ray object with shape ``[num_field, num_rays, 3]``.
         """
         device = self.device
         fov_deg = float(np.rad2deg(self.rfov))
-        fov_y_list = torch.linspace(0, fov_deg, num_field, device=device)
+        fov_list = torch.linspace(0, fov_deg, num_field, device=device)
 
-        if depth == float("inf"):
-            ray = self.sample_parallel(
-                fov_x=0.0, fov_y=fov_y_list, num_rays=num_rays, wvln=wvln
+        if direction == "y":
+            ray = self.sample_from_fov(
+                fov_x=0.0, fov_y=fov_list, depth=depth, num_rays=num_rays, wvln=wvln
             )
+        elif direction == "x":
+            ray = self.sample_from_fov(
+                fov_x=fov_list, fov_y=0.0, depth=depth, num_rays=num_rays, wvln=wvln
+            )
+        elif direction == "diagonal":
+            # sample_from_fov creates a meshgrid; for pairwise diagonal, loop
+            rays = [
+                self.sample_from_fov(
+                    fov_x=f.item(), fov_y=f.item(), depth=depth, num_rays=num_rays, wvln=wvln
+                )
+                for f in fov_list
+            ]
+            ray_o = torch.stack([r.o for r in rays], dim=0)
+            ray_d = torch.stack([r.d for r in rays], dim=0)
+            ray = Ray(ray_o, ray_d, wvln, device=device)
         else:
-            point_obj_x = torch.zeros(num_field, device=device)
-            point_obj_y = depth * torch.tan(fov_y_list * torch.pi / 180.0)
-            point_obj = torch.stack(
-                [point_obj_x, point_obj_y, torch.full_like(point_obj_x, depth)], dim=-1
-            )
-            ray = self.sample_from_points(
-                points=point_obj, num_rays=num_rays, wvln=wvln
-            )
+            raise ValueError(f"Invalid direction: {direction!r}. Use 'x', 'y', or 'diagonal'.")
         return ray
 
     @torch.no_grad()
@@ -372,26 +383,86 @@ class GeoLens(
         return rays
 
     @torch.no_grad()
-    def sample_parallel(
+    def sample_from_points_by_fov(
         self,
         fov_x=[0.0],
         fov_y=[0.0],
+        depth=DEPTH,
+        num_rays=SPP_PSF,
+        wvln=DEFAULT_WAVE,
+        scale_pupil=1.0,
+    ):
+        """Sample point-source rays specified by field angles and depth.
+
+        Converts field angles to physical object-space coordinates, then
+        delegates to :meth:`sample_from_points`.
+
+        Args:
+            fov_x (float or list): Field angle(s) in the xz plane (degrees).
+            fov_y (float or list): Field angle(s) in the yz plane (degrees).
+            depth (float): Object distance in mm. Default: ``DEPTH``.
+            num_rays (int): Number of rays per field point. Default: SPP_PSF.
+            wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
+            scale_pupil (float): Scale factor for pupil radius. Default: 1.0.
+
+        Returns:
+            Ray:
+                Rays with shape [..., num_rays, 3], where leading dims follow
+                the same scalar-squeeze convention as :meth:`sample_from_fov`.
+        """
+        x_scalar = isinstance(fov_x, (float, int))
+        y_scalar = isinstance(fov_y, (float, int))
+        if x_scalar:
+            fov_x = [float(fov_x)]
+        if y_scalar:
+            fov_y = [float(fov_y)]
+
+        fov_x_rad = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
+        fov_y_rad = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
+        fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
+        x = torch.tan(fov_x_grid) * depth
+        y = torch.tan(fov_y_grid) * depth
+        z = torch.full_like(x, depth)
+        points = torch.stack((x, y, z), dim=-1)  # [len(fov_y), len(fov_x), 3]
+
+        # Squeeze scalar dims before sample_from_points so the Ray is
+        # constructed with the right shape (avoids post-hoc attribute edits).
+        if x_scalar:
+            points = points.squeeze(-2)
+        if y_scalar:
+            points = points.squeeze(0)
+
+        return self.sample_from_points(
+            points=points, num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil
+        )
+
+    @torch.no_grad()
+    def sample_from_fov(
+        self,
+        fov_x=[0.0],
+        fov_y=[0.0],
+        depth=float("inf"),
         num_rays=SPP_CALC,
         wvln=DEFAULT_WAVE,
         entrance_pupil=True,
-        depth=-1.0,
+        prop_to=-1.0,
         scale_pupil=1.0,
     ):
-        """
-        Sample parallel rays in object space for geometric optics calculations.
+        """Sample rays from object space at given field angles.
+
+        Unified entry point for both collimated (infinite-depth) and diverging
+        (finite-depth) ray bundles specified by field-of-view angles.
 
         Args:
             fov_x (float or list): Field angle(s) in the xz plane (degrees). Default: [0.0].
             fov_y (float or list): Field angle(s) in the yz plane (degrees). Default: [0.0].
+            depth (float): Object distance in mm. ``float('inf')`` for collimated
+                rays, finite value for point-source rays. Default: ``float('inf')``.
             num_rays (int): Number of rays per field point. Default: SPP_CALC.
             wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
-            entrance_pupil (bool): If True, sample origins on entrance pupil; otherwise, on surface 0. Default: True.
-            depth (float): Propagation depth in z. Default: -1.0.
+            entrance_pupil (bool): If True, sample origins on entrance pupil;
+                otherwise, on surface 0. Only used for infinite depth. Default: True.
+            prop_to (float): Propagation depth in z (only for infinite depth). Default: -1.0.
             scale_pupil (float): Scale factor for pupil radius. Default: 1.0.
 
         Returns:
@@ -403,6 +474,14 @@ class GeoLens(
                 - both lists: [len(fov_y), len(fov_x), num_rays, 3]
                 Ordered as (u, v).
         """
+        # Finite depth: delegate to sample_from_points_by_fov
+        if depth != float("inf"):
+            return self.sample_from_points_by_fov(
+                fov_x=fov_x, fov_y=fov_y, depth=depth,
+                num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil,
+            )
+
+        # --- Infinite depth: collimated parallel rays ---
         # Remember whether inputs were scalar
         x_scalar = isinstance(fov_x, (float, int))
         y_scalar = isinstance(fov_y, (float, int))
@@ -444,64 +523,8 @@ class GeoLens(
             ray_d = ray_d.squeeze(0)
 
         rays = Ray(ray_o, ray_d, wvln, device=self.device)
-        rays.prop_to(depth)
+        rays.prop_to(prop_to)
         return rays
-
-    @torch.no_grad()
-    def sample_point_source(
-        self,
-        fov_x=[0.0],
-        fov_y=[0.0],
-        depth=DEPTH,
-        num_rays=SPP_PSF,
-        wvln=DEFAULT_WAVE,
-        entrance_pupil=True,
-        scale_pupil=1.0,
-    ):
-        """Sample point source rays from object space with given field angles.
-
-        Used for (1) spot/rms/magnification calculation, (2) distortion/sensor sampling.
-
-        This function is equivalent to self.point_source_grid() + self.sample_from_points().
-
-        Args:
-            fov_x (float or list): field angle in x0z plane.
-            fov_y (float or list): field angle in y0z plane.
-            depth (float, optional): sample plane z position. Defaults to -10.0.
-            num_rays (int, optional): number of rays sampled from each grid point. Defaults to 16.
-            entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to False.
-            wvln (float, optional): ray wvln. Defaults to DEFAULT_WAVE.
-
-        Returns:
-            ray (Ray object): Ray object. Shape [len(fov_y), len(fov_x), num_rays, 3], arranged in uv order.
-        """
-        # Sample second points on the pupil, shape [len(fov_y), len(fov_x), num_rays, 3]
-        if entrance_pupil:
-            pupilz, pupilr = self.get_entrance_pupil()
-            pupilr *= scale_pupil
-        else:
-            pupilz, pupilr = 0, self.surfaces[0].r
-
-        # Sample grid points with given field angles, shape [len(fov_y), len(fov_x), 3]
-        fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
-        fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
-        fov_x_grid, fov_y_grid = torch.meshgrid(fov_x, fov_y, indexing="xy")
-        x, y = torch.tan(fov_x_grid) * depth, torch.tan(fov_y_grid) * depth
-
-        # Form ray origins, shape [len(fov_y), len(fov_x), num_rays, 3]
-        z = torch.full_like(x, depth)
-        ray_o = torch.stack((x, y, z), -1)
-        ray_o = ray_o.unsqueeze(2).repeat(1, 1, num_rays, 1)
-
-        ray_o2 = self.sample_circle(
-            r=pupilr, z=pupilz, shape=(len(fov_y), len(fov_x), num_rays)
-        )
-
-        # Compute ray directions
-        ray_d = ray_o2 - ray_o
-
-        ray = Ray(ray_o, ray_d, wvln, device=self.device)
-        return ray
 
     @torch.no_grad()
     def sample_sensor(self, spp=64, wvln=DEFAULT_WAVE, sub_pixel=False):
@@ -930,7 +953,7 @@ class GeoLens(
             img_unwarpped (tensor): Unwarped image tensor. Shape of [N, C, H, W].
         """
         # Calculate distortion map, shape (num_grid, num_grid, 2)
-        distortion_map = self.distortion_map(depth=depth, num_grid=num_grid)
+        distortion_map = self.calc_distortion_map(depth=depth, num_grid=num_grid)
 
         # Interpolate distortion map to image resolution
         distortion_map = distortion_map.permute(2, 0, 1).unsqueeze(1)
@@ -989,7 +1012,7 @@ class GeoLens(
         paraxial_fov_deg = float(np.rad2deg(paraxial_fov))
 
         # 1. Trace on-axis parallel rays to find paraxial focus z (equivalent to infinite focus)
-        ray_axis = self.sample_parallel(
+        ray_axis = self.sample_from_fov(
             fov_x=0.0, fov_y=0.0, entrance_pupil=False, scale_pupil=0.2
         )
         ray_axis, _ = self.trace(ray_axis)
@@ -1003,7 +1026,7 @@ class GeoLens(
         paraxial_focus_z = float(torch.mean(focus_z))
 
         # 2. Trace off-axis paraxial ray to paraxial focus, measure image height
-        ray = self.sample_parallel(
+        ray = self.sample_from_fov(
             fov_x=0.0, fov_y=paraxial_fov_deg, entrance_pupil=False, scale_pupil=0.2
         )
         ray, _ = self.trace(ray)
@@ -1090,16 +1113,9 @@ class GeoLens(
             d_sensor (torch.Tensor): Sensor plane in the image space.
         """
         # Sample and trace rays, shape [SPP_CALC, 3]
-        if depth == float("inf"):
-            ray = self.sample_parallel(
-                fov_x=0.0, fov_y=0.0, num_rays=SPP_CALC, wvln=DEFAULT_WAVE
-            )
-        else:
-            ray = self.sample_from_points(
-                points=torch.tensor([0.0, 0.0, depth], device=self.device),
-                num_rays=SPP_CALC,
-                wvln=DEFAULT_WAVE,
-            )
+        ray = self.sample_from_fov(
+            fov_x=0.0, fov_y=0.0, depth=depth, num_rays=SPP_CALC, wvln=DEFAULT_WAVE
+        )
         ray = self.trace2sensor(ray)
 
         # Calculate in-focus sensor position
@@ -1555,6 +1571,7 @@ class GeoLens(
             self.rfov = rfov
 
         self.foclen = self.r_sensor / math.tan(self.rfov)
+        self.eqfl = 21.63 / math.tan(self.rfov)
         self.fnum = fnum
         aper_r = self.foclen / fnum / 2
         self.surfaces[self.aper_idx].update_r(float(aper_r))
@@ -1573,280 +1590,6 @@ class GeoLens(
             rfov (float): Half-diagonal FoV in radians.
         """
         self.rfov = rfov
+        self.eqfl = 21.63 / math.tan(self.rfov)
 
-    @torch.no_grad()
-    def prune_surf(self, expand_factor=None, mounting_margin=None):
-        """Prune surfaces to allow all valid rays to go through.
-
-        Determines the clear aperture for each surface by ray tracing, then
-        applies margins and enforces manufacturability constraints (edge
-        thickness and air-gap clearance).
-
-        Args:
-            expand_factor (float, optional): Fractional expansion applied to
-                the ray-traced clear aperture radius.  Auto-selected if None:
-                5 % for cellphone lenses (r_sensor < 10 mm), 10 % otherwise.
-            mounting_margin (float, optional): Absolute margin [mm] added to
-                the clear aperture for mechanical mounting.  When given, this
-                replaces the proportional ``expand_factor`` expansion.
-        """
-        surface_range = self.find_diff_surf()
-        num_surfs = len(self.surfaces)
-
-        # Set expansion factor
-        if self.r_sensor < 10.0:
-            expand_factor = 0.05 if expand_factor is None else expand_factor
-        else:
-            expand_factor = 0.10 if expand_factor is None else expand_factor
-
-        # ------------------------------------------------------------------
-        # 1. Temporarily remove radius limits so the trace is unclipped
-        # ------------------------------------------------------------------
-        saved_radii = [self.surfaces[i].r for i in range(num_surfs)]
-        for i in surface_range:
-            self.surfaces[i].r = self.surfaces[i].max_height()
-
-        # ------------------------------------------------------------------
-        # 2. Trace rays at full FoV to find maximum ray height per surface
-        # ------------------------------------------------------------------
-        if self.rfov is not None:
-            fov_deg = self.rfov * 180 / torch.pi
-        else:
-            fov = np.arctan(self.r_sensor / self.foclen)
-            fov_deg = float(fov) * 180 / torch.pi
-            print(f"Using fov_deg: {fov_deg} during surface pruning.")
-
-        fov_y = [f * fov_deg / 10 for f in range(0, 11)]
-        ray = self.sample_parallel(
-            fov_x=[0.0], fov_y=fov_y, num_rays=SPP_CALC, scale_pupil=1.5
-        )
-        _, ray_o_record = self.trace2sensor(ray=ray, record=True)
-
-        # Ray record, shape [num_rays, num_surfaces + 2, 3]
-        ray_o_record = torch.stack(ray_o_record, dim=-2)
-        ray_o_record = torch.nan_to_num(ray_o_record, 0.0)
-        ray_o_record = ray_o_record.reshape(-1, ray_o_record.shape[-2], 3)
-
-        # Compute the maximum ray height for each surface
-        ray_r_record = (ray_o_record[..., :2] ** 2).sum(-1).sqrt()
-        surf_r_max = ray_r_record.max(dim=0)[0][1:-1]
-
-        # Restore original radii before updating
-        for i in range(num_surfs):
-            self.surfaces[i].r = saved_radii[i]
-
-        # ------------------------------------------------------------------
-        # 3. Set new surface radii = ray-traced clear aperture + margin
-        # ------------------------------------------------------------------
-        for i in surface_range:
-            if surf_r_max[i] > 0:
-                r_clear = surf_r_max[i].item()
-                if mounting_margin is not None:
-                    r_new = r_clear + mounting_margin
-                else:
-                    r_expand = r_clear * expand_factor
-                    r_expand = max(min(r_expand, 2.0), 0.1)
-                    r_new = r_clear + r_expand
-                self.surfaces[i].update_r(r_new)
-            else:
-                print(f"No valid rays for Surf {i}, expand existing radius.")
-                if mounting_margin is not None:
-                    self.surfaces[i].update_r(self.surfaces[i].r + mounting_margin)
-                else:
-                    r_expand = self.surfaces[i].r * expand_factor
-                    r_expand = max(min(r_expand, 2.0), 0.1)
-                    self.surfaces[i].update_r(self.surfaces[i].r + r_expand)
-
-        # ------------------------------------------------------------------
-        # 4. Edge thickness enforcement
-        #    For each glass element (pair of surfaces bounding glass), ensure
-        #    the edge thickness at the pruned radius is at least the minimum.
-        #    If violated, shrink the clear aperture of both surfaces.
-        # ------------------------------------------------------------------
-        if self.r_sensor < 10.0:
-            et_min = 0.25  # mm, cellphone lens
-        else:
-            et_min = 1.0  # mm, camera lens
-
-        for i in range(num_surfs - 1):
-            # Glass element: surface i has a non-air material on its back side
-            if self.surfaces[i].mat2.name == "air":
-                continue
-            if isinstance(self.surfaces[i], Aperture):
-                continue
-
-            front = self.surfaces[i]
-            back = self.surfaces[i + 1]
-            r_check = min(front.r, back.r)
-
-            if r_check <= 0:
-                continue
-
-            r_t = torch.tensor(r_check, device=self.device)
-            z_front = front.surface_with_offset(r_t, 0.0, valid_check=False).item()
-            z_back = back.surface_with_offset(r_t, 0.0, valid_check=False).item()
-            edge_thickness = z_back - z_front
-
-            if edge_thickness < et_min:
-                # Shrink radius until edge thickness is met (binary search)
-                r_lo, r_hi = 0.0, r_check
-                for _ in range(20):
-                    r_mid = (r_lo + r_hi) / 2
-                    r_t = torch.tensor(r_mid, device=self.device)
-                    z_f = front.surface_with_offset(r_t, 0.0, valid_check=False).item()
-                    z_b = back.surface_with_offset(r_t, 0.0, valid_check=False).item()
-                    if (z_b - z_f) >= et_min:
-                        r_lo = r_mid
-                    else:
-                        r_hi = r_mid
-
-                r_safe = r_lo
-                if r_safe > 0 and r_safe < r_check:
-                    print(
-                        f"Surf {i}-{i+1}: edge thickness {edge_thickness:.3f} mm "
-                        f"< {et_min} mm, shrinking radius {r_check:.3f} -> {r_safe:.3f} mm."
-                    )
-                    if front.r > r_safe:
-                        front.update_r(r_safe)
-                    if back.r > r_safe:
-                        back.update_r(r_safe)
-
-        # ------------------------------------------------------------------
-        # 5. Air gap clearance check
-        #    For each air gap (surface i with mat2 = "air"), ensure that
-        #    surfaces do not physically intersect at the clear aperture edge.
-        # ------------------------------------------------------------------
-        if self.r_sensor < 10.0:
-            air_gap_min = 0.05  # mm
-        else:
-            air_gap_min = 0.1  # mm
-
-        for i in range(num_surfs - 1):
-            if self.surfaces[i].mat2.name != "air":
-                continue
-            if isinstance(self.surfaces[i], Aperture):
-                continue
-
-            curr = self.surfaces[i]
-            nxt = self.surfaces[i + 1]
-            r_check = min(curr.r, nxt.r)
-
-            if r_check <= 0:
-                continue
-
-            # Check gap at multiple radial points along the edge
-            r_pts = torch.linspace(0.5 * r_check, r_check, 8, device=self.device)
-            z_curr = curr.surface_with_offset(r_pts, 0.0, valid_check=False)
-            z_nxt = nxt.surface_with_offset(r_pts, 0.0, valid_check=False)
-            min_gap = (z_nxt - z_curr).min().item()
-
-            if min_gap < air_gap_min:
-                # Shrink radius until air gap is met (binary search)
-                r_lo, r_hi = 0.0, r_check
-                for _ in range(20):
-                    r_mid = (r_lo + r_hi) / 2
-                    r_pts = torch.linspace(0.5 * r_mid, r_mid, 8, device=self.device)
-                    z_c = curr.surface_with_offset(r_pts, 0.0, valid_check=False)
-                    z_n = nxt.surface_with_offset(r_pts, 0.0, valid_check=False)
-                    if (z_n - z_c).min().item() >= air_gap_min:
-                        r_lo = r_mid
-                    else:
-                        r_hi = r_mid
-
-                r_safe = r_lo
-                if r_safe > 0 and r_safe < r_check:
-                    print(
-                        f"Surf {i}-{i+1}: air gap {min_gap:.3f} mm "
-                        f"< {air_gap_min} mm, shrinking radius {r_check:.3f} -> {r_safe:.3f} mm."
-                    )
-                    if curr.r > r_safe:
-                        curr.update_r(r_safe)
-                    if nxt.r > r_safe:
-                        nxt.update_r(r_safe)
-
-        # ------------------------------------------------------------------
-        # 6. Validate aperture radius consistency
-        #    The aperture (stop) radius should not exceed the clear aperture
-        #    of its neighboring surfaces.
-        # ------------------------------------------------------------------
-        if self.aper_idx is not None:
-            aper = self.surfaces[self.aper_idx]
-            # Find neighboring non-aperture surfaces
-            neighbor_r = []
-            if self.aper_idx > 0:
-                neighbor_r.append(self.surfaces[self.aper_idx - 1].r)
-            if self.aper_idx < num_surfs - 1:
-                neighbor_r.append(self.surfaces[self.aper_idx + 1].r)
-
-            if neighbor_r:
-                max_aper_r = min(neighbor_r)
-                if aper.r > max_aper_r:
-                    print(
-                        f"Aperture radius {aper.r:.3f} mm exceeds neighbor "
-                        f"clear aperture {max_aper_r:.3f} mm, clamping."
-                    )
-                    aper.r = max_aper_r
-
-    @torch.no_grad()
-    def correct_shape(self, expand_factor=None, mounting_margin=None):
-        """Correct wrong lens shape during lens design optimization.
-
-        Applies correction rules to ensure valid lens geometry:
-            1. Move the first surface to z = 0.0
-            2. Fix aperture distance if aperture is at the front
-            3. Prune all surfaces to allow valid rays through
-
-        Args:
-            expand_factor (float, optional): Height expansion factor for surface pruning.
-                If None, auto-selects based on lens type. Defaults to None.
-            mounting_margin (float, optional): Absolute mounting margin [mm] for
-                surface pruning.  Passed through to :meth:`prune_surf`.
-
-        Returns:
-            bool: True if any shape corrections were made, False otherwise.
-        """
-        aper_idx = self.aper_idx
-        optim_surf_range = self.find_diff_surf()
-        shape_changed = False
-
-        # Rule 1: Move the first surface to z = 0.0
-        move_dist = self.surfaces[0].d.item()
-        for surf in self.surfaces:
-            surf.d -= move_dist
-        self.d_sensor -= move_dist
-
-        # Rule 2: Fix aperture distance to the first surface if aperture in the front.
-        if aper_idx == 0:
-            d_aper = 0.05
-
-            # If the first surface is concave, use the maximum negative sag.
-            aper_r = torch.tensor(self.surfaces[aper_idx].r, device=self.device)
-            sag1 = -self.surfaces[aper_idx + 1].sag(aper_r, 0).item()
-
-            if sag1 > 0:
-                d_aper += sag1
-
-            # Update position of all surfaces.
-            delta_aper = self.surfaces[1].d.item() - d_aper
-            for i in optim_surf_range:
-                self.surfaces[i].d -= delta_aper
-            self.d_sensor -= delta_aper
-
-        # Rule 4: Prune all surfaces
-        self.prune_surf(expand_factor=expand_factor, mounting_margin=mounting_margin)
-
-        if shape_changed:
-            print("Surface shape corrected.")
-        return shape_changed
-
-    @torch.no_grad()
-    def match_materials(self, mat_table="CDGM"):
-        """Match lens materials to a glass catalog.
-
-        Args:
-            mat_table (str, optional): Glass catalog name. Common options include
-                'CDGM', 'SCHOTT', 'OHARA'. Defaults to 'CDGM'.
-        """
-        for surf in self.surfaces:
-            surf.mat2.match_material(mat_table=mat_table)
 

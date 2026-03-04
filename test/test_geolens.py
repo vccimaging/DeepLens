@@ -64,31 +64,31 @@ class TestGeoLensLoading:
 class TestGeoLensRaySampling:
     """Test ray sampling methods."""
 
-    def test_geolens_sample_parallel(self, sample_singlet_lens):
+    def test_geolens_sample_from_fov(self, sample_singlet_lens):
         """Should sample parallel rays at field angles."""
         lens = sample_singlet_lens
         
-        ray = lens.sample_parallel(fov_x=[0.0], fov_y=[0.0], num_rays=512)
+        ray = lens.sample_from_fov(fov_x=[0.0], fov_y=[0.0], num_rays=512)
         
         assert ray is not None
         assert ray.o.shape[-1] == 3
         assert ray.d.shape[-1] == 3
 
-    def test_geolens_sample_parallel_offaxis(self, sample_singlet_lens):
+    def test_geolens_sample_from_fov_offaxis(self, sample_singlet_lens):
         """Should sample off-axis parallel rays."""
         lens = sample_singlet_lens
         
-        ray = lens.sample_parallel(fov_x=[5.0], fov_y=[0.0], num_rays=512)
+        ray = lens.sample_from_fov(fov_x=[5.0], fov_y=[0.0], num_rays=512)
         
         # Off-axis rays should have non-zero x direction component
         assert ray.d[..., 0].abs().max() > 0.01
 
     def test_geolens_sample_point_source(self, sample_singlet_lens):
-        """Should sample point source rays."""
+        """Should sample point source rays via sample_from_fov with finite depth."""
         lens = sample_singlet_lens
-        
-        ray = lens.sample_point_source(fov_x=[0.0], fov_y=[0.0], depth=DEPTH, num_rays=512)
-        
+
+        ray = lens.sample_from_fov(fov_x=[0.0], fov_y=[0.0], depth=DEPTH, num_rays=512)
+
         assert ray is not None
         assert ray.shape[-1] == 512
 
@@ -129,7 +129,7 @@ class TestGeoLensTracing:
         """Should trace rays through lens."""
         lens = sample_singlet_lens
         
-        ray = lens.sample_parallel(fov_x=[0.0], fov_y=[0.0], num_rays=512)
+        ray = lens.sample_from_fov(fov_x=[0.0], fov_y=[0.0], num_rays=512)
         ray_out, _ = lens.trace(ray)
         
         assert ray_out is not None
@@ -139,7 +139,7 @@ class TestGeoLensTracing:
         """Should record ray path during tracing."""
         lens = sample_singlet_lens
         
-        ray = lens.sample_parallel(fov_x=[0.0], fov_y=[0.0], num_rays=512)
+        ray = lens.sample_from_fov(fov_x=[0.0], fov_y=[0.0], num_rays=512)
         ray_out, ray_record = lens.trace(ray, record=True)
         
         assert ray_record is not None
@@ -149,7 +149,7 @@ class TestGeoLensTracing:
         """Tracing should maintain valid ray count or reduce it."""
         lens = sample_singlet_lens
         
-        ray = lens.sample_parallel(fov_x=[0.0], fov_y=[0.0], num_rays=512)
+        ray = lens.sample_from_fov(fov_x=[0.0], fov_y=[0.0], num_rays=512)
         valid_before = ray.is_valid.sum().item()
         
         ray_out, _ = lens.trace(ray)
@@ -162,7 +162,7 @@ class TestGeoLensTracing:
         """__call__ should be alias for trace."""
         lens = sample_singlet_lens
         
-        ray = lens.sample_parallel(fov_x=[0.0], fov_y=[0.0], num_rays=512)
+        ray = lens.sample_from_fov(fov_x=[0.0], fov_y=[0.0], num_rays=512)
         ray_out = lens(ray)
         
         assert ray_out is not None
@@ -478,7 +478,7 @@ class TestGeoLensDeviceHandling:
         lens = sample_singlet_lens
         lens.to(device_auto)
         
-        ray = lens.sample_parallel(fov_x=[0.0], fov_y=[0.0], num_rays=512)
+        ray = lens.sample_from_fov(fov_x=[0.0], fov_y=[0.0], num_rays=512)
         ray_out, _ = lens.trace(ray)
         
         assert ray_out.o.device.type == device_auto.type
@@ -500,8 +500,8 @@ class TestGeoLensDistortion:
     def test_geolens_distortion_map(self, sample_cellphone_lens):
         """Should compute distortion map."""
         lens = sample_cellphone_lens
-        
-        distortion_map = lens.distortion_map(num_grid=(5, 5), depth=DEPTH)
+
+        distortion_map = lens.calc_distortion_map(num_grid=(5, 5), depth=DEPTH)
         
         assert distortion_map.shape == (5, 5, 2)
         # Distortion values should be normalized to approximately [-1, 1]

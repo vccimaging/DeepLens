@@ -9,12 +9,12 @@ Technical Paper:
 
 from deeplens import GeoLens
 
-lens = GeoLens(filename="./datasets/lenses/camera/ef35mm_f2.0.json")
+# lens = GeoLens(filename="./datasets/lenses/camera/ef35mm_f2.0.json")
 # lens = GeoLens(filename="./datasets/lenses/camera/ef35mm_f2.0.zmx")
-# lens = GeoLens(filename='./datasets/lenses/cellphone/cellphone80deg.json')
+lens = GeoLens(filename='./datasets/lenses/cellphone/cellphone80deg.json')
 # lens = GeoLens(filename='./datasets/lenses/zemax_double_gaussian.zmx')
 
-lens.analysis(render=True)
+lens.analysis(full_eval=True, render=True)
 
 lens.write_lens_zmx()
 lens.write_lens_json()

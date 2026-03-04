@@ -178,17 +178,17 @@ class TestAsphericSurface:
     def test_aspheric_higher_order(self, device_auto):
         """Higher-order coefficients should affect sag."""
         c = 0.0  # No base curvature
-        ai = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0]  # Only ai2
-        
+        ai = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0]  # Only ai4
+
         surf = Aspheric(c=c, k=0.0, ai=ai, r=5.0, d=0.0, mat2="bk7", device=device_auto)
-        
+
         x = torch.tensor([2.0], device=device_auto)
         y = torch.tensor([0.0], device=device_auto)
         r_sq = x**2 + y**2
-        
+
         z = surf.sag(x, y)
-        expected = ai[0] * r_sq  # ai2 * r^2
-        
+        expected = ai[0] * r_sq**2  # ai4 * r^4
+
         assert torch.allclose(z, expected, atol=1e-5)
 
     def test_aspheric_init_from_dict(self, device_auto):

@@ -20,7 +20,7 @@ Abstract base class for all lens types. Defines the shared interface: `psf()`, `
 
 Differentiable multi-element refractive lens via geometric ray tracing. This is the primary lens model in DeepLens.
 
-`GeoLens` uses a mixin architecture — functionality is split across `GeoLensPSF`, `GeoLensEval`, `GeoLensOptim`, `GeoLensVis`, `GeoLensIO`, `GeoLensTolerance`, and `GeoLensVis3D`.
+`GeoLens` uses a mixin architecture — functionality is split across `GeoLensPSF`, `GeoLensEval`, `GeoLensSeidel`, `GeoLensOptim`, `GeoLensSurfOps`, `GeoLensVis`, `GeoLensIO`, `GeoLensTolerance`, and `GeoLensVis3D`.
 
 ::: deeplens.optics.GeoLens
 
@@ -28,15 +28,19 @@ Differentiable multi-element refractive lens via geometric ray tracing. This is 
 
 ::: deeplens.optics.geolens_pkg.eval.GeoLensEval
 
+::: deeplens.optics.geolens_pkg.eval_seidel.GeoLensSeidel
+
 ::: deeplens.optics.geolens_pkg.optim.GeoLensOptim
+
+::: deeplens.optics.geolens_pkg.optim_ops.GeoLensSurfOps
 
 ::: deeplens.optics.geolens_pkg.io.GeoLensIO
 
 ::: deeplens.optics.geolens_pkg.vis.GeoLensVis
 
-::: deeplens.optics.geolens_pkg.tolerance.GeoLensTolerance
+::: deeplens.optics.geolens_pkg.eval_tolerance.GeoLensTolerance
 
-::: deeplens.optics.geolens_pkg.view_3d.GeoLensVis3D
+::: deeplens.optics.geolens_pkg.vis3d.GeoLensVis3D
 
 Combines a `GeoLens` with a diffractive optical element (DOE). Performs coherent ray tracing to the DOE plane, then Angular Spectrum Method (ASM) propagation to the sensor.
 

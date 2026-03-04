@@ -11,11 +11,9 @@ from deeplens import GeoLens
 # Load a starting lens design
 lens = GeoLens(filename="datasets/lenses/cellphone/cellphone80deg.json")
 
-# Set which parameters to optimize (curvatures, thicknesses, etc.)
+# Set target specs and build optimizer
 lens.set_target_fov_fnum(rfov=40, fnum=2.4)  # 40 deg half-diagonal FoV, F/2.4
-lens.prepare_optimization(lr=1e-4)
-
-optimizer = torch.optim.Adam(lens.parameters(), lr=1e-4)
+optimizer = lens.get_optimizer(lrs=[1e-4, 1e-4, 1e-1, 1e-4])
 
 for step in range(200):
     optimizer.zero_grad()

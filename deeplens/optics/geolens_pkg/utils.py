@@ -16,12 +16,9 @@ import random
 
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
-from ..geometric_surface import Aperture, Aspheric, AsphericNorm, Spheric, ThinLens, Plane
+from ..geometric_surface import Aperture, Aspheric, Spheric, ThinLens, Plane
 from ..material import MATERIAL_data
-from ..config import WAVE_RGB
 
 # Common optical glasses for random material selection
 COMMON_GLASSES = [
@@ -35,11 +32,11 @@ COMMON_GLASSES = [
 # Lens starting point generation
 # ====================================================================================
 def create_lens(
-    foclen,
     fov,
     fnum,
-    flange,
-    enpd=None,
+    bfl,
+    foclen=None,
+    imgh=None,
     thickness=None,
     surf_list=[["Spheric", "Spheric"], ["Aperture"], ["Spheric", "Aspheric"]],
     save_dir="./",
@@ -48,23 +45,37 @@ def create_lens(
 
     Contributor: Rayengineer
 
+    Exactly one of ``foclen`` or ``imgh`` must be provided.  The other is
+    derived via ``imgh = 2 * foclen * tan(fov / 2)``.
+
     Args:
-        foclen: Focal length in mm.
         fov: Diagonal field of view in degrees.
-        fnum: Maximum f number.
-        flange: Distance from last surface to sensor.
-        thickness: Total thickness if specified.
+        fnum: Maximum f-number.
+        bfl: Back focal length — distance from last surface to sensor in mm.
+        foclen: Focal length in mm.  Mutually exclusive with ``imgh``.
+        imgh: Full diagonal image height in mm.  Mutually exclusive with ``foclen``.
+        thickness: Total thickness in mm.  Defaults to ``foclen + bfl``.
         surf_list: List of surface types defining each lens element and aperture.
+        save_dir: Directory to save the lens JSON and analysis.
     """
     from ..geolens import GeoLens
 
+    # Resolve foclen / imgh
+    half_fov = np.deg2rad(fov / 2)
+    if foclen is not None and imgh is not None:
+        raise ValueError("Specify exactly one of foclen or imgh, not both.")
+    elif foclen is not None:
+        imgh = round(2 * foclen * float(np.tan(half_fov)), 2)
+    elif imgh is not None:
+        foclen = round(imgh / 2 / float(np.tan(half_fov)), 4)
+    else:
+        raise ValueError("Specify exactly one of foclen or imgh.")
+
     # Compute lens parameters
     aper_r = foclen / fnum / 2
-    half_fov = np.deg2rad(fov / 2)
-    imgh = round(2 * foclen * float(np.tan(half_fov)), 2)
     if thickness is None:
-        thickness = foclen + flange
-    d_opt = thickness - flange
+        thickness = foclen + bfl
+    d_opt = thickness - bfl
 
     # Materials: use common glasses instead of the full 700+ catalog
     mat_names = [m for m in COMMON_GLASSES if m in MATERIAL_data]
@@ -136,8 +147,7 @@ def create_lens(
     lens.set_sensor_res(sensor_res=(2000, 2000))
 
     # Lens calculation
-    lens.enpd = enpd
-    lens.float_enpd = True if enpd is None else False
+    lens.float_enpd = True
     lens.float_foclen = False
     lens.float_rfov = False
     lens.post_computation()

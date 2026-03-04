@@ -15,9 +15,10 @@ class TestRMSMap:
     def test_rms_map_shape(self, sample_singlet_lens):
         """rms_map returns a grid of positive RMS values."""
         lens = sample_singlet_lens
-        rms = lens.rms_map(num_grid=(3, 3))
+        rms, centroid = lens.rms_map(num_grid=(3, 3))
         assert rms.shape == (3, 3)
         assert (rms >= 0).all()
+        assert centroid.shape == (3, 3, 2)
 
     def test_rms_map_rgb_shape(self, sample_singlet_lens):
         """rms_map_rgb returns [3, grid_h, grid_w] with 3 RGB channels."""
@@ -30,17 +31,19 @@ class TestRMSMap:
 class TestDistortion:
     """Tests for distortion analysis."""
 
-    def test_calc_distortion_2D(self, sample_singlet_lens):
-        """calc_distortion_2D returns a distortion array."""
+    def test_calc_distortion_radial(self, sample_singlet_lens):
+        """calc_distortion_radial returns field angles and distortion arrays."""
         lens = sample_singlet_lens
-        result = lens.calc_distortion_2D(rfov=torch.tensor([0.5]))
-        assert result is not None
-        assert len(result) == 1
+        rfov_samples, distortions = lens.calc_distortion_radial(num_points=5)
+        assert len(rfov_samples) == 5
+        assert len(distortions) == 5
+        assert rfov_samples[0] == 0.0
+        assert rfov_samples[-1] > 0.0
 
-    def test_distortion_map_shape(self, sample_singlet_lens):
-        """distortion_map returns [grid_h, grid_w, 2]."""
+    def test_calc_distortion_map_shape(self, sample_singlet_lens):
+        """calc_distortion_map returns [grid_h, grid_w, 2]."""
         lens = sample_singlet_lens
-        dist_map = lens.distortion_map(num_grid=(3, 3))
+        dist_map = lens.calc_distortion_map(num_grid=(3, 3))
         assert dist_map.shape == (3, 3, 2)
 
 
@@ -107,7 +110,7 @@ class TestDrawSmoke:
         """draw_distortion_radial produces a file."""
         lens = sample_singlet_lens
         path = os.path.join(test_output_dir, "test_distortion_radial.png")
-        lens.draw_distortion_radial(rfov=0.5, save_name=path)
+        lens.draw_distortion_radial(save_name=path)
         assert os.path.exists(path)
 
     def test_draw_mtf(self, sample_singlet_lens, test_output_dir):
