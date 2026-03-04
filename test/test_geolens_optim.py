@@ -86,11 +86,11 @@ class TestLossFunctions:
         assert isinstance(loss, torch.Tensor)
         assert loss.dim() == 0
 
-    def test_loss_gap_scalar(self, sample_singlet_lens):
-        """loss_gap returns a scalar >= 0."""
+    def test_loss_thickness_scalar(self, sample_singlet_lens):
+        """loss_thickness returns a scalar >= 0."""
         lens = sample_singlet_lens
         lens.init_constraints()
-        loss = lens.loss_gap()
+        loss = lens.loss_thickness()
         assert isinstance(loss, torch.Tensor)
         assert loss.dim() == 0
         assert loss.item() >= 0
