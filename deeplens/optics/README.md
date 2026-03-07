@@ -1,60 +1,30 @@
 # Optics Package
 
-The `optics` package is the core module of DeepLens, providing geometric and wave optics simulations. It hosts all lens types, optical primitives, and simulation utilities.
+Core module of DeepLens providing geometric and wave optics simulation. Hosts all lens models, optical surfaces, and simulation utilities.
 
-## Package Entry (`__init__.py`)
+## Top-Level Files
 
--   **`DeepObj`**: Base class for optics objects with `to(device)`, `astype(dtype)`, `clone()`.
--   Re-exports lens classes and subpackage contents for `from deeplens.optics import Lens, GeoLens, Ray, Material, ...`.
-
-## Lens Classes
-
-| File             | Class           | Description                                                 |
-|------------------|-----------------|-------------------------------------------------------------|
-| `lens.py`        | `Lens`          | Base class for all lens systems (PSF, rendering, analysis) |
-| `geolens.py`     | `GeoLens`       | Refractive lens systems (differentiable ray tracing)       |
-| `diffraclens.py` | `DiffractiveLens` | Paraxial diffractive lens systems (wave optics)          |
-| `hybridlens.py`  | `HybridLens`    | Hybrid refractive-diffractive systems (ray-wave model)      |
-| `paraxiallens.py`| `ParaxialLens`  | Paraxial thin-lens model (defocus via CoC)                  |
-| `psfnetlens.py`  | `PSFNetLens`    | Neural surrogate for PSF prediction                         |
-
-## Configuration and Utilities
-
--   **`config.py`**: Constants (DEPTH, SPP_PSF, SPP_COHERENT, SPP_RENDER, PSF_KS, WAVE_RGB, EPSILON, etc.).
-
--   **`utils.py`**: Optics utilities:
-    -   `interp1d`, `grid_sample_xy` — interpolation
-    -   `foc_dist_balanced` — EDoF focus distance
-    -   `wave_rgb` — random RGB wavelength sampling
-    -   `diff_float`, `diff_quantize` — differentiable quantization
+| File | Class / Contents | Description |
+|------|------------------|-------------|
+| `base.py` | `DeepObj` | Base class for all optics objects (`to()`, `astype()`, `clone()`) |
+| `lens.py` | `Lens` | Base class for all lens systems (PSF, rendering, analysis) |
+| `geolens.py` | `GeoLens` | Refractive lens via differentiable ray tracing |
+| `diffraclens.py` | `DiffractiveLens` | Diffractive lens via wave optics (scalar diffraction) |
+| `hybridlens.py` | `HybridLens` | Hybrid refractive-diffractive system (ray-wave model) |
+| `paraxiallens.py` | `ParaxialLens` | Paraxial thin-lens model (defocus via circle of confusion) |
+| `psfnetlens.py` | `PSFNetLens` | Neural surrogate for fast PSF prediction |
+| `config.py` | — | Constants: `DEPTH`, `SPP_PSF`, `WAVE_RGB`, `EPSILON`, etc. |
+| `utils.py` | — | `interp1d`, `grid_sample_xy`, `foc_dist_balanced`, `wave_rgb`, `diff_float` |
+| `loss.py` | `PSFLoss`, `PSFStrehlLoss` | PSF-related loss functions for optical optimization |
 
 ## Subpackages
 
-### Light propagation (`light/`)
-
--   `ray.py`: `Ray` — geometric ray tracing (origin, direction, wavelength, validity).
--   `wave.py`: `ComplexWave` — wave optics (ASM, Rayleigh-Sommerfeld).
-
-### Materials (`material/`)
-
--   `materials.py`: `Material` — dispersion models (Sellmeier), AGF/JSON glass catalogs.
-
-### Surfaces
-
--   **`geometric_surface/`**: Aspheric, Spheric, Aperture, Plane, ThinLens, Cubic, Mirror, Prism, etc.
--   **`diffractive_surface/`**: Fresnel, Binary2, Pixel2D, Zernike, Grating, ThinLens.
--   **`phase_surface/`**: Phase, Zernike, Fresnel, Cubic, Grating, NURBS, etc.
-
-### Image simulation (`imgsim/`)
-
--   `monte_carlo.py`: Forward/backward Monte Carlo integrals for PSF and wavefront.
--   `psf.py`: PSF convolution (`conv_psf`, `conv_psf_map`, `conv_psf_depth_interp`, `conv_psf_pixel`), inverse solvers.
-
-### GeoLens tools (`geolens_pkg/`)
-
--   I/O, optimization, evaluation, tolerance analysis, 2D/3D visualization.
--   Classes: `GeoLensEval`, `GeoLensOptim`, `GeoLensVis`, `GeoLensIO`, `GeoLensTolerance`, `GeoLensVis3D`, `create_lens`.
-
-### Loss (`loss.py`)
-
--   PSF-related losses: `PSFLoss`, `PSFStrehlLoss`.
+| Package | Description |
+|---------|-------------|
+| `light/` | `Ray` (geometric ray tracing) and `ComplexWave` (wave propagation: ASM, Fresnel, etc.) |
+| `material/` | `Material` class with Sellmeier dispersion; AGF/JSON glass catalogs |
+| `geometric_surface/` | Refractive surfaces: Aspheric, Spheric, Aperture, Plane, Mirror, etc. |
+| `diffractive_surface/` | Diffractive optical elements simulated via wave optics |
+| `phase_surface/` | Diffractive surfaces simulated via ray-optics phase bending |
+| `imgsim/` | Image simulation: PSF convolution, Monte Carlo ray tracing, depth interpolation |
+| `geolens_pkg/` | GeoLens tools: optimization, evaluation, I/O, tolerance, visualization |

@@ -1,18 +1,13 @@
 # Surrogate Package
 
-The `surrogate` package provides neural network architectures that serve as surrogate models for complex optical phenomena. These networks serve as simple examples for enabling faster simulation and end-to-end optimization of optical systems by learning to approximate computationally expensive optical processes.
+Neural network surrogates for approximating spatially-varying PSFs, enabling faster simulation and end-to-end optimization of optical systems.
 
-This package is essential for:
--   Modeling spatially varying Point Spread Functions (PSF) of optical systems.
--   Accelerating optical simulations during training and optimization.
--   Enabling differentiable approximations of wave propagation and diffraction.
--   Supporting joint optimization of optics and computational processing.
+## Files
 
-## Network Architectures
-
--   `mlp.py`: Multi-Layer Perceptron for low-resolution intensity/amplitude PSF function prediction.
--   `mlpconv.py`: MLP encoder with convolutional decoder for high-resolution PSF function prediction.
--   `siren.py`: Sinusoidal Representation Network (SIREN) for implicit neural representations.
--   `modulate_siren.py`: Modulated SIREN with adaptive frequency modulation.
--   `psfnet_mplconv.py`: MLP-Conv network architecture for spatially varying PSF representation.
-
+| File | Class | Description |
+|------|-------|-------------|
+| `mlp.py` | `MLP` | Multi-layer perceptron for low-resolution PSF prediction |
+| `mlpconv.py` | `MLPConv` | MLP encoder + convolutional decoder for high-resolution PSF |
+| `siren.py` | `Siren` | Sinusoidal Representation Network (implicit neural representation) |
+| `modulate_siren.py` | `ModulateSiren` | SIREN with adaptive frequency modulation for spatial variance |
+| `psfnet_mplconv.py` | `PSFNet_MLPConv` | MLP-Conv architecture for spatially-varying PSF representation |

@@ -1,31 +1,34 @@
 # Geometric Surface
 
-This folder contains the definition of various geometric surfaces used in optical systems. These surfaces can be used to build complex optical elements for ray tracing simulations.
+Refractive surface definitions for ray tracing in geometric lens systems. All surfaces inherit from the `Surface` base class, which implements differentiable ray-surface intersection (Newton's method) and vector Snell's law.
 
-Common manufacturing methods for geometric surfaces include:
+## Files
 
-- **Grinding and Polishing**: The traditional method for manufacturing spherical and flat surfaces.
-- **Single Point Diamond Turning (SPDT)**: Used for high-precision aspheric and freeform surfaces, especially on metals and plastics.
-- **Glass Molding**: Suitable for mass production of aspheric lenses.
-- **Magnetorheological Finishing (MRF)**: A high-precision polishing method used to correct surface errors.
+| File | Class | Description |
+|------|-------|-------------|
+| `base.py` | `Surface` | Base class: intersection, refraction, reflection, `sag()` interface |
+| `aspheric.py` | `Aspheric` | Even-order polynomial surface (c, k, ai4–ai12); includes lr scaling fix |
+| `spheric.py` | `Spheric` | Spherical surface (curvature c only) |
+| `plane.py` | `Plane` | Flat surface |
+| `aperture.py` | `Aperture` | Aperture stop (inherits `Plane`) |
+| `thinlens.py` | `ThinLens` | Paraxial thin-lens approximation (inherits `Plane`) |
+| `mirror.py` | `Mirror` | Reflective surface (inherits `Plane`) |
+| `prism.py` | `Prism` | Prism element |
+| `cubic.py` | `Cubic` | Cubic freeform surface |
+| `spiral.py` | `Spiral` | Spiral phase profile surface |
+| `qtype.py` | `QTypeFreeform` | Q-type (Forbes Qbfs) freeform using orthogonal polynomials |
 
-The core of this module is the `Surface` base class in `base.py`, which defines the common interface for all surfaces. It handles ray intersection, refraction, and reflection.
+## Inheritance
 
-## Available Surfaces
-
-The following surfaces are available, all inheriting from the `Surface` base class:
-
--   `Surface`: The basic surface.
-    -   `Aspheric`: An aspheric surface, defined by a polynomial expansion.
-    -   `Cubic`: A surface with a cubic shape.
-    -   `QTypeFreeform`: A Q-type (Forbes Qbfs polynomial) freeform surface, using orthogonal polynomials for optimal representation of rotationally symmetric departures.
-    -   `Spheric`: A spherical surface, a common element in lenses.
-    -   `Spiral`: A surface with a spiral phase profile.
-    -   `Plane`: A simple plane surface.
-        -   `Aperture`: Defines an aperture stop, which limits the passage of rays.
-        -   `ThinLens`: A paraxial approximation of a lens, useful for simplifying optical systems.
-        -   `Mirror`: A reflective surface.
-
-
-
-Each of these classes implements the `sag` method to define its specific shape and may have other specific parameters. They are all designed to be differentiable and can be used in gradient-based optimization of optical systems.
+```
+Surface
+├── Aspheric
+├── Spheric
+├── Cubic
+├── QTypeFreeform
+├── Spiral
+└── Plane
+    ├── Aperture
+    ├── ThinLens
+    └── Mirror
+```
