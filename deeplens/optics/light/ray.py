@@ -133,7 +133,7 @@ class Ray(DeepObj):
     def clone(self, device=None):
         """Clone the ray.
 
-        Can spercify which device we want to clone. Sometimes we want to store all rays in CPU, and when using it, we move it to GPU.
+        Can specify which device we want to clone. Sometimes we want to store all rays in CPU, and when using it, we move it to GPU.
         """
         target_device = self.device if device is None else device
 
