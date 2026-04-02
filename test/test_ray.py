@@ -265,6 +265,24 @@ class TestRayClone:
         
         assert cloned.o.device == torch.device("cpu")
 
+    def test_ray_clone_copies_all_tensor_attributes(self, device_auto):
+        """Clone should duplicate all tensor attributes without shared storage."""
+        o = torch.tensor([[1.0, 2.0, 3.0]], device=device_auto)
+        d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
+        ray = Ray(o, d, wvln=0.55, coherent=True, device=device_auto)
+
+        cloned = ray.clone()
+
+        for attr in ("o", "d", "wvln", "is_valid", "en", "obliq", "opl"):
+            src = getattr(ray, attr)
+            dst = getattr(cloned, attr)
+            assert torch.allclose(src, dst)
+            assert src.data_ptr() != dst.data_ptr()
+
+        assert cloned.coherent == ray.coherent
+        assert cloned.device == ray.device
+        assert cloned.shape == ray.shape
+
 
 class TestRaySqueezeUnsqueeze:
     """Test dimension manipulation."""
