@@ -6,8 +6,6 @@
 
 """Optical ray class."""
 
-import copy
-
 import torch
 import torch.nn.functional as F
 
@@ -135,12 +133,24 @@ class Ray(DeepObj):
     def clone(self, device=None):
         """Clone the ray.
 
-        Can spercify which device we want to clone. Sometimes we want to store all rays in CPU, and when using it, we move it to GPU.
+        Can specify which device we want to clone. Sometimes we want to store all rays in CPU, and when using it, we move it to GPU.
         """
-        if device is None:
-            return copy.deepcopy(self).to(self.device)
-        else:
-            return copy.deepcopy(self).to(device)
+        target_device = self.device if device is None else device
+
+        ray = Ray.__new__(Ray)
+        ray.o = self.o.clone().to(target_device)
+        ray.d = self.d.clone().to(target_device)
+        ray.wvln = self.wvln.clone().to(target_device)
+        ray.is_valid = self.is_valid.clone().to(target_device)
+        ray.en = self.en.clone().to(target_device)
+        ray.obliq = self.obliq.clone().to(target_device)
+        ray.opl = self.opl.clone().to(target_device)
+
+        ray.coherent = self.coherent
+        ray.device = target_device
+        ray.shape = ray.o.shape[:-1]
+
+        return ray
 
     def squeeze(self, dim=None):
         """Squeeze the ray.
