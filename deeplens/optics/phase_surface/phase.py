@@ -257,14 +257,14 @@ class Phase(DeepObj):
             ray (Ray): transformed ray in local coordinate system.
         """
         # Shift ray origin to surface origin
-        ray.o[..., 0] = ray.o[..., 0] - self.pos_x
-        ray.o[..., 1] = ray.o[..., 1] - self.pos_y
-        ray.o[..., 2] = ray.o[..., 2] - self.d
+        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        ray.o = ray.o - offset
 
-        # Rotate ray origin and direction (using cached matrix)
-        if self._R_to_local is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_to_local)
-            ray.d = self._apply_rotation(ray.d, self._R_to_local)
+        # Rotate ray origin and direction
+        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
+            R = self._get_rotation_matrix(self.vec_local, self.vec_global)
+            ray.o = self._apply_rotation(ray.o, R)
+            ray.d = self._apply_rotation(ray.d, R)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         return ray
@@ -278,16 +278,16 @@ class Phase(DeepObj):
         Returns:
             ray (Ray): transformed ray in global coordinate system.
         """
-        # Rotate ray origin and direction (using cached matrix)
-        if self._R_to_global is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_to_global)
-            ray.d = self._apply_rotation(ray.d, self._R_to_global)
+        # Rotate ray origin and direction
+        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
+            R = self._get_rotation_matrix(self.vec_global, self.vec_local)
+            ray.o = self._apply_rotation(ray.o, R)
+            ray.d = self._apply_rotation(ray.d, R)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         # Shift ray origin back to global coordinates
-        ray.o[..., 0] = ray.o[..., 0] + self.pos_x
-        ray.o[..., 1] = ray.o[..., 1] + self.pos_y
-        ray.o[..., 2] = ray.o[..., 2] + self.d
+        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        ray.o = ray.o + offset
 
         return ray
 
