@@ -528,15 +528,15 @@ class GeoLensPSF:
             psf_center: [..., 2] un-normalized psf center in sensor plane.
         """
         if method == "chief_ray":
-            # Shrink the pupil and calculate green light centroid ray as the chief ray
+            # Shrink the pupil and calculate centroid ray as the chief ray
             ray = self.sample_from_points(points_obj, scale_pupil=0.5, num_rays=SPP_CALC)
             ray = self.trace2sensor(ray)
-            if not ray.is_valid.any():
-                raise RuntimeError(
-                    "When tracing chief ray for PSF center calculation, no ray arrives at the sensor."
-                )
-            psf_center = ray.centroid()
-            psf_center = -psf_center[..., :2]  # shape [..., 2]
+            if ray.is_valid.any():
+                psf_center = ray.centroid()
+                psf_center = -psf_center[..., :2]  # shape [..., 2]
+            else:
+                # Fallback to pinhole when chief ray fails (can happen during optimization)
+                return self.psf_center(points_obj, method="pinhole")
 
         elif method == "pinhole":
             # Pinhole camera perspective projection, distortion not considered

@@ -360,15 +360,18 @@ class Surface(DeepObj):
         Returns:
             ray (Ray): transformed ray in local coordinate system.
         """
-        # Shift ray origin to surface origin (with tolerance perturbations)
+        # Shift ray origin to surface origin
         if self.tolerancing:
-            ray.o[..., 0] = ray.o[..., 0] - self.pos_x - self.decenter_x_error
-            ray.o[..., 1] = ray.o[..., 1] - self.pos_y - self.decenter_y_error
-            ray.o[..., 2] = ray.o[..., 2] - self.d - self.d_error
+            offset = torch.stack(
+                [
+                    self.pos_x + self.decenter_x_error,
+                    self.pos_y + self.decenter_y_error,
+                    self.d + self.d_error,
+                ]
+            ).expand_as(ray.o)
         else:
-            ray.o[..., 0] = ray.o[..., 0] - self.pos_x
-            ray.o[..., 1] = ray.o[..., 1] - self.pos_y
-            ray.o[..., 2] = ray.o[..., 2] - self.d
+            offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        ray.o = ray.o - offset
 
         # Apply tilt rotation (tolerance-induced, using cached matrix)
         if self._R_tilt is not None:
@@ -376,10 +379,11 @@ class Surface(DeepObj):
             ray.d = self._apply_rotation(ray.d, self._R_tilt)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
-        # Rotate ray origin and direction (using cached matrix for nominal orientation)
-        if self._R_to_local is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_to_local)
-            ray.d = self._apply_rotation(ray.d, self._R_to_local)
+        # Rotate ray origin and direction
+        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
+            R = self._get_rotation_matrix(self.vec_local, self.vec_global)
+            ray.o = self._apply_rotation(ray.o, R)
+            ray.d = self._apply_rotation(ray.d, R)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         return ray
