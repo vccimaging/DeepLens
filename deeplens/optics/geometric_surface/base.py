@@ -91,11 +91,9 @@ class Surface(DeepObj):
             self.w = 2 * self.r
 
         # Newton method parameters
-        self.newton_maxiter = 10  # [int], maximum number of Newton iterations
-        self.newton_convergence = (
-            50.0 * 1e-6
-        )  # [mm], Newton method convergence threshold
-        self.newton_step_bound = self.r / 5  # [mm], maximum step size in each iteration
+        self.newton_maxiter = 8  # [int], maximum number of Newton iterations
+        self.newton_convergence = 50.0 * 1e-6  # [mm], Newton method convergence threshold
+        self.newton_step_bound = 5.0  # [mm], maximum step size in each iteration
 
         self.tolerancing = False
         self._R_tilt = None
