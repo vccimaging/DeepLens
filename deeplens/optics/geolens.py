@@ -528,7 +528,7 @@ class GeoLens(
 
     @torch.no_grad()
     def sample_sensor(self, spp=64, wvln=DEFAULT_WAVE, sub_pixel=False):
-        """Sample rays from sensor pixels (backward rays). Used for ray tracing rendering.
+        """Sample rays from sensor pixels (backward rays). Used for ray-tracing based rendering.
 
         Args:
             spp (int, optional): sample per pixel. Defaults to 64.
@@ -546,25 +546,16 @@ class GeoLens(
         # Sample points on sensor plane
         # Use top-left point as reference in rendering, so here we should sample bottom-right point
         x1, y1 = torch.meshgrid(
-            torch.linspace(
-                -w / 2,
-                w / 2,
-                W + 1,
-                device=device,
-            )[1:],
-            torch.linspace(
-                h / 2,
-                -h / 2,
-                H + 1,
-                device=device,
-            )[1:],
+            torch.linspace(-w / 2, w / 2, W + 1, device=device,)[1:],
+            torch.linspace(h / 2, -h / 2, H + 1, device=device,)[1:],
             indexing="xy",
         )
         z1 = torch.full_like(x1, self.d_sensor)
 
         # Sample second points on the pupil
+        # sensor_res is (W, H) but meshgrid with indexing="xy" gives (H, W) arrays
         pupilz, pupilr = self.get_exit_pupil()
-        ray_o2 = self.sample_circle(r=pupilr, z=pupilz, shape=(*self.sensor_res, spp))
+        ray_o2 = self.sample_circle(r=pupilr, z=pupilz, shape=(H, W, spp))
 
         # Form rays
         ray_o = torch.stack((x1, y1, z1), 2)
