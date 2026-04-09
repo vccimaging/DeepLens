@@ -984,10 +984,19 @@ class GeoLens(
         return diff_surf_range
 
     @torch.no_grad()
-    def calc_foclen(self):
+    def calc_foclen(self, paraxial_fov=0.01):
         """Compute effective focal length (EFL).
 
-        Traces a paraxial chief ray and computes the image height, then uses the image height to compute the EFL.
+        Two-step approach:
+        1. Trace on-axis parallel rays to find the paraxial focal point z.
+           This is necessary because the sensor may not be at the focal plane
+           (e.g. finite-conjugate designs or defocused systems).
+        2. Trace off-axis rays at a small angle to the focal point, measure
+           image height, and compute EFL = imgh / tan(angle).
+
+        Args:
+            paraxial_fov (float, optional): Paraxial field of view in radians
+                for the off-axis ray trace. Defaults to 0.01.
 
         Updates:
             self.efl: Effective focal length.
@@ -999,7 +1008,6 @@ class GeoLens(
             [2] https://rafcamera.com/info/imaging-theory/back-focal-length
         """
         # Trace a paraxial chief ray, shape [1, 1, num_rays, 3]
-        paraxial_fov = 0.01
         paraxial_fov_deg = float(np.rad2deg(paraxial_fov))
 
         # 1. Trace on-axis parallel rays to find paraxial focus z (equivalent to infinite focus)
