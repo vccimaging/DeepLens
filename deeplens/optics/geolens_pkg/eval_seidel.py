@@ -89,7 +89,7 @@ class GeoLensSeidel:
 
         # Chief ray: height = 0 at entrance pupil, angle = tan(rfov)
         yb_c = 0.0
-        ub_c = float(np.tan(self.rfov))
+        ub_c = float(np.tan(self.rfov_eff))
 
         # Transfer from entrance pupil to first refractive surface
         if hasattr(self, "entr_pupilz_parax"):

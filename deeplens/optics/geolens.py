@@ -1141,8 +1141,8 @@ class GeoLens(
             self.vfov (float): Vertical FoV in radians.
             self.hfov (float): Horizontal FoV in radians.
             self.dfov (float): Diagonal FoV in radians.
-            self.rfov (float): Half-diagonal (radius) FoV in radians.
-            self.real_rfov (float): Real half-diagonal FoV from ray tracing.
+            self.rfov_eff (float): Effective half-diagonal FoV in radians (paraxial, ignoring distortion).
+            self.rfov (float): Real half-diagonal FoV from ray tracing (accounts for distortion).
             self.real_dfov (float): Real diagonal FoV from ray tracing.
             self.eqfl (float): 35mm equivalent focal length in mm.
 
@@ -1156,7 +1156,7 @@ class GeoLens(
         self.vfov = 2 * math.atan(self.sensor_size[0] / 2 / self.foclen)
         self.hfov = 2 * math.atan(self.sensor_size[1] / 2 / self.foclen)
         self.dfov = 2 * math.atan(self.r_sensor / self.foclen)
-        self.rfov = self.dfov / 2  # radius (half diagonal) FoV
+        self.rfov_eff = self.dfov / 2  # effective (paraxial) half-diagonal FoV
 
         # 2. Ray tracing to calculate real FoV (distortion-affected FoV)
         # Sample rays from edge of sensor, shape [SPP_CALC, 3]
@@ -1180,17 +1180,17 @@ class GeoLens(
 
         # If calculation failed, use pinhole camera model to compute fov
         if torch.isnan(rfov):
-            self.real_rfov = self.rfov
+            self.rfov = self.rfov_eff
             self.real_dfov = self.dfov
             print(
-                f"Failed to calculate distorted FoV by ray tracing, use effective FoV {self.rfov} rad."
+                f"Failed to calculate distorted FoV by ray tracing, use effective FoV {self.rfov_eff} rad."
             )
         else:
-            self.real_rfov = rfov.item()
+            self.rfov = rfov.item()
             self.real_dfov = 2 * rfov.item()
 
         # 3. Compute 35mm equivalent focal length. 35mm sensor: 36mm * 24mm
-        self.eqfl = 21.63 / math.tan(self.rfov)
+        self.eqfl = 21.63 / math.tan(self.rfov_eff)
 
     @torch.no_grad()
     def calc_scale(self, depth):
@@ -1565,12 +1565,12 @@ class GeoLens(
             fnum (float): F number.
         """
         if rfov > math.pi:
-            self.rfov = rfov / 180.0 * math.pi
+            self.rfov_eff = rfov / 180.0 * math.pi
         else:
-            self.rfov = rfov
+            self.rfov_eff = rfov
 
-        self.foclen = self.r_sensor / math.tan(self.rfov)
-        self.eqfl = 21.63 / math.tan(self.rfov)
+        self.foclen = self.r_sensor / math.tan(self.rfov_eff)
+        self.eqfl = 21.63 / math.tan(self.rfov_eff)
         self.fnum = fnum
         aper_r = self.foclen / fnum / 2
         self.surfaces[self.aper_idx].update_r(float(aper_r))
@@ -1588,7 +1588,7 @@ class GeoLens(
         Args:
             rfov (float): Half-diagonal FoV in radians.
         """
-        self.rfov = rfov
-        self.eqfl = 21.63 / math.tan(self.rfov)
+        self.rfov_eff = rfov
+        self.eqfl = 21.63 / math.tan(self.rfov_eff)
 
 

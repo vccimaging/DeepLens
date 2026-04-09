@@ -802,8 +802,7 @@ class GeoLensEval:
         between the two indicates astigmatism.
 
         Args:
-            fov (float): Field position as a **fraction** of ``self.rfov``
-                (0 = on-axis, 1 = full field).  Internally mapped to a
+            fov (float): Field angle in radians.  Internally mapped to a
                 normalized point ``[0, -fov/rfov, DEPTH]``.
             wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
 
