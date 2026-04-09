@@ -137,7 +137,7 @@ class Phase(DeepObj):
         ray = self.intersect(ray)
         ray = self.refract(ray, n1 / n2)
         if self.diffraction:
-            ray = self.diffract(ray)
+            ray = self.diffract(ray, n2=n2)
         ray = self.to_global_coord(ray)
         return ray
 
@@ -169,10 +169,22 @@ class Phase(DeepObj):
 
         return ray
 
-    def diffract(self, ray):
+    def diffract(self, ray, n2=1.0):
         """Diffraction of DOE surface.
-            1, The phase φ in radians adds to the optical path length of the ray
-            2, The gradient of the phase profile (phase slope) change the direction of rays.
+
+        1. The phase φ in radians adds to the optical path length of the ray.
+        2. The gradient of the phase profile (phase slope) changes the direction
+           of rays via the generalized Snell's law:
+           ``n₂·sin(θ₂) = n₁·sin(θ₁) + m · λ / (2π) · dφ/dx``
+
+           After standard refraction has already been applied, the remaining
+           phase deflection on the unit direction vector is:
+           ``Δl = m · λ / (2π · n₂) · dφ/dx``
+
+        Args:
+            ray: Ray object with position, direction, and wavelength.
+            n2: Refractive index of the medium after the surface. Required for
+                correct generalized Snell's law: deflection scales as 1/n₂.
 
         Reference:
             [1] https://support.zemax.com/hc/en-us/articles/1500005489061-How-diffractive-surfaces-are-modeled-in-OpticStudio
@@ -187,18 +199,20 @@ class Phase(DeepObj):
             new_opl = ray.opl + phi.unsqueeze(-1) * (ray.wvln * 1e-3) / (2 * torch.pi)
             ray.opl = torch.where(valid.unsqueeze(-1), new_opl, ray.opl)
 
-        # Diffraction 2: bend rays
-        # Perpendicular incident rays are diffracted following (1) grating equation and (2) local grating approximation
+        # Diffraction 2: bend rays via generalized Snell's law
+        # n₂·l₂ = n₁·l₁ + M·λ/(2π)·dφ/dx
+        # After refraction: l₂ = l_refracted + M·λ/(2π·n₂)·dφ/dx
         dphidx, dphidy = self.dphi_dxy(ray.o[..., 0], ray.o[..., 1])
 
         wvln_mm = ray.wvln * 1e-3
         order = self.diffraction_order
+        phase_deflection_scale = wvln_mm / (2 * torch.pi * n2)
         if forward:
-            new_d_x = ray.d[..., 0] + wvln_mm / (2 * torch.pi) * dphidx * order
-            new_d_y = ray.d[..., 1] + wvln_mm / (2 * torch.pi) * dphidy * order
+            new_d_x = ray.d[..., 0] + phase_deflection_scale * dphidx * order
+            new_d_y = ray.d[..., 1] + phase_deflection_scale * dphidy * order
         else:
-            new_d_x = ray.d[..., 0] - wvln_mm / (2 * torch.pi) * dphidx * order
-            new_d_y = ray.d[..., 1] - wvln_mm / (2 * torch.pi) * dphidy * order
+            new_d_x = ray.d[..., 0] - phase_deflection_scale * dphidx * order
+            new_d_y = ray.d[..., 1] - phase_deflection_scale * dphidy * order
 
         new_d = torch.stack([new_d_x, new_d_y, ray.d[..., 2]], dim=-1)
         new_d = F.normalize(new_d, p=2, dim=-1)
