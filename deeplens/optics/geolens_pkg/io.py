@@ -104,15 +104,15 @@ class GeoLensIO:
                     if field_values:
                         # The largest field value is typically 0.99 * rfov_deg
                         max_field_deg = max(field_values) / 0.99
-                        self.rfov = (
+                        self.rfov_eff = (
                             max_field_deg * math.pi / 180.0
                         )  # Convert to radians
 
         self.float_foclen = False
         self.float_rfov = False
-        # Set default rfov if not parsed from file
-        if not hasattr(self, "rfov"):
-            self.rfov = None
+        # Set default rfov_eff if not parsed from file
+        if not hasattr(self, "rfov_eff"):
+            self.rfov_eff = None
 
         # Read the extracted data from each SURF
         self.surfaces = []
@@ -219,7 +219,7 @@ class GeoLensIO:
     GFAC 0 0
     GCAT OSAKAGASCHEMICAL MISC
     XFLN 0. 0. 0.
-    YFLN 0.0 {0.707 * self.rfov * 57.3} {0.99 * self.rfov * 57.3}
+    YFLN 0.0 {0.707 * self.rfov_eff * 57.3} {0.99 * self.rfov_eff * 57.3}
     WAVL 0.4861327 0.5875618 0.6562725
     RAIM 0 0 1 1 0 0 0 0 0
     PUSH 0 0 0 0 0 0
@@ -349,7 +349,7 @@ class GeoLensIO:
                 if angles:
                     self.hfov = max(angles)
                     # Also set rfov in radians for consistency with write functions
-                    self.rfov = self.hfov * math.pi / 180.0
+                    self.rfov_eff = self.hfov * math.pi / 180.0
                     print(f"[Line {line_num}] Max field of view={self.hfov} deg")
                 continue
             # Object surface
@@ -651,7 +651,7 @@ class GeoLensIO:
     WTW   1 2 1
     INI   '   '
     XAN   0.0 0.0 0.0
-    YAN   0.0  {0.707 * self.rfov * 57.3} {0.99 * self.rfov * 57.3}
+    YAN   0.0  {0.707 * self.rfov_eff * 57.3} {0.99 * self.rfov_eff * 57.3}
     WTF   1.0 1.0 1.0
     VUY   0.0 0.0 0.0
     VLY   0.0 0.0 0.0

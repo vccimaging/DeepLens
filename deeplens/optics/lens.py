@@ -103,7 +103,8 @@ class Lens(DeepObj):
         self.vfov = 2 * float(np.atan(self.sensor_size[0] / 2 / self.foclen))
         self.hfov = 2 * float(np.atan(self.sensor_size[1] / 2 / self.foclen))
         self.dfov = 2 * float(np.atan(self.r_sensor / self.foclen))
-        self.rfov = self.dfov / 2  # radius (half diagonal) FoV
+        self.rfov_eff = self.dfov / 2  # effective (paraxial) half-diagonal FoV
+        self.rfov = self.rfov_eff  # default to effective; GeoLens overrides with ray-traced value
 
     # ===========================================
     # PSF-ralated functions
