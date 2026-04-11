@@ -1,3 +1,7 @@
+# DeepLens
+
+**DeepLens** is a differentiable optical lens simulator for (1) automated optical design, (2) end-to-end optics-vision co-design, and (3) photorealistic image simulation. It helps researchers build custom differentiable optical systems and computational imaging pipelines with minimal effort.
+
 <div style="text-align:center;">
     <img src="assets/logo.png"/>
 </div>
@@ -9,7 +13,12 @@
     <a href="https://pypi.org/project/deeplens-core/">PyPI</a>
 </p>
 
-**DeepLens** is a differentiable optical lens simulator. It is developed for (1) differentiable optical design, (2) end-to-end optics-vision co-design, and (3) photorealistic image simulation. DeepLens helps researchers build custom differentiable optical systems and computational imaging pipelines with minimal effort.
+```python
+from deeplens import GeoLens
+
+lens = GeoLens(filename="./datasets/lenses/cellphone/cellphone80deg.json")
+lens.analysis(full_eval=True, render=True)
+```
 
 ## Mission
 

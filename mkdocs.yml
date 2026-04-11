@@ -1,4 +1,6 @@
 site_name: DeepLens
+site_description: "Differentiable optical lens simulator for end-to-end camera system design with PyTorch"
+site_author: "Xinge Yang"
 site_url: https://vccimaging.github.io/DeepLens/
 repo_url: https://github.com/singer-yang/DeepLens
 repo_name: singer-yang/DeepLens

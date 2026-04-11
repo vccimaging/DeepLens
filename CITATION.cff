@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+title: DeepLens
+message: "If you use DeepLens in your research, please cite the following paper."
+type: software
+license: Apache-2.0
+url: "https://github.com/singer-yang/DeepLens"
+repository-code: "https://github.com/singer-yang/DeepLens"
+authors:
+  - family-names: Yang
+    given-names: Xinge
+    email: xinge.yang@kaust.edu.sa
+    orcid: "https://orcid.org/0000-0003-3151-3192"
+  - family-names: Fu
+    given-names: Qiang
+  - family-names: Heidrich
+    given-names: Wolfgang
+keywords:
+  - differentiable optics
+  - lens design
+  - computational photography
+  - ray tracing
+  - pytorch
+  - optical simulation
+preferred-citation:
+  type: article
+  title: "Curriculum learning for ab initio deep learned refractive optics"
+  authors:
+    - family-names: Yang
+      given-names: Xinge
+    - family-names: Fu
+      given-names: Qiang
+    - family-names: Heidrich
+      given-names: Wolfgang
+  journal: "Nature Communications"
+  volume: 15
+  issue: 1
+  start: 6572
+  year: 2024
+  publisher:
+    name: "Nature Publishing Group UK London"
+  doi: "10.1038/s41467-024-50835-7"

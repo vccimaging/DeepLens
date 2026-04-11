@@ -15,7 +15,7 @@ DeepLens models the full imaging pipeline — optics, sensor, and image processi
 ## Quick Install
 
 ```bash
-pip install git+https://github.com/singer-yang/DeepLens.git
+pip install deeplens-core
 ```
 
 ## Getting Started
