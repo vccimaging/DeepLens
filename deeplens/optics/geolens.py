@@ -187,6 +187,7 @@ class GeoLens(
             - Entrance and exit pupil positions and radii
             - Field of view (FoV) in horizontal, vertical, and diagonal directions
             - F-number
+            - Lens design constraints (edge/center thickness bounds, etc.)
 
         Note:
             This method should be called after any changes to the lens geometry.
