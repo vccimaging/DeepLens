@@ -168,7 +168,8 @@ class Aspheric(Surface):
         c, k = self._get_curvature_params()
 
         r2 = x**2 + y**2
-        total_surface = r2 * c / (1 + torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON))
+        sf_arg = torch.clamp(1 - (1 + k) * r2 * c**2, min=EPSILON)
+        total_surface = r2 * c / (1 + torch.sqrt(sf_arg))
 
         # Legacy a2 term: a2 * r²
         if self.ai2 is not None:
@@ -191,7 +192,8 @@ class Aspheric(Surface):
         c, k = self._get_curvature_params()
 
         r2 = x**2 + y**2
-        sf = torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON)
+        sf_arg = torch.clamp(1 - (1 + k) * r2 * c**2, min=EPSILON)
+        sf = torch.sqrt(sf_arg)
         dsdr2 = (1 + sf + (1 + k) * r2 * c**2 / 2 / sf) * c / (1 + sf) ** 2
 
         # d(a2*r²)/dr² = a2

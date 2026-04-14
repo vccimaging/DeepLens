@@ -196,7 +196,6 @@ class GeoLensVis:
         # Lens title
         if lens_title is None:
             eff_foclen = round(self.foclen, 2)
-            eq_foclen = round(self.eqfl, 2)
             fov_deg = round(2 * self.rfov * 180 / torch.pi, 1)
             sensor_r = round(self.r_sensor, 1)
             sensor_w, sensor_h = self.sensor_size
@@ -206,9 +205,9 @@ class GeoLensVis:
             if self.aper_idx is not None:
                 _, pupil_r = self.calc_entrance_pupil()
                 fnum = round(eff_foclen / pupil_r / 2, 2)
-                lens_title = f"FocLen{eff_foclen}mm - F/{fnum} - FoV{fov_deg}(Equivalent {eq_foclen}mm) - Sensor Diagonal {2 * sensor_r}mm"
+                lens_title = f"FocLen{eff_foclen}mm - F/{fnum} - FoV{fov_deg} - Sensor Diagonal {2 * sensor_r}mm"
             else:
-                lens_title = f"FocLen{eff_foclen}mm - FoV{fov_deg}(Equivalent {eq_foclen}mm) - Sensor Diagonal {2 * sensor_r}mm"
+                lens_title = f"FocLen{eff_foclen}mm - FoV{fov_deg} - Sensor Diagonal {2 * sensor_r}mm"
 
         # Draw lens layout
         colors_list = ["#CC0000", "#006600", "#0066CC"]
