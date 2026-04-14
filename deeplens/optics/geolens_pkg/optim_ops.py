@@ -14,7 +14,6 @@ Provides methods for managing optical surface geometry:
 
 import logging
 
-import numpy as np
 import torch
 
 from ..config import SPP_CALC
@@ -422,10 +421,8 @@ class GeoLensSurfOps:
         # ------------------------------------------------------------------
         if self.rfov is not None:
             fov_deg = self.rfov * 180 / torch.pi
-        else:
-            fov = np.arctan(self.r_sensor / self.foclen)
-            fov_deg = float(fov) * 180 / torch.pi
-            print(f"Using fov_deg: {fov_deg} during surface pruning.")
+        elif self.rfov_eff is not None:
+            fov_deg = self.rfov_eff * 180 / torch.pi
 
         fov_y = [f * fov_deg / 10 for f in range(0, 11)]
         ray = self.sample_from_fov(
