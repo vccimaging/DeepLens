@@ -383,33 +383,42 @@ class GeoLens(
         return rays
 
     @torch.no_grad()
-    def sample_from_points_by_fov(
+    def sample_from_fov(
         self,
         fov_x=[0.0],
         fov_y=[0.0],
-        depth=DEPTH,
-        num_rays=SPP_PSF,
+        depth=float("inf"),
+        num_rays=SPP_CALC,
         wvln=DEFAULT_WAVE,
+        entrance_pupil=True,
         scale_pupil=1.0,
     ):
-        """Sample point-source rays specified by field angles and depth.
+        """Sample rays from object space at given field angles.
 
-        Converts field angles to physical object-space coordinates, then
-        delegates to :meth:`sample_from_points`.
+        For infinite depth, generates collimated parallel rays: origins are
+        distributed on the entrance pupil and all rays in a field share the
+        same direction determined by the FOV angle.
+
+        For finite depth, generates diverging point-source rays: the point
+        source position is determined by FOV angle and depth, and rays fan
+        out toward the entrance pupil.
 
         Args:
             fov_x (float or list): Field angle(s) in the xz plane (degrees).
             fov_y (float or list): Field angle(s) in the yz plane (degrees).
-            depth (float): Object distance in mm. Default: ``DEPTH``.
-            num_rays (int): Number of rays per field point. Default: SPP_PSF.
-            wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
-            scale_pupil (float): Scale factor for pupil radius. Default: 1.0.
+            depth (float): Object distance in mm. ``float('inf')`` for
+                collimated rays, finite for point-source rays.
+            num_rays (int): Number of rays per field point.
+            wvln (float): Wavelength in micrometers.
+            entrance_pupil (bool): If True, sample on entrance pupil;
+                otherwise on surface 0. Default: True.
+            scale_pupil (float): Scale factor for pupil radius.
 
         Returns:
-            Ray:
-                Rays with shape [..., num_rays, 3], where leading dims follow
-                the same scalar-squeeze convention as :meth:`sample_from_fov`.
+            Ray: Rays with shape ``[..., num_rays, 3]``, where leading dims
+                are squeezed when the corresponding fov input is scalar.
         """
+        # Track which inputs were scalar for output shape
         x_scalar = isinstance(fov_x, (float, int))
         y_scalar = isinstance(fov_y, (float, int))
         if x_scalar:
@@ -420,110 +429,50 @@ class GeoLens(
         fov_x_rad = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
         fov_y_rad = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
         fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
-        x = torch.tan(fov_x_grid) * depth
-        y = torch.tan(fov_y_grid) * depth
-        z = torch.full_like(x, depth)
-        points = torch.stack((x, y, z), dim=-1)  # [len(fov_y), len(fov_x), 3]
 
-        # Squeeze scalar dims before sample_from_points so the Ray is
-        # constructed with the right shape (avoids post-hoc attribute edits).
-        if x_scalar:
-            points = points.squeeze(-2)
-        if y_scalar:
-            points = points.squeeze(0)
-
-        return self.sample_from_points(
-            points=points, num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil
-        )
-
-    @torch.no_grad()
-    def sample_from_fov(
-        self,
-        fov_x=[0.0],
-        fov_y=[0.0],
-        depth=float("inf"),
-        num_rays=SPP_CALC,
-        wvln=DEFAULT_WAVE,
-        entrance_pupil=True,
-        prop_to=-1.0,
-        scale_pupil=1.0,
-    ):
-        """Sample rays from object space at given field angles.
-
-        Unified entry point for both collimated (infinite-depth) and diverging
-        (finite-depth) ray bundles specified by field-of-view angles.
-
-        Args:
-            fov_x (float or list): Field angle(s) in the xz plane (degrees). Default: [0.0].
-            fov_y (float or list): Field angle(s) in the yz plane (degrees). Default: [0.0].
-            depth (float): Object distance in mm. ``float('inf')`` for collimated
-                rays, finite value for point-source rays. Default: ``float('inf')``.
-            num_rays (int): Number of rays per field point. Default: SPP_CALC.
-            wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
-            entrance_pupil (bool): If True, sample origins on entrance pupil;
-                otherwise, on surface 0. Only used for infinite depth. Default: True.
-            prop_to (float): Propagation depth in z (only for infinite depth). Default: -1.0.
-            scale_pupil (float): Scale factor for pupil radius. Default: 1.0.
-
-        Returns:
-            Ray:
-                Rays with shape [..., num_rays, 3], where leading dims are:
-                - both fov_x and fov_y scalars: [num_rays, 3]
-                - fov_x scalar: [len(fov_y), num_rays, 3]
-                - fov_y scalar: [len(fov_x), num_rays, 3]
-                - both lists: [len(fov_y), len(fov_x), num_rays, 3]
-                Ordered as (u, v).
-        """
-        # Finite depth: delegate to sample_from_points_by_fov
-        if depth != float("inf"):
-            return self.sample_from_points_by_fov(
-                fov_x=fov_x, fov_y=fov_y, depth=depth,
-                num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil,
-            )
-
-        # --- Infinite depth: collimated parallel rays ---
-        # Remember whether inputs were scalar
-        x_scalar = isinstance(fov_x, (float, int))
-        y_scalar = isinstance(fov_y, (float, int))
-
-        # Normalize to lists for internal processing
-        if x_scalar:
-            fov_x = [float(fov_x)]
-        if y_scalar:
-            fov_y = [float(fov_y)]
-
-        fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
-        fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
-
-        # Sample ray origins on the pupil
+        # Pupil position and radius
         if entrance_pupil:
             pupilz, pupilr = self.get_entrance_pupil()
-            pupilr *= scale_pupil
         else:
             pupilz, pupilr = 0.0, self.surfaces[0].r
-            pupilr *= scale_pupil
+        pupilr *= scale_pupil
 
-        ray_o = self.sample_circle(
-            r=pupilr, z=pupilz, shape=[len(fov_y), len(fov_x), num_rays]
-        )
+        if depth == float("inf"):
+            # Collimated rays: origins on pupil, uniform direction per field
+            ray_o = self.sample_circle(
+                r=pupilr, z=pupilz, shape=[len(fov_y), len(fov_x), num_rays]
+            )
+            dx = torch.tan(fov_x_grid).unsqueeze(-1).expand_as(ray_o[..., 0])
+            dy = torch.tan(fov_y_grid).unsqueeze(-1).expand_as(ray_o[..., 1])
+            dz = torch.ones_like(ray_o[..., 2])
+            ray_d = torch.stack((dx, dy, dz), dim=-1)
 
-        # Sample ray directions
-        fov_x_grid, fov_y_grid = torch.meshgrid(fov_x, fov_y, indexing="xy")
-        dx = torch.tan(fov_x_grid).unsqueeze(-1).expand_as(ray_o[..., 0])
-        dy = torch.tan(fov_y_grid).unsqueeze(-1).expand_as(ray_o[..., 1])
-        dz = torch.ones_like(ray_o[..., 2])
-        ray_d = torch.stack((dx, dy, dz), dim=-1)
+            if x_scalar:
+                ray_o = ray_o.squeeze(1)
+                ray_d = ray_d.squeeze(1)
+            if y_scalar:
+                ray_o = ray_o.squeeze(0)
+                ray_d = ray_d.squeeze(0)
 
-        # Squeeze singleton FOV dims only if the original input was scalar
-        if x_scalar:
-            ray_o = ray_o.squeeze(1)
-            ray_d = ray_d.squeeze(1)
-        if y_scalar:
-            ray_o = ray_o.squeeze(0)
-            ray_d = ray_d.squeeze(0)
+            rays = Ray(ray_o, ray_d, wvln, device=self.device)
+            rays.prop_to(-1.0)
 
-        rays = Ray(ray_o, ray_d, wvln, device=self.device)
-        rays.prop_to(prop_to)
+        else:
+            # Point-source rays: origin at object point, fan toward pupil
+            x = torch.tan(fov_x_grid) * depth
+            y = torch.tan(fov_y_grid) * depth
+            z = torch.full_like(x, depth)
+            points = torch.stack((x, y, z), dim=-1)
+
+            if x_scalar:
+                points = points.squeeze(-2)
+            if y_scalar:
+                points = points.squeeze(0)
+
+            rays = self.sample_from_points(
+                points=points, num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil
+            )
+
         return rays
 
     @torch.no_grad()
