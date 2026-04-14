@@ -18,9 +18,8 @@ Functions:
     - init_constraints: Initialize constraints for the lens design
     - loss_reg: An empirical regularization loss for lens design
     - loss_infocus: Sample parallel rays and compute RMS loss on the sensor plane
-    - loss_surface: Penalize surface shape (sag, diameter-to-thickness ratio, etc.)
-    - loss_intersec: Loss function to avoid self-intersection
-    - loss_thickness: Penalize excessive air gaps, lens thicknesses, and total track length
+    - loss_profile: Penalize per-surface profile shape (sag, slope)
+    - loss_bound: Penalize geometry-bound violations (clearance and envelope)
     - loss_ray_angle: Loss function to penalize large chief ray angle
     - loss_rms: Loss function to compute RGB spot error RMS
     - sample_ring_arm_rays: Sample rays from object space using a ring-arm pattern
@@ -34,6 +33,7 @@ from datetime import datetime
 
 import numpy as np
 import torch
+from torch.nn.functional import softplus
 from tqdm import tqdm
 
 from ..config import (
@@ -101,48 +101,50 @@ class GeoLensOptim:
         if self.r_sensor < 12.0:
             self.is_cellphone = True
 
-            # Self intersection lower bounds
-            self.air_min_edge = 0.05
-            self.air_min_center = 0.05
-            self.thick_min_edge = 0.25
-            self.thick_min_center = 0.4
-            self.bfl_min = 0.8
+            self.air_edge_min = 0.05
+            self.air_edge_max = 3.0
+            self.air_center_min = 0.05
+            self.air_center_max = 1.5
 
-            # Air gap and thickness upper bounds
-            self.air_max_edge = 3.0
-            self.air_max_center = 1.5
-            self.thick_max_edge = 2.0
-            self.thick_max_center = 3.0
+            self.thick_edge_min = 0.25
+            self.thick_edge_max = 2.0
+            self.thick_center_min = 0.25
+            self.thick_center_max = 3.0
+
+            self.bfl_min = 0.8
             self.bfl_max = 3.0
-            self.ttl_max = 15.0
+
+            self.ttl_min = 0.0  # disabled by default
+            self.ttl_max = 20.0
 
             # Surface shape constraints
             self.sag2diam_max = 0.1
             self.grad_max = 0.57 # tan(30deg)
             self.diam2thick_max = 15.0
             self.tmax2tmin_max = 5.0
-            
+
             # Ray angle constraints
             self.chief_ray_angle_max = 30.0 # deg
-            self.bend_penalty_max = 0.6
+            self.obliq_min = 1.0
 
         else:
             self.is_cellphone = False
 
-            # Self-intersection lower bounds
-            self.air_min_edge = 0.1
-            self.air_min_center = 0.1
-            self.thick_min_edge = 1.0
-            self.thick_min_center = 2.0
-            self.bfl_min = 5.0
+            self.air_edge_min = 0.1
+            self.air_edge_max = 100.0  # float("inf")
+            self.air_center_min = 0.1
+            self.air_center_max = 100.0  # float("inf")
 
-            # Air gap and thickness upper bounds
-            self.air_max_edge = 100.0  # float("inf")
-            self.air_max_center = 100.0  # float("inf")
-            self.thick_max_edge = 20.0
-            self.thick_max_center = 20.0
+            self.thick_edge_min = 1.0
+            self.thick_edge_max = 20.0
+            self.thick_center_min = 2.0
+            self.thick_center_max = 20.0
+
+            self.bfl_min = 5.0
             self.bfl_max = 100.0  # float("inf")
-            self.ttl_max = 300.0
+
+            self.ttl_min = 0.0  # disabled by default
+            self.ttl_max = 300.0  # float("inf")
 
             # Surface shape constraints
             self.sag2diam_max = 0.2
@@ -152,20 +154,23 @@ class GeoLensOptim:
 
             # Ray angle constraints
             self.chief_ray_angle_max = 40.0 # deg
-            self.bend_penalty_max = 1.0
+            self.obliq_min = 1.0
 
-    def loss_reg(self, w_focus=10.0, w_ray_angle=2.0, w_intersec=1.0, w_thickness=0.1, w_surf=1.0):
+    def loss_reg(self, w_focus=1.0, w_ray_angle=1.0, w_clearance=1.0, w_envelope=1.0, w_profile=1.0):
         """Compute combined regularization loss for lens design.
 
         Aggregates multiple constraint losses to keep the lens physically valid
         during gradient-based optimisation.
 
         Args:
-            w_focus (float, optional): Weight for focus loss. Defaults to 10.0.
-            w_ray_angle (float, optional): Weight for chief ray angle loss. Defaults to 2.0.
-            w_intersec (float, optional): Weight for self-intersection loss. Defaults to 1.0.
-            w_thickness (float, optional): Weight for thickness / TTL loss. Defaults to 0.1.
-            w_surf (float, optional): Weight for surface shape loss. Defaults to 1.0.
+            w_focus (float, optional): Weight for focus loss. Defaults to 1.0.
+            w_ray_angle (float, optional): Weight for chief ray angle loss. Defaults to 1.0.
+            w_clearance (float, optional): Weight for the clearance penalty
+                (min air gap, min thickness, min BFL, min TTL). Defaults to 1.0.
+            w_envelope (float, optional): Weight for the envelope penalty
+                (max air gap, max thickness, max BFL, max TTL). Defaults to 1.0.
+            w_profile (float, optional): Weight for per-surface profile
+                feasibility (sag, slope). Defaults to 1.0.
 
         Returns:
             tuple: (loss_reg, loss_dict) where:
@@ -175,63 +180,67 @@ class GeoLensOptim:
         # Loss functions for regularization
         # loss_focus = self.loss_infocus()
         loss_ray_angle = self.loss_ray_angle()
-        loss_intersec = self.loss_intersec()
-        loss_thickness = self.loss_thickness()
-        loss_surf = self.loss_surface()
+        loss_clearance, loss_envelope = self.loss_bound()
+        loss_profile = self.loss_profile()
         # loss_mat = self.loss_mat()
         loss_reg = (
             # w_focus * loss_focus
-            + w_intersec * loss_intersec
-            + w_thickness * loss_thickness
-            + w_surf * loss_surf
+            + w_clearance * loss_clearance
+            + w_envelope * loss_envelope
+            + w_profile * loss_profile
             + w_ray_angle * loss_ray_angle
-            # + loss_mat
+            # w_mat * loss_mat
         )
 
         # Return loss and loss dictionary
         loss_dict = {
             # "loss_focus": loss_focus.item(),
-            "loss_intersec": loss_intersec.item(),
-            "loss_thickness": loss_thickness.item(),
-            "loss_surf": loss_surf.item(),
+            "loss_clearance": loss_clearance.item(),
+            "loss_envelope": loss_envelope.item(),
+            "loss_profile": loss_profile.item(),
             'loss_ray_angle': loss_ray_angle.item(),
             # 'loss_mat': loss_mat.item(),
         }
         return loss_reg, loss_dict
 
-    def loss_infocus(self, target=0.005):
+    def loss_infocus(self, target=0.005, wvln=None):
         """Sample parallel rays and compute RMS loss on the sensor plane, minimize focus loss.
 
         Args:
             target (float, optional): target of RMS loss. Defaults to 0.005 [mm].
+            wvln (float, optional): Wavelength in um. Defaults to WAVE_RGB[1].
         """
+        if wvln is None:
+            wvln = WAVE_RGB[1]
         loss = torch.tensor(0.0, device=self.device)
 
         # Ray tracing and calculate RMS error
-        ray = self.sample_from_fov(fov_x=0.0, fov_y=0.0, wvln=WAVE_RGB[1], num_rays=SPP_CALC)
+        ray = self.sample_from_fov(fov_x=0.0, fov_y=0.0, wvln=wvln, num_rays=SPP_CALC)
         ray = self.trace2sensor(ray)
         rms_error = ray.rms_error()
 
-        # If RMS error is larger than target, add it to loss
-        if rms_error > target:
-            loss += rms_error
+        # Smooth penalty: activates when rms_error exceeds target
+        loss += softplus(rms_error - target, beta=50.0)
 
         return loss
 
-    def loss_surface(self):
-        """Penalize extreme surface shapes that are difficult to manufacture.
+    def loss_profile(self):
+        """Penalize infeasible per-surface profile shapes.
 
-        Checks four constraints for each optimisable surface:
+        The "profile" is the z(r) curve of a single surface. This loss makes
+        sure each surface is physically manufacturable by checking:
             1. Sag-to-diameter ratio exceeding ``sag2diam_max``.
             2. Maximum surface gradient exceeding ``grad_max``.
-            3. Diameter-to-thickness ratio exceeding ``diam2thick_max``.
-            4. Maximum-to-minimum thickness ratio exceeding ``tmax2tmin_max``.
+            3. Diameter-to-thickness ratio exceeding ``diam2thick_max``
+               (currently disabled).
+            4. Maximum-to-minimum thickness ratio exceeding ``tmax2tmin_max``
+               (currently disabled).
 
         Returns:
-            Tensor: Scalar surface shape penalty loss.
+            Tensor: Scalar profile feasibility penalty.
         """
         sag2diam_max = self.sag2diam_max
-        grad_max_allowed = self.grad_max
+        grad_max = self.grad_max
         diam2thick_max = self.diam2thick_max
         tmax2tmin_max = self.tmax2tmin_max
 
@@ -247,132 +256,82 @@ class GeoLensOptim:
             # Sag
             sag_ls = self.surfaces[i].sag(x_ls, y_ls)
             sag2diam = sag_ls.abs().max() / self.surfaces[i].r / 2
-            if sag2diam > sag2diam_max:
-                loss_sag2diam += sag2diam
+            loss_sag2diam += softplus((sag2diam - sag2diam_max) / sag2diam_max, beta=10.0)
 
             # 1st-order derivative
             grad_ls = self.surfaces[i].dfdxyz(x_ls, y_ls)[0]
-            grad_max = grad_ls.abs().max()
-            if grad_max > grad_max_allowed:
-                loss_grad += grad_max
+            grad = grad_ls.abs().max()
+            loss_grad += softplus((grad - grad_max) / grad_max, beta=10.0)
 
-            # Diameter to thickness ratio, thick_max to thick_min ratio
-            if not self.surfaces[i].mat2.name == "air":
-                surf2 = self.surfaces[i + 1]
-                surf1 = self.surfaces[i]
+            # # Diameter to thickness ratio, thick_max to thick_min ratio
+            # if not self.surfaces[i].mat2.name == "air":
+            #     surf2 = self.surfaces[i + 1]
+            #     surf1 = self.surfaces[i]
 
-                # Penalize diameter to thickness ratio
-                diam2thick = 2 * max(surf2.r, surf1.r) / (surf2.d - surf1.d)
-                if diam2thick > diam2thick_max:
-                    loss_diam2thick += diam2thick
+            #     # Penalize diameter to thickness ratio
+            #     diam2thick = 2 * max(surf2.r, surf1.r) / (surf2.d - surf1.d)
+            #     loss_diam2thick += torch.nn.functional.softplus(diam2thick - diam2thick_max, beta=50.0)
 
-                # Penalize thick_max to thick_min ratio.
-                # Clamp denominators to avoid Inf from near-zero edge thickness.
-                r_edge = min(surf2.r, surf1.r)
-                thick_center = surf2.d - surf1.d
-                thick_edge = surf2.surface_with_offset(r_edge, 0.0) - surf1.surface_with_offset(r_edge, 0.0)
-                if thick_center > thick_edge:
-                    tmax2tmin = thick_center / thick_edge.clamp(min=0.01)
-                else:
-                    tmax2tmin = thick_edge / max(thick_center, 0.01)
+            #     # Penalize thick_max to thick_min ratio.
+            #     # Use torch.maximum/minimum for differentiable max/min.
+            #     r_edge = min(surf2.r, surf1.r)
+            #     thick_center = surf2.d - surf1.d
+            #     thick_edge = surf2.surface_with_offset(r_edge, 0.0) - surf1.surface_with_offset(r_edge, 0.0)
+            #     thick_max = torch.maximum(thick_center, thick_edge)
+            #     thick_min = torch.minimum(thick_center, thick_edge).clamp(min=0.01)
+            #     tmax2tmin = thick_max / thick_min
 
-                if tmax2tmin > tmax2tmin_max:
-                    loss_tmax2tmin += tmax2tmin
+            #     loss_tmax2tmin += torch.nn.functional.softplus(tmax2tmin - tmax2tmin_max, beta=50.0)
 
         return loss_sag2diam + loss_grad + loss_diam2thick + loss_tmax2tmin
 
-    def loss_intersec(self):
-        """Loss function to avoid self-intersection.
+    def loss_bound(self):
+        """Penalize geometry-bound violations in a single surface-sampling pass.
 
-        This function penalizes when surfaces are too close to each other,
-        which could cause self-intersection or manufacturing issues.
-        """
-        # Constraints
-        air_min_center = self.air_min_center
-        air_min_edge = self.air_min_edge
-        thick_min_center = self.thick_min_center
-        thick_min_edge = self.thick_min_edge
-        bfl_min = self.bfl_min
-
-        # Loss
-        loss = torch.tensor(0.0, device=self.device)
-        for i in range(len(self.surfaces) - 1):
-            # Sample evaluation points on the two surfaces
-            current_surf = self.surfaces[i]
-            next_surf = self.surfaces[i + 1]
-            
-            r_center = torch.tensor(0.0, device=self.device) * current_surf.r
-            z_prev_center = current_surf.surface_with_offset(r_center, 0.0, valid_check=False)
-            z_next_center = next_surf.surface_with_offset(r_center, 0.0, valid_check=False)
-
-            r_edge = torch.linspace(0.5, 1.0, 16, device=self.device) * current_surf.r
-            z_prev_edge = current_surf.surface_with_offset(r_edge, 0.0, valid_check=False)
-            z_next_edge = next_surf.surface_with_offset(r_edge, 0.0, valid_check=False)
-
-            # Next surface is air
-            if self.surfaces[i].mat2.name == "air":
-                # Center air gap
-                dist_center = z_next_center - z_prev_center
-                if dist_center < air_min_center:
-                    loss += dist_center
-
-                # Edge air gap
-                dist_edge = torch.min(z_next_edge - z_prev_edge)
-                if dist_edge < air_min_edge:
-                    loss += dist_edge
-
-            # Next surface is lens
-            else:
-                # Center thickness
-                dist_center = z_next_center - z_prev_center
-                if dist_center < thick_min_center:
-                    loss += dist_center
-
-                # Edge thickness
-                dist_edge = torch.min(z_next_edge - z_prev_edge)
-                if dist_edge < thick_min_edge:
-                    loss += dist_edge
-
-        # Distance to sensor (back focal length)
-        last_surf = self.surfaces[-1]
-        r = torch.linspace(0.0, 1.0, 32, device=self.device) * last_surf.r
-        z_last_surf = self.d_sensor - last_surf.surface_with_offset(r, 0.0)
-
-        bfl = torch.min(z_last_surf)
-        if bfl < bfl_min:
-            loss += bfl
-
-        # Loss, maximize loss
-        return -loss
-
-    def loss_thickness(self):
-        """Penalize excessive air gaps, lens thicknesses, and total track length.
-
-        Checks three types of upper-bound constraints:
-            1. Per-gap air and glass thickness (center and edge).
-            2. Back focal length (BFL).
-            3. Total track length (TTL) from first surface to sensor.
+        Each surface pair is sampled once and its distances feed both the
+        clearance (min) and envelope (max) softplus penalties for air gaps,
+        glass thickness, BFL, and TTL.
 
         Returns:
-            Tensor: Scalar thickness penalty loss.
+            tuple: ``(loss_clearance, loss_envelope)`` scalar tensors, so
+                callers can weight them independently. Clearance penalizes
+                parts that are too close / too thin, envelope penalizes the
+                overall assembly growing beyond its spatial budget.
         """
-        # Constraints
-        air_max_center = self.air_max_center
-        air_max_edge = self.air_max_edge
-        thick_max_center = self.thick_max_center
-        thick_max_edge = self.thick_max_edge
+        # Min bounds (clearance)
+        air_center_min = self.air_center_min
+        air_edge_min = self.air_edge_min
+        thick_center_min = self.thick_center_min
+        thick_edge_min = self.thick_edge_min
+        bfl_min = self.bfl_min
+        ttl_min = self.ttl_min
+
+        # Max bounds (envelope)
+        air_center_max = self.air_center_max
+        air_edge_max = self.air_edge_max
+        thick_center_max = self.thick_center_max
+        thick_edge_max = self.thick_edge_max
         bfl_max = self.bfl_max
         ttl_max = self.ttl_max
 
-        # Loss
-        loss = torch.tensor(0.0, device=self.device)
+        loss_clearance = torch.tensor(0.0, device=self.device)
+        loss_envelope = torch.tensor(0.0, device=self.device)
+        # Normalize each violation by the allowed range (max - min) of its
+        # bound pair, so softplus arg is "fractional violation of the usable
+        # band". β=10 → gate width ≈ 10% of that range; gradients scale as
+        # 1/(max - min) and stay balanced with loss_rms.
+        air_c_range = air_center_max - air_center_min
+        air_e_range = air_edge_max - air_edge_min
+        thick_c_range = thick_center_max - thick_center_min
+        thick_e_range = thick_edge_max - thick_edge_min
+        bfl_range = bfl_max - bfl_min
+        ttl_range = ttl_max - ttl_min
 
-        # Distance between surfaces
         for i in range(len(self.surfaces) - 1):
-            # Sample evaluation points on the two surfaces
             current_surf = self.surfaces[i]
             next_surf = self.surfaces[i + 1]
 
+            # Sample surfaces once and reuse for both clearance and envelope
             r_center = torch.tensor(0.0, device=self.device) * current_surf.r
             z_prev_center = current_surf.surface_with_offset(r_center, 0.0, valid_check=False)
             z_next_center = next_surf.surface_with_offset(r_center, 0.0, valid_check=False)
@@ -381,75 +340,75 @@ class GeoLensOptim:
             z_prev_edge = current_surf.surface_with_offset(r_edge, 0.0, valid_check=False)
             z_next_edge = next_surf.surface_with_offset(r_edge, 0.0, valid_check=False)
 
-            # Air gap
-            if self.surfaces[i].mat2.name == "air":
-                # Center air gap
-                dist_center = z_next_center - z_prev_center
-                if dist_center > air_max_center:
-                    loss += dist_center
+            dist_center = z_next_center - z_prev_center
+            dist_edges = z_next_edge - z_prev_edge
+            dist_edge_lo = torch.min(dist_edges)
+            dist_edge_hi = torch.max(dist_edges)
 
-                # Edge air gap
-                dist_edge = torch.max(z_next_edge - z_prev_edge)
-                if dist_edge > air_max_edge:
-                    loss += dist_edge
-
-            # Lens thickness
+            if current_surf.mat2.name == "air":
+                loss_clearance += softplus((air_center_min - dist_center) / air_c_range, beta=10.0)
+                loss_clearance += softplus((air_edge_min - dist_edge_lo) / air_e_range, beta=10.0)
+                loss_envelope += softplus((dist_center - air_center_max) / air_c_range, beta=10.0)
+                loss_envelope += softplus((dist_edge_hi - air_edge_max) / air_e_range, beta=10.0)
             else:
-                # Center thickness
-                dist_center = z_next_center - z_prev_center
-                if dist_center > thick_max_center:
-                    loss += dist_center
+                loss_clearance += softplus((thick_center_min - dist_center) / thick_c_range, beta=10.0)
+                loss_clearance += softplus((thick_edge_min - dist_edge_lo) / thick_e_range, beta=10.0)
+                loss_envelope += softplus((dist_center - thick_center_max) / thick_c_range, beta=10.0)
+                loss_envelope += softplus((dist_edge_hi - thick_edge_max) / thick_e_range, beta=10.0)
 
-                # Edge thickness
-                dist_edge = torch.max(z_next_edge - z_prev_edge)
-                if dist_edge > thick_max_edge:
-                    loss += dist_edge
-
-        # Distance to sensor (back focal length)
+        # Back focal length: sample last surface once, take min and max
         last_surf = self.surfaces[-1]
         r = torch.linspace(0.0, 1.0, 32, device=self.device) * last_surf.r
         z_last_surf = self.d_sensor - last_surf.surface_with_offset(r, 0.0)
+        bfl_lo = torch.min(z_last_surf)
+        bfl_hi = torch.max(z_last_surf)
+        loss_clearance += softplus((bfl_min - bfl_lo) / bfl_range, beta=10.0)
+        loss_envelope += softplus((bfl_hi - bfl_max) / bfl_range, beta=10.0)
 
-        bfl = torch.max(z_last_surf)
-        if bfl > bfl_max:
-            loss += bfl
-
-        # Total track length (first surface to sensor)
+        # Total track length. ttl_range = ttl_max - ttl_min (ttl_min may be 0
+        # to disable the lower side — only envelope is active then).
         ttl = self.d_sensor - self.surfaces[0].d
-        if ttl > ttl_max:
-            loss += ttl
+        loss_clearance += softplus((ttl_min - ttl) / ttl_range, beta=10.0)
+        loss_envelope += softplus((ttl - ttl_max) / ttl_range, beta=10.0)
 
-        # Loss, minimize loss
-        return loss
+        return loss_clearance, loss_envelope
 
     def loss_ray_angle(self):
-        """Penalize large chief ray angles and excessive per-surface bend penalty.
+        """Penalize rays that violate chief ray angle or surface bend limits.
 
-        Ensures that rays arrive at the sensor within acceptable incidence
-        angles, which is critical for sensor coupling and colour cross-talk.
+        Two soft-constraint terms, both non-negative and smooth:
+
+        - **Chief ray angle at sensor**: ``softplus(cos_ref - cos(CRA))``.
+          Rises smoothly once CRA approaches ``chief_ray_angle_max``.
+        - **Per-surface bend accumulator**: reads ``ray.bend_penalty``, an
+          additive sum of ``softplus(cos_gate - cos(bend_i))`` contributions
+          collected during ``trace2sensor`` across every refraction. Each
+          surface contributes independently, so large bends at one surface
+          are not hidden by small bends at another, and compliant surfaces
+          contribute essentially zero.
 
         Returns:
-            Tensor: Scalar chief-ray-angle + bend-penalty loss.
+            Tensor: Scalar ray-angle penalty loss (always >= 0).
         """
-        max_angle_deg = self.chief_ray_angle_max
-        bend_penalty_max = self.bend_penalty_max
+        cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
+        # Normalize cos-difference by cos-headroom (1 - cos_ref) so softplus
+        # arg is in fractional units of the allowed-to-backward range.
+        cra_scale = 1.0 - cos_cra_ref
 
-        # Loss on chief ray angle
-        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=8, spp=SPP_CALC, scale_pupil=0.2)
+        # Loss on chief ray angle (near-paraxial pupil sample, full FoV).
+        ray = self.sample_ring_arm_rays(num_ring=4, num_arm=8, spp=SPP_CALC, scale_pupil=0.2)
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
-        cos_cra_ref = float(np.cos(np.deg2rad(max_angle_deg)))
-        mask_cra = (cos_cra < cos_cra_ref).float()
-        count_cra = mask_cra.sum()
-        loss_cra = -(cos_cra * mask_cra).sum() / (count_cra + EPSILON)
+        valid = ray.is_valid > 0
+        penalty_cra = softplus((cos_cra_ref - cos_cra) / cra_scale, beta=10.0)
+        loss_cra = (penalty_cra * valid).sum() / (valid.sum() + EPSILON)
 
-        # Loss on accumulated bend penalty
-        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=8, spp=SPP_CALC, scale_pupil=1.0)
+        # Loss on accumulated per-surface bend penalty (full pupil, full FoV).
+        ray = self.sample_ring_arm_rays(num_ring=4, num_arm=8, spp=SPP_CALC, scale_pupil=1.0)
         ray = self.trace2sensor(ray)
         bend_penalty = ray.bend_penalty.squeeze(-1)
-        mask_bend = (bend_penalty > bend_penalty_max).float()
-        count_bend = mask_bend.sum()
-        loss_bend = (bend_penalty * mask_bend).sum() / (count_bend + EPSILON)
+        valid = ray.is_valid > 0
+        loss_bend = (bend_penalty * valid).sum() / (valid.sum() + EPSILON)
 
         return loss_cra + loss_bend
 

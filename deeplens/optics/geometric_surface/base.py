@@ -286,14 +286,17 @@ class Surface(DeepObj):
         new_d = eta * ray.d + (eta * dot_product - torch.sqrt(k + EPSILON)) * normal_vec
         # ==> Accumulate soft per-surface bend penalty.
         # cos_bend = cos(angle between incoming and outgoing ray direction).
-        # Penalty is softplus(cos_gate - cos_bend) so it rises smoothly once
-        # the bend grows beyond bend_gate_deg and stays near zero for mild
-        # refractions.  Summing per-surface values gives an additive,
-        # uncoupled penalty focused on the worst bends.
+        # Penalty is softplus((cos_gate - cos_bend) / bend_scale) so it rises
+        # smoothly once the bend grows beyond bend_gate_deg and stays near zero
+        # for mild refractions.  Normalization by bend_scale (= 1 - cos_gate)
+        # keeps the gradient magnitude consistent with the CRA loss in optim.py.
+        # Summing per-surface values gives an additive, uncoupled penalty
+        # focused on the worst bends.
         bend_gate_deg = 30.0
         cos_gate = math.cos(math.radians(bend_gate_deg))
+        bend_scale = 1.0 - cos_gate  # cos-headroom; matches CRA normalization
         cos_bend = torch.sum(new_d * ray.d, axis=-1).unsqueeze(-1)
-        per_surf_penalty = F.softplus(cos_gate - cos_bend, beta=50.0)
+        per_surf_penalty = F.softplus((cos_gate - cos_bend) / bend_scale, beta=10.0)
         ray.bend_penalty = ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
         # ==>
         ray.d = torch.where(valid.unsqueeze(-1), new_d, ray.d)
