@@ -10,6 +10,7 @@ Technical Paper:
     Xinge Yang, Qiang Fu, and Wolfgang Heidrich, "Curriculum learning for ab initio deep learned refractive optics," Nature Communications 2024.
 """
 
+import logging
 import math
 
 import numpy as np
@@ -1479,34 +1480,26 @@ class GeoLens(
         Args:
             fnum (float): target F-number.
         """
-        current_fnum = self.fnum
-        current_aper_r = self.surfaces[self.aper_idx].r
         target_pupil_r = self.foclen / fnum / 2
+        aper_r = self.surfaces[self.aper_idx].r
+        lo, hi = 0.1 * aper_r, 5.0 * aper_r
 
-        # Binary search to find aperture radius that gives desired exit pupil radius
-        aper_r = current_aper_r * (current_fnum / fnum)
-        aper_r_min = 0.5 * aper_r
-        aper_r_max = 2.0 * aper_r
-
-        for _ in range(16):
-            self.surfaces[self.aper_idx].r = aper_r
+        pupilr = None
+        for _ in range(40):
+            mid = 0.5 * (lo + hi)
+            self.surfaces[self.aper_idx].r = mid
             _, pupilr = self.calc_entrance_pupil()
-
-            if abs(pupilr - target_pupil_r) < 0.1:  # Close enough
+            if abs(pupilr - target_pupil_r) / target_pupil_r < 1e-3:
                 break
-
             if pupilr > target_pupil_r:
-                # Current radius is too large, decrease it
-                aper_r_max = aper_r
-                aper_r = (aper_r_min + aper_r) / 2
+                hi = mid
             else:
-                # Current radius is too small, increase it
-                aper_r_min = aper_r
-                aper_r = (aper_r_max + aper_r) / 2
+                lo = mid
+        else:
+            logging.warning(
+                f"set_fnum: did not converge, pupil_r={pupilr:.4f}, target={target_pupil_r:.4f}"
+            )
 
-        self.surfaces[self.aper_idx].r = aper_r
-
-        # Update pupil after setting aperture radius
         self.calc_pupil()
 
     @torch.no_grad()
