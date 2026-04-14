@@ -1902,23 +1902,22 @@ class GeoLensEval:
         """Compute RMS and geometric spot radii at multiple field positions for RGB.
 
         Traces rays at ``num_field`` evenly-spaced field positions along the
-        meridional direction for three wavelengths (G, R, B), computes per-
-        wavelength RMS and maximum (geometric) spot radii referenced to the
-        **green centroid**, then averages the three wavelengths.
+        meridional direction for three wavelengths (R, G, B), and computes
+        polychromatic RMS and geometric spot radii referenced to the
+        **combined centroid across all wavelengths** (matching Zemax's
+        default "RMS Spot Radius w.r.t. Centroid").
 
         This provides a quick polychromatic spot-size summary used for design
         comparisons and printed to stdout during ``analysis()``.
 
-        Algorithm:
-            1. For each wavelength (G first, then R, B):
-               a. ``self.sample_radial_rays()`` → ``[num_field, SPP_PSF, 3]``.
-               b. ``self.trace2sensor()`` → sensor-plane positions.
-               c. Green centroid ``c_G`` is computed on the first iteration and
-                  used as the common reference for all wavelengths.
-               d. ``RMS = sqrt(mean(||xy - c_G||^2))`` per field position.
-               e. ``radius = max(||xy - c_G||)`` per field position.
-            2. Average RMS and radius over the three wavelengths.
-            3. Convert from mm to μm (× 1000).
+        Algorithm (per field point):
+            1. Trace R, G, B rays through the lens to the sensor.
+            2. Pool all valid ray intercepts (across all three wavelengths)
+               and compute one combined centroid ``c``.
+            3. RMS = sqrt(mean(||xy - c||²)) over all pooled rays — a single
+               polychromatic RMS that includes lateral chromatic aberration.
+            4. radius = max(||xy - c||) over all pooled rays.
+            5. Convert from mm to μm (× 1000).
 
         Args:
             num_field (int): Number of field positions sampled from on-axis
@@ -1933,36 +1932,44 @@ class GeoLensEval:
                     - ``'rms'``: Polychromatic RMS spot radius in μm.
                     - ``'radius'``: Polychromatic geometric spot radius in μm.
         """
-        rms_radius_fields = []
-        geo_radius_fields = []
-        for i, wvln in enumerate([WAVE_RGB[1], WAVE_RGB[0], WAVE_RGB[2]]):
-            # Sample rays along meridional (y) direction, shape [num_field, num_rays, 3]
+        # Trace each wavelength and pool rays across wavelengths per field
+        xy_list = []
+        valid_list = []
+        for wvln in WAVE_RGB:
             ray = self.sample_radial_rays(
                 num_field=num_field, depth=depth, num_rays=SPP_PSF, wvln=wvln
             )
             ray = self.trace2sensor(ray)
+            xy_list.append(ray.o[..., :2])
+            valid_list.append(ray.is_valid)
 
-            # Green light point center for reference, shape [num_field, 1, 2]
-            if i == 0:
-                ray_xy_center_green = ray.centroid()[..., :2].unsqueeze(-2)
+        # Pool over wavelengths, shape [num_field, 3*num_rays, 2] and [num_field, 3*num_rays]
+        xy_all = torch.cat(xy_list, dim=-2)
+        valid_all = torch.cat(valid_list, dim=-1)
 
-            # Calculate RMS spot size and radius for different FoVs
-            ray_xy_norm = (
-                ray.o[..., :2] - ray_xy_center_green
-            ) * ray.is_valid.unsqueeze(-1)
-            spot_rms = (
-                ((ray_xy_norm**2).sum(-1) * ray.is_valid).sum(-1)
-                / (ray.is_valid.sum(-1) + EPSILON)
-            ).sqrt()
-            spot_radius = (ray_xy_norm**2).sum(-1).sqrt().max(dim=-1).values
+        # Combined polychromatic centroid per field, shape [num_field, 1, 2]
+        valid_mask = valid_all.unsqueeze(-1)
+        center = (xy_all * valid_mask).sum(-2) / (
+            valid_all.sum(-1, keepdim=True) + EPSILON
+        )
+        center = center.unsqueeze(-2)
 
-            # Append to list
-            rms_radius_fields.append(spot_rms)
-            geo_radius_fields.append(spot_radius)
+        # Squared distance to combined centroid, shape [num_field, 3*num_rays]
+        dist_sq = ((xy_all - center) ** 2).sum(-1)
 
-        # Average over wavelengths, shape [num_field]
-        avg_rms_radius_um = torch.stack(rms_radius_fields, dim=0).mean(dim=0) * 1000.0
-        avg_geo_radius_um = torch.stack(geo_radius_fields, dim=0).mean(dim=0) * 1000.0
+        # Polychromatic RMS spot radius per field, shape [num_field]
+        spot_rms = (
+            (dist_sq * valid_all).sum(-1) / (valid_all.sum(-1) + EPSILON)
+        ).sqrt()
+        # Geometric spot radius (max distance among valid rays)
+        dist_masked = torch.where(
+            valid_all > 0, dist_sq, torch.full_like(dist_sq, -1.0)
+        )
+        spot_radius = dist_masked.max(dim=-1).values.clamp(min=0.0).sqrt()
+
+        # Convert mm → μm
+        avg_rms_radius_um = spot_rms * 1000.0
+        avg_geo_radius_um = spot_radius * 1000.0
 
         # Print results
         print(f"Ray spot analysis results for depth {depth}:")
