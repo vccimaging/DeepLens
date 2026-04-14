@@ -178,6 +178,18 @@ def denormalize_ImageNet(batch):
 
 
 # ==================================
+# EDoF
+# ==================================
+def foc_dist_balanced(d1, d2):
+    """When focus to foc_dist, d1 and d2 will have the same CoC.
+
+    Reference: https://en.wikipedia.org/wiki/Circle_of_confusion
+    """
+    foc_dist = 2 * d1 * d2 / (d1 + d2)
+    return foc_dist
+
+
+# ==================================
 # AutoLens
 # ==================================
 def create_video_from_images(image_folder, output_video_path, fps=30):
