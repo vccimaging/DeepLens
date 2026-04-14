@@ -835,9 +835,6 @@ class GeoLensOptim:
         Returns:
             list: optimizer parameters
         """
-        # Initialize lens design constraints (edge thickness, etc.)
-        self.init_constraints()
-
         # Get optimizer
         params = self.get_optimizer_params(
             lrs=lrs, optim_surf_range=optim_surf_range, optim_mat=optim_mat

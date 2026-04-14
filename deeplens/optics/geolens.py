@@ -194,6 +194,7 @@ class GeoLens(
         self.calc_foclen()
         self.calc_pupil()
         self.calc_fov()
+        self.init_constraints()
 
     def __call__(self, ray):
         """Trace rays through the lens system.
