@@ -569,6 +569,7 @@ class GeoLensOptim:
         centroid=False,
         optim_mat=False,
         shape_control=True,
+        sample_more_off_axis=False,
         result_dir=None,
     ):
         """Optimise the lens by minimising RGB RMS spot errors.
@@ -589,6 +590,9 @@ class GeoLensOptim:
                 in optimisation. Defaults to False.
             shape_control (bool, optional): If True, call ``correct_shape()`` at each
                 evaluation step. Defaults to True.
+            sample_more_off_axis (bool, optional): If True, concentrate ray samples
+                toward the edge of the field to improve off-axis correction.
+                Passed directly to ``sample_ring_arm_rays``. Defaults to False.
             result_dir (str, optional): Directory to save results. If None,
                 auto-generates a timestamped directory. Defaults to None.
 
@@ -651,7 +655,7 @@ class GeoLensOptim:
                     self.calc_pupil()
                     rays_backup = []
                     for wv in WAVE_RGB:
-                        ray = self.sample_ring_arm_rays(num_ring=num_ring, num_arm=num_arm, spp=spp, depth=depth, wvln=wv, scale_pupil=1.05, sample_more_off_axis=False)
+                        ray = self.sample_ring_arm_rays(num_ring=num_ring, num_arm=num_arm, spp=spp, depth=depth, wvln=wv, scale_pupil=1.05, sample_more_off_axis=sample_more_off_axis)
                         rays_backup.append(ray)
 
                     # Calculate ray centers
