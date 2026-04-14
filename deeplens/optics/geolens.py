@@ -502,7 +502,7 @@ class GeoLens(
             torch.linspace(h / 2, -h / 2, H + 1, device=device,)[1:],
             indexing="xy",
         )
-        z1 = torch.full_like(x1, self.d_sensor)
+        z1 = torch.full_like(x1, self.d_sensor.item())
 
         # Sample second points on the pupil
         # sensor_res is (W, H) but meshgrid with indexing="xy" gives (H, W) arrays
