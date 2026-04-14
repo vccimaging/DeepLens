@@ -208,11 +208,23 @@ class Aspheric(Surface):
         return dsdr2 * 2 * x, dsdr2 * 2 * y
 
     def is_within_data_range(self, x, y):
-        """Invalid when shape is non-defined."""
+        """Invalid when shape is non-defined.
+
+        Fully tensorized (no Python branch on the tensor value of ``k``) so
+        the function is safe to trace through ``torch.compile``. When
+        ``k <= -1`` the conic has no real boundary, so every point is
+        treated as valid.
+        """
         c, k = self._get_curvature_params()
-        if k > -1:
-            return (x**2 + y**2) < 1 / c**2 / (1 + k)
-        return torch.ones_like(x, dtype=torch.bool)
+        one_plus_k = 1 + k
+        # Avoid division by zero / negative when computing the limit; the
+        # bogus value is masked out by the where below.
+        safe = torch.where(
+            one_plus_k > 0, one_plus_k, torch.ones_like(one_plus_k)
+        )
+        limit_sq = 1.0 / (c * c * safe)
+        inside = (x * x + y * y) < limit_sq
+        return torch.where(one_plus_k > 0, inside, torch.ones_like(inside))
 
     def max_height(self):
         """Maximum valid height."""
