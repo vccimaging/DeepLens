@@ -754,8 +754,7 @@ class GeoLensIO:
             filename (str, optional): Path to the JSON lens file. Defaults to './test.json'.
 
         Note:
-            After loading, the lens is moved to self.device and post_computation is called
-            to calculate derived properties.
+            After loading, the lens is moved to self.device.
         """
         self.surfaces = []
         self.materials = []
@@ -820,7 +819,6 @@ class GeoLensIO:
         # Set sensor size and resolution
         sensor_res = data.get("sensor_res", (2000, 2000))
         self.set_sensor_res(sensor_res=sensor_res)
-        self.post_computation()
 
     def write_lens_json(self, filename="./test.json"):
         """Write the lens to a JSON file.

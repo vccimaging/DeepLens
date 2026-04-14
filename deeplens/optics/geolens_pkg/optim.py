@@ -28,13 +28,13 @@ Functions:
 """
 
 import logging
+import math
 import os
 from datetime import datetime
 
 import numpy as np
 import torch
 from tqdm import tqdm
-from transformers import get_cosine_schedule_with_warmup
 
 from ..config import (
     DEFAULT_WAVE,
@@ -47,6 +47,20 @@ from ..config import (
 )
 from ..geometric_surface import Aperture, Aspheric, Plane, Spheric, ThinLens
 from ..phase_surface import Phase
+
+
+def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps):
+    """Linear warmup then half-cosine decay to zero."""
+
+    def lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        progress = float(current_step - num_warmup_steps) / float(
+            max(1, num_training_steps - num_warmup_steps)
+        )
+        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * progress)))
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
 
 class GeoLensOptim:
