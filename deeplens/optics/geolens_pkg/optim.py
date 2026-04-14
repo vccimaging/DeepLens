@@ -124,8 +124,8 @@ class GeoLensOptim:
             
             # Ray angle constraints
             self.chief_ray_angle_max = 30.0 # deg
-            self.obliq_min = 0.6
-        
+            self.bend_penalty_max = 0.6
+
         else:
             self.is_cellphone = False
 
@@ -135,7 +135,7 @@ class GeoLensOptim:
             self.thick_min_edge = 1.0
             self.thick_min_center = 2.0
             self.bfl_min = 5.0
-            
+
             # Air gap and thickness upper bounds
             self.air_max_edge = 100.0  # float("inf")
             self.air_max_center = 100.0  # float("inf")
@@ -149,10 +149,10 @@ class GeoLensOptim:
             self.grad_max = 0.84 # tan(40deg)
             self.diam2thick_max = 20.0
             self.tmax2tmin_max = 10.0
-            
+
             # Ray angle constraints
             self.chief_ray_angle_max = 40.0 # deg
-            self.obliq_min = 0.4
+            self.bend_penalty_max = 1.0
 
     def loss_reg(self, w_focus=10.0, w_ray_angle=2.0, w_intersec=1.0, w_thickness=0.1, w_surf=1.0):
         """Compute combined regularization loss for lens design.
@@ -423,16 +423,16 @@ class GeoLensOptim:
         return loss
 
     def loss_ray_angle(self):
-        """Penalize large chief ray angles and low obliquity factors.
+        """Penalize large chief ray angles and excessive per-surface bend penalty.
 
         Ensures that rays arrive at the sensor within acceptable incidence
         angles, which is critical for sensor coupling and colour cross-talk.
 
         Returns:
-            Tensor: Scalar chief-ray-angle penalty loss.
+            Tensor: Scalar chief-ray-angle + bend-penalty loss.
         """
         max_angle_deg = self.chief_ray_angle_max
-        obliq_min = self.obliq_min
+        bend_penalty_max = self.bend_penalty_max
 
         # Loss on chief ray angle
         ray = self.sample_ring_arm_rays(num_ring=8, num_arm=8, spp=SPP_CALC, scale_pupil=0.2)
@@ -443,15 +443,15 @@ class GeoLensOptim:
         count_cra = mask_cra.sum()
         loss_cra = -(cos_cra * mask_cra).sum() / (count_cra + EPSILON)
 
-        # Loss on accumulated oblique term
+        # Loss on accumulated bend penalty
         ray = self.sample_ring_arm_rays(num_ring=8, num_arm=8, spp=SPP_CALC, scale_pupil=1.0)
         ray = self.trace2sensor(ray)
-        obliq = ray.obliq.squeeze(-1)
-        mask_obliq = (obliq < obliq_min).float()
-        count_obliq = mask_obliq.sum()
-        loss_obliq = -(obliq * mask_obliq).sum() / (count_obliq + EPSILON)
+        bend_penalty = ray.bend_penalty.squeeze(-1)
+        mask_bend = (bend_penalty > bend_penalty_max).float()
+        count_bend = mask_bend.sum()
+        loss_bend = (bend_penalty * mask_bend).sum() / (count_bend + EPSILON)
 
-        return loss_cra + loss_obliq
+        return loss_cra + loss_bend
 
     def loss_mat(self):
         """Penalize material parameters outside manufacturable ranges.
