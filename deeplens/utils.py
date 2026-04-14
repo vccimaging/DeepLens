@@ -8,9 +8,6 @@ import lpips
 import numpy as np
 import torch
 import torch.nn.functional as F
-from skimage.metrics import peak_signal_noise_ratio
-from skimage.metrics import structural_similarity
-from tqdm import tqdm
 
 
 # ==================================
@@ -70,6 +67,7 @@ def batch_PSNR(img_clean, img):
     Img_clean = (
         img_clean.mul(255).add_(0.5).clamp_(0, 255).to("cpu", torch.uint8).numpy()
     )
+    from skimage.metrics import peak_signal_noise_ratio
     PSNR = 0.0
     for i in range(Img.shape[0]):
         PSNR += peak_signal_noise_ratio(Img_clean[i, :, :, :], Img[i, :, :, :])
@@ -122,6 +120,7 @@ def batch_ssim(img, img_clean):
         img_clean.mul(255).add_(0.5).clamp_(0, 255).to("cpu", torch.uint8).numpy()
     )
 
+    from skimage.metrics import structural_similarity
     SSIM = 0.0
     for i in range(Img.shape[0]):
         # Auto detect if multichannel based on number of dimensions
@@ -218,6 +217,7 @@ def create_video_from_images(image_folder, output_video_path, fps=30):
     video_writer = cv.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
     # Iterate through images and write them to the video
+    from tqdm import tqdm
     for image_path in tqdm(images):
         img = cv.imread(image_path)
         video_writer.write(img)

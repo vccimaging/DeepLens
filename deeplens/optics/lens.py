@@ -9,9 +9,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torchvision.utils import make_grid, save_image
-from tqdm import tqdm
-
 from deeplens import init_device
 from .config import (
     DEFAULT_WAVE,
@@ -414,6 +411,7 @@ class Lens(DeepObj):
         self, M=3, depth=DEPTH, ks=PSF_KS, log_scale=False, save_name="./psf_radial.png"
     ):
         """Draw radial PSF (45 deg). Will draw M PSFs, each of size ks x ks."""
+        from torchvision.utils import make_grid, save_image
         x = torch.linspace(0, 1, M)
         y = torch.linspace(0, 1, M)
         z = torch.full_like(x, depth)
@@ -696,6 +694,7 @@ class Lens(DeepObj):
             disp_ref, depths_ref = self._sample_depth_layers(depth_min, depth_max, num_layers)
 
             psf_maps = []
+            from tqdm import tqdm
             for depth in tqdm(depths_ref):
                 psf_map = self.psf_map_rgb(grid=psf_grid, ks=psf_ks, depth=depth)
                 psf_maps.append(psf_map)

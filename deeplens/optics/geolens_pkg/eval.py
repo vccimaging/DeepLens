@@ -94,9 +94,6 @@ import torch
 import torch.nn.functional as F
 
 from PIL import Image
-from skimage.metrics import peak_signal_noise_ratio, structural_similarity
-from torchvision.utils import save_image
-
 from ..config import (
     DEFAULT_WAVE,
     DEPTH,
@@ -1844,6 +1841,8 @@ class GeoLensEval:
             torch.Tensor: Rendered (and optionally unwarped) image with shape
                 ``[1, 3, H, W]``, float values in ``[0, 1]``.
         """
+        from skimage.metrics import peak_signal_noise_ratio, structural_similarity
+        from torchvision.utils import save_image
         # Change sensor resolution to match the image
         sensor_res_original = self.sensor_res
         if isinstance(img_org, np.ndarray):
