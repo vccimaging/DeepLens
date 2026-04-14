@@ -527,6 +527,9 @@ class GeoLensOptim:
         defined by field of view. This is useful for capturing lens performance across the full field.
         The points include the center and `num_ring` rings with `num_arm` points on each.
 
+        Uses ``self.rfov`` (ray-traced real FoV, accounts for distortion) rather than
+        ``self.rfov_eff`` (paraxial pinhole FoV) so the full distorted field is covered.
+
         Args:
             num_ring (int): Number of rings to sample in the field of view.
             num_arm (int): Number of arms (spokes) to sample for each ring.
@@ -541,15 +544,9 @@ class GeoLensOptim:
         # Create points on rings and arms
         max_fov_rad = self.rfov
         if sample_more_off_axis:
-            # Use beta distribution to sample more points near the edge (close to 1.0)
-            # Beta(0.5, 0.5) gives more samples at 0 and 1, Beta(0.5, 0.3) gives more samples near 1.0
             beta_values = torch.linspace(0.0, 1.0, num_ring, device=self.device)
-            # Apply beta transformation to concentrate samples near 1.0
-            beta_transformed = beta_values ** 0.5  # Equivalent to Beta(0.5, 1.0) distribution
+            beta_transformed = beta_values ** 0.5
             ring_fovs = max_fov_rad * beta_transformed
-
-            # Use square root to sample more points near the edge
-            # ring_fovs = max_fov_rad * torch.sqrt(torch.linspace(0.0, 1.0, num_ring, device=self.device))
         else:
             ring_fovs = max_fov_rad * torch.linspace(0.0, 1.0, num_ring, device=self.device)
         
