@@ -487,7 +487,10 @@ class GeoLensOptim:
         Returns:
             avg_rms_error (torch.Tensor): RMS error averaged over wavelengths and grid points.
         """
-        all_rms_errors = []
+        # Iterate green first so the error-adaptive weight mask is anchored
+        # on the reference wavelength (same ordering as optimize()).
+        loss_rms_ls = []
+        w_mask = None
         for i, wvln in enumerate([WAVE_RGB[1], WAVE_RGB[0], WAVE_RGB[2]]):
             ray = self.sample_grid_rays(
                 depth=depth,
@@ -497,24 +500,34 @@ class GeoLensOptim:
                 sample_more_off_axis=sample_more_off_axis,
             )
 
-            # Calculate reference center, shape of (..., 2)
+            # Reference center from green chief-ray (pinhole), broadcast to rays.
             if i == 0:
                 with torch.no_grad():
-                    ray_center_green = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="pinhole")
+                    center_ref = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="pinhole")
+                center_ref = center_ref.unsqueeze(-2)
 
             ray = self.trace2sensor(ray)
 
-            # # Green light centroid for reference
-            # if i == 0:
-            #     with torch.no_grad():
-            #         ray_center_green = ray.centroid()
+            # Per-FOV MSE → RMS, zeroing invalid rays before squaring to
+            # avoid Inf*0 = NaN.
+            ray_xy = ray.o[..., :2]
+            ray_valid = ray.is_valid
+            ray_err = ray_xy - center_ref
+            ray_err = torch.where(
+                ray_valid.bool().unsqueeze(-1), ray_err, torch.zeros_like(ray_err)
+            )
+            mse = (ray_err**2).sum(-1).sum(-1) / (ray_valid.sum(-1) + EPSILON)
+            l_rms = (mse + EPSILON).sqrt()
 
-            # Calculate RMS error with reference center
-            rms_error = ray.rms_error(center_ref=ray_center_green)
-            all_rms_errors.append(rms_error)
+            # First wavelength (green) defines the detached weight mask.
+            if w_mask is None:
+                w_mask = mse.detach()
+                w_mask = w_mask / (w_mask.mean() + EPSILON)
 
-        # Calculate average RMS error
-        avg_rms_error = torch.stack(all_rms_errors).mean(dim=0)
+            l_rms_weighted = (l_rms * w_mask).sum() / (w_mask.sum() + EPSILON)
+            loss_rms_ls.append(l_rms_weighted)
+
+        avg_rms_error = torch.stack(loss_rms_ls).mean(dim=0)
         return avg_rms_error
 
     # ================================================================
