@@ -197,17 +197,28 @@ class GeoLensVis:
         if lens_title is None:
             eff_foclen = round(self.foclen, 2)
             fov_deg = round(2 * self.rfov * 180 / torch.pi, 1)
-            sensor_r = round(self.r_sensor, 1)
-            sensor_w, sensor_h = self.sensor_size
-            sensor_w = round(sensor_w, 1)
-            sensor_h = round(sensor_h, 1)
+            imgh = round(self.r_sensor, 1)
+            wvl_nm = [int(round(w * 1000)) for w in WAVE_RGB]  # µm → nm
 
             if self.aper_idx is not None:
                 _, pupil_r = self.calc_entrance_pupil()
                 fnum = round(eff_foclen / pupil_r / 2, 2)
-                lens_title = f"FocLen{eff_foclen}mm - F/{fnum} - FoV{fov_deg} - Sensor Diagonal {2 * sensor_r}mm"
+                line1 = (
+                    f"FocLen{eff_foclen}mm - F/{fnum} - FoV{fov_deg} - "
+                    f"IMGH{imgh}mm - RGB({wvl_nm[0]}/{wvl_nm[1]}/{wvl_nm[2]}nm)"
+                )
             else:
-                lens_title = f"FocLen{eff_foclen}mm - FoV{fov_deg} - Sensor Diagonal {2 * sensor_r}mm"
+                line1 = (
+                    f"FocLen{eff_foclen}mm - FoV{fov_deg} - "
+                    f"IMGH{imgh}mm - RGB({wvl_nm[0]}/{wvl_nm[1]}/{wvl_nm[2]}nm)"
+                )
+
+            spot = self.analysis_spot(num_field=3)
+            rms0 = spot["fov0.0"]["rms"]
+            rms5 = spot["fov0.5"]["rms"]
+            rms10 = spot["fov1.0"]["rms"]
+            line2 = f"RMS spot: 0.0FoV={rms0:.2f}\u03bcm  0.5FoV={rms5:.2f}\u03bcm  1.0FoV={rms10:.2f}\u03bcm"
+            lens_title = f"{line1}\n{line2}"
 
         # Draw lens layout
         colors_list = ["#CC0000", "#006600", "#0066CC"]
@@ -216,7 +227,7 @@ class GeoLensVis:
         
         if not multi_plot:
             ax, fig = self.draw_lens_2d(zmx_format=zmx_format)
-            fig.suptitle(lens_title, fontsize=10)
+            fig.suptitle(lens_title, fontsize=10, fontfamily="Nimbus Sans")
             for i, fov in enumerate(fov_ls):
                 # Sample rays, shape (num_rays, 3)
                 if depth == float("inf"):
@@ -246,7 +257,7 @@ class GeoLensVis:
 
         else:
             fig, axs = plt.subplots(1, 3, figsize=(15, 5))
-            fig.suptitle(lens_title, fontsize=10)
+            fig.suptitle(lens_title, fontsize=10, fontfamily="Nimbus Sans")
             for i, wvln in enumerate(WAVE_RGB):
                 ax = axs[i]
                 ax, fig = self.draw_lens_2d(ax=ax, fig=fig, zmx_format=zmx_format)
