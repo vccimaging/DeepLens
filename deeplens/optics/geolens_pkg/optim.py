@@ -825,15 +825,18 @@ class GeoLensOptim:
         optim_surf_range=None,
         optim_mat=False,
     ):
-        """Get optimizers and schedulers for different lens parameters.
+        """Build an Adam optimizer over all trainable lens parameters.
 
         Args:
-            lrs (list): learning rate for different parameters [c, d, k, a]. Defaults to [1e-4, 1e-4, 0, 1e-4].
-            optim_surf_range (list): surface indices to be optimized. Defaults to None.
-            optim_mat (bool): whether to optimize material. Defaults to False.
+            lrs (list): learning rates for parameter groups [d, c, k, ai].
+                Defaults to [1e-4, 1e-4, 1e-1, 1e-4].
+            optim_surf_range (list): surface indices to optimise. If None,
+                all surfaces are included. Defaults to None.
+            optim_mat (bool): whether to include material parameters (n, V).
+                Defaults to False.
 
         Returns:
-            list: optimizer parameters
+            torch.optim.Adam: configured optimizer.
         """
         # Get optimizer
         params = self.get_optimizer_params(

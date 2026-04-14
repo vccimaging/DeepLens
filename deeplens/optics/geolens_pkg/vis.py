@@ -181,14 +181,19 @@ class GeoLensVis:
     ):
         """Plot 2D lens layout with ray tracing.
 
+        The title is auto-generated when ``lens_title`` is None: it includes
+        focal length, F-number, FoV, IMGH, RGB wavelengths, and a second line
+        with per-FoV RMS spot radii from ``analysis_spot()``.
+
         Args:
-            filename: Output filename
-            depth: Depth for ray tracing
-            entrance_pupil: Whether to use entrance pupil
-            zmx_format: Whether to use ZMX format
-            multi_plot: Whether to create multiple plots
-            lens_title: Title for the lens plot
-            show: Whether to show the plot
+            filename: Output filename.
+            depth: Object distance for ray tracing [mm]. Use ``float('inf')``
+                for collimated input. Defaults to ``float('inf')``.
+            zmx_format: If True, draw surfaces in Zemax style. Defaults to True.
+            multi_plot: If True, create one sub-plot per wavelength.
+                Defaults to False.
+            lens_title: Title string. If None, auto-generated. Defaults to None.
+            show: If True, display the figure interactively. Defaults to False.
         """
         num_rays = 11
         num_views = 3
