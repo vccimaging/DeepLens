@@ -437,7 +437,7 @@ class GeoLens(
         if entrance_pupil:
             pupilz, pupilr = self.get_entrance_pupil()
         else:
-            pupilz, pupilr = 0.0, self.surfaces[0].r
+            pupilz, pupilr = self.surfaces[0].d.item(), self.surfaces[0].r
         pupilr *= scale_pupil
 
         if depth == float("inf"):

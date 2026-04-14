@@ -70,7 +70,7 @@ class GeoLensVis:
         if entrance_pupil:
             pupilz, pupilr = self.get_entrance_pupil()
         else:
-            pupilz, pupilr = 0, self.surfaces[0].r
+            pupilz, pupilr = self.surfaces[0].d.item(), self.surfaces[0].r
 
         # Sample ray origins, shape [num_rays, 3]
         if plane == "sagittal":
@@ -152,7 +152,7 @@ class GeoLensVis:
         if entrance_pupil:
             pupilz, pupilr = self.calc_entrance_pupil()
         else:
-            pupilz, pupilr = 0, self.surfaces[0].r
+            pupilz, pupilr = self.surfaces[0].d.item(), self.surfaces[0].r
 
         x2 = torch.linspace(-pupilr, pupilr, num_rays) * 0.99
         y2 = torch.zeros_like(x2)
