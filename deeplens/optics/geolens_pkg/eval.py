@@ -525,10 +525,7 @@ class GeoLensEval:
                   ``[num_points]``.  Dimensionless (multiply by 100 for
                   percent).
         """
-        if self.rfov is not None:
-            rfov_deg = self.rfov * 180 / torch.pi
-        elif self.rfov_eff is not None:
-            rfov_deg = self.rfov_eff * 180 / torch.pi
+        rfov_deg = self.rfov * 180 / torch.pi
 
         # Sample field angles uniformly from 0 to rfov_deg.
         # For the on-axis point (FOV=0), distortion is 0/0.  We compute it at a
@@ -603,10 +600,7 @@ class GeoLensEval:
                 computation. Defaults to ``True``.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
-        if self.rfov is not None:
-            rfov_deg = self.rfov * 180 / torch.pi
-        elif self.rfov_eff is not None:
-            rfov_deg = self.rfov_eff * 180 / torch.pi
+        rfov_deg = self.rfov * 180 / torch.pi
 
         # Calculate distortion at evenly-spaced field angles
         rfov_samples, distortions = self.calc_distortion_radial(
@@ -1048,10 +1042,7 @@ class GeoLensEval:
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         device = self.device
-        if self.rfov is not None:
-            rfov_deg = self.rfov * 180 / torch.pi
-        elif self.rfov_eff is not None:
-            rfov_deg = self.rfov_eff * 180 / torch.pi
+        rfov_deg = self.rfov * 180 / torch.pi
 
         # Sample field angles [0, rfov_deg], shape [F]
         rfov_samples = torch.linspace(0.0, rfov_deg, num_points, device=device)

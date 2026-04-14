@@ -296,10 +296,7 @@ class GeoLens(
             Ray: Ray object with shape ``[num_field, num_rays, 3]``.
         """
         device = self.device
-        if self.rfov is not None:
-            fov_deg = self.rfov * 180 / torch.pi
-        elif self.rfov_eff is not None:
-            fov_deg = self.rfov_eff * 180 / torch.pi
+        fov_deg = self.rfov * 180 / torch.pi
         fov_list = torch.linspace(0, fov_deg, num_field, device=device)
 
         if direction == "y":
