@@ -34,10 +34,12 @@ class TestConstraints:
         """init_constraints sets constraint attributes on the lens."""
         lens = sample_singlet_lens
         lens.init_constraints()
-        assert hasattr(lens, "air_min_edge")
-        assert hasattr(lens, "thick_min_center")
+        assert hasattr(lens, "air_edge_min")
+        assert hasattr(lens, "thick_center_min")
         assert hasattr(lens, "sag2diam_max")
         assert hasattr(lens, "chief_ray_angle_max")
+        assert hasattr(lens, "ttl_min")
+        assert hasattr(lens, "obliq_min")
 
     def test_init_constraints_cellphone_vs_camera(
         self, sample_cellphone_lens, sample_camera_lens
@@ -46,7 +48,7 @@ class TestConstraints:
         sample_cellphone_lens.init_constraints()
         sample_camera_lens.init_constraints()
         # Cellphone has tighter constraints
-        assert sample_cellphone_lens.air_min_edge < sample_camera_lens.air_min_edge
+        assert sample_cellphone_lens.air_edge_min < sample_camera_lens.air_edge_min
 
 
 class TestLossFunctions:
@@ -60,7 +62,10 @@ class TestLossFunctions:
         assert isinstance(loss, torch.Tensor)
         assert loss.dim() == 0
         assert isinstance(loss_dict, dict)
-        assert "loss_intersec" in loss_dict
+        assert "loss_clearance" in loss_dict
+        assert "loss_envelope" in loss_dict
+        assert "loss_profile" in loss_dict
+        assert "loss_ray_angle" in loss_dict
 
     def test_loss_infocus_scalar(self, sample_singlet_lens):
         """loss_infocus returns a scalar >= 0."""
@@ -70,30 +75,26 @@ class TestLossFunctions:
         assert loss.dim() == 0
         assert loss.item() >= 0
 
-    def test_loss_surface_scalar(self, sample_singlet_lens):
-        """loss_surface returns a scalar tensor."""
+    def test_loss_profile_scalar(self, sample_singlet_lens):
+        """loss_profile returns a scalar tensor >= 0."""
         lens = sample_singlet_lens
         lens.init_constraints()
-        loss = lens.loss_surface()
-        assert isinstance(loss, torch.Tensor)
-        assert loss.dim() == 0
-
-    def test_loss_intersec_scalar(self, sample_singlet_lens):
-        """loss_intersec returns a scalar tensor."""
-        lens = sample_singlet_lens
-        lens.init_constraints()
-        loss = lens.loss_intersec()
-        assert isinstance(loss, torch.Tensor)
-        assert loss.dim() == 0
-
-    def test_loss_thickness_scalar(self, sample_singlet_lens):
-        """loss_thickness returns a scalar >= 0."""
-        lens = sample_singlet_lens
-        lens.init_constraints()
-        loss = lens.loss_thickness()
+        loss = lens.loss_profile()
         assert isinstance(loss, torch.Tensor)
         assert loss.dim() == 0
         assert loss.item() >= 0
+
+    def test_loss_bound_returns_tuple(self, sample_singlet_lens):
+        """loss_bound returns (loss_clearance, loss_envelope), both scalar >= 0."""
+        lens = sample_singlet_lens
+        lens.init_constraints()
+        loss_clearance, loss_envelope = lens.loss_bound()
+        assert isinstance(loss_clearance, torch.Tensor)
+        assert isinstance(loss_envelope, torch.Tensor)
+        assert loss_clearance.dim() == 0
+        assert loss_envelope.dim() == 0
+        assert loss_clearance.item() >= 0
+        assert loss_envelope.item() >= 0
 
     def test_loss_ray_angle_scalar(self, sample_singlet_lens):
         """loss_ray_angle returns a scalar tensor."""
