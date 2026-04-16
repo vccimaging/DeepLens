@@ -1,39 +1,13 @@
-# Network API Reference
-
-The `deeplens.network` module provides neural networks for PSF prediction (surrogates) and image reconstruction, plus loss functions for training.
-
----
-
-## Surrogate Networks
+# Surrogate Networks API Reference
 
 Neural networks that learn to predict PSFs from lens parameters, replacing expensive ray tracing during training.
 
-::: deeplens.network.MLP
-
-::: deeplens.network.MLPConv
-
-::: deeplens.network.surrogate.siren.Siren
-
-::: deeplens.network.ModulateSiren
-
 ---
 
-## Reconstruction Networks
+::: deeplens.surrogate.MLP
 
-Image restoration networks that recover a clean image from a degraded (aberrated) sensor capture.
+::: deeplens.surrogate.MLPConv
 
-::: deeplens.network.NAFNet
+::: deeplens.surrogate.siren.Siren
 
-::: deeplens.network.UNet
-
-::: deeplens.network.Restormer
-
----
-
-## Loss Functions
-
-::: deeplens.network.PerceptualLoss
-
-::: deeplens.network.PSNRLoss
-
-::: deeplens.network.SSIMLoss
+::: deeplens.surrogate.ModulateSiren

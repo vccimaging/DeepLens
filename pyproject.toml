@@ -46,9 +46,9 @@ dependencies = [
     "transformers>=4.30.0",
     "lpips>=0.1.4",
     "einops>=0.7.0",
-    "timm>=0.9.0",
+
     "tqdm>=4.65.0",
-    "wandb>=0.15.0",
+
 ]
 
 [project.optional-dependencies]
@@ -72,7 +72,7 @@ Issues = "https://github.com/singer-yang/DeepLens/issues"
 Changelog = "https://github.com/singer-yang/DeepLens/releases"
 
 [tool.setuptools.package-data]
-deeplens = ["optics/material/*.AGF", "optics/material/*.json"]
+deeplens = ["material/*.AGF", "material/*.json"]
 
 [tool.pytest.ini_options]
 markers = [

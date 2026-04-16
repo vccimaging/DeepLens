@@ -114,7 +114,7 @@ def sample_image_small(device_auto):
 @pytest.fixture(scope="function")
 def sample_ray(device_auto):
     """Create a sample ray for testing."""
-    from deeplens.optics.light import Ray
+    from deeplens.light import Ray
 
     o = torch.tensor([[0.0, 0.0, -100.0]], device=device_auto)
     d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
@@ -125,7 +125,7 @@ def sample_ray(device_auto):
 @pytest.fixture(scope="function")
 def sample_rays_batch(device_auto):
     """Create a batch of rays for testing."""
-    from deeplens.optics.light import Ray
+    from deeplens.light import Ray
 
     # Create 100 rays in a grid pattern
     n = 10
@@ -184,7 +184,7 @@ def sample_hybridlens(device_auto):
 def sample_diffraclens():
     """Create a diffractive lens for testing."""
     from deeplens import DiffractiveLens
-    from deeplens.optics.diffractive_surface import Fresnel
+    from deeplens.diffractive_surface import Fresnel
 
     old_dtype = torch.get_default_dtype()
     lens = DiffractiveLens()

@@ -1,6 +1,6 @@
 # DeepLens
 
-**DeepLens** is a differentiable optical lens simulator for (1) automated optical design, (2) end-to-end optics-vision co-design, and (3) photorealistic image simulation. It helps researchers build custom differentiable optical systems and computational imaging pipelines with minimal effort.
+**DeepLens** is a differentiable optical lens simulator for (1) automated optical design, (2) hybrid refractive-diffractive optics, and (3) end-to-end optics-algorithm design. It helps researchers build custom differentiable optical systems with minimal effort.
 
 <div style="text-align:center;">
     <img src="assets/logo.png"/>
@@ -20,18 +20,12 @@ lens = GeoLens(filename="./datasets/lenses/cellphone/cellphone80deg.json")
 lens.analysis(full_eval=True, render=True)
 ```
 
-## Mission
-
-1. Next-generation **optical design software** enhanced by differentiable optimization.
-2. Next-generation **computational cameras** integrating optical encoding with deep learning decoding.
-
 ## Features
 
 1. **Differentiable Optics.** DeepLens leverages gradient backpropagation and differentiable optimization, demonstrating outstanding optimization power compared to classical optical design.
 2. **Automated Lens Design.** Enables automated lens design using curriculum learning, optical regularization losses, and GPU acceleration.
 3. **Hybrid Refractive-Diffractive Optics.** Supports accurate simulation and optimization of hybrid refractive-diffractive lenses (e.g., DOEs, metasurfaces).
 4. **Accurate Image Simulation.** Delivers photorealistic, spatially-varying image simulations, verified against commercial software and real-world experiments.
-5. **Optics-Vision Co-Design.** Supports end-to-end differentiability from optics, sensor, and ISP to vision algorithms, enabling comprehensive optics-vision co-design.
 
 Additional features (available via collaboration):
 
@@ -39,6 +33,10 @@ Additional features (available via collaboration):
 2. **Non-Sequential Ray Tracing.** Includes a differentiable non-sequential ray tracing model for stray light analysis and optimization.
 3. **Kernel Acceleration.** Achieves >10x speedup and >90% GPU memory reduction with custom GPU kernels across NVIDIA and AMD platforms.
 4. **Distributed Optimization.** Supports distributed simulation and optimization for billions of rays and high-resolution (>100k x 100k) diffractive computations.
+
+## End-to-End Computational Imaging
+
+DeepLens serves as the differentiable optics engine in [**End2endImaging**](https://github.com/vccimaging/End2endImaging), an end-to-end differentiable computational imaging framework. End2endImaging integrates optics (DeepLens), sensor/ISP simulation, and neural reconstruction networks into a single PyTorch computation graph, enabling joint optimization of the entire camera pipeline.
 
 ## Applications
 
@@ -53,17 +51,7 @@ Fully automated lens design from scratch. Try it with [AutoLens](https://github.
     <img src="assets/autolens2.gif" alt="AutoLens" height="270px"/>
 </div>
 
-#### 2. End-to-End lens design
-
-Lens-network co-design from scratch using final images (or classification/detection/segmentation) as objective.
-
-[![paper](https://img.shields.io/badge/NatComm-2024-orange)](https://www.nature.com/articles/s41467-024-50835-7)
-
-<div align="center">
-    <img src="assets/end2end.png" alt="End2End" height="150px"/>
-</div>
-
-#### 3. Implicit Lens Representation
+#### 2. Implicit Lens Representation
 
 A surrogate network for fast (aberration + defocus) image simulation.
 
@@ -73,7 +61,7 @@ A surrogate network for fast (aberration + defocus) image simulation.
     <img src="assets/implicit_net.png" alt="Implicit" height="150px"/>
 </div>
 
-#### 4. Hybrid Refractive-Difractive Lens Model
+#### 3. Hybrid Refractive-Diffractive Lens Model
 
 Design hybrid refractive-diffractive lenses with a new ray-wave model.
 
@@ -114,19 +102,27 @@ Run the demo code:
 python 0_hello_deeplens.py
 ```
 
-DeepLens repo is structured around three decoupled modules (``optics``, ``sensor``, and ``network``):
+DeepLens repo structure:
 
 ```
 DeepLens/
 │
 ├── deeplens/
-│   ├── optics/ (optics simulation and lens models)
-│   ├── sensor/ (sensor + ISP simulation)
-│   ├── network/ (surrogate and reconstruction networks)
-│   ├── camera.py (composes lens and sensor into a camera simulator)
-│   └── ...
+│   ├── geolens.py          (multi-element refractive lens)
+│   ├── hybridlens.py       (refractive + diffractive hybrid lens)
+│   ├── diffraclens.py      (pure diffractive lens)
+│   ├── paraxiallens.py     (thin-lens model)
+│   ├── psfnetlens.py       (neural surrogate lens)
+│   ├── geometric_surface/  (spheric, aspheric, aperture, etc.)
+│   ├── diffractive_surface/(DOE surfaces)
+│   ├── phase_surface/      (phase-only surfaces)
+│   ├── light/              (Ray, ComplexWave)
+│   ├── material/           (glass catalogs)
+│   ├── imgsim/             (PSF convolution, monte carlo)
+│   ├── geolens_pkg/        (eval, optim, vis, io mixins)
+│   └── surrogate/          (MLP, Siren neural surrogates)
 │
-├── 0_hello_deeplens.py (code tutorials)
+├── 0_hello_deeplens.py     (code tutorials)
 ├── ...
 └── write_your_own_code.py
 ```

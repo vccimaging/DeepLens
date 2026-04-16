@@ -15,8 +15,8 @@ import yaml
 from torchvision.utils import save_image
 from tqdm import tqdm
 
-from deeplens.optics import HybridLens
-from deeplens.optics.loss import PSFLoss
+from deeplens import HybridLens
+from deeplens.loss import PSFLoss
 from deeplens.utils import set_logger, set_seed
 
 

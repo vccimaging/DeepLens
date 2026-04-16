@@ -126,7 +126,7 @@ class TestSampleRays:
 
     def test_sample_ring_arm_rays_returns_ray(self, sample_singlet_lens):
         """sample_ring_arm_rays returns a Ray object with correct shape."""
-        from deeplens.optics.light import Ray
+        from deeplens.light import Ray
 
         lens = sample_singlet_lens
         ray = lens.sample_ring_arm_rays(num_ring=4, num_arm=4, spp=64)

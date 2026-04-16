@@ -1,5 +1,5 @@
-from deeplens.optics import GeoLens
-from deeplens.optics.geometric_surface import Prism
+from deeplens import GeoLens
+from deeplens.geometric_surface import Prism
 
 # A thin lens
 lens = GeoLens(filename="./thinlens.json")

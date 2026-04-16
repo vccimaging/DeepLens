@@ -43,7 +43,7 @@ from .light import AngularSpectrumMethod
 class HybridLens(Lens):
     """Hybrid refractive-diffractive lens using a differentiable ray–wave model.
 
-    Combines a :class:`~deeplens.optics.geolens.GeoLens` (refractive module)
+    Combines a :class:`~deeplens.geolens.GeoLens` (refractive module)
     with a diffractive optical element (DOE) placed behind it.  The pipeline
     is:
 

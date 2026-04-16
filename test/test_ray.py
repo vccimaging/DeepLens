@@ -5,8 +5,8 @@ Tests for deeplens/optics/ray.py - Ray class operations.
 import pytest
 import torch
 
-from deeplens.optics.light import Ray
-from deeplens.optics.config import DEFAULT_WAVE
+from deeplens.light import Ray
+from deeplens.config import DEFAULT_WAVE
 
 
 class TestRayInit:

@@ -443,8 +443,7 @@ class Lens(DeepObj):
         """Differentiable image simulation for a 2D (flat) scene.
 
         Performs only the optical component of image simulation and is fully
-        differentiable.  Sensor noise is handled separately by the
-        :class:`~deeplens.camera.Camera` class.
+        differentiable.
 
         For incoherent imaging the intensity PSF is convolved with the
         object-space image.  For coherent imaging the complex PSF is convolved

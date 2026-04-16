@@ -5,8 +5,8 @@ Tests for deeplens/paraxiallens.py - Paraxial lens model.
 import pytest
 import torch
 
-from deeplens.optics import ParaxialLens
-from deeplens.optics.config import DEPTH
+from deeplens import ParaxialLens
+from deeplens.config import DEPTH
 
 
 class TestParaxialLensInit:
