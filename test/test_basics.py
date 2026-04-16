@@ -16,8 +16,6 @@ from deeplens.optics.config import (
     SPP_PSF,
     WAVE_RGB,
 )
-from deeplens.optics.utils import wave_rgb
-
 
 class TestConstants:
     """Test default constants are properly defined."""
@@ -75,32 +73,6 @@ class TestInitDevice:
             assert device.type == "cuda"
         else:
             assert device.type == "cpu"
-
-
-class TestWaveRgb:
-    """Test random wavelength sampling."""
-
-    def test_wave_rgb_returns_three(self):
-        """wave_rgb should return 3 wavelengths."""
-        waves = wave_rgb()
-        assert len(waves) == 3
-
-    def test_wave_rgb_order(self):
-        """wave_rgb should return [R, G, B] in decreasing wavelength order."""
-        waves = wave_rgb()
-        assert waves[0] > waves[1] > waves[2]
-
-    def test_wave_rgb_range(self):
-        """All wavelengths should be in visible range."""
-        waves = wave_rgb()
-        for w in waves:
-            assert 0.4 < w < 0.75
-
-    def test_wave_rgb_randomness(self):
-        """wave_rgb should produce different results (probabilistic)."""
-        results = [tuple(wave_rgb()) for _ in range(10)]
-        # At least some should be different
-        assert len(set(results)) > 1
 
 
 class TestDeepObj:

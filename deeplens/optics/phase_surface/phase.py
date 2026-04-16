@@ -368,6 +368,15 @@ class Phase(DeepObj):
         optimizer = torch.optim.Adam(params)
         return optimizer
 
+    def update_r(self, r):
+        """Update surface radius. A flat phase surface has no geometric
+        height constraint, and because the polynomial is normalized by a
+        fixed ``norm_radii``, phase coefficients do not need rescaling.
+        """
+        self.r = float(r)
+        self.w = self.r * float(np.sqrt(2))
+        self.h = self.r * float(np.sqrt(2))
+
     # =========================================
     # Visualization
     # =========================================

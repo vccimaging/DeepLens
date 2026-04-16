@@ -16,7 +16,7 @@ from ..base import DeepObj
 class Ray(DeepObj):
     """Batched ray bundle for optical simulation.
 
-    Stores ray origins, directions, wavelength, validity mask, energy, obliquity,
+    Stores ray origins, directions, wavelength, validity mask, energy, bend penalty,
     and (in coherent mode) optical path length.  All tensor attributes share the
     same batch shape ``(*batch_size, num_rays)``.
 
@@ -26,7 +26,7 @@ class Ray(DeepObj):
         wvln (torch.Tensor): Wavelength scalar [µm].
         is_valid (torch.Tensor): Binary validity mask, shape ``(*batch, num_rays)``.
         en (torch.Tensor): Energy weight, shape ``(*batch, num_rays, 1)``.
-        obliq (torch.Tensor): Obliquity factor, shape ``(*batch, num_rays, 1)``.
+        bend_penalty (torch.Tensor): Accumulated per-surface bend penalty, shape ``(*batch, num_rays, 1)``.
         opl (torch.Tensor): Optical path length (coherent mode only),
             shape ``(*batch, num_rays, 1)`` [mm].
         coherent (bool): Whether OPL tracking is enabled.
@@ -55,7 +55,7 @@ class Ray(DeepObj):
         # Auxiliary ray parameters - create directly on device
         self.is_valid = torch.ones(self.shape, device=device)
         self.en = torch.ones((*self.shape, 1), device=device)
-        self.obliq = torch.ones((*self.shape, 1), device=device)
+        self.bend_penalty = torch.zeros((*self.shape, 1), device=device)
 
         # Coherent ray tracing
         self.coherent = coherent  # bool
@@ -143,7 +143,7 @@ class Ray(DeepObj):
         ray.wvln = self.wvln.clone().to(target_device)
         ray.is_valid = self.is_valid.clone().to(target_device)
         ray.en = self.en.clone().to(target_device)
-        ray.obliq = self.obliq.clone().to(target_device)
+        ray.bend_penalty = self.bend_penalty.clone().to(target_device)
         ray.opl = self.opl.clone().to(target_device)
 
         ray.coherent = self.coherent
@@ -164,7 +164,7 @@ class Ray(DeepObj):
         self.is_valid = self.is_valid.squeeze(dim)
         self.en = self.en.squeeze(dim)
         self.opl = self.opl.squeeze(dim)
-        self.obliq = self.obliq.squeeze(dim)
+        self.bend_penalty = self.bend_penalty.squeeze(dim)
         return self
 
     def unsqueeze(self, dim=None):
@@ -179,5 +179,5 @@ class Ray(DeepObj):
         self.is_valid = self.is_valid.unsqueeze(dim)
         self.en = self.en.unsqueeze(dim)
         self.opl = self.opl.unsqueeze(dim)
-        self.obliq = self.obliq.unsqueeze(dim)
+        self.bend_penalty = self.bend_penalty.unsqueeze(dim)
         return self

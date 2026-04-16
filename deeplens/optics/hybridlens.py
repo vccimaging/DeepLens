@@ -36,7 +36,7 @@ from .diffractive_surface import (
 from .geometric_surface import Plane
 from .imgsim import forward_integral
 from .phase_surface import Phase
-from .utils import diff_float
+from .ops import diff_float
 from .light import AngularSpectrumMethod
 
 

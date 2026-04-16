@@ -282,12 +282,22 @@ class Surface(DeepObj):
         valid = (k >= 0).squeeze(-1) & (ray.is_valid > 0)
         k = k * valid.unsqueeze(-1)
 
-        # Update ray direction and obliquity
+        # Update ray direction and bend penalty
         new_d = eta * ray.d + (eta * dot_product - torch.sqrt(k + EPSILON)) * normal_vec
-        # ==> Update obliq term to penalize steep rays in the later optimization.
-        obliq = torch.sum(new_d * ray.d, axis=-1).unsqueeze(-1)
-        obliq_update_mask = valid.unsqueeze(-1) & (obliq < 0.5)
-        ray.obliq = torch.where(obliq_update_mask, obliq * ray.obliq, ray.obliq)
+        # ==> Accumulate soft per-surface bend penalty.
+        # cos_bend = cos(angle between incoming and outgoing ray direction).
+        # Penalty is softplus((cos_gate - cos_bend) / bend_scale) so it rises
+        # smoothly once the bend grows beyond bend_gate_deg and stays near zero
+        # for mild refractions.  Normalization by bend_scale (= 1 - cos_gate)
+        # keeps the gradient magnitude consistent with the CRA loss in optim.py.
+        # Summing per-surface values gives an additive, uncoupled penalty
+        # focused on the worst bends.
+        bend_gate_deg = 30.0
+        cos_gate = math.cos(math.radians(bend_gate_deg))
+        bend_scale = 1.0 - cos_gate  # cos-headroom; matches CRA normalization
+        cos_bend = torch.sum(new_d * ray.d, axis=-1).unsqueeze(-1)
+        per_surf_penalty = F.softplus((cos_gate - cos_bend) / bend_scale, beta=10.0)
+        ray.bend_penalty = ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
         # ==>
         ray.d = torch.where(valid.unsqueeze(-1), new_d, ray.d)
 
@@ -660,8 +670,8 @@ class Surface(DeepObj):
 
         This function is used in lens setup plotting and lens self-intersection detection.
         """
-        x = x if torch.is_tensor(x) else torch.tensor(x).to(self.device)
-        y = y if torch.is_tensor(y) else torch.tensor(y).to(self.device)
+        x = x if torch.is_tensor(x) else torch.tensor(x, device=self.device)
+        y = y if torch.is_tensor(y) else torch.tensor(y, device=self.device)
         if valid_check:
             return self.sag(x, y) + self.d
         else:
@@ -672,8 +682,8 @@ class Surface(DeepObj):
 
         This function is currently not used.
         """
-        x = x if torch.is_tensor(x) else torch.tensor(x).to(self.device)
-        y = y if torch.is_tensor(y) else torch.tensor(y).to(self.device)
+        x = x if torch.is_tensor(x) else torch.tensor(x, device=self.device)
+        y = y if torch.is_tensor(y) else torch.tensor(y, device=self.device)
         return self.sag(x, y).item()
 
     # =====================================================================

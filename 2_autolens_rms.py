@@ -17,7 +17,7 @@ import yaml
 from tqdm import tqdm
 
 from deeplens.optics import GeoLens
-from deeplens.optics.geolens_pkg.utils import create_lens
+from deeplens.optics.geolens_pkg import create_lens
 from deeplens.optics.config import DEPTH, EPSILON, WAVE_RGB
 from deeplens.utils import create_video_from_images, set_logger, set_seed
 
@@ -72,7 +72,6 @@ def curriculum_design(
     iterations=5000,
     test_per_iter=100,
     optim_mat=False,
-    match_mat=False,
     shape_control=True,
     result_dir="./results",
 ):
@@ -123,9 +122,6 @@ def curriculum_design(
                     if shape_control:
                         self.correct_shape()
                         # self.refocus()
-
-                    if optim_mat and match_mat:
-                        self.match_materials()
 
                 # Save lens
                 self.write_lens_json(f"{result_dir}/iter{i}.json")
@@ -237,7 +233,6 @@ if __name__ == "__main__":
         iterations=2000,
         test_per_iter=50,
         optim_mat=True,
-        match_mat=False,
         shape_control=True,
         result_dir=args["result_dir"],
     )

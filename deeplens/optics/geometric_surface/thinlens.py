@@ -28,10 +28,10 @@ class ThinLens(Plane):
             is_square=is_square,
             device=device,
         )
-        self.f = torch.tensor(f)
+        self.f = torch.tensor(f, device=device)
 
     def set_f(self, f):
-        self.f = torch.tensor(f).to(self.device)
+        self.f = torch.tensor(f, device=self.device)
 
     @classmethod
     def init_from_dict(cls, surf_dict):

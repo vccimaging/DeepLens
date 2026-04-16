@@ -568,7 +568,7 @@ def crop_psf_map(psf_map, grid, ks_crop, psf_center=None):
     ks = int(H / grid)
     assert ks % 2 == 1, "PSF kernel size should be odd"
 
-    psf_map_crop = torch.zeros((C, grid * ks_crop, grid * ks_crop)).to(psf_map.device)
+    psf_map_crop = torch.zeros((C, grid * ks_crop, grid * ks_crop), device=psf_map.device)
     for i in range(grid):
         for j in range(grid):
             psf = psf_map[:, i * ks : (i + 1) * ks, j * ks : (j + 1) * ks]
@@ -781,7 +781,7 @@ def solve_psf_map(img_org, img_render, ks=PSF_KS, grid=10):
         "Image size should be divisible by grid"
     )
     patch_size = int(img_org.shape[-1] / grid)
-    psf_map = torch.zeros((3, grid * ks, grid * ks)).to(img_org.device)
+    psf_map = torch.zeros((3, grid * ks, grid * ks), device=img_org.device)
 
     for i in range(grid):
         for j in range(grid):

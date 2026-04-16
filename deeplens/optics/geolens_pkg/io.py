@@ -25,6 +25,7 @@ import math
 
 import torch
 
+from ..config import WAVE_RGB
 from ..geometric_surface import Aperture, Aspheric, Cubic, Plane, Spheric, ThinLens
 from ..phase_surface import Phase
 
@@ -220,7 +221,7 @@ class GeoLensIO:
     GCAT OSAKAGASCHEMICAL MISC
     XFLN 0. 0. 0.
     YFLN 0.0 {0.707 * self.rfov_eff * 57.3} {0.99 * self.rfov_eff * 57.3}
-    WAVL 0.4861327 0.5875618 0.6562725
+    WAVL {WAVE_RGB[2]:.7f} {WAVE_RGB[1]:.7f} {WAVE_RGB[0]:.7f}
     RAIM 0 0 1 1 0 0 0 0 0
     PUSH 0 0 0 0 0 0
     SDMA 0 1 0
@@ -753,8 +754,7 @@ class GeoLensIO:
             filename (str, optional): Path to the JSON lens file. Defaults to './test.json'.
 
         Note:
-            After loading, the lens is moved to self.device and post_computation is called
-            to calculate derived properties.
+            After loading, the lens is moved to self.device.
         """
         self.surfaces = []
         self.materials = []
@@ -819,7 +819,6 @@ class GeoLensIO:
         # Set sensor size and resolution
         sensor_res = data.get("sensor_res", (2000, 2000))
         self.set_sensor_res(sensor_res=sensor_res)
-        self.post_computation()
 
     def write_lens_json(self, filename="./test.json"):
         """Write the lens to a JSON file.

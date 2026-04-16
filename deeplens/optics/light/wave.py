@@ -16,9 +16,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.fft import fft2, fftshift, ifft2, ifftshift
-from torchvision.utils import save_image
-from tqdm import tqdm
-
 from ..config import DELTA
 from ..base import DeepObj
 
@@ -335,6 +332,7 @@ class ComplexWave(DeepObj):
 
     def save_npz(self, filepath="./wavefield.npz"):
         """Save the complex wave field to a npz file."""
+        from torchvision.utils import save_image
         # Save data
         np.savez_compressed(
             filepath,
@@ -356,6 +354,7 @@ class ComplexWave(DeepObj):
 
     def show(self, save_name=None, data="irr"):
         """Save the field as an image."""
+        from torchvision.utils import save_image
         cmap = "gray"
         if data == "irr":
             value = self.u.detach().abs() ** 2
@@ -770,6 +769,7 @@ def RayleighSommerfeldIntegral(
         u1_b = u1.unsqueeze(-1).unsqueeze(-1)  # [H1, W1, 1, 1]
 
         # Patch computation
+        from tqdm import tqdm
         for i in tqdm(range(0, x2.shape[0], patch_size)):
             for j in range(0, x2.shape[1], patch_size):
                 # Target patch

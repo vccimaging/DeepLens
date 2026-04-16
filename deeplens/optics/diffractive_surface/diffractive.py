@@ -15,7 +15,7 @@ from torchvision.utils import save_image
 from ..config import EPSILON
 from ..base import DeepObj
 from ..material import Material
-from ..utils import diff_quantize
+from ..ops import diff_quantize
 
 
 class DiffractiveSurface(DeepObj):

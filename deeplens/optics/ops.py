@@ -1,4 +1,10 @@
-import numpy as np
+"""Pure differentiable PyTorch operations used across the optics module.
+
+Deliberately kept narrow: only tensor ops whose gradients must flow through
+the lens simulation belong here. Experiment helpers (logging, EDoF utilities,
+etc.) live in deeplens/utils.py.
+"""
+
 import torch
 import torch.nn.functional as F
 
@@ -99,26 +105,6 @@ def grid_sample_xy(
         padding_mode=padding_mode,
         align_corners=align_corners,
     )
-
-
-# ==================================
-# EDoF
-# ==================================
-def foc_dist_balanced(d1, d2):
-    """When focus to foc_dist, d1 and d2 will have the same CoC.
-
-    Reference: https://en.wikipedia.org/wiki/Circle_of_confusion
-    """
-    foc_dist = 2 * d1 * d2 / (d1 + d2)
-    return foc_dist
-
-
-def wave_rgb():
-    """Randomly select one wave from R, G, B spectrum and return the wvln list (length 3)"""
-    wave_r = np.random.choice([0.620, 0.660, 0.700])
-    wave_g = np.random.choice([0.500, 0.530, 0.560])
-    wave_b = np.random.choice([0.450, 0.470, 0.490])
-    return [wave_r, wave_g, wave_b]
 
 
 # ================================

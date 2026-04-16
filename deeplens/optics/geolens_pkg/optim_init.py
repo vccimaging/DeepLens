@@ -142,7 +142,7 @@ def create_lens(
 
     # Lens sensor (dummy sensor resolution)
     lens = lens.to(lens.device)
-    lens.d_sensor = torch.tensor(thickness).to(lens.device)
+    lens.d_sensor = torch.tensor(thickness, device=lens.device)
     lens.r_sensor = imgh / 2
     lens.set_sensor_res(sensor_res=(2000, 2000))
 

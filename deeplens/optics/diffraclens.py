@@ -28,7 +28,7 @@ from .diffractive_surface import (
     Zernike,
 )
 from .imgsim import conv_psf
-from .utils import diff_float
+from .ops import diff_float
 from .light import ComplexWave
 
 

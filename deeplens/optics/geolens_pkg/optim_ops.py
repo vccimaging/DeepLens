@@ -14,7 +14,6 @@ Provides methods for managing optical surface geometry:
 
 import logging
 
-import numpy as np
 import torch
 
 from ..config import SPP_CALC
@@ -422,10 +421,8 @@ class GeoLensSurfOps:
         # ------------------------------------------------------------------
         if self.rfov is not None:
             fov_deg = self.rfov * 180 / torch.pi
-        else:
-            fov = np.arctan(self.r_sensor / self.foclen)
-            fov_deg = float(fov) * 180 / torch.pi
-            print(f"Using fov_deg: {fov_deg} during surface pruning.")
+        elif self.rfov_eff is not None:
+            fov_deg = self.rfov_eff * 180 / torch.pi
 
         fov_y = [f * fov_deg / 10 for f in range(0, 11)]
         ray = self.sample_from_fov(
@@ -550,51 +547,22 @@ class GeoLensSurfOps:
 
         Applies correction rules to ensure valid lens geometry:
             1. Move the first surface to z = 0.0
-            2. Fix aperture distance if aperture is at the front
-            3. Prune all surfaces to allow valid rays through
+            2. Prune all surfaces to allow valid rays through
 
         Args:
             expand_factor (float, optional): Height expansion factor for surface pruning.
                 If None, auto-selects based on lens type. Defaults to None.
             mounting_margin (float, optional): Absolute mounting margin [mm] for
                 surface pruning.  Passed through to :meth:`prune_surf`.
-
-        Returns:
-            bool: True if any shape corrections were made, False otherwise.
         """
-        aper_idx = self.aper_idx
-        optim_surf_range = self.find_diff_surf()
-        shape_changed = False
-
         # Rule 1: Move the first surface to z = 0.0
         move_dist = self.surfaces[0].d.item()
         for surf in self.surfaces:
             surf.d -= move_dist
         self.d_sensor -= move_dist
 
-        # Rule 2: Fix aperture distance to the first surface if aperture in the front.
-        if aper_idx == 0:
-            d_aper = 0.05
-
-            # If the first surface is concave, use the maximum negative sag.
-            aper_r = torch.tensor(self.surfaces[aper_idx].r, device=self.device)
-            sag1 = -self.surfaces[aper_idx + 1].sag(aper_r, 0).item()
-
-            if sag1 > 0:
-                d_aper += sag1
-
-            # Update position of all surfaces.
-            delta_aper = self.surfaces[1].d.item() - d_aper
-            for i in optim_surf_range:
-                self.surfaces[i].d -= delta_aper
-            self.d_sensor -= delta_aper
-
-        # Rule 4: Prune all surfaces
+        # Rule 2: Prune all surfaces
         self.prune_surf(expand_factor=expand_factor, mounting_margin=mounting_margin)
-
-        if shape_changed:
-            print("Surface shape corrected.")
-        return shape_changed
 
     @torch.no_grad()
     def match_materials(self, mat_table="CDGM"):

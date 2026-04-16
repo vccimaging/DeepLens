@@ -10,6 +10,7 @@ Technical Paper:
     Xinge Yang, Qiang Fu, and Wolfgang Heidrich, "Curriculum learning for ab initio deep learned refractive optics," Nature Communications 2024.
 """
 
+import logging
 import math
 
 import numpy as np
@@ -186,6 +187,7 @@ class GeoLens(
             - Entrance and exit pupil positions and radii
             - Field of view (FoV) in horizontal, vertical, and diagonal directions
             - F-number
+            - Lens design constraints (edge/center thickness bounds, etc.)
 
         Note:
             This method should be called after any changes to the lens geometry.
@@ -193,6 +195,7 @@ class GeoLens(
         self.calc_foclen()
         self.calc_pupil()
         self.calc_fov()
+        self.init_constraints()
 
     def __call__(self, ray):
         """Trace rays through the lens system.
@@ -296,7 +299,7 @@ class GeoLens(
             Ray: Ray object with shape ``[num_field, num_rays, 3]``.
         """
         device = self.device
-        fov_deg = float(np.rad2deg(self.rfov))
+        fov_deg = self.rfov * 180 / torch.pi
         fov_list = torch.linspace(0, fov_deg, num_field, device=device)
 
         if direction == "y":
@@ -383,33 +386,42 @@ class GeoLens(
         return rays
 
     @torch.no_grad()
-    def sample_from_points_by_fov(
+    def sample_from_fov(
         self,
         fov_x=[0.0],
         fov_y=[0.0],
-        depth=DEPTH,
-        num_rays=SPP_PSF,
+        depth=float("inf"),
+        num_rays=SPP_CALC,
         wvln=DEFAULT_WAVE,
+        entrance_pupil=True,
         scale_pupil=1.0,
     ):
-        """Sample point-source rays specified by field angles and depth.
+        """Sample rays from object space at given field angles.
 
-        Converts field angles to physical object-space coordinates, then
-        delegates to :meth:`sample_from_points`.
+        For infinite depth, generates collimated parallel rays: origins are
+        distributed on the entrance pupil and all rays in a field share the
+        same direction determined by the FOV angle.
+
+        For finite depth, generates diverging point-source rays: the point
+        source position is determined by FOV angle and depth, and rays fan
+        out toward the entrance pupil.
 
         Args:
             fov_x (float or list): Field angle(s) in the xz plane (degrees).
             fov_y (float or list): Field angle(s) in the yz plane (degrees).
-            depth (float): Object distance in mm. Default: ``DEPTH``.
-            num_rays (int): Number of rays per field point. Default: SPP_PSF.
-            wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
-            scale_pupil (float): Scale factor for pupil radius. Default: 1.0.
+            depth (float): Object distance in mm. ``float('inf')`` for
+                collimated rays, finite for point-source rays.
+            num_rays (int): Number of rays per field point.
+            wvln (float): Wavelength in micrometers.
+            entrance_pupil (bool): If True, sample on entrance pupil;
+                otherwise on surface 0. Default: True.
+            scale_pupil (float): Scale factor for pupil radius.
 
         Returns:
-            Ray:
-                Rays with shape [..., num_rays, 3], where leading dims follow
-                the same scalar-squeeze convention as :meth:`sample_from_fov`.
+            Ray: Rays with shape ``[..., num_rays, 3]``, where leading dims
+                are squeezed when the corresponding fov input is scalar.
         """
+        # Track which inputs were scalar for output shape
         x_scalar = isinstance(fov_x, (float, int))
         y_scalar = isinstance(fov_y, (float, int))
         if x_scalar:
@@ -420,110 +432,50 @@ class GeoLens(
         fov_x_rad = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
         fov_y_rad = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
         fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
-        x = torch.tan(fov_x_grid) * depth
-        y = torch.tan(fov_y_grid) * depth
-        z = torch.full_like(x, depth)
-        points = torch.stack((x, y, z), dim=-1)  # [len(fov_y), len(fov_x), 3]
 
-        # Squeeze scalar dims before sample_from_points so the Ray is
-        # constructed with the right shape (avoids post-hoc attribute edits).
-        if x_scalar:
-            points = points.squeeze(-2)
-        if y_scalar:
-            points = points.squeeze(0)
-
-        return self.sample_from_points(
-            points=points, num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil
-        )
-
-    @torch.no_grad()
-    def sample_from_fov(
-        self,
-        fov_x=[0.0],
-        fov_y=[0.0],
-        depth=float("inf"),
-        num_rays=SPP_CALC,
-        wvln=DEFAULT_WAVE,
-        entrance_pupil=True,
-        prop_to=-1.0,
-        scale_pupil=1.0,
-    ):
-        """Sample rays from object space at given field angles.
-
-        Unified entry point for both collimated (infinite-depth) and diverging
-        (finite-depth) ray bundles specified by field-of-view angles.
-
-        Args:
-            fov_x (float or list): Field angle(s) in the xz plane (degrees). Default: [0.0].
-            fov_y (float or list): Field angle(s) in the yz plane (degrees). Default: [0.0].
-            depth (float): Object distance in mm. ``float('inf')`` for collimated
-                rays, finite value for point-source rays. Default: ``float('inf')``.
-            num_rays (int): Number of rays per field point. Default: SPP_CALC.
-            wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
-            entrance_pupil (bool): If True, sample origins on entrance pupil;
-                otherwise, on surface 0. Only used for infinite depth. Default: True.
-            prop_to (float): Propagation depth in z (only for infinite depth). Default: -1.0.
-            scale_pupil (float): Scale factor for pupil radius. Default: 1.0.
-
-        Returns:
-            Ray:
-                Rays with shape [..., num_rays, 3], where leading dims are:
-                - both fov_x and fov_y scalars: [num_rays, 3]
-                - fov_x scalar: [len(fov_y), num_rays, 3]
-                - fov_y scalar: [len(fov_x), num_rays, 3]
-                - both lists: [len(fov_y), len(fov_x), num_rays, 3]
-                Ordered as (u, v).
-        """
-        # Finite depth: delegate to sample_from_points_by_fov
-        if depth != float("inf"):
-            return self.sample_from_points_by_fov(
-                fov_x=fov_x, fov_y=fov_y, depth=depth,
-                num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil,
-            )
-
-        # --- Infinite depth: collimated parallel rays ---
-        # Remember whether inputs were scalar
-        x_scalar = isinstance(fov_x, (float, int))
-        y_scalar = isinstance(fov_y, (float, int))
-
-        # Normalize to lists for internal processing
-        if x_scalar:
-            fov_x = [float(fov_x)]
-        if y_scalar:
-            fov_y = [float(fov_y)]
-
-        fov_x = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
-        fov_y = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
-
-        # Sample ray origins on the pupil
+        # Pupil position and radius
         if entrance_pupil:
             pupilz, pupilr = self.get_entrance_pupil()
-            pupilr *= scale_pupil
         else:
-            pupilz, pupilr = 0.0, self.surfaces[0].r
-            pupilr *= scale_pupil
+            pupilz, pupilr = self.surfaces[0].d.item(), self.surfaces[0].r
+        pupilr *= scale_pupil
 
-        ray_o = self.sample_circle(
-            r=pupilr, z=pupilz, shape=[len(fov_y), len(fov_x), num_rays]
-        )
+        if depth == float("inf"):
+            # Collimated rays: origins on pupil, uniform direction per field
+            ray_o = self.sample_circle(
+                r=pupilr, z=pupilz, shape=[len(fov_y), len(fov_x), num_rays]
+            )
+            dx = torch.tan(fov_x_grid).unsqueeze(-1).expand_as(ray_o[..., 0])
+            dy = torch.tan(fov_y_grid).unsqueeze(-1).expand_as(ray_o[..., 1])
+            dz = torch.ones_like(ray_o[..., 2])
+            ray_d = torch.stack((dx, dy, dz), dim=-1)
 
-        # Sample ray directions
-        fov_x_grid, fov_y_grid = torch.meshgrid(fov_x, fov_y, indexing="xy")
-        dx = torch.tan(fov_x_grid).unsqueeze(-1).expand_as(ray_o[..., 0])
-        dy = torch.tan(fov_y_grid).unsqueeze(-1).expand_as(ray_o[..., 1])
-        dz = torch.ones_like(ray_o[..., 2])
-        ray_d = torch.stack((dx, dy, dz), dim=-1)
+            if x_scalar:
+                ray_o = ray_o.squeeze(1)
+                ray_d = ray_d.squeeze(1)
+            if y_scalar:
+                ray_o = ray_o.squeeze(0)
+                ray_d = ray_d.squeeze(0)
 
-        # Squeeze singleton FOV dims only if the original input was scalar
-        if x_scalar:
-            ray_o = ray_o.squeeze(1)
-            ray_d = ray_d.squeeze(1)
-        if y_scalar:
-            ray_o = ray_o.squeeze(0)
-            ray_d = ray_d.squeeze(0)
+            rays = Ray(ray_o, ray_d, wvln, device=self.device)
+            rays.prop_to(-1.0)
 
-        rays = Ray(ray_o, ray_d, wvln, device=self.device)
-        rays.prop_to(prop_to)
+        else:
+            # Point-source rays: origin at object point, fan toward pupil
+            x = torch.tan(fov_x_grid) * depth
+            y = torch.tan(fov_y_grid) * depth
+            z = torch.full_like(x, depth)
+            points = torch.stack((x, y, z), dim=-1)
+
+            if x_scalar:
+                points = points.squeeze(-2)
+            if y_scalar:
+                points = points.squeeze(0)
+
+            rays = self.sample_from_points(
+                points=points, num_rays=num_rays, wvln=wvln, scale_pupil=scale_pupil
+            )
+
         return rays
 
     @torch.no_grad()
@@ -550,7 +502,7 @@ class GeoLens(
             torch.linspace(h / 2, -h / 2, H + 1, device=device,)[1:],
             indexing="xy",
         )
-        z1 = torch.full_like(x1, self.d_sensor)
+        z1 = torch.full_like(x1, self.d_sensor.item())
 
         # Sample second points on the pupil
         # sensor_res is (W, H) but meshgrid with indexing="xy" gives (H, W) arrays
@@ -1134,8 +1086,11 @@ class GeoLens(
         Calculates FoV using two methods:
             1. **Perspective projection** — from focal length and sensor size
                (effective FoV, ignoring distortion).
-            2. **Ray tracing** — traces rays from the sensor edge backwards to
-               determine the real FoV including distortion effects.
+            2. **Forward ray tracing** — sweeps FOV angles from object side,
+               traces to sensor, and finds the angle whose centroid image height
+               matches the sensor half-diagonal. This avoids the failure of the
+               old backward-tracing approach on wide-angle lenses where pupil
+               aberration at full field leaves zero valid rays.
 
         Updates:
             self.vfov (float): Vertical FoV in radians.
@@ -1158,36 +1113,37 @@ class GeoLens(
         self.dfov = 2 * math.atan(self.r_sensor / self.foclen)
         self.rfov_eff = self.dfov / 2  # effective (paraxial) half-diagonal FoV
 
-        # 2. Ray tracing to calculate real FoV (distortion-affected FoV)
-        # Sample rays from edge of sensor, shape [SPP_CALC, 3]
-        o1 = torch.zeros([SPP_CALC, 3])
-        o1 = torch.tensor([self.r_sensor, 0, self.d_sensor.item()]).repeat(SPP_CALC, 1)
+        # 2. Forward ray tracing to calculate real FoV (distortion-affected)
+        # Sweep FOV angles from object side, trace to sensor, and find which
+        # angle produces an image height matching r_sensor.
+        num_fov = 64
+        fov_lo = float(np.rad2deg(self.rfov_eff)) * 0.5
+        fov_hi = min(float(np.rad2deg(self.rfov_eff)) * 1.8, 89.0)
+        fov_samples = torch.linspace(fov_lo, fov_hi, num_fov, device=self.device)
 
-        # Sample second points on exit pupil
-        pupilz, pupilx = self.get_exit_pupil()
-        x2 = torch.linspace(-pupilx, pupilx, SPP_CALC)
-        z2 = torch.full_like(x2, pupilz)
-        y2 = torch.full_like(x2, 0)
-        o2 = torch.stack((x2, y2, z2), axis=-1)
+        ray = self.sample_from_fov(
+            fov_x=0.0, fov_y=fov_samples.tolist(), num_rays=256
+        )
+        ray = self.trace2sensor(ray)
 
-        # Ray tracing to object space
-        ray = Ray(o1, o2 - o1, device=self.device)
-        ray = self.trace2obj(ray)
+        # Centroid image height per FOV angle, shape [num_fov]
+        valid = ray.is_valid > 0  # [num_fov, num_rays]
+        masked_y = ray.o[..., 1] * valid
+        n_valid = valid.sum(dim=-1).clamp(min=1)
+        imgh = (masked_y.sum(dim=-1) / n_valid).abs()
 
-        # Compute output ray angle
-        tan_rfov = ray.d[..., 0] / ray.d[..., 2]
-        rfov = torch.atan(torch.sum(tan_rfov * ray.is_valid) / torch.sum(ray.is_valid))
-
-        # If calculation failed, use pinhole camera model to compute fov
-        if torch.isnan(rfov):
+        # Find the FOV angle whose image height is closest to r_sensor
+        has_valid = valid.sum(dim=-1) > 10
+        if has_valid.any():
+            imgh[~has_valid] = float("inf")
+            diff = (imgh - self.r_sensor).abs()
+            best_idx = diff.argmin().item()
+            rfov = fov_samples[best_idx].item() * math.pi / 180.0
+            self.rfov = rfov
+            self.real_dfov = 2 * rfov
+        else:
             self.rfov = self.rfov_eff
             self.real_dfov = self.dfov
-            print(
-                f"Failed to calculate distorted FoV by ray tracing, use effective FoV {self.rfov_eff} rad."
-            )
-        else:
-            self.rfov = rfov.item()
-            self.real_dfov = 2 * rfov.item()
 
         # 3. Compute 35mm equivalent focal length. 35mm sensor: 36mm * 24mm
         self.eqfl = 21.63 / math.tan(self.rfov_eff)
@@ -1399,12 +1355,12 @@ class GeoLens(
             aper_r = aper_surf.r
 
         if paraxial:
-            ray_o = torch.tensor([[DELTA_PARAXIAL, 0, aper_z]]).repeat(32, 1)
-            phi = torch.linspace(-0.01, 0.01, 32)
+            ray_o = torch.tensor([[DELTA_PARAXIAL, 0, aper_z]], device=self.device).repeat(32, 1)
+            phi = torch.linspace(-0.01, 0.01, 32, device=self.device)
         else:
-            ray_o = torch.tensor([[aper_r, 0, aper_z]]).repeat(SPP_CALC, 1)
+            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(SPP_CALC, 1)
             rfov = float(np.arctan(self.r_sensor / self.foclen))
-            phi = torch.linspace(-rfov / 2, rfov / 2, SPP_CALC)
+            phi = torch.linspace(-rfov / 2, rfov / 2, SPP_CALC, device=self.device)
 
         d = torch.stack(
             (torch.sin(phi), torch.zeros_like(phi), -torch.cos(phi)), axis=-1
@@ -1526,34 +1482,26 @@ class GeoLens(
         Args:
             fnum (float): target F-number.
         """
-        current_fnum = self.fnum
-        current_aper_r = self.surfaces[self.aper_idx].r
         target_pupil_r = self.foclen / fnum / 2
+        aper_r = self.surfaces[self.aper_idx].r
+        lo, hi = 0.1 * aper_r, 5.0 * aper_r
 
-        # Binary search to find aperture radius that gives desired exit pupil radius
-        aper_r = current_aper_r * (current_fnum / fnum)
-        aper_r_min = 0.5 * aper_r
-        aper_r_max = 2.0 * aper_r
-
-        for _ in range(16):
-            self.surfaces[self.aper_idx].r = aper_r
+        pupilr = None
+        for _ in range(40):
+            mid = 0.5 * (lo + hi)
+            self.surfaces[self.aper_idx].r = mid
             _, pupilr = self.calc_entrance_pupil()
-
-            if abs(pupilr - target_pupil_r) < 0.1:  # Close enough
+            if abs(pupilr - target_pupil_r) / target_pupil_r < 1e-3:
                 break
-
             if pupilr > target_pupil_r:
-                # Current radius is too large, decrease it
-                aper_r_max = aper_r
-                aper_r = (aper_r_min + aper_r) / 2
+                hi = mid
             else:
-                # Current radius is too small, increase it
-                aper_r_min = aper_r
-                aper_r = (aper_r_max + aper_r) / 2
+                lo = mid
+        else:
+            logging.warning(
+                f"set_fnum: did not converge, pupil_r={pupilr:.4f}, target={target_pupil_r:.4f}"
+            )
 
-        self.surfaces[self.aper_idx].r = aper_r
-
-        # Update pupil after setting aperture radius
         self.calc_pupil()
 
     @torch.no_grad()

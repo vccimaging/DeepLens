@@ -273,7 +273,7 @@ class TestRayClone:
 
         cloned = ray.clone()
 
-        for attr in ("o", "d", "wvln", "is_valid", "en", "obliq", "opl"):
+        for attr in ("o", "d", "wvln", "is_valid", "en", "bend_penalty", "opl"):
             src = getattr(ray, attr)
             dst = getattr(cloned, attr)
             assert torch.allclose(src, dst)
