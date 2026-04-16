@@ -1,3 +1,5 @@
+"""DeepLens - differentiable optical lens simulator."""
+
 import torch
 
 
@@ -18,17 +20,54 @@ def init_device():
     return device
 
 
-# optics
-from .optics import *
+from .base import DeepObj
 
-# network
-from .network import *
+from .material import Material
+from .light import (
+    AngularSpectrumMethod,
+    ComplexWave,
+    FresnelDiffraction,
+    Fresnel_zmin,
+    FraunhoferDiffraction,
+    Nyquist_ASM_zmax,
+    Ray,
+    RayleighSommerfeld,
+    RayleighSommerfeldIntegral,
+    ScalableASM,
+)
 
-# geolens
-from .optics.geolens_pkg import *
+# Lens classes
+from .lens import Lens
+from .geolens import GeoLens
+from .hybridlens import HybridLens
+from .diffraclens import DiffractiveLens
+from .paraxiallens import ParaxialLens
+from .psfnetlens import PSFNetLens
+
+# geolens extras
+from .geolens_pkg import *
 
 # utilities
 from .utils import *
 
-# camera
-from .camera import Camera
+__all__ = [
+    "init_device",
+    "DeepObj",
+    "Material",
+    "Ray",
+    "ComplexWave",
+    "AngularSpectrumMethod",
+    "ScalableASM",
+    "FresnelDiffraction",
+    "FraunhoferDiffraction",
+    "RayleighSommerfeld",
+    "RayleighSommerfeldIntegral",
+    "Nyquist_ASM_zmax",
+    "Fresnel_zmin",
+    "Lens",
+    "GeoLens",
+    "HybridLens",
+    "DiffractiveLens",
+    "ParaxialLens",
+    "PSFNetLens",
+]

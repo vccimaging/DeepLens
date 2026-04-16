@@ -61,19 +61,6 @@ DeepLens provides several lens models for different use cases:
 | `PSFNetLens` | Neural network PSF surrogate | Fast PSF approximation |
 | `ParaxialLens` | Thin-lens / circle-of-confusion model | Simple bokeh simulation |
 
-## Camera Pipeline
-
-Combine a lens with a sensor for end-to-end image simulation:
-
-```python
-from deeplens import GeoLens, Camera
-from deeplens.sensor import RGBSensor
-
-lens = GeoLens(filename="datasets/lenses/cellphone/cellphone80deg.json")
-sensor = RGBSensor(res=(1920, 1080))
-camera = Camera(lens=lens, sensor=sensor)
-```
-
 ## Next Steps
 
 - [API Reference](api/optics.md) — full documentation for all classes

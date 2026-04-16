@@ -6,14 +6,14 @@ Covers: Cubic, Mirror, ThinLens, QTypeFreeform, Spiral.
 import pytest
 import torch
 
-from deeplens.optics.geometric_surface import (
+from deeplens.geometric_surface import (
     Cubic,
     Mirror,
     QTypeFreeform,
     Spiral,
     ThinLens,
 )
-from deeplens.optics.light import Ray
+from deeplens.light import Ray
 
 
 class TestCubic:

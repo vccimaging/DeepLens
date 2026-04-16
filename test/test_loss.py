@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from deeplens.optics.loss import PSFLoss, PSFStrehlLoss
+from deeplens.loss import PSFLoss, PSFStrehlLoss
 
 
 class TestPSFLoss:
