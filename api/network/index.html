@@ -6,26 +6,30 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Differentiable optical lens simulator for end-to-end camera system design with PyTorch">
+      
+      
+        <meta name="author" content="Xinge Yang">
       
       
         <link rel="canonical" href="https://vccimaging.github.io/DeepLens/api/network/">
       
       
-        <link rel="prev" href="../sensor/">
+        <link rel="prev" href="../optics/">
       
       
-        <link rel="next" href="../camera/">
+        <link rel="next" href="../../examples/">
       
       
         
       
       
       <link rel="icon" href="../../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Network - DeepLens</title>
+        <title>Surrogate Networks - DeepLens</title>
       
     
     
@@ -80,7 +84,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#network-api-reference" class="md-skip">
+        <a href="#surrogate-networks-api-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Network
+              Surrogate Networks
             
           </span>
         </div>
@@ -602,34 +606,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../sensor/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sensor
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -649,7 +625,7 @@
   <span class="md-ellipsis">
     
   
-    Network
+    Surrogate Networks
   
 
     
@@ -667,7 +643,7 @@
   <span class="md-ellipsis">
     
   
-    Network
+    Surrogate Networks
   
 
     
@@ -693,19 +669,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#surrogate-networks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Surrogate Networks
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Surrogate Networks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.MLP" class="md-nav__link">
+  <a href="#deeplens.surrogate.MLP" class="md-nav__link">
     <span class="md-ellipsis">
       
         MLP
@@ -717,7 +681,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.MLP.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.MLP.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
@@ -731,9 +695,9 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.MLPConv" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#deeplens.surrogate.MLPConv" class="md-nav__link">
     <span class="md-ellipsis">
       
         MLPConv
@@ -745,7 +709,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.MLPConv.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.MLPConv.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
@@ -759,9 +723,9 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.surrogate.siren.Siren" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#deeplens.surrogate.siren.Siren" class="md-nav__link">
     <span class="md-ellipsis">
       
         Siren
@@ -773,7 +737,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.surrogate.siren.Siren.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.siren.Siren.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
@@ -787,9 +751,9 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.ModulateSiren" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#deeplens.surrogate.ModulateSiren" class="md-nav__link">
     <span class="md-ellipsis">
       
         ModulateSiren
@@ -801,220 +765,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.ModulateSiren.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.ModulateSiren.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reconstruction-networks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reconstruction Networks
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Reconstruction Networks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.NAFNet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NAFNet
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="NAFNet">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.NAFNet.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.UNet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        UNet
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="UNet">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.UNet.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.Restormer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Restormer
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Restormer">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.Restormer.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#loss-functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Loss Functions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Loss Functions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PerceptualLoss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PerceptualLoss
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="PerceptualLoss">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PerceptualLoss.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PSNRLoss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PSNRLoss
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="PSNRLoss">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PSNRLoss.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.SSIMLoss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SSIMLoss
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="SSIMLoss">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.SSIMLoss.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -1027,34 +784,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../camera/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Camera
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1148,19 +877,7 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#surrogate-networks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Surrogate Networks
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Surrogate Networks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.MLP" class="md-nav__link">
+  <a href="#deeplens.surrogate.MLP" class="md-nav__link">
     <span class="md-ellipsis">
       
         MLP
@@ -1172,7 +889,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.MLP.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.MLP.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
@@ -1186,9 +903,9 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.MLPConv" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#deeplens.surrogate.MLPConv" class="md-nav__link">
     <span class="md-ellipsis">
       
         MLPConv
@@ -1200,7 +917,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.MLPConv.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.MLPConv.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
@@ -1214,9 +931,9 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.surrogate.siren.Siren" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#deeplens.surrogate.siren.Siren" class="md-nav__link">
     <span class="md-ellipsis">
       
         Siren
@@ -1228,7 +945,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.surrogate.siren.Siren.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.siren.Siren.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
@@ -1242,9 +959,9 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.ModulateSiren" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#deeplens.surrogate.ModulateSiren" class="md-nav__link">
     <span class="md-ellipsis">
       
         ModulateSiren
@@ -1256,220 +973,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#deeplens.network.ModulateSiren.forward" class="md-nav__link">
+  <a href="#deeplens.surrogate.ModulateSiren.forward" class="md-nav__link">
     <span class="md-ellipsis">
       
         forward
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reconstruction-networks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reconstruction Networks
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Reconstruction Networks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.NAFNet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NAFNet
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="NAFNet">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.NAFNet.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.UNet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        UNet
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="UNet">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.UNet.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.Restormer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Restormer
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Restormer">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.Restormer.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#loss-functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Loss Functions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Loss Functions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PerceptualLoss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PerceptualLoss
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="PerceptualLoss">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PerceptualLoss.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PSNRLoss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PSNRLoss
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="PSNRLoss">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.PSNRLoss.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.SSIMLoss" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SSIMLoss
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="SSIMLoss">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#deeplens.network.SSIMLoss.forward" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        forward
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -1498,19 +1008,17 @@
   
 
 
-<h1 id="network-api-reference">Network API Reference</h1>
-<p>The <code>deeplens.network</code> module provides neural networks for PSF prediction (surrogates) and image reconstruction, plus loss functions for training.</p>
-<hr />
-<h2 id="surrogate-networks">Surrogate Networks</h2>
+<h1 id="surrogate-networks-api-reference">Surrogate Networks API Reference</h1>
 <p>Neural networks that learn to predict PSFs from lens parameters, replacing expensive ray tracing during training.</p>
+<hr />
 
 
 <div class="doc doc-object doc-class">
 
 
 
-<h3 id="deeplens.network.MLP" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.MLP</span>
+<h3 id="deeplens.surrogate.MLP" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.surrogate.MLP</span>
 
 
 </h3>
@@ -1611,7 +1119,7 @@ activations and a Sigmoid output. The output is L1-normalized so it sums to 1
 
 
                   <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/surrogate/mlp.py</code></summary>
+                    <summary>Source code in <code>deeplens/surrogate/mlp.py</code></summary>
                     <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-20">20</a></span>
 <span class="normal"><a href="#__codelineno-0-21">21</a></span>
 <span class="normal"><a href="#__codelineno-0-22">22</a></span>
@@ -1676,7 +1184,7 @@ activations and a Sigmoid output. The output is L1-normalized so it sums to 1
 <div class="doc doc-object doc-function">
 
 
-<h4 id="deeplens.network.MLP.forward" class="doc doc-heading">
+<h4 id="deeplens.surrogate.MLP.forward" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">forward</span>
 
 
@@ -1742,7 +1250,7 @@ activations and a Sigmoid output. The output is L1-normalized so it sums to 1
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/surrogate/mlp.py</code></summary>
+              <summary>Source code in <code>deeplens/surrogate/mlp.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-44">44</a></span>
 <span class="normal"><a href="#__codelineno-0-45">45</a></span>
 <span class="normal"><a href="#__codelineno-0-46">46</a></span>
@@ -1784,8 +1292,8 @@ activations and a Sigmoid output. The output is L1-normalized so it sums to 1
 
 
 
-<h3 id="deeplens.network.MLPConv" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.MLPConv</span>
+<h3 id="deeplens.surrogate.MLPConv" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.surrogate.MLPConv</span>
 
 
 </h3>
@@ -1888,7 +1396,7 @@ for End-To-end Camera Design".</p>
 
 
                   <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/surrogate/mlpconv.py</code></summary>
+                    <summary>Source code in <code>deeplens/surrogate/mlpconv.py</code></summary>
                     <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-25">25</a></span>
 <span class="normal"><a href="#__codelineno-0-26">26</a></span>
 <span class="normal"><a href="#__codelineno-0-27">27</a></span>
@@ -2005,7 +1513,7 @@ for End-To-end Camera Design".</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="deeplens.network.MLPConv.forward" class="doc doc-heading">
+<h4 id="deeplens.surrogate.MLPConv.forward" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">forward</span>
 
 
@@ -2071,7 +1579,7 @@ for End-To-end Camera Design".</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/surrogate/mlpconv.py</code></summary>
+              <summary>Source code in <code>deeplens/surrogate/mlpconv.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-75">75</a></span>
 <span class="normal"><a href="#__codelineno-0-76">76</a></span>
 <span class="normal"><a href="#__codelineno-0-77">77</a></span>
@@ -2139,8 +1647,8 @@ for End-To-end Camera Design".</p>
 
 
 
-<h3 id="deeplens.network.surrogate.siren.Siren" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.surrogate.siren.Siren</span>
+<h3 id="deeplens.surrogate.siren.Siren" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.surrogate.siren.Siren</span>
 
 
 </h3>
@@ -2285,7 +1793,7 @@ scheme from "Implicit Neural Representations with Periodic Activation Functions"
 
 
                   <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/surrogate/siren.py</code></summary>
+                    <summary>Source code in <code>deeplens/surrogate/siren.py</code></summary>
                     <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-24">24</a></span>
 <span class="normal"><a href="#__codelineno-0-25">25</a></span>
 <span class="normal"><a href="#__codelineno-0-26">26</a></span>
@@ -2346,7 +1854,7 @@ scheme from "Implicit Neural Representations with Periodic Activation Functions"
 <div class="doc doc-object doc-function">
 
 
-<h4 id="deeplens.network.surrogate.siren.Siren.forward" class="doc doc-heading">
+<h4 id="deeplens.surrogate.siren.Siren.forward" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">forward</span>
 
 
@@ -2412,7 +1920,7 @@ scheme from "Implicit Neural Representations with Periodic Activation Functions"
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/surrogate/siren.py</code></summary>
+              <summary>Source code in <code>deeplens/surrogate/siren.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-52">52</a></span>
 <span class="normal"><a href="#__codelineno-0-53">53</a></span>
 <span class="normal"><a href="#__codelineno-0-54">54</a></span>
@@ -2454,8 +1962,8 @@ scheme from "Implicit Neural Representations with Periodic Activation Functions"
 
 
 
-<h3 id="deeplens.network.ModulateSiren" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.ModulateSiren</span>
+<h3 id="deeplens.surrogate.ModulateSiren" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">deeplens.surrogate.ModulateSiren</span>
 
 
 </h3>
@@ -2676,7 +2184,7 @@ Used to predict spatially-varying PSFs conditioned on lens parameters.</p>
 
 
                   <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/surrogate/modulate_siren.py</code></summary>
+                    <summary>Source code in <code>deeplens/surrogate/modulate_siren.py</code></summary>
                     <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-33"> 33</a></span>
 <span class="normal"><a href="#__codelineno-0-34"> 34</a></span>
 <span class="normal"><a href="#__codelineno-0-35"> 35</a></span>
@@ -2879,7 +2387,7 @@ Used to predict spatially-varying PSFs conditioned on lens parameters.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="deeplens.network.ModulateSiren.forward" class="doc doc-heading">
+<h4 id="deeplens.surrogate.ModulateSiren.forward" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">forward</span>
 
 
@@ -2945,7 +2453,7 @@ Used to predict spatially-varying PSFs conditioned on lens parameters.</p>
 
 
             <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/surrogate/modulate_siren.py</code></summary>
+              <summary>Source code in <code>deeplens/surrogate/modulate_siren.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-126">126</a></span>
 <span class="normal"><a href="#__codelineno-0-127">127</a></span>
 <span class="normal"><a href="#__codelineno-0-128">128</a></span>
@@ -2999,2185 +2507,6 @@ Used to predict spatially-varying PSFs conditioned on lens parameters.</p>
 <a id="__codelineno-0-150" name="__codelineno-0-150"></a>    <span class="p">)</span>  <span class="c1"># reshape to (batch_size, height, width, channels)</span>
 <a id="__codelineno-0-151" name="__codelineno-0-151"></a>    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># reshape to (batch_size, channels, height, width)</span>
 <a id="__codelineno-0-152" name="__codelineno-0-152"></a>    <span class="k">return</span> <span class="n">x</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div><hr />
-<h2 id="reconstruction-networks">Reconstruction Networks</h2>
-<p>Image restoration networks that recover a clean image from a degraded (aberrated) sensor capture.</p>
-
-
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="deeplens.network.NAFNet" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.NAFNet</span>
-
-
-</h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">NAFNet</span><span class="p">(</span><span class="n">in_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">out_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">middle_blk_num</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">enc_blk_nums</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">28</span><span class="p">],</span> <span class="n">dec_blk_nums</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-</code></pre></div>
-
-    <div class="doc doc-contents first">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
-
-
-
-        <p>Nonlinear Activation Free Network for image restoration.</p>
-<p>A U-Net-style encoder-decoder with NAFBlocks that replace nonlinear activations
-with SimpleGate (element-wise multiplication of channel-split halves). Includes
-a global residual connection from input to output.</p>
-<p>Reference: "Simple Baselines for Image Restoration" (ECCV 2022).</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>in_chan</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of input channels. Defaults to 3.</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>out_chan</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of output channels. Defaults to 3.</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>width</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Base channel width. Defaults to 32.</p>
-              </div>
-            </td>
-            <td>
-                  <code>32</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>middle_blk_num</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of NAFBlocks in the bottleneck. Defaults to 1.</p>
-              </div>
-            </td>
-            <td>
-                  <code>1</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>enc_blk_nums</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of NAFBlocks per encoder stage. Defaults to <code>[1, 1, 1, 28]</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>[1, 1, 1, 28]</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>dec_blk_nums</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of NAFBlocks per decoder stage. Defaults to <code>[1, 1, 1, 1]</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>[1, 1, 1, 1]</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/reconstruction/nafnet.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span>
-<span class="normal"><a href="#__codelineno-0-35">35</a></span>
-<span class="normal"><a href="#__codelineno-0-36">36</a></span>
-<span class="normal"><a href="#__codelineno-0-37">37</a></span>
-<span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
-<span class="normal"><a href="#__codelineno-0-41">41</a></span>
-<span class="normal"><a href="#__codelineno-0-42">42</a></span>
-<span class="normal"><a href="#__codelineno-0-43">43</a></span>
-<span class="normal"><a href="#__codelineno-0-44">44</a></span>
-<span class="normal"><a href="#__codelineno-0-45">45</a></span>
-<span class="normal"><a href="#__codelineno-0-46">46</a></span>
-<span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span>
-<span class="normal"><a href="#__codelineno-0-55">55</a></span>
-<span class="normal"><a href="#__codelineno-0-56">56</a></span>
-<span class="normal"><a href="#__codelineno-0-57">57</a></span>
-<span class="normal"><a href="#__codelineno-0-58">58</a></span>
-<span class="normal"><a href="#__codelineno-0-59">59</a></span>
-<span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span>
-<span class="normal"><a href="#__codelineno-0-62">62</a></span>
-<span class="normal"><a href="#__codelineno-0-63">63</a></span>
-<span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span>
-<span class="normal"><a href="#__codelineno-0-67">67</a></span>
-<span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
-<span class="normal"><a href="#__codelineno-0-71">71</a></span>
-<span class="normal"><a href="#__codelineno-0-72">72</a></span>
-<span class="normal"><a href="#__codelineno-0-73">73</a></span>
-<span class="normal"><a href="#__codelineno-0-74">74</a></span>
-<span class="normal"><a href="#__codelineno-0-75">75</a></span>
-<span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span>
-<span class="normal"><a href="#__codelineno-0-78">78</a></span>
-<span class="normal"><a href="#__codelineno-0-79">79</a></span>
-<span class="normal"><a href="#__codelineno-0-80">80</a></span>
-<span class="normal"><a href="#__codelineno-0-81">81</a></span>
-<span class="normal"><a href="#__codelineno-0-82">82</a></span>
-<span class="normal"><a href="#__codelineno-0-83">83</a></span>
-<span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span>
-<span class="normal"><a href="#__codelineno-0-87">87</a></span>
-<span class="normal"><a href="#__codelineno-0-88">88</a></span>
-<span class="normal"><a href="#__codelineno-0-89">89</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a>    <span class="n">in_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="n">out_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="n">width</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>  <span class="c1"># 64</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="n">middle_blk_num</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="n">enc_blk_nums</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">28</span><span class="p">],</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="n">dec_blk_nums</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="p">):</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">intro</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a>        <span class="n">in_channels</span><span class="o">=</span><span class="n">in_chan</span><span class="p">,</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a>        <span class="n">out_channels</span><span class="o">=</span><span class="n">width</span><span class="p">,</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>        <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a>        <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>        <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>        <span class="n">groups</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>        <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="p">)</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">ending</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="n">in_channels</span><span class="o">=</span><span class="n">width</span><span class="p">,</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>        <span class="n">out_channels</span><span class="o">=</span><span class="n">out_chan</span><span class="p">,</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>        <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a>        <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>        <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a>        <span class="n">groups</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>        <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="p">)</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">encoders</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">()</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">decoders</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">()</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">middle_blks</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">()</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">ups</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">()</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">downs</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">()</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">chan</span> <span class="o">=</span> <span class="n">width</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">enc_blk_nums</span><span class="p">:</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">encoders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">NAFBlock</span><span class="p">(</span><span class="n">chan</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">)]))</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">downs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">chan</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">chan</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>        <span class="n">chan</span> <span class="o">=</span> <span class="n">chan</span> <span class="o">*</span> <span class="mi">2</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">middle_blks</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="o">*</span><span class="p">[</span><span class="n">NAFBlock</span><span class="p">(</span><span class="n">chan</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">middle_blk_num</span><span class="p">)]</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="p">)</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>    <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">dec_blk_nums</span><span class="p">:</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">ups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a>            <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>                <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">chan</span><span class="p">,</span> <span class="n">chan</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">PixelShuffle</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a>            <span class="p">)</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>        <span class="p">)</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>        <span class="n">chan</span> <span class="o">=</span> <span class="n">chan</span> <span class="o">//</span> <span class="mi">2</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">decoders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">NAFBlock</span><span class="p">(</span><span class="n">chan</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">)]))</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">padder_size</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoders</span><span class="p">)</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>    <span class="c1"># Initialize weights  </span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">initialize_weights</span><span class="p">()</span>  
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="deeplens.network.NAFNet.forward" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">forward</span>
-
-
-</h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Forward pass with global residual connection.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>inp</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Input image tensor of shape <code>(B, in_chan, H, W)</code>.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Restored image tensor of shape <code>(B, out_chan, H, W)</code>.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/reconstruction/nafnet.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-105">105</a></span>
-<span class="normal"><a href="#__codelineno-0-106">106</a></span>
-<span class="normal"><a href="#__codelineno-0-107">107</a></span>
-<span class="normal"><a href="#__codelineno-0-108">108</a></span>
-<span class="normal"><a href="#__codelineno-0-109">109</a></span>
-<span class="normal"><a href="#__codelineno-0-110">110</a></span>
-<span class="normal"><a href="#__codelineno-0-111">111</a></span>
-<span class="normal"><a href="#__codelineno-0-112">112</a></span>
-<span class="normal"><a href="#__codelineno-0-113">113</a></span>
-<span class="normal"><a href="#__codelineno-0-114">114</a></span>
-<span class="normal"><a href="#__codelineno-0-115">115</a></span>
-<span class="normal"><a href="#__codelineno-0-116">116</a></span>
-<span class="normal"><a href="#__codelineno-0-117">117</a></span>
-<span class="normal"><a href="#__codelineno-0-118">118</a></span>
-<span class="normal"><a href="#__codelineno-0-119">119</a></span>
-<span class="normal"><a href="#__codelineno-0-120">120</a></span>
-<span class="normal"><a href="#__codelineno-0-121">121</a></span>
-<span class="normal"><a href="#__codelineno-0-122">122</a></span>
-<span class="normal"><a href="#__codelineno-0-123">123</a></span>
-<span class="normal"><a href="#__codelineno-0-124">124</a></span>
-<span class="normal"><a href="#__codelineno-0-125">125</a></span>
-<span class="normal"><a href="#__codelineno-0-126">126</a></span>
-<span class="normal"><a href="#__codelineno-0-127">127</a></span>
-<span class="normal"><a href="#__codelineno-0-128">128</a></span>
-<span class="normal"><a href="#__codelineno-0-129">129</a></span>
-<span class="normal"><a href="#__codelineno-0-130">130</a></span>
-<span class="normal"><a href="#__codelineno-0-131">131</a></span>
-<span class="normal"><a href="#__codelineno-0-132">132</a></span>
-<span class="normal"><a href="#__codelineno-0-133">133</a></span>
-<span class="normal"><a href="#__codelineno-0-134">134</a></span>
-<span class="normal"><a href="#__codelineno-0-135">135</a></span>
-<span class="normal"><a href="#__codelineno-0-136">136</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inp</span><span class="p">):</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward pass with global residual connection.</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        inp: Input image tensor of shape ``(B, in_chan, H, W)``.</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        Restored image tensor of shape ``(B, out_chan, H, W)``.</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a>    <span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">inp</span><span class="o">.</span><span class="n">shape</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a>    <span class="n">inp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_image_size</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a>    <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">intro</span><span class="p">(</span><span class="n">inp</span><span class="p">)</span>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a>    <span class="n">encs</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>    <span class="k">for</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">down</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoders</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">downs</span><span class="p">):</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a>        <span class="n">x</span> <span class="o">=</span> <span class="n">encoder</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a>        <span class="n">encs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>        <span class="n">x</span> <span class="o">=</span> <span class="n">down</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">middle_blks</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a>    <span class="k">for</span> <span class="n">decoder</span><span class="p">,</span> <span class="n">up</span><span class="p">,</span> <span class="n">enc_skip</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">decoders</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ups</span><span class="p">,</span> <span class="n">encs</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a>        <span class="n">x</span> <span class="o">=</span> <span class="n">up</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a>        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">enc_skip</span>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a>        <span class="n">x</span> <span class="o">=</span> <span class="n">decoder</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ending</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a>    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">inp</span><span class="p">[:,</span> <span class="p">:</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">:,</span> <span class="p">:]</span>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="k">return</span> <span class="n">x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="n">H</span><span class="p">,</span> <span class="p">:</span><span class="n">W</span><span class="p">]</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="deeplens.network.UNet" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.UNet</span>
-
-
-</h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">UNet</span><span class="p">(</span><span class="n">in_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents first">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
-
-
-
-        <p>U-Net with residual skip connections for image restoration.</p>
-<p>A 3-level encoder-decoder with dense BasicBlocks and PixelShuffle upsampling.
-Uses additive skip connections between encoder and decoder stages.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>in_channels</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of input channels. Defaults to 3.</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>out_channels</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of output channels. Defaults to 3.</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/reconstruction/unet.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-21">21</a></span>
-<span class="normal"><a href="#__codelineno-0-22">22</a></span>
-<span class="normal"><a href="#__codelineno-0-23">23</a></span>
-<span class="normal"><a href="#__codelineno-0-24">24</a></span>
-<span class="normal"><a href="#__codelineno-0-25">25</a></span>
-<span class="normal"><a href="#__codelineno-0-26">26</a></span>
-<span class="normal"><a href="#__codelineno-0-27">27</a></span>
-<span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span>
-<span class="normal"><a href="#__codelineno-0-35">35</a></span>
-<span class="normal"><a href="#__codelineno-0-36">36</a></span>
-<span class="normal"><a href="#__codelineno-0-37">37</a></span>
-<span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
-<span class="normal"><a href="#__codelineno-0-41">41</a></span>
-<span class="normal"><a href="#__codelineno-0-42">42</a></span>
-<span class="normal"><a href="#__codelineno-0-43">43</a></span>
-<span class="normal"><a href="#__codelineno-0-44">44</a></span>
-<span class="normal"><a href="#__codelineno-0-45">45</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">pre</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24"></a>        <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">PReLU</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25"></a>    <span class="p">)</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv00</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">down0</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv10</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">down1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv20</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">down2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv30</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv31</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">)</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">up2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">PixelShuffle</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv21</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">up1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">PixelShuffle</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv11</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">up0</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">PixelShuffle</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">conv01</span> <span class="o">=</span> <span class="n">BasicBlock</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">post</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a>        <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a>        <span class="n">nn</span><span class="o">.</span><span class="n">PReLU</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a>        <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>    <span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="deeplens.network.UNet.forward" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">forward</span>
-
-
-</h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Forward pass.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>x</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Input image tensor of shape <code>(B, in_channels, H, W)</code>.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Output tensor of shape <code>(B, out_channels, H, W)</code>.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/reconstruction/unet.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span>
-<span class="normal"><a href="#__codelineno-0-55">55</a></span>
-<span class="normal"><a href="#__codelineno-0-56">56</a></span>
-<span class="normal"><a href="#__codelineno-0-57">57</a></span>
-<span class="normal"><a href="#__codelineno-0-58">58</a></span>
-<span class="normal"><a href="#__codelineno-0-59">59</a></span>
-<span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span>
-<span class="normal"><a href="#__codelineno-0-62">62</a></span>
-<span class="normal"><a href="#__codelineno-0-63">63</a></span>
-<span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span>
-<span class="normal"><a href="#__codelineno-0-67">67</a></span>
-<span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
-<span class="normal"><a href="#__codelineno-0-71">71</a></span>
-<span class="normal"><a href="#__codelineno-0-72">72</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward pass.</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">        x: Input image tensor of shape ``(B, in_channels, H, W)``.</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">        Output tensor of shape ``(B, out_channels, H, W)``.</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv00</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="n">x1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">down0</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="n">x1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv10</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">x2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">down1</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="n">x2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv20</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="n">x3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">down2</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="n">x3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv30</span><span class="p">(</span><span class="n">x3</span><span class="p">)</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="n">x3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv31</span><span class="p">(</span><span class="n">x3</span><span class="p">)</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="n">x2</span> <span class="o">=</span> <span class="n">x2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">up2</span><span class="p">(</span><span class="n">x3</span><span class="p">)</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="n">x2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv21</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">x1</span> <span class="o">=</span> <span class="n">x1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">up1</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="n">x1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv11</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="n">x0</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">up0</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv01</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="k">return</span> <span class="n">x</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="deeplens.network.Restormer" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.Restormer</span>
-
-
-</h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Restormer</span><span class="p">(</span><span class="n">inp_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span> <span class="n">num_blocks</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="n">num_refinement_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">heads</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="mf">2.66</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">LayerNorm_type</span><span class="o">=</span><span class="s1">&#39;WithBias&#39;</span><span class="p">,</span> <span class="n">dual_pixel_task</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents first">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
-
-
-
-        <p>Restormer: Efficient Transformer for high-resolution image restoration.</p>
-<p>A multi-scale encoder-decoder transformer using Multi-DConv Head Transposed
-Self-Attention (MDTA) and Gated-DConv Feed-Forward Networks (GDFN). Includes
-a global residual connection from input to output.</p>
-<p>Reference: Zamir et al., "Restormer: Efficient Transformer for High-Resolution
-Image Restoration" (CVPR 2022).</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>inp_channels</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of input channels. Defaults to 3.</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>out_channels</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of output channels. Defaults to 3.</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>dim</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Base embedding dimension. Defaults to 48.</p>
-              </div>
-            </td>
-            <td>
-                  <code>48</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>num_blocks</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of transformer blocks per encoder/decoder stage.
-Defaults to <code>[4, 6, 6, 8]</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>[4, 6, 6, 8]</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>num_refinement_blocks</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of refinement blocks after the decoder.
-Defaults to 4.</p>
-              </div>
-            </td>
-            <td>
-                  <code>4</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>heads</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of attention heads per stage. Defaults to <code>[1, 2, 4, 8]</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>[1, 2, 4, 8]</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>ffn_expansion_factor</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Hidden dimension multiplier in GDFN. Defaults to 2.66.</p>
-              </div>
-            </td>
-            <td>
-                  <code>2.66</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>bias</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Whether to use bias in convolutions. Defaults to False.</p>
-              </div>
-            </td>
-            <td>
-                  <code>False</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>LayerNorm_type</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p><code>"WithBias"</code> or <code>"BiasFree"</code>. Defaults to <code>"WithBias"</code>.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;WithBias&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>dual_pixel_task</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>If True, uses skip connection for dual-pixel defocus
-deblurring (set <code>inp_channels=6</code>). Defaults to False.</p>
-              </div>
-            </td>
-            <td>
-                  <code>False</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/reconstruction/restormer.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-244">244</a></span>
-<span class="normal"><a href="#__codelineno-0-245">245</a></span>
-<span class="normal"><a href="#__codelineno-0-246">246</a></span>
-<span class="normal"><a href="#__codelineno-0-247">247</a></span>
-<span class="normal"><a href="#__codelineno-0-248">248</a></span>
-<span class="normal"><a href="#__codelineno-0-249">249</a></span>
-<span class="normal"><a href="#__codelineno-0-250">250</a></span>
-<span class="normal"><a href="#__codelineno-0-251">251</a></span>
-<span class="normal"><a href="#__codelineno-0-252">252</a></span>
-<span class="normal"><a href="#__codelineno-0-253">253</a></span>
-<span class="normal"><a href="#__codelineno-0-254">254</a></span>
-<span class="normal"><a href="#__codelineno-0-255">255</a></span>
-<span class="normal"><a href="#__codelineno-0-256">256</a></span>
-<span class="normal"><a href="#__codelineno-0-257">257</a></span>
-<span class="normal"><a href="#__codelineno-0-258">258</a></span>
-<span class="normal"><a href="#__codelineno-0-259">259</a></span>
-<span class="normal"><a href="#__codelineno-0-260">260</a></span>
-<span class="normal"><a href="#__codelineno-0-261">261</a></span>
-<span class="normal"><a href="#__codelineno-0-262">262</a></span>
-<span class="normal"><a href="#__codelineno-0-263">263</a></span>
-<span class="normal"><a href="#__codelineno-0-264">264</a></span>
-<span class="normal"><a href="#__codelineno-0-265">265</a></span>
-<span class="normal"><a href="#__codelineno-0-266">266</a></span>
-<span class="normal"><a href="#__codelineno-0-267">267</a></span>
-<span class="normal"><a href="#__codelineno-0-268">268</a></span>
-<span class="normal"><a href="#__codelineno-0-269">269</a></span>
-<span class="normal"><a href="#__codelineno-0-270">270</a></span>
-<span class="normal"><a href="#__codelineno-0-271">271</a></span>
-<span class="normal"><a href="#__codelineno-0-272">272</a></span>
-<span class="normal"><a href="#__codelineno-0-273">273</a></span>
-<span class="normal"><a href="#__codelineno-0-274">274</a></span>
-<span class="normal"><a href="#__codelineno-0-275">275</a></span>
-<span class="normal"><a href="#__codelineno-0-276">276</a></span>
-<span class="normal"><a href="#__codelineno-0-277">277</a></span>
-<span class="normal"><a href="#__codelineno-0-278">278</a></span>
-<span class="normal"><a href="#__codelineno-0-279">279</a></span>
-<span class="normal"><a href="#__codelineno-0-280">280</a></span>
-<span class="normal"><a href="#__codelineno-0-281">281</a></span>
-<span class="normal"><a href="#__codelineno-0-282">282</a></span>
-<span class="normal"><a href="#__codelineno-0-283">283</a></span>
-<span class="normal"><a href="#__codelineno-0-284">284</a></span>
-<span class="normal"><a href="#__codelineno-0-285">285</a></span>
-<span class="normal"><a href="#__codelineno-0-286">286</a></span>
-<span class="normal"><a href="#__codelineno-0-287">287</a></span>
-<span class="normal"><a href="#__codelineno-0-288">288</a></span>
-<span class="normal"><a href="#__codelineno-0-289">289</a></span>
-<span class="normal"><a href="#__codelineno-0-290">290</a></span>
-<span class="normal"><a href="#__codelineno-0-291">291</a></span>
-<span class="normal"><a href="#__codelineno-0-292">292</a></span>
-<span class="normal"><a href="#__codelineno-0-293">293</a></span>
-<span class="normal"><a href="#__codelineno-0-294">294</a></span>
-<span class="normal"><a href="#__codelineno-0-295">295</a></span>
-<span class="normal"><a href="#__codelineno-0-296">296</a></span>
-<span class="normal"><a href="#__codelineno-0-297">297</a></span>
-<span class="normal"><a href="#__codelineno-0-298">298</a></span>
-<span class="normal"><a href="#__codelineno-0-299">299</a></span>
-<span class="normal"><a href="#__codelineno-0-300">300</a></span>
-<span class="normal"><a href="#__codelineno-0-301">301</a></span>
-<span class="normal"><a href="#__codelineno-0-302">302</a></span>
-<span class="normal"><a href="#__codelineno-0-303">303</a></span>
-<span class="normal"><a href="#__codelineno-0-304">304</a></span>
-<span class="normal"><a href="#__codelineno-0-305">305</a></span>
-<span class="normal"><a href="#__codelineno-0-306">306</a></span>
-<span class="normal"><a href="#__codelineno-0-307">307</a></span>
-<span class="normal"><a href="#__codelineno-0-308">308</a></span>
-<span class="normal"><a href="#__codelineno-0-309">309</a></span>
-<span class="normal"><a href="#__codelineno-0-310">310</a></span>
-<span class="normal"><a href="#__codelineno-0-311">311</a></span>
-<span class="normal"><a href="#__codelineno-0-312">312</a></span>
-<span class="normal"><a href="#__codelineno-0-313">313</a></span>
-<span class="normal"><a href="#__codelineno-0-314">314</a></span>
-<span class="normal"><a href="#__codelineno-0-315">315</a></span>
-<span class="normal"><a href="#__codelineno-0-316">316</a></span>
-<span class="normal"><a href="#__codelineno-0-317">317</a></span>
-<span class="normal"><a href="#__codelineno-0-318">318</a></span>
-<span class="normal"><a href="#__codelineno-0-319">319</a></span>
-<span class="normal"><a href="#__codelineno-0-320">320</a></span>
-<span class="normal"><a href="#__codelineno-0-321">321</a></span>
-<span class="normal"><a href="#__codelineno-0-322">322</a></span>
-<span class="normal"><a href="#__codelineno-0-323">323</a></span>
-<span class="normal"><a href="#__codelineno-0-324">324</a></span>
-<span class="normal"><a href="#__codelineno-0-325">325</a></span>
-<span class="normal"><a href="#__codelineno-0-326">326</a></span>
-<span class="normal"><a href="#__codelineno-0-327">327</a></span>
-<span class="normal"><a href="#__codelineno-0-328">328</a></span>
-<span class="normal"><a href="#__codelineno-0-329">329</a></span>
-<span class="normal"><a href="#__codelineno-0-330">330</a></span>
-<span class="normal"><a href="#__codelineno-0-331">331</a></span>
-<span class="normal"><a href="#__codelineno-0-332">332</a></span>
-<span class="normal"><a href="#__codelineno-0-333">333</a></span>
-<span class="normal"><a href="#__codelineno-0-334">334</a></span>
-<span class="normal"><a href="#__codelineno-0-335">335</a></span>
-<span class="normal"><a href="#__codelineno-0-336">336</a></span>
-<span class="normal"><a href="#__codelineno-0-337">337</a></span>
-<span class="normal"><a href="#__codelineno-0-338">338</a></span>
-<span class="normal"><a href="#__codelineno-0-339">339</a></span>
-<span class="normal"><a href="#__codelineno-0-340">340</a></span>
-<span class="normal"><a href="#__codelineno-0-341">341</a></span>
-<span class="normal"><a href="#__codelineno-0-342">342</a></span>
-<span class="normal"><a href="#__codelineno-0-343">343</a></span>
-<span class="normal"><a href="#__codelineno-0-344">344</a></span>
-<span class="normal"><a href="#__codelineno-0-345">345</a></span>
-<span class="normal"><a href="#__codelineno-0-346">346</a></span>
-<span class="normal"><a href="#__codelineno-0-347">347</a></span>
-<span class="normal"><a href="#__codelineno-0-348">348</a></span>
-<span class="normal"><a href="#__codelineno-0-349">349</a></span>
-<span class="normal"><a href="#__codelineno-0-350">350</a></span>
-<span class="normal"><a href="#__codelineno-0-351">351</a></span>
-<span class="normal"><a href="#__codelineno-0-352">352</a></span>
-<span class="normal"><a href="#__codelineno-0-353">353</a></span>
-<span class="normal"><a href="#__codelineno-0-354">354</a></span>
-<span class="normal"><a href="#__codelineno-0-355">355</a></span>
-<span class="normal"><a href="#__codelineno-0-356">356</a></span>
-<span class="normal"><a href="#__codelineno-0-357">357</a></span>
-<span class="normal"><a href="#__codelineno-0-358">358</a></span>
-<span class="normal"><a href="#__codelineno-0-359">359</a></span>
-<span class="normal"><a href="#__codelineno-0-360">360</a></span>
-<span class="normal"><a href="#__codelineno-0-361">361</a></span>
-<span class="normal"><a href="#__codelineno-0-362">362</a></span>
-<span class="normal"><a href="#__codelineno-0-363">363</a></span>
-<span class="normal"><a href="#__codelineno-0-364">364</a></span>
-<span class="normal"><a href="#__codelineno-0-365">365</a></span>
-<span class="normal"><a href="#__codelineno-0-366">366</a></span>
-<span class="normal"><a href="#__codelineno-0-367">367</a></span>
-<span class="normal"><a href="#__codelineno-0-368">368</a></span>
-<span class="normal"><a href="#__codelineno-0-369">369</a></span>
-<span class="normal"><a href="#__codelineno-0-370">370</a></span>
-<span class="normal"><a href="#__codelineno-0-371">371</a></span>
-<span class="normal"><a href="#__codelineno-0-372">372</a></span>
-<span class="normal"><a href="#__codelineno-0-373">373</a></span>
-<span class="normal"><a href="#__codelineno-0-374">374</a></span>
-<span class="normal"><a href="#__codelineno-0-375">375</a></span>
-<span class="normal"><a href="#__codelineno-0-376">376</a></span>
-<span class="normal"><a href="#__codelineno-0-377">377</a></span>
-<span class="normal"><a href="#__codelineno-0-378">378</a></span>
-<span class="normal"><a href="#__codelineno-0-379">379</a></span>
-<span class="normal"><a href="#__codelineno-0-380">380</a></span>
-<span class="normal"><a href="#__codelineno-0-381">381</a></span>
-<span class="normal"><a href="#__codelineno-0-382">382</a></span>
-<span class="normal"><a href="#__codelineno-0-383">383</a></span>
-<span class="normal"><a href="#__codelineno-0-384">384</a></span>
-<span class="normal"><a href="#__codelineno-0-385">385</a></span>
-<span class="normal"><a href="#__codelineno-0-386">386</a></span>
-<span class="normal"><a href="#__codelineno-0-387">387</a></span>
-<span class="normal"><a href="#__codelineno-0-388">388</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="n">inp_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="n">out_channels</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="n">dim</span><span class="o">=</span><span class="mi">48</span><span class="p">,</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a>    <span class="n">num_blocks</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a>    <span class="n">num_refinement_blocks</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a>    <span class="n">heads</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a>    <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="mf">2.66</span><span class="p">,</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a>    <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>    <span class="n">LayerNorm_type</span><span class="o">=</span><span class="s2">&quot;WithBias&quot;</span><span class="p">,</span>  <span class="c1">## Other option &#39;BiasFree&#39;</span>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="n">dual_pixel_task</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1">## True for dual-pixel defocus deblurring only. Also set inp_channels=6</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="p">):</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="nb">super</span><span class="p">(</span><span class="n">Restormer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">patch_embed</span> <span class="o">=</span> <span class="n">OverlapPatchEmbed</span><span class="p">(</span><span class="n">inp_channels</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">encoder_level1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>                <span class="n">dim</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>            <span class="p">)</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="p">]</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>    <span class="p">)</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">down1_2</span> <span class="o">=</span> <span class="n">Downsample</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>  <span class="c1">## From Level 1 to Level 2</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">encoder_level2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>                <span class="n">dim</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">),</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a>            <span class="p">)</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>        <span class="p">]</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>    <span class="p">)</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">down2_3</span> <span class="o">=</span> <span class="n">Downsample</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">))</span>  <span class="c1">## From Level 2 to Level 3</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">encoder_level3</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>                <span class="n">dim</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a>            <span class="p">)</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a>        <span class="p">]</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>    <span class="p">)</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">down3_4</span> <span class="o">=</span> <span class="n">Downsample</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>  <span class="c1">## From Level 3 to Level 4</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">latent</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>                <span class="n">dim</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">3</span><span class="p">),</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a>            <span class="p">)</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="p">]</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="p">)</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">up4_3</span> <span class="o">=</span> <span class="n">Upsample</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span>  <span class="c1">## From Level 4 to Level 3</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">reduce_chan_level3</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">3</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">bias</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="p">)</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">decoder_level3</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>                <span class="n">dim</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>            <span class="p">)</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a>        <span class="p">]</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>    <span class="p">)</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">up3_2</span> <span class="o">=</span> <span class="n">Upsample</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>  <span class="c1">## From Level 3 to Level 2</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">reduce_chan_level2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>        <span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">),</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">bias</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a>    <span class="p">)</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">decoder_level2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a>                <span class="n">dim</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">),</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a>            <span class="p">)</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-347" name="__codelineno-0-347"></a>        <span class="p">]</span>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="p">)</span>
-<a id="__codelineno-0-349" name="__codelineno-0-349"></a>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">up2_1</span> <span class="o">=</span> <span class="n">Upsample</span><span class="p">(</span>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a>        <span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-352" name="__codelineno-0-352"></a>    <span class="p">)</span>  <span class="c1">## From Level 2 to Level 1  (NO 1x1 conv to reduce channels)</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353"></a>
-<a id="__codelineno-0-354" name="__codelineno-0-354"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">decoder_level1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-357" name="__codelineno-0-357"></a>                <span class="n">dim</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">),</span>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-361" name="__codelineno-0-361"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362"></a>            <span class="p">)</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="p">]</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a>    <span class="p">)</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366"></a>
-<a id="__codelineno-0-367" name="__codelineno-0-367"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">refinement</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-<a id="__codelineno-0-368" name="__codelineno-0-368"></a>        <span class="o">*</span><span class="p">[</span>
-<a id="__codelineno-0-369" name="__codelineno-0-369"></a>            <span class="n">TransformerBlock</span><span class="p">(</span>
-<a id="__codelineno-0-370" name="__codelineno-0-370"></a>                <span class="n">dim</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">),</span>
-<a id="__codelineno-0-371" name="__codelineno-0-371"></a>                <span class="n">num_heads</span><span class="o">=</span><span class="n">heads</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-0-372" name="__codelineno-0-372"></a>                <span class="n">ffn_expansion_factor</span><span class="o">=</span><span class="n">ffn_expansion_factor</span><span class="p">,</span>
-<a id="__codelineno-0-373" name="__codelineno-0-373"></a>                <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a>                <span class="n">LayerNorm_type</span><span class="o">=</span><span class="n">LayerNorm_type</span><span class="p">,</span>
-<a id="__codelineno-0-375" name="__codelineno-0-375"></a>            <span class="p">)</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_refinement_blocks</span><span class="p">)</span>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a>        <span class="p">]</span>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a>    <span class="p">)</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a>    <span class="c1">#### For Dual-Pixel Defocus Deblurring Task ####</span>
-<a id="__codelineno-0-381" name="__codelineno-0-381"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">dual_pixel_task</span> <span class="o">=</span> <span class="n">dual_pixel_task</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dual_pixel_task</span><span class="p">:</span>
-<a id="__codelineno-0-383" name="__codelineno-0-383"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">skip_conv</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">),</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">)</span>
-<a id="__codelineno-0-384" name="__codelineno-0-384"></a>    <span class="c1">###########################</span>
-<a id="__codelineno-0-385" name="__codelineno-0-385"></a>
-<a id="__codelineno-0-386" name="__codelineno-0-386"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span>
-<a id="__codelineno-0-387" name="__codelineno-0-387"></a>        <span class="nb">int</span><span class="p">(</span><span class="n">dim</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">1</span><span class="p">),</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">bias</span>
-<a id="__codelineno-0-388" name="__codelineno-0-388"></a>    <span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="deeplens.network.Restormer.forward" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">forward</span>
-
-
-</h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">inp_img</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Forward pass with global residual connection.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>inp_img</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Input image tensor of shape <code>(B, inp_channels, H, W)</code>.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Restored image tensor of shape <code>(B, out_channels, H, W)</code>.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/reconstruction/restormer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-390">390</a></span>
-<span class="normal"><a href="#__codelineno-0-391">391</a></span>
-<span class="normal"><a href="#__codelineno-0-392">392</a></span>
-<span class="normal"><a href="#__codelineno-0-393">393</a></span>
-<span class="normal"><a href="#__codelineno-0-394">394</a></span>
-<span class="normal"><a href="#__codelineno-0-395">395</a></span>
-<span class="normal"><a href="#__codelineno-0-396">396</a></span>
-<span class="normal"><a href="#__codelineno-0-397">397</a></span>
-<span class="normal"><a href="#__codelineno-0-398">398</a></span>
-<span class="normal"><a href="#__codelineno-0-399">399</a></span>
-<span class="normal"><a href="#__codelineno-0-400">400</a></span>
-<span class="normal"><a href="#__codelineno-0-401">401</a></span>
-<span class="normal"><a href="#__codelineno-0-402">402</a></span>
-<span class="normal"><a href="#__codelineno-0-403">403</a></span>
-<span class="normal"><a href="#__codelineno-0-404">404</a></span>
-<span class="normal"><a href="#__codelineno-0-405">405</a></span>
-<span class="normal"><a href="#__codelineno-0-406">406</a></span>
-<span class="normal"><a href="#__codelineno-0-407">407</a></span>
-<span class="normal"><a href="#__codelineno-0-408">408</a></span>
-<span class="normal"><a href="#__codelineno-0-409">409</a></span>
-<span class="normal"><a href="#__codelineno-0-410">410</a></span>
-<span class="normal"><a href="#__codelineno-0-411">411</a></span>
-<span class="normal"><a href="#__codelineno-0-412">412</a></span>
-<span class="normal"><a href="#__codelineno-0-413">413</a></span>
-<span class="normal"><a href="#__codelineno-0-414">414</a></span>
-<span class="normal"><a href="#__codelineno-0-415">415</a></span>
-<span class="normal"><a href="#__codelineno-0-416">416</a></span>
-<span class="normal"><a href="#__codelineno-0-417">417</a></span>
-<span class="normal"><a href="#__codelineno-0-418">418</a></span>
-<span class="normal"><a href="#__codelineno-0-419">419</a></span>
-<span class="normal"><a href="#__codelineno-0-420">420</a></span>
-<span class="normal"><a href="#__codelineno-0-421">421</a></span>
-<span class="normal"><a href="#__codelineno-0-422">422</a></span>
-<span class="normal"><a href="#__codelineno-0-423">423</a></span>
-<span class="normal"><a href="#__codelineno-0-424">424</a></span>
-<span class="normal"><a href="#__codelineno-0-425">425</a></span>
-<span class="normal"><a href="#__codelineno-0-426">426</a></span>
-<span class="normal"><a href="#__codelineno-0-427">427</a></span>
-<span class="normal"><a href="#__codelineno-0-428">428</a></span>
-<span class="normal"><a href="#__codelineno-0-429">429</a></span>
-<span class="normal"><a href="#__codelineno-0-430">430</a></span>
-<span class="normal"><a href="#__codelineno-0-431">431</a></span>
-<span class="normal"><a href="#__codelineno-0-432">432</a></span>
-<span class="normal"><a href="#__codelineno-0-433">433</a></span>
-<span class="normal"><a href="#__codelineno-0-434">434</a></span>
-<span class="normal"><a href="#__codelineno-0-435">435</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-390" name="__codelineno-0-390"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inp_img</span><span class="p">):</span>
-<a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Forward pass with global residual connection.</span>
-<a id="__codelineno-0-392" name="__codelineno-0-392"></a>
-<a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="sd">        inp_img: Input image tensor of shape ``(B, inp_channels, H, W)``.</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">        Restored image tensor of shape ``(B, out_channels, H, W)``.</span>
-<a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-399" name="__codelineno-0-399"></a>    <span class="n">inp_enc_level1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patch_embed</span><span class="p">(</span><span class="n">inp_img</span><span class="p">)</span>
-<a id="__codelineno-0-400" name="__codelineno-0-400"></a>    <span class="n">out_enc_level1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder_level1</span><span class="p">(</span><span class="n">inp_enc_level1</span><span class="p">)</span>
-<a id="__codelineno-0-401" name="__codelineno-0-401"></a>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a>    <span class="n">inp_enc_level2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">down1_2</span><span class="p">(</span><span class="n">out_enc_level1</span><span class="p">)</span>
-<a id="__codelineno-0-403" name="__codelineno-0-403"></a>    <span class="n">out_enc_level2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder_level2</span><span class="p">(</span><span class="n">inp_enc_level2</span><span class="p">)</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a>    <span class="n">inp_enc_level3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">down2_3</span><span class="p">(</span><span class="n">out_enc_level2</span><span class="p">)</span>
-<a id="__codelineno-0-406" name="__codelineno-0-406"></a>    <span class="n">out_enc_level3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder_level3</span><span class="p">(</span><span class="n">inp_enc_level3</span><span class="p">)</span>
-<a id="__codelineno-0-407" name="__codelineno-0-407"></a>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a>    <span class="n">inp_enc_level4</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">down3_4</span><span class="p">(</span><span class="n">out_enc_level3</span><span class="p">)</span>
-<a id="__codelineno-0-409" name="__codelineno-0-409"></a>    <span class="n">latent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">latent</span><span class="p">(</span><span class="n">inp_enc_level4</span><span class="p">)</span>
-<a id="__codelineno-0-410" name="__codelineno-0-410"></a>
-<a id="__codelineno-0-411" name="__codelineno-0-411"></a>    <span class="n">inp_dec_level3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">up4_3</span><span class="p">(</span><span class="n">latent</span><span class="p">)</span>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a>    <span class="n">inp_dec_level3</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">inp_dec_level3</span><span class="p">,</span> <span class="n">out_enc_level3</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-413" name="__codelineno-0-413"></a>    <span class="n">inp_dec_level3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reduce_chan_level3</span><span class="p">(</span><span class="n">inp_dec_level3</span><span class="p">)</span>
-<a id="__codelineno-0-414" name="__codelineno-0-414"></a>    <span class="n">out_dec_level3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder_level3</span><span class="p">(</span><span class="n">inp_dec_level3</span><span class="p">)</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a>    <span class="n">inp_dec_level2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">up3_2</span><span class="p">(</span><span class="n">out_dec_level3</span><span class="p">)</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a>    <span class="n">inp_dec_level2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">inp_dec_level2</span><span class="p">,</span> <span class="n">out_enc_level2</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="n">inp_dec_level2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reduce_chan_level2</span><span class="p">(</span><span class="n">inp_dec_level2</span><span class="p">)</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a>    <span class="n">out_dec_level2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder_level2</span><span class="p">(</span><span class="n">inp_dec_level2</span><span class="p">)</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a>    <span class="n">inp_dec_level1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">up2_1</span><span class="p">(</span><span class="n">out_dec_level2</span><span class="p">)</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="n">inp_dec_level1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">inp_dec_level1</span><span class="p">,</span> <span class="n">out_enc_level1</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="n">out_dec_level1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder_level1</span><span class="p">(</span><span class="n">inp_dec_level1</span><span class="p">)</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="n">out_dec_level1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">refinement</span><span class="p">(</span><span class="n">out_dec_level1</span><span class="p">)</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a>
-<a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="c1">#### For Dual-Pixel Defocus Deblurring Task ####</span>
-<a id="__codelineno-0-428" name="__codelineno-0-428"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dual_pixel_task</span><span class="p">:</span>
-<a id="__codelineno-0-429" name="__codelineno-0-429"></a>        <span class="n">out_dec_level1</span> <span class="o">=</span> <span class="n">out_dec_level1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_conv</span><span class="p">(</span><span class="n">inp_enc_level1</span><span class="p">)</span>
-<a id="__codelineno-0-430" name="__codelineno-0-430"></a>        <span class="n">out_dec_level1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">(</span><span class="n">out_dec_level1</span><span class="p">)</span>
-<a id="__codelineno-0-431" name="__codelineno-0-431"></a>    <span class="c1">###########################</span>
-<a id="__codelineno-0-432" name="__codelineno-0-432"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="n">out_dec_level1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output</span><span class="p">(</span><span class="n">out_dec_level1</span><span class="p">)</span> <span class="o">+</span> <span class="n">inp_img</span>
-<a id="__codelineno-0-434" name="__codelineno-0-434"></a>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a>    <span class="k">return</span> <span class="n">out_dec_level1</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div><hr />
-<h2 id="loss-functions">Loss Functions</h2>
-
-
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="deeplens.network.PerceptualLoss" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.PerceptualLoss</span>
-
-
-</h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">PerceptualLoss</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>
-</code></pre></div>
-
-    <div class="doc doc-contents first">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
-
-
-
-        <p>Perceptual loss based on VGG16 features.</p>
-
-        <p>Initialize perceptual loss.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>device</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Device to put the VGG model on. If None, uses cuda if available.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>weights</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Weights for different feature layers.</p>
-              </div>
-            </td>
-            <td>
-                  <code>[1.0, 1.0, 1.0, 1.0, 1.0]</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/loss/perceptual_loss.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-12">12</a></span>
-<span class="normal"><a href="#__codelineno-0-13">13</a></span>
-<span class="normal"><a href="#__codelineno-0-14">14</a></span>
-<span class="normal"><a href="#__codelineno-0-15">15</a></span>
-<span class="normal"><a href="#__codelineno-0-16">16</a></span>
-<span class="normal"><a href="#__codelineno-0-17">17</a></span>
-<span class="normal"><a href="#__codelineno-0-18">18</a></span>
-<span class="normal"><a href="#__codelineno-0-19">19</a></span>
-<span class="normal"><a href="#__codelineno-0-20">20</a></span>
-<span class="normal"><a href="#__codelineno-0-21">21</a></span>
-<span class="normal"><a href="#__codelineno-0-22">22</a></span>
-<span class="normal"><a href="#__codelineno-0-23">23</a></span>
-<span class="normal"><a href="#__codelineno-0-24">24</a></span>
-<span class="normal"><a href="#__codelineno-0-25">25</a></span>
-<span class="normal"><a href="#__codelineno-0-26">26</a></span>
-<span class="normal"><a href="#__codelineno-0-27">27</a></span>
-<span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span>
-<span class="normal"><a href="#__codelineno-0-35">35</a></span>
-<span class="normal"><a href="#__codelineno-0-36">36</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-12" name="__codelineno-0-12"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]):</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize perceptual loss.</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14"></a>
-<a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="sd">        device: Device to put the VGG model on. If None, uses cuda if available.</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">        weights: Weights for different feature layers.</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19"></a>    <span class="nb">super</span><span class="p">(</span><span class="n">PerceptualLoss</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20"></a>
-<a id="__codelineno-0-21" name="__codelineno-0-21"></a>    <span class="k">if</span> <span class="n">device</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22"></a>        <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23"></a>
-<a id="__codelineno-0-24" name="__codelineno-0-24"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">vgg</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">vgg16</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">VGG16_Weights</span><span class="o">.</span><span class="n">DEFAULT</span><span class="p">)</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">layer_name_mapping</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26"></a>        <span class="s1">&#39;3&#39;</span><span class="p">:</span> <span class="s2">&quot;relu1_2&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27"></a>        <span class="s1">&#39;8&#39;</span><span class="p">:</span> <span class="s2">&quot;relu2_2&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a>        <span class="s1">&#39;15&#39;</span><span class="p">:</span> <span class="s2">&quot;relu3_3&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a>        <span class="s1">&#39;22&#39;</span><span class="p">:</span> <span class="s2">&quot;relu4_3&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a>        <span class="s1">&#39;29&#39;</span><span class="p">:</span> <span class="s2">&quot;relu5_3&quot;</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="p">}</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vgg</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a>        <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="deeplens.network.PerceptualLoss.forward" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">forward</span>
-
-
-</h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Calculate perceptual loss.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>x</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Predicted tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>y</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Target tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Perceptual loss.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/loss/perceptual_loss.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
-<span class="normal"><a href="#__codelineno-0-41">41</a></span>
-<span class="normal"><a href="#__codelineno-0-42">42</a></span>
-<span class="normal"><a href="#__codelineno-0-43">43</a></span>
-<span class="normal"><a href="#__codelineno-0-44">44</a></span>
-<span class="normal"><a href="#__codelineno-0-45">45</a></span>
-<span class="normal"><a href="#__codelineno-0-46">46</a></span>
-<span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate perceptual loss.</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">        x: Predicted tensor.</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">        y: Target tensor.</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">        Perceptual loss.</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="n">x_vgg</span><span class="p">,</span> <span class="n">y_vgg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_features</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_features</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">content_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">x_vgg</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="n">content_loss</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">value</span> <span class="o">-</span> <span class="n">y_vgg</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="k">return</span> <span class="n">content_loss</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="deeplens.network.PSNRLoss" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.PSNRLoss</span>
-
-
-</h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">PSNRLoss</span><span class="p">(</span><span class="n">loss_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">reduction</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="n">toY</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents first">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
-
-
-
-        <p>Peak Signal-to-Noise Ratio (PSNR) loss.</p>
-
-        <p>Initialize PSNR loss.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>loss_weight</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Weight for the loss.</p>
-              </div>
-            </td>
-            <td>
-                  <code>1.0</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>reduction</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Reduction method, only "mean" is supported.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;mean&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>toY</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Whether to convert RGB to Y channel.</p>
-              </div>
-            </td>
-            <td>
-                  <code>False</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/loss/psnr_loss.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-11">11</a></span>
-<span class="normal"><a href="#__codelineno-0-12">12</a></span>
-<span class="normal"><a href="#__codelineno-0-13">13</a></span>
-<span class="normal"><a href="#__codelineno-0-14">14</a></span>
-<span class="normal"><a href="#__codelineno-0-15">15</a></span>
-<span class="normal"><a href="#__codelineno-0-16">16</a></span>
-<span class="normal"><a href="#__codelineno-0-17">17</a></span>
-<span class="normal"><a href="#__codelineno-0-18">18</a></span>
-<span class="normal"><a href="#__codelineno-0-19">19</a></span>
-<span class="normal"><a href="#__codelineno-0-20">20</a></span>
-<span class="normal"><a href="#__codelineno-0-21">21</a></span>
-<span class="normal"><a href="#__codelineno-0-22">22</a></span>
-<span class="normal"><a href="#__codelineno-0-23">23</a></span>
-<span class="normal"><a href="#__codelineno-0-24">24</a></span>
-<span class="normal"><a href="#__codelineno-0-25">25</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-11" name="__codelineno-0-11"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">reduction</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="n">toY</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize PSNR loss.</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13"></a>
-<a id="__codelineno-0-14" name="__codelineno-0-14"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="sd">        loss_weight: Weight for the loss.</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="sd">        reduction: Reduction method, only &quot;mean&quot; is supported.</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">        toY: Whether to convert RGB to Y channel.</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19"></a>    <span class="nb">super</span><span class="p">(</span><span class="n">PSNRLoss</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20"></a>    <span class="k">assert</span> <span class="n">reduction</span> <span class="o">==</span> <span class="s2">&quot;mean&quot;</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">loss_weight</span> <span class="o">=</span> <span class="n">loss_weight</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">toY</span> <span class="o">=</span> <span class="n">toY</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">coef</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">65.481</span><span class="p">,</span> <span class="mf">128.553</span><span class="p">,</span> <span class="mf">24.966</span><span class="p">])</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="kc">True</span>
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="deeplens.network.PSNRLoss.forward" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">forward</span>
-
-
-</h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Calculate PSNR loss.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>pred</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Predicted tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>target</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Target tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>PSNR loss.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/loss/psnr_loss.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-27">27</a></span>
-<span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span>
-<span class="normal"><a href="#__codelineno-0-35">35</a></span>
-<span class="normal"><a href="#__codelineno-0-36">36</a></span>
-<span class="normal"><a href="#__codelineno-0-37">37</a></span>
-<span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
-<span class="normal"><a href="#__codelineno-0-41">41</a></span>
-<span class="normal"><a href="#__codelineno-0-42">42</a></span>
-<span class="normal"><a href="#__codelineno-0-43">43</a></span>
-<span class="normal"><a href="#__codelineno-0-44">44</a></span>
-<span class="normal"><a href="#__codelineno-0-45">45</a></span>
-<span class="normal"><a href="#__codelineno-0-46">46</a></span>
-<span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate PSNR loss.</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">        pred: Predicted tensor.</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">        target: Target tensor.</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">        PSNR loss.</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">size</span><span class="p">())</span> <span class="o">==</span> <span class="mi">4</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">toY</span><span class="p">:</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">first</span><span class="p">:</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">coef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coef</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a>        <span class="n">pred</span> <span class="o">=</span> <span class="p">(</span><span class="n">pred</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">coef</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">16.0</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a>        <span class="n">target</span> <span class="o">=</span> <span class="p">(</span><span class="n">target</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">coef</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mf">16.0</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a>        <span class="n">pred</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="n">pred</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">,</span> <span class="n">target</span> <span class="o">/</span> <span class="mf">255.0</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>        <span class="k">pass</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">size</span><span class="p">())</span> <span class="o">==</span> <span class="mi">4</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="k">return</span> <span class="p">(</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">loss_weight</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>        <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(((</span><span class="n">pred</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="p">)</span> 
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h3 id="deeplens.network.SSIMLoss" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">deeplens.network.SSIMLoss</span>
-
-
-</h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">SSIMLoss</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span> <span class="n">size_average</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents first">
-            <p class="doc doc-class-bases">
-              Bases: <code><span title="torch.nn.Module">Module</span></code></p>
-
-
-
-        <p>Structural Similarity Index (SSIM) loss.</p>
-
-        <p>Initialize SSIM loss.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>window_size</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Size of the window.</p>
-              </div>
-            </td>
-            <td>
-                  <code>11</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>size_average</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Whether to average the loss.</p>
-              </div>
-            </td>
-            <td>
-                  <code>True</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>deeplens/network/loss/ssim_loss.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-12">12</a></span>
-<span class="normal"><a href="#__codelineno-0-13">13</a></span>
-<span class="normal"><a href="#__codelineno-0-14">14</a></span>
-<span class="normal"><a href="#__codelineno-0-15">15</a></span>
-<span class="normal"><a href="#__codelineno-0-16">16</a></span>
-<span class="normal"><a href="#__codelineno-0-17">17</a></span>
-<span class="normal"><a href="#__codelineno-0-18">18</a></span>
-<span class="normal"><a href="#__codelineno-0-19">19</a></span>
-<span class="normal"><a href="#__codelineno-0-20">20</a></span>
-<span class="normal"><a href="#__codelineno-0-21">21</a></span>
-<span class="normal"><a href="#__codelineno-0-22">22</a></span>
-<span class="normal"><a href="#__codelineno-0-23">23</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-12" name="__codelineno-0-12"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">window_size</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span> <span class="n">size_average</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize SSIM loss.</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14"></a>
-<a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="sd">        window_size: Size of the window.</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="sd">        size_average: Whether to average the loss.</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19"></a>    <span class="nb">super</span><span class="p">(</span><span class="n">SSIMLoss</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">window_size</span> <span class="o">=</span> <span class="n">window_size</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">size_average</span> <span class="o">=</span> <span class="n">size_average</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">channel</span> <span class="o">=</span> <span class="mi">1</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">window</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_window</span><span class="p">(</span><span class="n">window_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel</span><span class="p">)</span>
-</code></pre></div></td></tr></table></div>
-                  </details>
-
-
-
-<div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h4 id="deeplens.network.SSIMLoss.forward" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">forward</span>
-
-
-</h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">forward</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Calculate SSIM loss.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>pred</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Predicted tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>target</code>
-            </td>
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Target tensor.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>1 - SSIM value.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>deeplens/network/loss/ssim_loss.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-25">25</a></span>
-<span class="normal"><a href="#__codelineno-0-26">26</a></span>
-<span class="normal"><a href="#__codelineno-0-27">27</a></span>
-<span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span>
-<span class="normal"><a href="#__codelineno-0-35">35</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-25" name="__codelineno-0-25"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pred</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate SSIM loss.</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27"></a>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="sd">        pred: Predicted tensor.</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">        target: Target tensor.</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">        1 - SSIM value.</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ssim</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

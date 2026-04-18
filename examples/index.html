@@ -6,12 +6,16 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Differentiable optical lens simulator for end-to-end camera system design with PyTorch">
+      
+      
+        <meta name="author" content="Xinge Yang">
       
       
         <link rel="canonical" href="https://vccimaging.github.io/DeepLens/examples/">
       
       
-        <link rel="prev" href="../api/camera/">
+        <link rel="prev" href="../api/network/">
       
       
         <link rel="next" href="../contributing/">
@@ -21,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -600,34 +604,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/sensor/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sensor
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../api/network/" class="md-nav__link">
         
   
@@ -635,35 +611,7 @@
   <span class="md-ellipsis">
     
   
-    Network
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api/camera/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Camera
+    Surrogate Networks
   
 
     
@@ -762,28 +710,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#end-to-end-camera-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        End-to-End Camera Design
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#image-simulation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Image Simulation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#hybrid-lens-design" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -867,28 +793,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#end-to-end-camera-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        End-to-End Camera Design
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#image-simulation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Image Simulation
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#hybrid-lens-design" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -947,74 +851,21 @@
 <a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="c1"># Visualize the optimized lens</span>
 <a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="n">lens</span><span class="o">.</span><span class="n">draw2d</span><span class="p">()</span>
 </code></pre></div>
-<h2 id="end-to-end-camera-design">End-to-End Camera Design</h2>
-<p>Jointly optimize lens optics and a neural reconstruction network:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoLens</span><span class="p">,</span> <span class="n">Camera</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens.sensor</span><span class="w"> </span><span class="kn">import</span> <span class="n">RGBSensor</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens.network</span><span class="w"> </span><span class="kn">import</span> <span class="n">NAFNet</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Build the camera pipeline</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">lens</span> <span class="o">=</span> <span class="n">GeoLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;datasets/lenses/cellphone/cellphone80deg.json&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">sensor</span> <span class="o">=</span> <span class="n">RGBSensor</span><span class="p">(</span><span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">512</span><span class="p">))</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">network</span> <span class="o">=</span> <span class="n">NAFNet</span><span class="p">(</span><span class="n">in_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">out_chan</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">camera</span> <span class="o">=</span> <span class="n">Camera</span><span class="p">(</span><span class="n">lens</span><span class="o">=</span><span class="n">lens</span><span class="p">,</span> <span class="n">sensor</span><span class="o">=</span><span class="n">sensor</span><span class="p">)</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># Optimizers for optics and network separately</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">opt_lens</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">lens</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">opt_net</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">network</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">):</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="n">opt_lens</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">opt_net</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="c1"># Forward through the full pipeline</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">img_gt</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># ground truth image (1, 3, H, W)</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="n">img_degraded</span> <span class="o">=</span> <span class="n">camera</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img_gt</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mf">10000.0</span><span class="p">)</span>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">img_restored</span> <span class="o">=</span> <span class="n">network</span><span class="p">(</span><span class="n">img_degraded</span><span class="p">)</span>
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">l1_loss</span><span class="p">(</span><span class="n">img_restored</span><span class="p">,</span> <span class="n">img_gt</span><span class="p">)</span>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="n">opt_lens</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="n">opt_net</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-</code></pre></div>
-<h2 id="image-simulation">Image Simulation</h2>
-<p>Simulate a photograph captured by a specific lens + sensor combination:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">torchvision</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoLens</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens.sensor</span><span class="w"> </span><span class="kn">import</span> <span class="n">RGBSensor</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Load lens and sensor</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">lens</span> <span class="o">=</span> <span class="n">GeoLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;datasets/lenses/cellphone/cellphone80deg.json&quot;</span><span class="p">)</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">sensor</span> <span class="o">=</span> <span class="n">RGBSensor</span><span class="p">(</span><span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">))</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Load an image</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">img</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_image</span><span class="p">(</span><span class="s2">&quot;datasets/images/example.png&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">/</span> <span class="mf">255.0</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># Render through lens (applies spatially-varying PSF)</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="n">img_lens</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mf">10000.0</span><span class="p">)</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1"># Apply sensor pipeline (noise + ISP)</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="n">img_bayer</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">linrgb2bayer</span><span class="p">(</span><span class="n">img_lens</span><span class="p">)</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="n">img_out</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">img_bayer</span><span class="p">,</span> <span class="n">iso</span><span class="o">=</span><span class="mi">800</span><span class="p">)</span>
-</code></pre></div>
 <h2 id="hybrid-lens-design">Hybrid Lens Design</h2>
 <p>Design a lens that combines refractive optics with a diffractive optical element:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoLens</span><span class="p">,</span> <span class="n">HybridLens</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># Load the refractive part</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">geolens</span> <span class="o">=</span> <span class="n">GeoLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;datasets/lenses/cellphone/cellphone80deg.json&quot;</span><span class="p">)</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># Create hybrid lens (adds DOE at the aperture plane)</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">lens</span> <span class="o">=</span> <span class="n">HybridLens</span><span class="p">(</span><span class="n">geolens</span><span class="o">=</span><span class="n">geolens</span><span class="p">,</span> <span class="n">doe_res</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c1"># Compute PSF (coherent ray tracing + ASM propagation)</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">psf</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">psf</span><span class="p">(</span><span class="n">point</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">10000.0</span><span class="p">],</span> <span class="n">ks</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">wvln</span><span class="o">=</span><span class="mf">0.589</span><span class="p">)</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="c1"># Access the refractive lens properties through geolens attribute</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Focal length: </span><span class="si">{</span><span class="n">lens</span><span class="o">.</span><span class="n">geolens</span><span class="o">.</span><span class="n">foclen</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> mm&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoLens</span><span class="p">,</span> <span class="n">HybridLens</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Load the refractive part</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">geolens</span> <span class="o">=</span> <span class="n">GeoLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;datasets/lenses/cellphone/cellphone80deg.json&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Create hybrid lens (adds DOE at the aperture plane)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">lens</span> <span class="o">=</span> <span class="n">HybridLens</span><span class="p">(</span><span class="n">geolens</span><span class="o">=</span><span class="n">geolens</span><span class="p">,</span> <span class="n">doe_res</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Compute PSF (coherent ray tracing + ASM propagation)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">psf</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">psf</span><span class="p">(</span><span class="n">point</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">10000.0</span><span class="p">],</span> <span class="n">ks</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">wvln</span><span class="o">=</span><span class="mf">0.589</span><span class="p">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># Access the refractive lens properties through geolens attribute</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Focal length: </span><span class="si">{</span><span class="n">lens</span><span class="o">.</span><span class="n">geolens</span><span class="o">.</span><span class="n">foclen</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> mm&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 

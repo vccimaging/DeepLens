@@ -6,6 +6,10 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Differentiable optical lens simulator for end-to-end camera system design with PyTorch">
+      
+      
+        <meta name="author" content="Xinge Yang">
       
       
         <link rel="canonical" href="https://vccimaging.github.io/DeepLens/architecture/">
@@ -21,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -578,32 +582,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sensor" class="md-nav__link">
+  <a href="#surrogate-networks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sensor
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#network" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Network
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#camera" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Camera
+        Surrogate Networks
       
     </span>
   </a>
@@ -713,34 +695,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/sensor/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sensor
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../api/network/" class="md-nav__link">
         
   
@@ -748,35 +702,7 @@
   <span class="md-ellipsis">
     
   
-    Network
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api/camera/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Camera
+    Surrogate Networks
   
 
     
@@ -906,32 +832,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sensor" class="md-nav__link">
+  <a href="#surrogate-networks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Sensor
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#network" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Network
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#camera" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Camera
+        Surrogate Networks
       
     </span>
   </a>
@@ -959,17 +863,17 @@
 
 
 <h1 id="architecture">Architecture</h1>
-<p>DeepLens models the full imaging pipeline as three differentiable modules connected by a <code>Camera</code> class.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Scene → [ Optics ] → [ Sensor ] → [ Network ] → Output Image
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>             │            │             │
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>          GeoLens     RGBSensor      NAFNet
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        HybridLens   MonoSensor      UNet
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>       DiffractiveLens EventSensor  Restormer
+<p>DeepLens is a differentiable optical lens simulator.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Scene → [ Optics ] → Output PSF / Image
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>             │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>          GeoLens
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        HybridLens
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>       DiffractiveLens
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        ParaxialLens
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        PSFNetLens
 </code></pre></div>
 <h2 id="optics">Optics</h2>
-<p>The <code>deeplens.optics</code> module contains differentiable lens models that simulate how light passes through an optical system. Each lens computes a point spread function (PSF) and renders images via PSF convolution.</p>
+<p>The <code>deeplens</code> package contains differentiable lens models that simulate how light passes through an optical system. Each lens computes a point spread function (PSF) and renders images via PSF convolution.</p>
 <ul>
 <li><strong><code>GeoLens</code></strong> — Multi-element refractive lens via differentiable ray tracing. The primary lens model, supporting Zemax/Code V/JSON file I/O. Uses a mixin architecture for PSF computation, evaluation, Seidel aberration analysis, optimization, surface operations, visualization, and tolerancing.</li>
 <li><strong><code>HybridLens</code></strong> — Refractive lens (<code>GeoLens</code>) combined with a diffractive optical element (DOE). Coherent ray tracing to the DOE plane, then Angular Spectrum Method (ASM) propagation to the sensor.</li>
@@ -980,31 +884,8 @@
 <p>All lens types inherit from <code>Lens</code>, which defines the shared interface (<code>psf()</code>, <code>render()</code>, etc.). All optical objects inherit from <code>DeepObj</code>, which provides <code>to(device)</code>, <code>clone()</code>, and dtype conversion.</p>
 <h3 id="key-design-differentiable-surface-intersection">Key design: differentiable surface intersection</h3>
 <p>Surface intersection in <code>geometric_surface/base.py</code> uses a non-differentiable Newton's method loop (under <code>torch.no_grad()</code>) to find the intersection point, followed by <strong>one differentiable Newton step</strong> to enable gradient flow through the intersection. Surface refraction implements differentiable vector Snell's law.</p>
-<h2 id="sensor">Sensor</h2>
-<p>The <code>deeplens.sensor</code> module simulates the image sensor and its signal processing pipeline.</p>
-<ul>
-<li><strong><code>RGBSensor</code></strong> — Full RGB sensor with Bayer color filter array, read/shot noise model, and an ISP pipeline (black level compensation, white balance, demosaicing, color correction, gamma correction).</li>
-<li><strong><code>MonoSensor</code></strong> — Monochrome sensor without a color filter array.</li>
-<li><strong><code>EventSensor</code></strong> — Event camera that outputs asynchronous brightness-change events.</li>
-</ul>
-<p>The ISP pipeline is built from composable <code>torch.nn.Module</code> stages in <code>sensor/isp_modules/</code>.</p>
-<h2 id="network">Network</h2>
-<p>The <code>deeplens.network</code> module provides neural networks for two purposes:</p>
-<ul>
-<li><strong>PSF surrogates</strong> — Networks that learn to predict PSFs from lens parameters, replacing ray tracing during training: <code>MLP</code>, <code>MLPConv</code>, <code>Siren</code>, <code>ModulateSiren</code>.</li>
-<li><strong>Image reconstruction</strong> — Networks that restore a clean image from a degraded sensor capture: <code>NAFNet</code>, <code>UNet</code>, <code>Restormer</code>.</li>
-</ul>
-<p>Loss functions (<code>PerceptualLoss</code>, <code>PSNRLoss</code>, <code>SSIMLoss</code>) are also provided for training.</p>
-<h2 id="camera">Camera</h2>
-<p>The <code>Camera</code> class (<code>deeplens/camera.py</code>) connects a <code>Lens</code> and a <code>Sensor</code> into an end-to-end differentiable pipeline:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoLens</span><span class="p">,</span> <span class="n">Camera</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens.sensor</span><span class="w"> </span><span class="kn">import</span> <span class="n">RGBSensor</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">lens</span> <span class="o">=</span> <span class="n">GeoLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;datasets/lenses/cellphone/cellphone80deg.json&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">sensor</span> <span class="o">=</span> <span class="n">RGBSensor</span><span class="p">(</span><span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">))</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">camera</span> <span class="o">=</span> <span class="n">Camera</span><span class="p">(</span><span class="n">lens</span><span class="o">=</span><span class="n">lens</span><span class="p">,</span> <span class="n">sensor</span><span class="o">=</span><span class="n">sensor</span><span class="p">)</span>
-</code></pre></div>
-<p>Gradients flow through the entire pipeline — from the reconstruction loss back through the network, sensor, and into the lens surface parameters — enabling joint optimization of optics and algorithms.</p>
+<h2 id="surrogate-networks">Surrogate Networks</h2>
+<p>The <code>deeplens.surrogate</code> subpackage provides neural networks that learn to predict PSFs from lens parameters, replacing ray tracing during training: <code>MLP</code>, <code>MLPConv</code>, <code>Siren</code>, <code>ModulateSiren</code>. These are used by <code>PSFNetLens</code>.</p>
 
 
 

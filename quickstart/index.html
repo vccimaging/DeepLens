@@ -6,6 +6,10 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Differentiable optical lens simulator for end-to-end camera system design with PyTorch">
+      
+      
+        <meta name="author" content="Xinge Yang">
       
       
         <link rel="canonical" href="https://vccimaging.github.io/DeepLens/quickstart/">
@@ -21,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -577,17 +581,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#camera-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Camera Pipeline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -729,34 +722,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/sensor/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sensor
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../api/network/" class="md-nav__link">
         
   
@@ -764,35 +729,7 @@
   <span class="md-ellipsis">
     
   
-    Network
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api/camera/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Camera
+    Surrogate Networks
   
 
     
@@ -949,17 +886,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#camera-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Camera Pipeline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1062,15 +988,6 @@
 </tr>
 </tbody>
 </table>
-<h2 id="camera-pipeline">Camera Pipeline</h2>
-<p>Combine a lens with a sensor for end-to-end image simulation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeoLens</span><span class="p">,</span> <span class="n">Camera</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens.sensor</span><span class="w"> </span><span class="kn">import</span> <span class="n">RGBSensor</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">lens</span> <span class="o">=</span> <span class="n">GeoLens</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;datasets/lenses/cellphone/cellphone80deg.json&quot;</span><span class="p">)</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">sensor</span> <span class="o">=</span> <span class="n">RGBSensor</span><span class="p">(</span><span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">))</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">camera</span> <span class="o">=</span> <span class="n">Camera</span><span class="p">(</span><span class="n">lens</span><span class="o">=</span><span class="n">lens</span><span class="p">,</span> <span class="n">sensor</span><span class="o">=</span><span class="n">sensor</span><span class="p">)</span>
-</code></pre></div>
 <h2 id="next-steps">Next Steps</h2>
 <ul>
 <li><a href="../api/optics/">API Reference</a> — full documentation for all classes</li>
