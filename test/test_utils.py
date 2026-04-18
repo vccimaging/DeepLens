@@ -6,7 +6,7 @@ import pytest
 import torch
 import numpy as np
 
-from deeplens.optics.ops import interp1d, grid_sample_xy
+from deeplens.ops import interp1d, grid_sample_xy
 from deeplens.utils import (
     foc_dist_balanced,
     img2batch,

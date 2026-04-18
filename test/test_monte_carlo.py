@@ -5,8 +5,8 @@ Tests for deeplens/optics/imgsim/monte_carlo.py - Monte Carlo ray integration.
 import pytest
 import torch
 
-from deeplens.optics.imgsim import forward_integral, assign_points_to_pixels
-from deeplens.optics.light import Ray
+from deeplens.imgsim import forward_integral, assign_points_to_pixels
+from deeplens.light import Ray
 
 
 class TestForwardIntegral:

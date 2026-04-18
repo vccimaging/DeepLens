@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from deeplens.optics.diffractive_surface import (
+from deeplens.diffractive_surface import (
     Binary2,
     DiffractiveSurface,
     Fresnel,
@@ -162,7 +162,7 @@ class TestDiffractiveSurfaceBase:
 
     def test_forward_applies_phase(self):
         """forward() modifies a wave's complex field."""
-        from deeplens.optics.light import ComplexWave
+        from deeplens.light import ComplexWave
 
         doe = Fresnel(d=0.0, f0=50.0, res=200, fab_ps=0.02)
         old_dtype = torch.get_default_dtype()

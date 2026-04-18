@@ -69,8 +69,6 @@ nav:
       - Architecture: architecture.md
   - API Reference:
       - Optics: api/optics.md
-      - Sensor: api/sensor.md
-      - Network: api/network.md
-      - Camera: api/camera.md
+      - Surrogate Networks: api/network.md
   - Examples: examples.md
   - Contributing: contributing.md

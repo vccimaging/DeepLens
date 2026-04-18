@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from deeplens.optics.phase_surface import (
+from deeplens.phase_surface import (
     Binary2Phase,
     FresnelPhase,
     GratingPhase,
@@ -11,7 +11,7 @@ from deeplens.optics.phase_surface import (
     PolyPhase,
     ZernikePhase,
 )
-from deeplens.optics.light import Ray
+from deeplens.light import Ray
 
 
 class TestFresnelPhase:

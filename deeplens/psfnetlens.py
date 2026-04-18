@@ -19,8 +19,8 @@ from transformers import get_cosine_schedule_with_warmup
 
 from .geolens import GeoLens
 from .lens import Lens
-from deeplens.network.surrogate import MLP
-from deeplens.network.surrogate.psfnet_mplconv import PSFNet_MLPConv
+from .surrogate import MLP
+from .surrogate.psfnet_mplconv import PSFNet_MLPConv
 from .config import DEPTH, PSF_KS
 from .imgsim import conv_psf_pixel, conv_psf_pixel_high_res, rotate_psf
 
@@ -28,7 +28,7 @@ from .imgsim import conv_psf_pixel, conv_psf_pixel_high_res, rotate_psf
 class PSFNetLens(Lens):
     """Neural surrogate lens that predicts PSFs via a small MLP/MLPConv network.
 
-    Wraps a :class:`~deeplens.optics.geolens.GeoLens` with a neural network
+    Wraps a :class:`~deeplens.geolens.GeoLens` with a neural network
     trained to predict RGB PSFs from ``(fov, depth, focus_distance)`` inputs.
     After training, PSF prediction is ~100× faster than ray tracing, making
     it suitable for real-time applications and large-scale optimisation.

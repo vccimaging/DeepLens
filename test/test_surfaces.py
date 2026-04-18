@@ -6,9 +6,9 @@ import pytest
 import torch
 import math
 
-from deeplens.optics.geometric_surface import Spheric, Aspheric, Aperture, Plane
-from deeplens.optics.geometric_surface.base import Surface
-from deeplens.optics.light import Ray
+from deeplens.geometric_surface import Spheric, Aspheric, Aperture, Plane
+from deeplens.geometric_surface.base import Surface
+from deeplens.light import Ray
 
 
 class TestSphericSurface:

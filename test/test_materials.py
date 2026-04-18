@@ -5,7 +5,7 @@ Tests for deeplens/optics/material/materials.py - Glass and plastic materials.
 import pytest
 import torch
 
-from deeplens.optics.material import Material
+from deeplens.material import Material
 
 
 class TestMaterialInit:
