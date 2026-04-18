@@ -43,7 +43,7 @@ Currently, [Xinge Yang](https://singer-yang.github.io/) is building and maintain
 }
 ```
 
-A novel differentiable ray-wave model is introduced for simulating and optimizing hybrid refractive-diffractive lenses in the following paper:
+A differentiable **ray-wave model** is introduced for simulating and optimizing hybrid refractive-diffractive lenses in the following paper:
 
 ```bibtex
 @inproceedings{yang2024end,
@@ -52,5 +52,16 @@ A novel differentiable ray-wave model is introduced for simulating and optimizin
   booktitle={SIGGRAPH Asia 2024 Conference Papers},
   pages={1--11},
   year={2024}
+}
+```
+
+Differentiable **non-sequential** ray tracing and **polarization tracing** are developed in the following paper:
+
+```bibtex
+@article{yang2026waveguide,
+  title={End-to-end differentiable design of geometric waveguide displays},
+  author={Yang, Xinge and Liu, Zhaocheng and Nie, Zhaoyu and Fan, Qingyuan and Shi, Zhimin and Bonar, Jim and Heidrich, Wolfgang},
+  journal={arXiv preprint arXiv:2601.04370},
+  year={2026}
 }
 ```

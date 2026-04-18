@@ -1,6 +1,6 @@
 # DeepLens
 
-**DeepLens** is a differentiable optical lens simulator for (1) automated optical design, (2) hybrid refractive-diffractive optics, and (3) end-to-end optics-algorithm design. It helps researchers build custom differentiable optical systems with minimal effort.
+**DeepLens** is a differentiable optical lens simulator for (1) automated optical design and (2) end-to-end optics-algorithm design ([End2endImaging](https://github.com/vccimaging/End2endImaging)). It helps researchers build custom differentiable optical systems with minimal effort.
 
 <div style="text-align:center;">
     <img src="assets/logo.png"/>
@@ -34,15 +34,11 @@ Additional features (available via collaboration):
 3. **Kernel Acceleration.** Achieves >10x speedup and >90% GPU memory reduction with custom GPU kernels across NVIDIA and AMD platforms.
 4. **Distributed Optimization.** Supports distributed simulation and optimization for billions of rays and high-resolution (>100k x 100k) diffractive computations.
 
-## End-to-End Computational Imaging
-
-DeepLens serves as the differentiable optics engine in [**End2endImaging**](https://github.com/vccimaging/End2endImaging), an end-to-end differentiable computational imaging framework. End2endImaging integrates optics (DeepLens), sensor/ISP simulation, and neural reconstruction networks into a single PyTorch computation graph, enabling joint optimization of the entire camera pipeline.
-
 ## Applications
 
 #### 1. Automated lens design
 
-Fully automated lens design from scratch. Try it with [AutoLens](https://github.com/vccimaging/AutoLens)!
+Fully automated lens design from scratch with differentiable optimization. Try it with [AutoLens](https://github.com/vccimaging/AutoLens)!
 
 [![paper](https://img.shields.io/badge/NatComm-2024-orange)](https://www.nature.com/articles/s41467-024-50835-7) [![quickstart](https://img.shields.io/badge/Project-green)](https://github.com/vccimaging/AutoLens)
 
@@ -53,7 +49,7 @@ Fully automated lens design from scratch. Try it with [AutoLens](https://github.
 
 #### 2. Implicit Lens Representation
 
-A surrogate network for fast (aberration + defocus) image simulation.
+A surrogate network for efficient lens representation ang image simulation (spatially-varying aberration + defocus).
 
 [![paper](https://img.shields.io/badge/TPAMI-2023-orange)](https://ieeexplore.ieee.org/document/10209238) [![link](https://img.shields.io/badge/Project-green)](https://github.com/vccimaging/Aberration-Aware-Depth-from-Focus)
 
@@ -63,12 +59,20 @@ A surrogate network for fast (aberration + defocus) image simulation.
 
 #### 3. Hybrid Refractive-Diffractive Lens Model
 
-Design hybrid refractive-diffractive lenses with a new ray-wave model.
+Design hybrid refractive-diffractive lenses with differentiable ray-wave model.
 
 [![report](https://img.shields.io/badge/SiggraphAsia-2024-orange)](https://arxiv.org/abs/2406.00834)
 
 <div align="center">
     <img src="assets/hybridlens.png" alt="Implicit" height="200px"/>
+</div>
+
+#### 4. End-to-End Computational Imaging
+
+DeepLens serves as the differentiable optics engine in [**End2endImaging**](https://github.com/vccimaging/End2endImaging), an end-to-end differentiable computational imaging framework. End2endImaging integrates optics (DeepLens), sensor/ISP simulation, and neural reconstruction networks into a single PyTorch computation graph, enabling joint optimization of the entire camera pipeline.
+
+<div align="center">
+    <img src="assets/end2end.png" alt="End2endImaging" height="200px"/>
 </div>
 
 ## Installation
