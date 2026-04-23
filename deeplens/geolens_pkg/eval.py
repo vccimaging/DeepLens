@@ -698,10 +698,15 @@ class GeoLensEval:
         ray = self.sample_grid_rays(depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False)
         ray = self.trace2sensor(ray)
 
-        # Calculate centroid of the rays, shape (grid_size, grid_size, 2)
-        ray_xy = ray.centroid()[..., :2]
-        x_dist = -ray_xy[..., 0] / self.sensor_size[1] * 2
-        y_dist = ray_xy[..., 1] / self.sensor_size[0] * 2
+        # Calculate centroid of the rays, shape (grid_size, grid_size, 2).
+        # Normalize each axis by its own half-extent so non-square sensors
+        # map correctly to [-1, 1]: x by sensor_size[0] (width, W),
+        # y by sensor_size[1] (height, H).  Sign is flipped on both axes to
+        # undo image inversion, matching ``distortion_center``.
+        sensor_w, sensor_h = self.sensor_size
+        ray_xy = -ray.centroid()[..., :2]
+        x_dist = ray_xy[..., 0] / (sensor_w / 2)
+        y_dist = ray_xy[..., 1] / (sensor_h / 2)
         distortion_grid = torch.stack((x_dist, y_dist), dim=-1)
         return distortion_grid
 
@@ -775,19 +780,31 @@ class GeoLensEval:
         depth = self.obj_depth if depth is None else depth
         # Ray tracing to calculate distortion map
         distortion_grid = self.calc_distortion_map(num_grid=num_grid, depth=depth, wvln=wvln)
-        x1 = distortion_grid[..., 0].cpu().numpy()
-        y1 = distortion_grid[..., 1].cpu().numpy()
+        # Scale axes so the plot preserves the physical sensor aspect ratio:
+        # longer side → ±1, shorter side → ±(shorter/longer).
+        sensor_w, sensor_h = self.sensor_size
+        max_half = max(sensor_w, sensor_h) / 2
+        aspect_x = (sensor_w / 2) / max_half
+        aspect_y = (sensor_h / 2) / max_half
+        x1 = distortion_grid[..., 0].cpu().numpy() * aspect_x
+        y1 = distortion_grid[..., 1].cpu().numpy() * aspect_y
 
         # Draw image
         fig, ax = plt.subplots()
-        ax.set_title("Lens distortion")
-        ax.scatter(x1, y1, s=2)
-        ax.axis("scaled")
+        ax.set_axisbelow(True)
         ax.grid(True)
+        ax.scatter(x1, y1, s=20, zorder=3)
+        ax.axis("scaled")
 
-        # Add grid lines based on grid_size
-        ax.set_xticks(np.linspace(-1, 1, num_grid))
-        ax.set_yticks(np.linspace(-1, 1, num_grid))
+        # Grid lines based on grid_size, scaled per axis so the overlay
+        # matches the data extent (±aspect_x × ±aspect_y).
+        ax.set_xticks(np.linspace(-aspect_x, aspect_x, num_grid))
+        ax.set_yticks(np.linspace(-aspect_y, aspect_y, num_grid))
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.tick_params(length=0)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
 
         if show:
             plt.show()
