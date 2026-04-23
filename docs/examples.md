@@ -45,7 +45,7 @@ geolens = GeoLens(filename="datasets/lenses/cellphone/cellphone80deg.json")
 lens = HybridLens(geolens=geolens, doe_res=1024)
 
 # Compute PSF (coherent ray tracing + ASM propagation)
-psf = lens.psf(point=[0.0, 0.0, -10000.0], ks=128, wvln=0.589)
+psf = lens.psf(points=[0.0, 0.0, -10000.0], ks=128, wvln=0.589)
 
 # Access the refractive lens properties through geolens attribute
 print(f"Focal length: {lens.geolens.foclen:.2f} mm")
