@@ -76,6 +76,7 @@ class HybridLens(Lens):
         device=None,
         dtype=torch.float64,
         primary_wvln=DEFAULT_WAVE,
+        wvln_rgb=WAVE_RGB,
     ):
         """Initialize a hybrid refractive-diffractive lens.
 
@@ -86,8 +87,16 @@ class HybridLens(Lens):
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
                 ``wvln``.  Defaults to ``DEFAULT_WAVE``.
+            wvln_rgb (sequence of float, optional): Three wavelengths used
+                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
+                to ``WAVE_RGB``.
         """
-        super().__init__(device=device, dtype=dtype, primary_wvln=primary_wvln)
+        super().__init__(
+            device=device,
+            dtype=dtype,
+            primary_wvln=primary_wvln,
+            wvln_rgb=wvln_rgb,
+        )
 
         # Load lens file
         if filename is not None:
@@ -505,7 +514,7 @@ class HybridLens(Lens):
                 fov=view,
                 num_rays=num_rays,
                 entrance_pupil=True,
-                wvln=WAVE_RGB[2 - i],
+                wvln=self.wvln_rgb[2 - i],
             )
             ray.prop_to(-1.0)
 
