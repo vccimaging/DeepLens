@@ -28,7 +28,6 @@ import torch
 import torch.nn.functional as F
 
 from ..config import (
-    DEPTH,
     EPSILON,
     PSF_KS,
     SPP_CALC,
@@ -494,7 +493,7 @@ class GeoLensPSF:
 
     def psf_map(
         self,
-        depth=DEPTH,
+        depth=None,
         grid=(7, 7),
         ks=PSF_KS,
         spp=SPP_PSF,
@@ -506,7 +505,8 @@ class GeoLensPSF:
         Overrides the base method in Lens class to improve efficiency by parallel ray tracing over different field points.
 
         Args:
-            depth (float, optional): Depth of the object plane. Defaults to DEPTH.
+            depth (float, optional): Depth of the object plane. When ``None``
+                (default), falls back to ``self.obj_depth``.
             grid (int, tuple): Grid size (grid_w, grid_h). Defaults to 7.
             ks (int, optional): Kernel size. Defaults to PSF_KS.
             spp (int, optional): Sample per pixel. Defaults to SPP_PSF.
@@ -518,6 +518,7 @@ class GeoLensPSF:
             psf_map: PSF map. Shape of [grid_h, grid_w, 1, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         if isinstance(grid, int):
             grid = (grid, grid)
         points = self.point_source_grid(depth=depth, grid=grid)

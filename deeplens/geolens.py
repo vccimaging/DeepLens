@@ -109,6 +109,7 @@ class GeoLens(
         dtype=torch.float32,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
+        obj_depth=DEPTH,
     ):
         """Initialize a refractive lens.
 
@@ -128,12 +129,16 @@ class GeoLens(
             wvln_rgb (sequence of float, optional): Three wavelengths used
                 for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
                 to ``WAVE_RGB``.
+            obj_depth (float, optional): Default object depth [mm], used
+                when a method is called without an explicit ``depth``.
+                Defaults to ``DEPTH``.
         """
         super().__init__(
             device=device,
             dtype=dtype,
             primary_wvln=primary_wvln,
             wvln_rgb=wvln_rgb,
+            obj_depth=obj_depth,
         )
 
         # Load lens file
@@ -742,7 +747,7 @@ class GeoLens(
     # ====================================================================================
     # Image simulation
     # ====================================================================================
-    def render(self, img_obj, depth=DEPTH, method="ray_tracing", **kwargs):
+    def render(self, img_obj, depth=None, method="ray_tracing", **kwargs):
         """Differentiable image simulation.
 
         Image simulation methods:
@@ -752,7 +757,8 @@ class GeoLens(
 
         Args:
             img_obj (Tensor): Input image object in raw space. Shape of [N, C, H, W].
-            depth (float, optional): Depth of the object. Defaults to DEPTH.
+            depth (float, optional): Depth of the object. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             method (str, optional): Image simulation method. One of 'psf_map', 'psf_patch',
                 or 'ray_tracing'. Defaults to 'ray_tracing'.
             **kwargs: Additional arguments for different methods:
@@ -764,6 +770,7 @@ class GeoLens(
         Returns:
             Tensor: Rendered image tensor. Shape of [N, C, H, W].
         """
+        depth = self.obj_depth if depth is None else depth
         B, C, Himg, Wimg = img_obj.shape
         Wsensor, Hsensor = self.sensor_res
 
@@ -800,18 +807,20 @@ class GeoLens(
 
         return img_render
 
-    def render_raytracing(self, img, depth=DEPTH, spp=SPP_RENDER, vignetting=False):
+    def render_raytracing(self, img, depth=None, spp=SPP_RENDER, vignetting=False):
         """Render RGB image using ray tracing rendering.
 
         Args:
             img (tensor): RGB image tensor. Shape of [N, 3, H, W].
-            depth (float, optional): Depth of the object. Defaults to DEPTH.
+            depth (float, optional): Depth of the object. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             spp (int, optional): Sample per pixel. Defaults to 64.
             vignetting (bool, optional): whether to consider vignetting effect. Defaults to False.
 
         Returns:
             img_render (tensor): Rendered RGB image tensor. Shape of [N, 3, H, W].
         """
+        depth = self.obj_depth if depth is None else depth
         img_render = torch.zeros_like(img)
         for i in range(3):
             img_render[:, i, :, :] = self.render_raytracing_mono(
@@ -823,18 +832,20 @@ class GeoLens(
             )
         return img_render
 
-    def render_raytracing_mono(self, img, wvln, depth=DEPTH, spp=64, vignetting=False):
+    def render_raytracing_mono(self, img, wvln, depth=None, spp=64, vignetting=False):
         """Render monochrome image using ray tracing rendering.
 
         Args:
             img (tensor): Monochrome image tensor. Shape of [N, 1, H, W] or [N, H, W].
             wvln (float): Wavelength of the light.
-            depth (float, optional): Depth of the object. Defaults to DEPTH.
+            depth (float, optional): Depth of the object. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             spp (int, optional): Sample per pixel. Defaults to 64.
 
         Returns:
             img_mono (tensor): Rendered monochrome image tensor. Shape of [N, 1, H, W] or [N, H, W].
         """
+        depth = self.obj_depth if depth is None else depth
         img = torch.flip(img, [-2, -1])
         scale = self.calc_scale(depth=depth)
         ray = self.sample_sensor(spp=spp, wvln=wvln)
@@ -911,18 +922,20 @@ class GeoLens(
 
         return image
 
-    def unwarp(self, img, depth=DEPTH, num_grid=128, crop=True, flip=True):
+    def unwarp(self, img, depth=None, num_grid=128, crop=True, flip=True):
         """Unwarp rendered images using distortion map.
 
         Args:
             img (tensor): Rendered image tensor. Shape of [N, C, H, W].
-            depth (float, optional): Depth of the object. Defaults to DEPTH.
+            depth (float, optional): Depth of the object. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             grid_size (int, optional): Grid size. Defaults to 256.
             crop (bool, optional): Whether to crop the image. Defaults to True.
 
         Returns:
             img_unwarpped (tensor): Unwarped image tensor. Shape of [N, C, H, W].
         """
+        depth = self.obj_depth if depth is None else depth
         # Calculate distortion map, shape (num_grid, num_grid, 2)
         distortion_map = self.calc_distortion_map(depth=depth, num_grid=num_grid)
 

@@ -26,7 +26,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from ..config import DEPTH, SPP_CALC
+from ..config import SPP_CALC
 
 
 class GeoLensTolerance:
@@ -150,7 +150,8 @@ class GeoLensTolerance:
             [2] Optical Design Tolerancing. CODE V.
         """
 
-        def merit_func(lens, fov=0.0, depth=DEPTH):
+        def merit_func(lens, fov=0.0, depth=None):
+            depth = lens.obj_depth if depth is None else depth
             """Evaluate MTF merit at a single field point."""
             try:
                 point = [0, -fov / lens.rfov, depth]
@@ -167,8 +168,9 @@ class GeoLensTolerance:
                 # Perturbed lens may block all rays at extreme fields
                 return 0.0
 
-        def multi_field_merit(lens, depth=DEPTH):
+        def multi_field_merit(lens, depth=None):
             """Evaluate average MTF merit across multiple field positions."""
+            depth = lens.obj_depth if depth is None else depth
             fov_points = [0.0, 0.5, 1.0]
             scores = [merit_func(lens, fov=fov, depth=depth) for fov in fov_points]
             return float(np.mean(scores))
@@ -188,7 +190,7 @@ class GeoLensTolerance:
                 self.d_sensor = self.calc_sensor_plane()
 
                 # Evaluate perturbed performance across multiple field positions
-                perturbed_merit = multi_field_merit(lens=self, depth=DEPTH)
+                perturbed_merit = multi_field_merit(lens=self, depth=self.obj_depth)
                 merit_ls.append(perturbed_merit)
 
                 # Clear perturbation (no refocus needed — next iteration
@@ -200,7 +202,7 @@ class GeoLensTolerance:
 
         # Baseline merit (nominal lens)
         self.refocus()
-        baseline_merit = multi_field_merit(lens=self, depth=DEPTH)
+        baseline_merit = multi_field_merit(lens=self, depth=self.obj_depth)
 
         # Results plot — histogram + CDF
         fig, ax1 = plt.subplots(figsize=(9, 5))

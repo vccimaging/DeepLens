@@ -54,6 +54,7 @@ class PSFNetLens(Lens):
         kernel_size=64,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
+        obj_depth=DEPTH,
     ):
         """Initialize a PSF network lens.
 
@@ -71,8 +72,13 @@ class PSFNetLens(Lens):
             wvln_rgb (sequence of float, optional): Three wavelengths used
                 for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
                 to ``WAVE_RGB``.
+            obj_depth (float, optional): Default object depth [mm], used
+                when a method is called without an explicit ``depth``.
+                Defaults to ``DEPTH``.
         """
-        super().__init__(primary_wvln=primary_wvln, wvln_rgb=wvln_rgb)
+        super().__init__(
+            primary_wvln=primary_wvln, wvln_rgb=wvln_rgb, obj_depth=obj_depth
+        )
 
         # Load lens (sensor_size and sensor_res are read from the lens file)
         self.lens_path = lens_path
@@ -81,6 +87,7 @@ class PSFNetLens(Lens):
             device=self.device,
             primary_wvln=primary_wvln,
             wvln_rgb=wvln_rgb,
+            obj_depth=obj_depth,
         )
         self.foclen = self.lens.foclen
         self.rfov = self.lens.rfov
@@ -402,18 +409,20 @@ class PSFNetLens(Lens):
             ]
         return psf
 
-    def psf_map_rgb(self, grid=(11, 11), depth=DEPTH, ks=PSF_KS, **kwargs):
+    def psf_map_rgb(self, grid=(11, 11), depth=None, ks=PSF_KS, **kwargs):
         """Compute monochrome PSF map.
 
         Args:
             grid (tuple, optional): Grid size. Defaults to (11, 11), meaning 11x11 grid.
             wvln (float, optional): Wavelength. Defaults to DEFAULT_WAVE.
-            depth (float, optional): Depth of the object. Defaults to DEPTH.
+            depth (float, optional): Depth of the object. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             ks (int, optional): Kernel size. Defaults to PSF_KS, meaning PSF_KS x PSF_KS kernel size.
 
         Returns:
             psf_map: Shape of [grid, grid, 3, ks, ks].
         """
+        depth = self.obj_depth if depth is None else depth
         # PSF map grid
         points = self.point_source_grid(depth=depth, grid=grid, center=True)
         points = points.reshape(-1, 3).to(self.device)

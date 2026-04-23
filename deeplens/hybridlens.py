@@ -20,6 +20,7 @@ import torch.nn.functional as F
 
 from .config import (
     DEFAULT_WAVE,
+    DEPTH,
     PSF_KS,
     SPP_COHERENT,
     WAVE_RGB,
@@ -77,6 +78,7 @@ class HybridLens(Lens):
         dtype=torch.float64,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
+        obj_depth=DEPTH,
     ):
         """Initialize a hybrid refractive-diffractive lens.
 
@@ -90,12 +92,16 @@ class HybridLens(Lens):
             wvln_rgb (sequence of float, optional): Three wavelengths used
                 for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
                 to ``WAVE_RGB``.
+            obj_depth (float, optional): Default object depth [mm], used
+                when a method is called without an explicit ``depth``.
+                Defaults to ``DEPTH``.
         """
         super().__init__(
             device=device,
             dtype=dtype,
             primary_wvln=primary_wvln,
             wvln_rgb=wvln_rgb,
+            obj_depth=obj_depth,
         )
 
         # Load lens file

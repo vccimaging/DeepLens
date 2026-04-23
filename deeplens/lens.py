@@ -35,6 +35,7 @@ class Lens(DeepObj):
         device=None,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
+        obj_depth=DEPTH,
     ):
         """Initialize a lens class.
 
@@ -47,6 +48,10 @@ class Lens(DeepObj):
             wvln_rgb (sequence of float, optional): Three wavelengths used for
                 RGB (polychromatic) computations, ordered ``[R, G, B]`` in
                 µm.  Defaults to ``WAVE_RGB``.
+            obj_depth (float, optional): Default object depth [mm] used as
+                fallback when a method is called without an explicit
+                ``depth``.  Should be negative (object in front of the lens).
+                Defaults to ``DEPTH`` (−20 000 mm, practical infinity).
         """
         # Lens device
         if device is None:
@@ -60,6 +65,9 @@ class Lens(DeepObj):
         # Design wavelengths [µm].  IO may override.
         self.primary_wvln = primary_wvln
         self.wvln_rgb = list(wvln_rgb)
+
+        # Default object depth [mm].
+        self.obj_depth = obj_depth
 
     def read_lens_json(self, filename):
         """Read lens from a json file."""
@@ -238,20 +246,22 @@ class Lens(DeepObj):
 
         return point_source
 
-    def psf_map(self, grid=(5, 5), wvln=None, depth=DEPTH, ks=PSF_KS, **kwargs):
+    def psf_map(self, grid=(5, 5), wvln=None, depth=None, ks=PSF_KS, **kwargs):
         """Compute monochrome PSF map.
 
         Args:
             grid (tuple): Grid size (grid_w, grid_h). Defaults to (5, 5), meaning 5x5 grid.
             wvln (float): Wavelength in µm. When ``None`` (default), falls back
                 to ``self.primary_wvln``.
-            depth (float): Depth of the object. Defaults to DEPTH.
+            depth (float): Depth of the object. When ``None`` (default), falls
+                back to ``self.obj_depth``.
             ks (int): Kernel size. Defaults to PSF_KS.
 
         Returns:
             psf_map: Shape of [grid_h, grid_w, 3, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
 
         # PSF map grid
         points = self.point_source_grid(depth=depth, grid=grid, center=True)
@@ -269,18 +279,20 @@ class Lens(DeepObj):
         psf_map = psf_map.reshape(grid[1], grid[0], 1, ks, ks)
         return psf_map
 
-    def psf_map_rgb(self, grid=(5, 5), ks=PSF_KS, depth=DEPTH, **kwargs):
+    def psf_map_rgb(self, grid=(5, 5), ks=PSF_KS, depth=None, **kwargs):
         """Compute RGB PSF map.
 
         Args:
             grid (tuple): Grid size (grid_w, grid_h). Defaults to (5, 5), meaning 5x5 grid.
             ks (int): Kernel size. Defaults to PSF_KS, meaning PSF_KS x PSF_KS kernel size.
-            depth (float): Depth of the object. Defaults to DEPTH.
+            depth (float): Depth of the object. When ``None`` (default), falls
+                back to ``self.obj_depth``.
             **kwargs: Additional arguments for psf_map().
 
         Returns:
             psf_map: Shape of [grid_h, grid_w, 3, ks, ks].
         """
+        depth = self.obj_depth if depth is None else depth
         psfs = []
         for wvln in self.wvln_rgb:
             psf_map = self.psf_map(grid=grid, ks=ks, depth=depth, wvln=wvln, **kwargs)
@@ -293,12 +305,13 @@ class Lens(DeepObj):
         self,
         grid=(7, 7),
         ks=PSF_KS,
-        depth=DEPTH,
+        depth=None,
         log_scale=False,
         save_name="./psf_map.png",
         show=False,
     ):
         """Draw RGB PSF map of the lens."""
+        depth = self.obj_depth if depth is None else depth
         # Calculate RGB PSF map, shape [grid_h, grid_w, 3, ks, ks]
         psf_map = self.psf_map_rgb(depth=depth, grid=grid, ks=ks)
 
@@ -427,10 +440,11 @@ class Lens(DeepObj):
 
     @torch.no_grad()
     def draw_psf_radial(
-        self, M=3, depth=DEPTH, ks=PSF_KS, log_scale=False, save_name="./psf_radial.png"
+        self, M=3, depth=None, ks=PSF_KS, log_scale=False, save_name="./psf_radial.png"
     ):
         """Draw radial PSF (45 deg). Will draw M PSFs, each of size ks x ks."""
         from torchvision.utils import make_grid, save_image
+        depth = self.obj_depth if depth is None else depth
         x = torch.linspace(0, 1, M)
         y = torch.linspace(0, 1, M)
         z = torch.full_like(x, depth)
@@ -458,7 +472,7 @@ class Lens(DeepObj):
     # -------------------------------------------
     # Simulate 2D scene
     # -------------------------------------------
-    def render(self, img_obj, depth=DEPTH, method="psf_patch", **kwargs):
+    def render(self, img_obj, depth=None, method="psf_patch", **kwargs):
         """Differentiable image simulation for a 2D (flat) scene.
 
         Performs only the optical component of image simulation and is fully
@@ -472,7 +486,7 @@ class Lens(DeepObj):
             img_obj (torch.Tensor): Input image in linear (raw) space,
                 shape ``[B, C, H, W]``.
             depth (float, optional): Object depth in mm (negative value).
-                Defaults to ``DEPTH`` (-20 000 mm, i.e. infinity).
+                When ``None`` (default), falls back to ``self.obj_depth``.
             method (str, optional): Rendering method.  One of:
 
                 * ``"psf_patch"`` – convolve a single PSF evaluated at
@@ -502,6 +516,7 @@ class Lens(DeepObj):
             >>> img_rendered = lens.render(img, depth=-10000.0, method="psf_patch",
             ...                            patch_center=(0.3, 0.0), psf_ks=64)
         """
+        depth = self.obj_depth if depth is None else depth
         # Check sensor resolution
         B, C, Himg, Wimg = img_obj.shape
         Wsensor, Hsensor = self.sensor_res
@@ -536,24 +551,27 @@ class Lens(DeepObj):
 
         return img_render
 
-    def render_psf(self, img_obj, depth=DEPTH, patch_center=(0, 0), psf_ks=PSF_KS):
+    def render_psf(self, img_obj, depth=None, patch_center=(0, 0), psf_ks=PSF_KS):
         """Render image patch using PSF convolution. Better not use this function to avoid confusion."""
+        depth = self.obj_depth if depth is None else depth
         return self.render_psf_patch(
             img_obj, depth=depth, patch_center=patch_center, psf_ks=psf_ks
         )
 
-    def render_psf_patch(self, img_obj, depth=DEPTH, patch_center=(0, 0), psf_ks=PSF_KS):
+    def render_psf_patch(self, img_obj, depth=None, patch_center=(0, 0), psf_ks=PSF_KS):
         """Render an image patch using PSF convolution, and return positional encoding channel.
 
         Args:
             img_obj (tensor): Input image object in raw space. Shape of [B, C, H, W].
-            depth (float): Depth of the object.
+            depth (float): Depth of the object. When ``None`` (default), falls
+                back to ``self.obj_depth``.
             patch_center (tensor): Center of the image patch. Shape of [2] or [B, 2].
             psf_ks (int): PSF kernel size. Defaults to PSF_KS.
 
         Returns:
             img_render: Rendered image. Shape of [B, C, H, W].
         """
+        depth = self.obj_depth if depth is None else depth
         # Convert patch_center to tensor
         if isinstance(patch_center, (list, tuple)):
             points = (patch_center[0], patch_center[1], depth)
@@ -573,7 +591,7 @@ class Lens(DeepObj):
         img_render = conv_psf(img_obj, psf=psf)
         return img_render
 
-    def render_psf_map(self, img_obj, depth=DEPTH, psf_grid=7, psf_ks=PSF_KS):
+    def render_psf_map(self, img_obj, depth=None, psf_grid=7, psf_ks=PSF_KS):
         """Render image using PSF block convolution.
 
         Note:
@@ -581,13 +599,15 @@ class Lens(DeepObj):
 
         Args:
             img_obj (tensor): Input image object in raw space. Shape of [B, C, H, W].
-            depth (float): Depth of the object.
+            depth (float): Depth of the object. When ``None`` (default), falls
+                back to ``self.obj_depth``.
             psf_grid (int): PSF grid size.
             psf_ks (int): PSF kernel size. Defaults to PSF_KS.
 
         Returns:
             img_render: Rendered image. Shape of [B, C, H, W].
         """
+        depth = self.obj_depth if depth is None else depth
         psf_map = self.psf_map_rgb(grid=psf_grid, ks=psf_ks, depth=depth)
         img_render = conv_psf_map(img_obj, psf_map)
         return img_render

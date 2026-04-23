@@ -95,7 +95,6 @@ import torch.nn.functional as F
 
 from PIL import Image
 from ..config import (
-    DEPTH,
     EPSILON,
     GEO_GRID,
     SPP_CALC,
@@ -195,7 +194,7 @@ class GeoLensEval:
         self,
         save_name="./lens_spot_radial.png",
         num_fov=5,
-        depth=DEPTH,
+        depth=None,
         num_rays=SPP_PSF,
         wvln_list=None,
         direction="y",
@@ -223,7 +222,7 @@ class GeoLensEval:
             num_fov (int): Number of field positions sampled uniformly from
                 on-axis (0) to full-field. Defaults to 5.
             depth (float): Object distance in mm (negative = real object).
-                Defaults to ``DEPTH``.
+                When ``None`` (default), falls back to ``self.obj_depth``.
             num_rays (int): Rays per field position per wavelength.
                 Defaults to ``SPP_PSF``.
             wvln_list (list[float]): Wavelengths in µm.  When ``None``
@@ -236,8 +235,8 @@ class GeoLensEval:
         """
         wvln_list = self.wvln_rgb if wvln_list is None else wvln_list
         assert isinstance(wvln_list, list), "wvln_list must be a list"
-        if depth == float("inf"):
-            depth = DEPTH
+        if depth is None or depth == float("inf"):
+            depth = self.obj_depth
 
         # Generate physical object-space points along the chosen direction
         points = self.point_source_radial(
@@ -282,7 +281,7 @@ class GeoLensEval:
         self,
         save_name="./lens_spot_map.png",
         num_grid=5,
-        depth=DEPTH,
+        depth=None,
         num_rays=SPP_PSF,
         wvln_list=None,
         show=False,
@@ -308,7 +307,8 @@ class GeoLensEval:
                 Defaults to ``'./lens_spot_map.png'``.
             num_grid (int | tuple[int, int]): Number of grid points along each
                 axis. Total subplots = ``grid_w * grid_h``. Defaults to 5.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             num_rays (int): Rays per grid cell per wavelength.
                 Defaults to ``SPP_PSF``.
             wvln_list (list[float]): Wavelengths in µm.  When ``None``
@@ -316,6 +316,7 @@ class GeoLensEval:
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         wvln_list = self.wvln_rgb if wvln_list is None else wvln_list
+        depth = self.obj_depth if depth is None else depth
         assert isinstance(wvln_list, list), "wvln_list must be a list"
         if isinstance(num_grid, int):
             num_grid = (num_grid, num_grid)
@@ -365,7 +366,7 @@ class GeoLensEval:
     # RMS map
     # ================================================================
     @torch.no_grad()
-    def rms_map(self, num_grid=32, depth=DEPTH, wvln=None, center=None):
+    def rms_map(self, num_grid=32, depth=None, wvln=None, center=None):
         """Compute per-field-position RMS spot radius for a single wavelength.
 
         Traces ``SPP_PSF`` rays per grid cell and computes the root-mean-square
@@ -386,7 +387,8 @@ class GeoLensEval:
         Args:
             num_grid (int | tuple[int, int]): Spatial resolution of the field
                 sampling grid. Defaults to 32.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
             center (torch.Tensor | None): External reference centroid with shape
@@ -402,6 +404,7 @@ class GeoLensEval:
                   ``center`` to subsequent calls (e.g. in ``rms_map_rgb``).
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         if isinstance(num_grid, int):
             num_grid = (num_grid, num_grid)
 
@@ -426,7 +429,7 @@ class GeoLensEval:
         return rms, centroid
 
     @torch.no_grad()
-    def rms_map_rgb(self, num_grid=32, depth=DEPTH):
+    def rms_map_rgb(self, num_grid=32, depth=None):
         """Compute per-field-position RMS spot radius for R, G, B wavelengths.
 
         The RMS spot radius is a standard measure of geometrical image quality.
@@ -450,13 +453,15 @@ class GeoLensEval:
         Args:
             num_grid (int): Spatial resolution of the field sampling grid.
                 Defaults to 32.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
 
         Returns:
             torch.Tensor: RMS spot error map with shape ``[3, num_grid, num_grid]``
                 (channels ordered R, G, B). Units are mm (same as sensor
                 coordinates).
         """
+        depth = self.obj_depth if depth is None else depth
         # Green first to obtain the shared reference centroid
         rms_g, green_centroid = self.rms_map(
             num_grid=num_grid, depth=depth, wvln=self.wvln_rgb[1]
@@ -663,7 +668,7 @@ class GeoLensEval:
         plt.close(fig)
 
     @torch.no_grad()
-    def calc_distortion_map(self, num_grid=16, depth=DEPTH, wvln=None):
+    def calc_distortion_map(self, num_grid=16, depth=None, wvln=None):
         """Compute a 2-D distortion grid mapping ideal to actual image positions.
 
         For each cell in a ``num_grid × num_grid`` field grid, rays are traced
@@ -676,7 +681,8 @@ class GeoLensEval:
 
         Args:
             num_grid (int): Grid resolution along each axis. Defaults to 16.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
 
@@ -687,6 +693,7 @@ class GeoLensEval:
                 corresponding ideal grid position.
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         # Sample and trace rays, shape (grid_size, grid_size, num_rays, 3)
         ray = self.sample_grid_rays(depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False)
         ray = self.trace2sensor(ray)
@@ -745,7 +752,7 @@ class GeoLensEval:
 
     @torch.no_grad()
     def draw_distortion_map(
-        self, save_name=None, num_grid=16, depth=DEPTH, wvln=None, show=False
+        self, save_name=None, num_grid=16, depth=None, wvln=None, show=False
     ):
         """Draw a scatter plot of the distortion grid.
 
@@ -758,12 +765,14 @@ class GeoLensEval:
             save_name (str | None): File path for the output PNG.  If ``None``,
                 auto-generates ``'./distortion_{depth}.png'``.
             num_grid (int): Grid resolution per axis. Defaults to 16.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         # Ray tracing to calculate distortion map
         distortion_grid = self.calc_distortion_map(num_grid=num_grid, depth=depth, wvln=wvln)
         x1 = distortion_grid[..., 0].cpu().numpy()
@@ -811,7 +820,7 @@ class GeoLensEval:
 
         Args:
             fov (float): Field angle in radians.  Internally mapped to a
-                normalized point ``[0, -fov/rfov, DEPTH]``.
+                normalized point ``[0, -fov/rfov, self.obj_depth]``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
 
@@ -824,7 +833,7 @@ class GeoLensEval:
                 - **mtf_sag**: Sagittal MTF values, same normalization.
         """
         wvln = self.primary_wvln if wvln is None else wvln
-        point = [0, -fov / self.rfov, DEPTH]
+        point = [0, -fov / self.rfov, self.obj_depth]
         psf = self.psf(points=point, recenter=True, wvln=wvln)
         freq, mtf_tan, mtf_sag = self.psf2mtf(psf, pixel_size=self.pixel_size)
         return freq, mtf_tan, mtf_sag
@@ -905,7 +914,7 @@ class GeoLensEval:
         self,
         save_name="./lens_mtf.png",
         relative_fov_list=[0.0, 0.7, 1.0],
-        depth_list=[DEPTH],
+        depth_list=None,
         psf_ks=128,
         show=False,
     ):
@@ -930,17 +939,20 @@ class GeoLensEval:
                 ``[0, 1]``, where 0 = on-axis and 1 = full field.
                 Defaults to ``[0.0, 0.7, 1.0]``.
             depth_list (list[float]): Object distances in mm.
-                ``float('inf')`` is automatically replaced by ``DEPTH``.
-                Defaults to ``[DEPTH]``.
+                ``float('inf')`` is automatically replaced by
+                ``self.obj_depth``.  When ``None`` (default), uses
+                ``[self.obj_depth]``.
             psf_ks (int): PSF kernel size in pixels (controls frequency
                 resolution of the resulting MTF). Defaults to 128.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
+        if depth_list is None:
+            depth_list = [self.obj_depth]
         pixel_size = self.pixel_size
         nyquist_freq = 0.5 / pixel_size
         num_fovs = len(relative_fov_list)
         if float("inf") in depth_list:
-            depth_list = [DEPTH if x == float("inf") else x for x in depth_list]
+            depth_list = [self.obj_depth if x == float("inf") else x for x in depth_list]
         num_depths = len(depth_list)
 
         # Create figure and subplots (num_depths * num_fovs subplots)
@@ -1180,7 +1192,7 @@ class GeoLensEval:
     # Vignetting
     # ================================================================
     @torch.no_grad()
-    def vignetting(self, depth=DEPTH, num_grid=32, num_rays=512):
+    def vignetting(self, depth=None, num_grid=32, num_rays=512):
         """Compute the relative-illumination (vignetting) map across the field.
 
         Vignetting measures how much light is lost at each field position due to
@@ -1201,7 +1213,8 @@ class GeoLensEval:
             3. Per-cell throughput = ``count(valid) / num_rays``.
 
         Args:
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             num_grid (int): Grid resolution per axis. Defaults to 32.
             num_rays (int): Rays launched per grid cell.  Higher values reduce
                 Monte-Carlo noise. Defaults to 512.
@@ -1210,6 +1223,7 @@ class GeoLensEval:
             torch.Tensor: Vignetting map with shape ``[num_grid, num_grid]``,
                 values in ``[0, 1]``.
         """
+        depth = self.obj_depth if depth is None else depth
         # Sample rays in uniform image space (not FOV angles) for correct sensor mapping
         # shape [num_grid, num_grid, num_rays, 3]
         ray = self.sample_grid_rays(
@@ -1224,7 +1238,7 @@ class GeoLensEval:
         return vignetting
 
     @torch.no_grad()
-    def draw_vignetting(self, filename=None, depth=DEPTH, resolution=512, show=False):
+    def draw_vignetting(self, filename=None, depth=None, resolution=512, show=False):
         """Draw the vignetting map as a grayscale image with a colorbar.
 
         Computes the vignetting map via ``self.vignetting()``, bilinearly
@@ -1234,11 +1248,13 @@ class GeoLensEval:
         Args:
             filename (str | None): File path for the output PNG.  If ``None``,
                 auto-generates ``'./vignetting_{depth}.png'``.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             resolution (int): Output image size in pixels (square).
                 Defaults to 512.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
+        depth = self.obj_depth if depth is None else depth
         # Calculate vignetting map
         vignetting = self.vignetting(depth=depth)
 
@@ -1270,7 +1286,7 @@ class GeoLensEval:
     def wavefront_error(
         self,
         relative_fov=0.0,
-        depth=DEPTH,
+        depth=None,
         wvln=None,
         num_rays=SPP_COHERENT,
         ks=256,
@@ -1297,7 +1313,8 @@ class GeoLensEval:
         Args:
             relative_fov (float): Relative field of view in ``[-1, 1]`` along the
                 meridional (y) direction. ``0`` = on-axis, ``1`` = full field.
-            depth (float): Object distance [mm]. Use ``DEPTH`` for practical infinity.
+            depth (float): Object distance [mm]. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
             num_rays (int): Number of rays to sample through the pupil.
@@ -1321,6 +1338,7 @@ class GeoLensEval:
             [2] Zemax OpticStudio, "Wavefront Error Analysis".
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         # Float64 required for accurate OPL accumulation
         self.astype(torch.float64)
         device = self.device
@@ -1433,7 +1451,7 @@ class GeoLensEval:
     def rms_wavefront_error(
         self,
         relative_fov=0.0,
-        depth=DEPTH,
+        depth=None,
         wvln=None,
         num_rays=SPP_COHERENT,
     ):
@@ -1443,7 +1461,8 @@ class GeoLensEval:
 
         Args:
             relative_fov (float): Relative field of view in ``[-1, 1]``.
-            depth (float): Object distance [mm].
+            depth (float): Object distance [mm]. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
             num_rays (int): Number of rays to sample.
@@ -1464,7 +1483,7 @@ class GeoLensEval:
         self,
         save_name="./wavefront_error.png",
         num_fov=5,
-        depth=DEPTH,
+        depth=None,
         wvln=None,
         num_rays=SPP_COHERENT,
         ks=256,
@@ -1479,7 +1498,8 @@ class GeoLensEval:
         Args:
             save_name (str): Filename to save the figure.
             num_fov (int): Number of field positions to evaluate.
-            depth (float): Object distance [mm].
+            depth (float): Object distance [mm]. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
             num_rays (int): Number of rays to sample per field position.
@@ -1487,6 +1507,7 @@ class GeoLensEval:
             show (bool): If True, display the figure interactively.
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         fov_list = torch.linspace(0, 1, num_fov).tolist()
 
         fig, axs = plt.subplots(1, num_fov, figsize=(num_fov * 3.5, 3.5))
@@ -1822,7 +1843,7 @@ class GeoLensEval:
         self,
         img_org,
         save_name=None,
-        depth=DEPTH,
+        depth=None,
         spp=SPP_RENDER,
         unwarp=False,
         method="ray_tracing",
@@ -1852,7 +1873,8 @@ class GeoLensEval:
             save_name (str | None): Path prefix for saved PNGs.  If not
                 ``None``, saves ``'{save_name}.png'`` and (if unwarped)
                 ``'{save_name}_unwarped.png'``. Defaults to ``None``.
-            depth (float): Object distance in mm. Defaults to ``DEPTH``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             spp (int): Samples (rays) per pixel for rendering.
                 Defaults to ``SPP_RENDER``.
             unwarp (bool): If ``True``, apply distortion correction after
@@ -1868,6 +1890,7 @@ class GeoLensEval:
         """
         from skimage.metrics import peak_signal_noise_ratio, structural_similarity
         from torchvision.utils import save_image
+        depth = self.obj_depth if depth is None else depth
         # Change sensor resolution to match the image
         sensor_res_original = self.sensor_res
         if isinstance(img_org, np.ndarray):
@@ -2050,7 +2073,7 @@ class GeoLensEval:
                 appends a suffix (e.g., ``'_spot.png'``, ``'_mtf.png'``).
                 Defaults to ``'./lens'``.
             depth (float): Object distance in mm.  ``float('inf')`` is replaced
-                by ``DEPTH`` for rendering and vignetting.
+                by ``self.obj_depth`` for rendering and vignetting.
                 Defaults to ``float('inf')``.
             full_eval (bool): If ``True``, run all evaluation plots.  If
                 ``False``, only layout + spot RMS. Defaults to ``False``.
@@ -2086,7 +2109,7 @@ class GeoLensEval:
             # Draw MTF
             if depth == float("inf"):
                 self.draw_mtf(
-                    depth_list=[DEPTH],
+                    depth_list=[self.obj_depth],
                     save_name=f"{save_name}_mtf.png",
                     show=show,
                 )
@@ -2110,7 +2133,7 @@ class GeoLensEval:
             )
 
             # Draw vignetting
-            eval_depth = DEPTH if depth == float("inf") else depth
+            eval_depth = self.obj_depth if depth == float("inf") else depth
             self.draw_vignetting(
                 filename=f"{save_name}_vignetting.png",
                 depth=eval_depth,
@@ -2119,7 +2142,7 @@ class GeoLensEval:
 
         # Render an image, compute PSNR and SSIM
         if render:
-            depth = DEPTH if depth == float("inf") else depth
+            depth = self.obj_depth if depth == float("inf") else depth
             img_org = Image.open("./datasets/charts/NBS_1963_1k.png").convert("RGB")
             img_org = np.array(img_org)
             self.analysis_rendering(
