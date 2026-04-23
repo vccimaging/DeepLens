@@ -29,12 +29,15 @@ from .imgsim import (
 
 
 class Lens(DeepObj):
-    def __init__(self, dtype=torch.float32, device=None):
+    def __init__(self, dtype=torch.float32, device=None, primary_wvln=DEFAULT_WAVE):
         """Initialize a lens class.
 
         Args:
             dtype (torch.dtype, optional): Data type. Defaults to torch.float32.
             device (str, optional): Device to run the lens. Defaults to None.
+            primary_wvln (float, optional): Primary design wavelength [µm].
+                Used as fallback when a method is called without an explicit
+                ``wvln``.  Defaults to ``DEFAULT_WAVE`` (0.587, d-line).
         """
         # Lens device
         if device is None:
@@ -44,6 +47,9 @@ class Lens(DeepObj):
 
         # Lens default dtype
         self.dtype = dtype
+
+        # Primary design wavelength [µm].  IO (read_lens_json) may override.
+        self.primary_wvln = primary_wvln
 
     def read_lens_json(self, filename):
         """Read lens from a json file."""
@@ -109,7 +115,7 @@ class Lens(DeepObj):
     # 2. PSF map
     # 3. PSF radial
     # ===========================================
-    def psf(self, points, wvln=DEFAULT_WAVE, ks=PSF_KS, **kwargs):
+    def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
         """Compute the monochromatic PSF for one or more point sources.
 
         Subclasses must override this method with a differentiable
@@ -122,8 +128,8 @@ class Lens(DeepObj):
                 or ``[3]``.  ``x, y`` are normalised to ``[-1, 1]``
                 (relative to the sensor half-diagonal); ``z`` is depth in mm
                 (must be negative, i.e. in front of the lens).
-            wvln (float, optional): Wavelength in micrometers.  Defaults to
-                ``DEFAULT_WAVE`` (0.587 µm, d-line).
+            wvln (float, optional): Wavelength in micrometers.  When ``None``
+                (default), falls back to ``self.primary_wvln``.
             ks (int, optional): Output PSF kernel size in pixels.  Defaults
                 to ``PSF_KS`` (64).
             **kwargs: Additional keyword arguments forwarded to the underlying
@@ -222,18 +228,21 @@ class Lens(DeepObj):
 
         return point_source
 
-    def psf_map(self, grid=(5, 5), wvln=DEFAULT_WAVE, depth=DEPTH, ks=PSF_KS, **kwargs):
+    def psf_map(self, grid=(5, 5), wvln=None, depth=DEPTH, ks=PSF_KS, **kwargs):
         """Compute monochrome PSF map.
 
         Args:
             grid (tuple): Grid size (grid_w, grid_h). Defaults to (5, 5), meaning 5x5 grid.
-            wvln (float): Wavelength. Defaults to DEFAULT_WAVE.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls back
+                to ``self.primary_wvln``.
             depth (float): Depth of the object. Defaults to DEPTH.
             ks (int): Kernel size. Defaults to PSF_KS.
 
         Returns:
             psf_map: Shape of [grid_h, grid_w, 3, ks, ks].
         """
+        wvln = self.primary_wvln if wvln is None else wvln
+
         # PSF map grid
         points = self.point_source_grid(depth=depth, grid=grid, center=True)
         points = points.reshape(-1, 3)

@@ -37,7 +37,6 @@ from torch.nn.functional import softplus
 from tqdm import tqdm
 
 from ..config import (
-    DEFAULT_WAVE,
     DEPTH,
     EPSILON,
     GEO_GRID,
@@ -501,7 +500,7 @@ class GeoLensOptim:
     # ================================================================
     # Example optimization function
     # ================================================================
-    def sample_ring_arm_rays(self, num_ring=8, num_arm=8, spp=2048, depth=DEPTH, wvln=DEFAULT_WAVE, scale_pupil=1.0, sample_more_off_axis=True):
+    def sample_ring_arm_rays(self, num_ring=8, num_arm=8, spp=2048, depth=DEPTH, wvln=None, scale_pupil=1.0, sample_more_off_axis=True):
         """Sample rays from object space using a ring-arm pattern.
 
         This method distributes sampling points (origins of ray bundles) on a polar grid in the object plane,
@@ -516,12 +515,14 @@ class GeoLensOptim:
             num_arm (int): Number of arms (spokes) to sample for each ring.
             spp (int): Total number of rays to be sampled, distributed among field points.
             depth (float): Depth of the object plane.
-            wvln (float): Wavelength of the rays.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             scale_pupil (float): Scale factor for the pupil size.
 
         Returns:
             Ray: A Ray object containing the sampled rays.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Create points on rings and arms
         max_fov_rad = self.rfov
         if sample_more_off_axis:

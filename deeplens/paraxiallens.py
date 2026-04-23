@@ -15,7 +15,7 @@ import numpy as np
 import torch
 
 from .lens import Lens
-from .config import DEPTH, EPSILON, PSF_KS
+from .config import DEFAULT_WAVE, DEPTH, EPSILON, PSF_KS
 from .imgsim import conv_psf_depth_interp, conv_psf_occlusion
 
 
@@ -34,7 +34,15 @@ class ParaxialLens(Lens):
         pixel_size (float): Pixel pitch [mm].
     """
 
-    def __init__(self, foclen, fnum, sensor_size=None, sensor_res=None, device="cpu"):
+    def __init__(
+        self,
+        foclen,
+        fnum,
+        sensor_size=None,
+        sensor_res=None,
+        device="cpu",
+        primary_wvln=DEFAULT_WAVE,
+    ):
         """Initialize a paraxial lens.
 
         Args:
@@ -43,8 +51,11 @@ class ParaxialLens(Lens):
             sensor_size (tuple, optional): Physical sensor size as (W, H) in [mm]. Defaults to (8.0, 8.0).
             sensor_res (tuple, optional): Sensor resolution as (W, H) in pixels. Defaults to (2000, 2000).
             device (str, optional): Computation device. Defaults to "cpu".
+            primary_wvln (float, optional): Primary design wavelength [µm].
+                Used as fallback when a method is called without an explicit
+                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
         """
-        super(ParaxialLens, self).__init__(device=device)
+        super(ParaxialLens, self).__init__(device=device, primary_wvln=primary_wvln)
 
         # Lens parameters
         self.foclen = foclen  # Focal length [mm]

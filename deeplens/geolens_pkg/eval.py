@@ -95,7 +95,6 @@ import torch.nn.functional as F
 
 from PIL import Image
 from ..config import (
-    DEFAULT_WAVE,
     DEPTH,
     EPSILON,
     GEO_GRID,
@@ -149,7 +148,7 @@ class GeoLensEval:
     # Spot diagram
     # ================================================================
     @torch.no_grad()
-    def spot_points(self, points, num_rays=SPP_PSF, wvln=DEFAULT_WAVE):
+    def spot_points(self, points, num_rays=SPP_PSF, wvln=None):
         """Trace rays from object points to sensor and return the traced Ray.
 
         Samples rays from each physical object point toward the entrance pupil,
@@ -178,8 +177,8 @@ class GeoLensEval:
                 for radial sampling.
             num_rays (int): Number of rays sampled per object point.
                 Defaults to ``SPP_PSF``.
-            wvln (float): Wavelength in micrometers.
-                Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
 
         Returns:
             Ray: Traced ray on the sensor plane, with shape
@@ -188,6 +187,7 @@ class GeoLensEval:
                 positions and ``ray.is_valid`` for the validity mask.
                 ``ray.centroid()`` gives the weighted centroid.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         ray = self.sample_from_points(points=points, num_rays=num_rays, wvln=wvln)
         return self.trace2sensor(ray)
 
@@ -364,7 +364,7 @@ class GeoLensEval:
     # RMS map
     # ================================================================
     @torch.no_grad()
-    def rms_map(self, num_grid=32, depth=DEPTH, wvln=DEFAULT_WAVE, center=None):
+    def rms_map(self, num_grid=32, depth=DEPTH, wvln=None, center=None):
         """Compute per-field-position RMS spot radius for a single wavelength.
 
         Traces ``SPP_PSF`` rays per grid cell and computes the root-mean-square
@@ -386,7 +386,8 @@ class GeoLensEval:
             num_grid (int | tuple[int, int]): Spatial resolution of the field
                 sampling grid. Defaults to 32.
             depth (float): Object distance in mm. Defaults to ``DEPTH``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             center (torch.Tensor | None): External reference centroid with shape
                 ``[grid_h, grid_w, 2]``.  If ``None``, each cell's own
                 centroid is used. Defaults to ``None``.
@@ -399,6 +400,7 @@ class GeoLensEval:
                   ``[grid_h, grid_w, 2]``.  Useful for passing as
                   ``center`` to subsequent calls (e.g. in ``rms_map_rgb``).
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         if isinstance(num_grid, int):
             num_grid = (num_grid, num_grid)
 
@@ -476,7 +478,7 @@ class GeoLensEval:
     def calc_distortion_radial(
         self,
         num_points=GEO_GRID,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         plane="meridional",
         ray_aiming=True,
     ):
@@ -508,7 +510,8 @@ class GeoLensEval:
             num_points (int): Number of evenly-spaced field-angle samples from
                 on-axis (0°) to full-field (``self.rfov``).
                 Defaults to ``GEO_GRID``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             plane (str): ``'meridional'`` (y-axis) or ``'sagittal'`` (x-axis).
                 Defaults to ``'meridional'``.
             ray_aiming (bool): If ``True``, the chief ray is aimed to pass
@@ -522,6 +525,7 @@ class GeoLensEval:
                   ``[num_points]``.  Dimensionless (multiply by 100 for
                   percent).
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         rfov_deg = self.rfov * 180 / torch.pi
 
         # Sample field angles uniformly from 0 to rfov_deg.
@@ -569,7 +573,7 @@ class GeoLensEval:
         self,
         save_name=None,
         num_points=GEO_GRID,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         plane="meridional",
         ray_aiming=True,
         show=False,
@@ -590,13 +594,15 @@ class GeoLensEval:
                 auto-generates ``'./{plane}_distortion_inf.png'``.
             num_points (int): Number of field-angle samples.
                 Defaults to ``GEO_GRID``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             plane (str): ``'meridional'`` or ``'sagittal'``.
                 Defaults to ``'meridional'``.
             ray_aiming (bool): Whether to use ray aiming for chief-ray
                 computation. Defaults to ``True``.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         rfov_deg = self.rfov * 180 / torch.pi
 
         # Calculate distortion at evenly-spaced field angles
@@ -656,7 +662,7 @@ class GeoLensEval:
         plt.close(fig)
 
     @torch.no_grad()
-    def calc_distortion_map(self, num_grid=16, depth=DEPTH, wvln=DEFAULT_WAVE):
+    def calc_distortion_map(self, num_grid=16, depth=DEPTH, wvln=None):
         """Compute a 2-D distortion grid mapping ideal to actual image positions.
 
         For each cell in a ``num_grid × num_grid`` field grid, rays are traced
@@ -670,7 +676,8 @@ class GeoLensEval:
         Args:
             num_grid (int): Grid resolution along each axis. Defaults to 16.
             depth (float): Object distance in mm. Defaults to ``DEPTH``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
 
         Returns:
             torch.Tensor: Distortion grid with shape ``[num_grid, num_grid, 2]``.
@@ -678,6 +685,7 @@ class GeoLensEval:
                 ``[-1, 1]``, representing the actual centroid position for the
                 corresponding ideal grid position.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Sample and trace rays, shape (grid_size, grid_size, num_rays, 3)
         ray = self.sample_grid_rays(depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False)
         ray = self.trace2sensor(ray)
@@ -736,7 +744,7 @@ class GeoLensEval:
 
     @torch.no_grad()
     def draw_distortion_map(
-        self, save_name=None, num_grid=16, depth=DEPTH, wvln=DEFAULT_WAVE, show=False
+        self, save_name=None, num_grid=16, depth=DEPTH, wvln=None, show=False
     ):
         """Draw a scatter plot of the distortion grid.
 
@@ -750,9 +758,11 @@ class GeoLensEval:
                 auto-generates ``'./distortion_{depth}.png'``.
             num_grid (int): Grid resolution per axis. Defaults to 16.
             depth (float): Object distance in mm. Defaults to ``DEPTH``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Ray tracing to calculate distortion map
         distortion_grid = self.calc_distortion_map(num_grid=num_grid, depth=depth, wvln=wvln)
         x1 = distortion_grid[..., 0].cpu().numpy()
@@ -781,7 +791,7 @@ class GeoLensEval:
     # ================================================================
     # MTF
     # ================================================================
-    def mtf(self, fov, wvln=DEFAULT_WAVE):
+    def mtf(self, fov, wvln=None):
         """Compute the geometric MTF at a single field position.
 
         The *Modulation Transfer Function* describes how well the lens preserves
@@ -801,7 +811,8 @@ class GeoLensEval:
         Args:
             fov (float): Field angle in radians.  Internally mapped to a
                 normalized point ``[0, -fov/rfov, DEPTH]``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
 
         Returns:
             tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -811,6 +822,7 @@ class GeoLensEval:
                   so that MTF → 1 at low frequency.
                 - **mtf_sag**: Sagittal MTF values, same normalization.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         point = [0, -fov / self.rfov, DEPTH]
         psf = self.psf(points=point, recenter=True, wvln=wvln)
         freq, mtf_tan, mtf_sag = self.psf2mtf(psf, pixel_size=self.pixel_size)
@@ -1257,7 +1269,7 @@ class GeoLensEval:
         self,
         relative_fov=0.0,
         depth=DEPTH,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         num_rays=SPP_COHERENT,
         ks=256,
     ):
@@ -1284,7 +1296,8 @@ class GeoLensEval:
             relative_fov (float): Relative field of view in ``[-1, 1]`` along the
                 meridional (y) direction. ``0`` = on-axis, ``1`` = full field.
             depth (float): Object distance [mm]. Use ``DEPTH`` for practical infinity.
-            wvln (float): Wavelength [µm].
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             num_rays (int): Number of rays to sample through the pupil.
             ks (int): Grid resolution for the OPD map at the exit pupil.
 
@@ -1305,6 +1318,7 @@ class GeoLensEval:
             [1] V. N. Mahajan, "Optical Imaging and Aberrations, Part II", Ch. 1.
             [2] Zemax OpticStudio, "Wavefront Error Analysis".
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Float64 required for accurate OPL accumulation
         self.astype(torch.float64)
         device = self.device
@@ -1418,7 +1432,7 @@ class GeoLensEval:
         self,
         relative_fov=0.0,
         depth=DEPTH,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         num_rays=SPP_COHERENT,
     ):
         """Compute scalar RMS wavefront error at a given field position.
@@ -1428,7 +1442,8 @@ class GeoLensEval:
         Args:
             relative_fov (float): Relative field of view in ``[-1, 1]``.
             depth (float): Object distance [mm].
-            wvln (float): Wavelength [µm].
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             num_rays (int): Number of rays to sample.
 
         Returns:
@@ -1448,7 +1463,7 @@ class GeoLensEval:
         save_name="./wavefront_error.png",
         num_fov=5,
         depth=DEPTH,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         num_rays=SPP_COHERENT,
         ks=256,
         show=False,
@@ -1463,11 +1478,13 @@ class GeoLensEval:
             save_name (str): Filename to save the figure.
             num_fov (int): Number of field positions to evaluate.
             depth (float): Object distance [mm].
-            wvln (float): Wavelength [µm].
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             num_rays (int): Number of rays to sample per field position.
             ks (int): Grid resolution for each OPD map.
             show (bool): If True, display the figure interactively.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         fov_list = torch.linspace(0, 1, num_fov).tolist()
 
         fig, axs = plt.subplots(1, num_fov, figsize=(num_fov * 3.5, 3.5))
@@ -1610,7 +1627,7 @@ class GeoLensEval:
         self,
         rfov,
         depth=0.0,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         plane="meridional",
         num_rays=SPP_CALC,
         ray_aiming=True,
@@ -1645,7 +1662,8 @@ class GeoLensEval:
                 A tensor of shape ``[N]`` is used directly.
             depth (float | torch.Tensor): Object depth(s) in mm.
                 Defaults to 0.0 (object at the first surface).
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             plane (str): ``'sagittal'`` or ``'meridional'``.
                 Defaults to ``'meridional'``.
             num_rays (int): Size of the search fan for ray aiming.
@@ -1658,6 +1676,7 @@ class GeoLensEval:
                 - **chief_ray_o**: Origins, shape ``[N, 3]``.
                 - **chief_ray_d**: Unit directions, shape ``[N, 3]``.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         if isinstance(rfov, (int, float)):
             if rfov > 0:
                 rfov = torch.linspace(0, rfov, 2, device=self.device)

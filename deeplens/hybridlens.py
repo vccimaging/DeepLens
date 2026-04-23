@@ -75,6 +75,7 @@ class HybridLens(Lens):
         filename=None,
         device=None,
         dtype=torch.float64,
+        primary_wvln=DEFAULT_WAVE,
     ):
         """Initialize a hybrid refractive-diffractive lens.
 
@@ -82,8 +83,11 @@ class HybridLens(Lens):
             filename (str, optional): Path to the lens configuration JSON file. Defaults to None.
             device (str, optional): Computation device ('cpu' or 'cuda'). Defaults to None.
             dtype (torch.dtype, optional): Data type for computations. Defaults to torch.float64.
+            primary_wvln (float, optional): Primary design wavelength [µm].
+                Used as fallback when a method is called without an explicit
+                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
         """
-        super().__init__(device=device, dtype=dtype)
+        super().__init__(device=device, dtype=dtype, primary_wvln=primary_wvln)
 
         # Load lens file
         if filename is not None:
@@ -254,7 +258,7 @@ class HybridLens(Lens):
     # =====================================================================
     # PSF-related functions
     # =====================================================================
-    def doe_field(self, point, wvln=DEFAULT_WAVE, spp=SPP_COHERENT):
+    def doe_field(self, point, wvln=None, spp=SPP_COHERENT):
         """Compute the complex wave field at the DOE plane via coherent ray tracing.
 
         Similar to ``GeoLens.pupil_field()``, but evaluates the field at the
@@ -266,8 +270,8 @@ class HybridLens(Lens):
             point (torch.Tensor): Point source position, shape ``(3,)`` or
                 ``(1, 3)`` as ``[x, y, z]`` in normalised sensor coordinates
                 for x/y and mm for z.
-            wvln (float, optional): Wavelength in [um].  Defaults to
-                ``DEFAULT_WAVE``.
+            wvln (float, optional): Wavelength in µm.  When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             spp (int, optional): Number of rays to sample.  Must be
                 >= 1,000,000 for accurate coherent simulation.  Defaults to
                 ``SPP_COHERENT``.
@@ -283,6 +287,7 @@ class HybridLens(Lens):
             AssertionError: If *spp* < 1,000,000 or the default dtype is not
                 ``float64``.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         assert spp >= 1_000_000, (
             "Coherent ray tracing spp is too small, "
             "which may lead to inaccurate simulation."
@@ -334,7 +339,7 @@ class HybridLens(Lens):
         self,
         points=[0.0, 0.0, -10000.0],
         ks=PSF_KS,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         spp=SPP_COHERENT,
     ):
         """Compute a single-point monochromatic PSF using the ray-wave model.
@@ -356,8 +361,8 @@ class HybridLens(Lens):
             ks (int or None, optional): Output PSF patch size.  If ``None``,
                 returns the central quarter of the full-sensor intensity.
                 Defaults to ``PSF_KS``.
-            wvln (float, optional): Wavelength in [um].  Defaults to
-                ``DEFAULT_WAVE``.
+            wvln (float, optional): Wavelength in µm.  When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             spp (int, optional): Number of coherent rays to sample.  Defaults
                 to ``SPP_COHERENT``.
 
@@ -369,6 +374,7 @@ class HybridLens(Lens):
             ValueError: If the default dtype is not ``float64`` (call
                 :meth:`double` first).
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Check double precision
         if not torch.get_default_dtype() == torch.float64:
             raise ValueError(

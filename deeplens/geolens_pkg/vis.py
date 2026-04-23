@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from ..config import DEFAULT_WAVE, DEPTH, WAVE_RGB
+from ..config import DEPTH, WAVE_RGB
 from ..light import Ray
 
 
@@ -46,7 +46,7 @@ class GeoLensVis:
         self,
         fov=0.0,
         num_rays=7,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         plane="meridional",
         entrance_pupil=True,
         depth=0.0,
@@ -59,13 +59,15 @@ class GeoLensVis:
             fov (float, optional): incident angle (in degree). Defaults to 0.0.
             depth (float, optional): sampling depth. Defaults to 0.0.
             num_rays (int, optional): ray number. Defaults to 7.
-            wvln (float, optional): ray wvln. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): ray wvln in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             plane (str, optional): sampling plane. Defaults to "meridional" (y-z plane).
             entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to True.
 
         Returns:
             ray (Ray object): Ray object. Shape [num_rays, 3]
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Sample points on the pupil
         if entrance_pupil:
             pupilz, pupilr = self.get_entrance_pupil()
@@ -127,7 +129,7 @@ class GeoLensVis:
         fov=0.0,
         depth=DEPTH,
         num_rays=7,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         entrance_pupil=True,
     ):
         """Sample point source rays (2D) in object space.
@@ -138,12 +140,14 @@ class GeoLensVis:
             fov (float, optional): incident angle (in degree). Defaults to 0.0.
             depth (float, optional): sampling depth. Defaults to DEPTH.
             num_rays (int, optional): ray number. Defaults to 7.
-            wvln (float, optional): ray wvln. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): ray wvln in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to False.
 
         Returns:
             ray (Ray object): Ray object. Shape [num_rays, 3]
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Sample point on the object plane
         ray_o = torch.tensor([depth * float(np.tan(np.deg2rad(fov))), 0.0, depth])
         ray_o = ray_o.unsqueeze(0).repeat(num_rays, 1)

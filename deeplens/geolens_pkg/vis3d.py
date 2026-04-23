@@ -18,7 +18,6 @@ from typing import List, Optional
 import numpy as np
 import torch
 
-from ..config import DEFAULT_WAVE
 from ..light import Ray
 from ..geometric_surface import Aperture
 
@@ -449,7 +448,7 @@ def geolens_ray_poly(
 def sample_parallel_3D(
     lens,
     R: float,
-    wvln=DEFAULT_WAVE,
+    wvln=None,
     z=None,
     view_polar: float = 0.0,
     view_azi: float = 0.0,
@@ -465,7 +464,8 @@ def sample_parallel_3D(
 
     Args:
         R (float, optional): sampling radius. Defaults to None.
-        wvln (float, optional): ray wvln. Defaults to DEFAULT_WAVE.
+        wvln (float, optional): ray wvln in µm. When ``None`` (default),
+            falls back to ``lens.primary_wvln``.
         z (float, optional): sampling depth. Defaults to None.
         view_polar (float, optional): POLAR incident angle (in degree). Defaults to 0.0.
         view_azi (float, optional): AZIMUTHAL incident angle (in degree). Defaults to 0.0.
@@ -474,6 +474,7 @@ def sample_parallel_3D(
         forward (bool, optional): forward or backward rays. Defaults to True.
         entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to False.
     """
+    wvln = lens.primary_wvln if wvln is None else wvln
     if entrance_pupil:
         # Sample 2nd points on the pupil
         pupilz, pupilx = lens.calc_entrance_pupil()

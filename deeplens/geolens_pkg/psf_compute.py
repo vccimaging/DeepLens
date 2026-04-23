@@ -28,7 +28,6 @@ import torch
 import torch.nn.functional as F
 
 from ..config import (
-    DEFAULT_WAVE,
     DEPTH,
     EPSILON,
     PSF_KS,
@@ -62,7 +61,7 @@ class GeoLensPSF:
         self,
         points,
         ks=PSF_KS,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         spp=None,
         recenter=True,
         model="geometric",
@@ -78,7 +77,8 @@ class GeoLensPSF:
             points (Tensor): Point source positions. Shape [N, 3] with x, y in [-1, 1]
                 and z in [-Inf, 0]. Normalized coordinates.
             ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
-            wvln (float, optional): Wavelength in [um]. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             spp (int, optional): Samples per pixel. If None, uses model-specific default.
             recenter (bool, optional): If True, center PSF using chief ray. Defaults to True.
             model (str, optional): PSF model type. One of 'geometric', 'coherent', 'huygens'.
@@ -87,6 +87,7 @@ class GeoLensPSF:
         Returns:
             Tensor: PSF normalized to sum to 1. Shape [ks, ks] or [N, ks, ks].
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         if model == "geometric":
             spp = SPP_PSF if spp is None else spp
             return self.psf_geometric(points, ks, wvln, spp, recenter)
@@ -100,14 +101,15 @@ class GeoLensPSF:
             raise ValueError(f"Unknown PSF model: {model}")
 
     def psf_geometric(
-        self, points, ks=PSF_KS, wvln=DEFAULT_WAVE, spp=SPP_PSF, recenter=True
+        self, points, ks=PSF_KS, wvln=None, spp=SPP_PSF, recenter=True
     ):
         """Single wavelength geometric PSF calculation.
 
         Args:
             points (Tensor): Normalized point source position. Shape of [N, 3], x, y in range [-1, 1], z in range [-Inf, 0].
             ks (int, optional): Output kernel size.
-            wvln (float, optional): Wavelength.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             spp (int, optional): Sample per pixel.
             recenter (bool, optional): Recenter PSF using chief ray.
 
@@ -117,6 +119,7 @@ class GeoLensPSF:
         References:
             [1] https://optics.ansys.com/hc/en-us/articles/42661723066515-What-is-a-Point-Spread-Function
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         sensor_w, sensor_h = self.sensor_size
         pixel_size = self.pixel_size
         device = self.device
@@ -161,13 +164,14 @@ class GeoLensPSF:
         return diff_float(psf)
 
     def psf_coherent(
-        self, points, ks=PSF_KS, wvln=DEFAULT_WAVE, spp=SPP_COHERENT, recenter=True
+        self, points, ks=PSF_KS, wvln=None, spp=SPP_COHERENT, recenter=True
     ):
         """Alias for psf_pupil_prop. Calculates PSF by coherent ray tracing to exit pupil followed by Angular Spectrum Method (ASM) propagation."""
+        wvln = self.primary_wvln if wvln is None else wvln
         return self.psf_pupil_prop(points, ks=ks, wvln=wvln, spp=spp, recenter=recenter)
 
     def psf_pupil_prop(
-        self, points, ks=PSF_KS, wvln=DEFAULT_WAVE, spp=SPP_COHERENT, recenter=True
+        self, points, ks=PSF_KS, wvln=None, spp=SPP_COHERENT, recenter=True
     ):
         """Single point monochromatic PSF using exit-pupil diffraction model. This function is differentiable.
 
@@ -178,7 +182,8 @@ class GeoLensPSF:
         Args:
             points (torch.Tensor, optional): [x, y, z] coordinates of the point source. Defaults to torch.Tensor([0,0,-10000]).
             ks (int, optional): size of the PSF patch. Defaults to PSF_KS.
-            wvln (float, optional): wvln. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             spp (int, optional): number of rays to sample. Defaults to SPP_COHERENT.
             recenter (bool, optional): Recenter PSF using chief ray. Defaults to True.
 
@@ -191,6 +196,7 @@ class GeoLensPSF:
         Note:
             [1] This function is similar to ZEMAX FFT_PSF but implement free-space propagation with Angular Spectrum Method (ASM) rather than FFT transform. Free-space propagation using ASM is more accurate than doing FFT, because FFT (as used in ZEMAX) assumes far-field condition (e.g., chief ray perpendicular to image plane).
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Pupil field by coherent ray tracing
         wavefront, psfc = self.pupil_field(
             points=points, wvln=wvln, spp=spp, recenter=recenter
@@ -246,7 +252,7 @@ class GeoLensPSF:
 
         return diff_float(psf)
 
-    def pupil_field(self, points, wvln=DEFAULT_WAVE, spp=SPP_COHERENT, recenter=True):
+    def pupil_field(self, points, wvln=None, spp=SPP_COHERENT, recenter=True):
         """Compute complex wavefront at exit pupil plane by coherent ray tracing.
 
         The wavefront is flipped for subsequent PSF calculation and has the same
@@ -255,7 +261,8 @@ class GeoLensPSF:
         Args:
             points (Tensor or list): Single point source position. Shape [3] or [1, 3],
                 with x, y in [-1, 1] and z in [-Inf, 0].
-            wvln (float, optional): Wavelength in [um]. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             spp (int, optional): Number of rays to sample. Must be >= 1,000,000 for
                 accurate coherent simulation. Defaults to SPP_COHERENT.
             recenter (bool, optional): If True, center using chief ray. Defaults to True.
@@ -268,6 +275,7 @@ class GeoLensPSF:
         Note:
             Default dtype must be torch.float64 for accurate phase calculation.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         assert spp >= 1_000_000, (
             f"Ray sampling {spp} is too small for coherent ray tracing, which may lead to inaccurate simulation."
         )
@@ -332,7 +340,7 @@ class GeoLensPSF:
         return wavefront, psf_center
 
     def psf_huygens(
-        self, points, ks=PSF_KS, wvln=DEFAULT_WAVE, spp=SPP_COHERENT, recenter=True
+        self, points, ks=PSF_KS, wvln=None, spp=SPP_COHERENT, recenter=True
     ):
         """Single wavelength Huygens PSF calculation.
 
@@ -345,7 +353,8 @@ class GeoLensPSF:
         Args:
             points (Tensor): Normalized point source position. Shape of [N, 3], x, y in range [-1, 1], z in range [-Inf, 0].
             ks (int, optional): Output kernel size.
-            wvln (float, optional): Wavelength.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             spp (int, optional): Sample per pixel.
             recenter (bool, optional): Recenter PSF using chief ray.
 
@@ -358,6 +367,7 @@ class GeoLensPSF:
         Note:
             This is different from ZEMAX Huygens PSF, which traces rays to image plane and do plane wave integration.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         assert torch.get_default_dtype() == torch.float64, (
             "Default dtype must be set to float64 for accurate phase calculation."
         )
@@ -488,7 +498,7 @@ class GeoLensPSF:
         grid=(7, 7),
         ks=PSF_KS,
         spp=SPP_PSF,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         recenter=True,
     ):
         """Compute the geometric PSF map at given depth.
@@ -500,11 +510,14 @@ class GeoLensPSF:
             grid (int, tuple): Grid size (grid_w, grid_h). Defaults to 7.
             ks (int, optional): Kernel size. Defaults to PSF_KS.
             spp (int, optional): Sample per pixel. Defaults to SPP_PSF.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             recenter (bool, optional): Recenter PSF using chief ray. Defaults to True.
 
         Returns:
             psf_map: PSF map. Shape of [grid_h, grid_w, 1, ks, ks].
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         if isinstance(grid, int):
             grid = (grid, grid)
         points = self.point_source_grid(depth=depth, grid=grid)

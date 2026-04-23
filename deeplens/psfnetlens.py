@@ -21,7 +21,7 @@ from .geolens import GeoLens
 from .lens import Lens
 from .surrogate import MLP
 from .surrogate.psfnet_mplconv import PSFNet_MLPConv
-from .config import DEPTH, PSF_KS
+from .config import DEFAULT_WAVE, DEPTH, PSF_KS
 from .imgsim import conv_psf_pixel, conv_psf_pixel_high_res, rotate_psf
 
 
@@ -52,6 +52,7 @@ class PSFNetLens(Lens):
         psf_chan=3,
         model_name="mlp_conv",
         kernel_size=64,
+        primary_wvln=DEFAULT_WAVE,
     ):
         """Initialize a PSF network lens.
 
@@ -63,12 +64,15 @@ class PSFNetLens(Lens):
             psf_chan (int): Number of output channels.
             model_name (str): Name of the model.
             kernel_size (int): Kernel size.
+            primary_wvln (float, optional): Primary design wavelength [µm].
+                Used as fallback when a method is called without an explicit
+                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
         """
-        super().__init__()
+        super().__init__(primary_wvln=primary_wvln)
 
         # Load lens (sensor_size and sensor_res are read from the lens file)
         self.lens_path = lens_path
-        self.lens = GeoLens(filename=lens_path, device=self.device)
+        self.lens = GeoLens(filename=lens_path, device=self.device, primary_wvln=primary_wvln)
         self.foclen = self.lens.foclen
         self.rfov = self.lens.rfov
 

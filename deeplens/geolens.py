@@ -107,6 +107,7 @@ class GeoLens(
         filename=None,
         device=None,
         dtype=torch.float32,
+        primary_wvln=DEFAULT_WAVE,
     ):
         """Initialize a refractive lens.
 
@@ -118,8 +119,13 @@ class GeoLens(
             filename (str, optional): Path to lens file (.json, .zmx, or .seq). Defaults to None.
             device (torch.device, optional): Device for tensor computations. Defaults to None.
             dtype (torch.dtype, optional): Data type for computations. Defaults to torch.float32.
+            primary_wvln (float, optional): Primary design wavelength [µm].
+                Used as fallback when a method is called without an explicit
+                ``wvln``.  If a lens file is loaded, its ``primary_wvln``
+                (when present) overrides this argument.  Defaults to
+                ``DEFAULT_WAVE``.
         """
-        super().__init__(device=device, dtype=dtype)
+        super().__init__(device=device, dtype=dtype, primary_wvln=primary_wvln)
 
         # Load lens file
         if filename is not None:
@@ -213,7 +219,7 @@ class GeoLens(
         depth=float("inf"),
         num_grid=(11, 11),
         num_rays=SPP_PSF,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         uniform_fov=True,
         sample_more_off_axis=False,
         scale_pupil=1.0,
@@ -228,7 +234,8 @@ class GeoLens(
             depth (float, optional): sampling depth. Defaults to float("inf").
             num_grid (tuple, optional): number of grid points. Defaults to [11, 11].
             num_rays (int, optional): number of rays. Defaults to SPP_PSF.
-            wvln (float, optional): ray wvln. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): ray wvln in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             uniform_fov (bool, optional): If True, sample uniform FoV angles.
             sample_more_off_axis (bool, optional): If True, sample more off-axis rays.
             scale_pupil (float, optional): Scale factor for pupil radius.
@@ -236,6 +243,8 @@ class GeoLens(
         Returns:
             ray (Ray object): Ray object. Shape [num_grid[1], num_grid[0], num_rays, 3]
         """
+        wvln = self.primary_wvln if wvln is None else wvln
+
         # Normalize num_grid to a tuple if it's an int
         if isinstance(num_grid, int):
             num_grid = (num_grid, num_grid)
@@ -278,7 +287,7 @@ class GeoLens(
         num_field=5,
         depth=float("inf"),
         num_rays=SPP_PSF,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         direction="y",
     ):
         """Sample radial rays at evenly-spaced field angles along a chosen direction.
@@ -289,7 +298,8 @@ class GeoLens(
             depth (float): Object distance in mm. Use ``float('inf')`` for
                 collimated light. Defaults to ``float('inf')``.
             num_rays (int): Rays per field position. Defaults to ``SPP_PSF``.
-            wvln (float): Wavelength in micrometers. Defaults to ``DEFAULT_WAVE``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             direction (str): Sampling direction —
                 ``"y"`` (meridional, default),
                 ``"x"`` (sagittal),
@@ -298,6 +308,7 @@ class GeoLens(
         Returns:
             Ray: Ray object with shape ``[num_field, num_rays, 3]``.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         device = self.device
         fov_deg = self.rfov * 180 / torch.pi
         fov_list = torch.linspace(0, fov_deg, num_field, device=device)
@@ -330,7 +341,7 @@ class GeoLens(
         self,
         points=[[0.0, 0.0, -10000.0]],
         num_rays=SPP_PSF,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         scale_pupil=1.0,
     ):
         """
@@ -341,12 +352,15 @@ class GeoLens(
         Args:
             points (list or Tensor): Ray origins in shape [3], [N, 3], or [Nx, Ny, 3].
             num_rays (int): Number of rays per point. Default: SPP_PSF.
-            wvln (float): Wavelength of rays. Default: DEFAULT_WAVE.
+            wvln (float): Wavelength of rays in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             scale_pupil (float): Scale factor for pupil radius.
 
         Returns:
             Ray: Sampled rays with shape ``(\\*points.shape[:-1], num_rays, 3)``.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
+
         # Ray origin is given
         if not torch.is_tensor(points):
             ray_o = torch.tensor(points, device=self.device)
@@ -392,7 +406,7 @@ class GeoLens(
         fov_y=[0.0],
         depth=float("inf"),
         num_rays=SPP_CALC,
-        wvln=DEFAULT_WAVE,
+        wvln=None,
         entrance_pupil=True,
         scale_pupil=1.0,
     ):
@@ -412,7 +426,8 @@ class GeoLens(
             depth (float): Object distance in mm. ``float('inf')`` for
                 collimated rays, finite for point-source rays.
             num_rays (int): Number of rays per field point.
-            wvln (float): Wavelength in micrometers.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
             entrance_pupil (bool): If True, sample on entrance pupil;
                 otherwise on surface 0. Default: True.
             scale_pupil (float): Scale factor for pupil radius.
@@ -421,6 +436,8 @@ class GeoLens(
             Ray: Rays with shape ``[..., num_rays, 3]``, where leading dims
                 are squeezed when the corresponding fov input is scalar.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
+
         # Track which inputs were scalar for output shape
         x_scalar = isinstance(fov_x, (float, int))
         y_scalar = isinstance(fov_y, (float, int))
@@ -479,18 +496,20 @@ class GeoLens(
         return rays
 
     @torch.no_grad()
-    def sample_sensor(self, spp=64, wvln=DEFAULT_WAVE, sub_pixel=False):
+    def sample_sensor(self, spp=64, wvln=None, sub_pixel=False):
         """Sample rays from sensor pixels (backward rays). Used for ray-tracing based rendering.
 
         Args:
             spp (int, optional): sample per pixel. Defaults to 64.
             pupil (bool, optional): whether to use pupil. Defaults to True.
-            wvln (float, optional): ray wvln. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): ray wvln in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             sub_pixel (bool, optional): whether to sample multiple points inside the pixel. Defaults to False.
 
         Returns:
             ray (Ray object): Ray object. Shape [H, W, spp, 3]
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         w, h = self.sensor_size
         W, H = self.sensor_res
         device = self.device
@@ -1011,15 +1030,17 @@ class GeoLens(
         # return n / (2 * self.fnum)
 
     @torch.no_grad()
-    def calc_focal_plane(self, wvln=DEFAULT_WAVE):
+    def calc_focal_plane(self, wvln=None):
         """Compute the focus distance in the object space. Ray starts from sensor center and traces to the object space.
 
         Args:
-            wvln (float, optional): Wavelength. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
 
         Returns:
             focal_plane (float): Focal plane in the object space.
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         device = self.device
 
         # Sample point source rays from sensor center
@@ -1065,7 +1086,7 @@ class GeoLens(
         """
         # Sample and trace rays, shape [SPP_CALC, 3]
         ray = self.sample_from_fov(
-            fov_x=0.0, fov_y=0.0, depth=depth, num_rays=SPP_CALC, wvln=DEFAULT_WAVE
+            fov_x=0.0, fov_y=0.0, depth=depth, num_rays=SPP_CALC
         )
         ray = self.trace2sensor(ray)
 
