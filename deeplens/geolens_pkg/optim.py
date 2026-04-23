@@ -655,8 +655,9 @@ class GeoLensOptim:
 
             # ===> Optimize lens by minimizing RMS
             loss_rms_ls = []
+            w_mask = None
             for wv_idx, wv in enumerate(self.wvln_rgb):
-                # Ray tracing to sensor, [num_grid, num_grid, num_rays, 3]
+                # Ray tracing to sensor, [num_ring, num_arm, num_rays, 3]
                 ray = rays_backup[wv_idx].clone()
                 ray = self.trace2sensor(ray)
 
@@ -670,34 +671,31 @@ class GeoLensOptim:
                     ray_valid.bool().unsqueeze(-1), ray_err, torch.zeros_like(ray_err)
                 )
 
-                # Weight mask, shape of [num_grid, num_grid]
-                if wv_idx == 0:
-                    with torch.no_grad():
-                        weight_mask = (ray_err**2).sum(-1).sum(-1)
-                        weight_mask /= ray_valid.sum(-1) + EPSILON
-                        weight_mask /= weight_mask.mean() + EPSILON
+                # MSE per field point, shape [num_ring, num_arm].
+                mse = (ray_err ** 2).sum(-1).sum(-1) / (ray_valid.sum(-1) + EPSILON)
 
-                # Loss on RMS error
-                l_rms = (ray_err**2).sum(-1).sum(-1)
-                l_rms /= ray_valid.sum(-1) + EPSILON
-                l_rms = (l_rms + EPSILON).sqrt()
+                # Weight mask — built on the first wavelength only so every
+                # wavelength uses the same per-field weights.
+                if w_mask is None:
+                    w_mask = mse.detach().sqrt().clone()
+                    w_mask = w_mask / (w_mask.mean() + EPSILON)
+                    # ``sample_ring_arm_rays`` orders fields center-outward
+                    # along the first axis, so the first ring is the on-axis
+                    # field (duplicated across every arm).
+                    w_mask[0, :] = 1.0
 
-                # Weighted loss
-                l_rms_weighted = (l_rms * weight_mask).sum()
-                l_rms_weighted /= weight_mask.sum() + EPSILON
+                # RMS and weighted loss
+                l_rms = torch.clamp(mse, min=EPSILON).sqrt()
+                l_rms_weighted = (l_rms * w_mask).sum() / (w_mask.sum() + EPSILON)
                 loss_rms_ls.append(l_rms_weighted)
 
             # RMS loss for all wavelengths
             loss_rms = sum(loss_rms_ls) / len(loss_rms_ls)
 
             # Total loss
-            w_focus = 1.0
-            loss_focus = self.loss_infocus()
-            
             w_reg = 0.1
             loss_reg, loss_dict = self.loss_reg()
-            
-            L_total = loss_rms + w_focus * loss_focus + w_reg * loss_reg
+            L_total = loss_rms + w_reg * loss_reg
 
             # Back-propagation
             optimizer.zero_grad()
@@ -705,7 +703,7 @@ class GeoLensOptim:
             optimizer.step()
             scheduler.step()
 
-            pbar.set_postfix(loss_rms=loss_rms.item(), loss_focus=loss_focus.item(), **loss_dict)
+            pbar.set_postfix(loss_rms=loss_rms.item(), **loss_dict)
             pbar.update(1)
 
         pbar.close()
