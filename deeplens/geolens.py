@@ -1310,7 +1310,7 @@ class GeoLens(
         d = torch.stack(
             (torch.sin(phi_rad), torch.zeros_like(phi_rad), torch.cos(phi_rad)), axis=-1
         )
-        ray = Ray(ray_o, d, device=self.device)
+        ray = Ray(ray_o, d, wvln=self.primary_wvln, device=self.device)
 
         # Ray tracing from aperture edge to last surface
         surf_range = range(self.aper_idx + 1, len(self.surfaces))
@@ -1395,7 +1395,7 @@ class GeoLens(
         d = torch.stack(
             (torch.sin(phi), torch.zeros_like(phi), -torch.cos(phi)), axis=-1
         )
-        ray = Ray(ray_o, d, device=self.device)
+        ray = Ray(ray_o, d, wvln=self.primary_wvln, device=self.device)
 
         # Ray tracing from aperture edge to first surface
         surf_range = range(0, self.aper_idx)
