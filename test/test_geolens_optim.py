@@ -39,7 +39,8 @@ class TestConstraints:
         assert hasattr(lens, "sag2diam_max")
         assert hasattr(lens, "chief_ray_angle_max")
         assert hasattr(lens, "ttl_min")
-        assert hasattr(lens, "obliq_min")
+        assert hasattr(lens, "surf_angle_max")
+        assert hasattr(lens, "bend_angle_max")
 
     def test_init_constraints_cellphone_vs_camera(
         self, sample_cellphone_lens, sample_camera_lens

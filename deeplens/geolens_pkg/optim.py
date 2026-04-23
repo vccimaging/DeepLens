@@ -96,7 +96,6 @@ class GeoLensOptim:
         # In the future, we want to use constraint_params to set the constraints.
         if constraint_params is None:
             constraint_params = {}
-            print("Lens design constraints initialized with default values.")
 
         if self.r_sensor < 12.0:
             self.is_cellphone = True
@@ -119,13 +118,13 @@ class GeoLensOptim:
 
             # Surface shape constraints
             self.sag2diam_max = 0.1
-            self.grad_max = 0.57 # tan(30deg)
+            self.surf_angle_max = 30.0  # degrees; converted to tan at use site
             self.diam2thick_max = 15.0
             self.tmax2tmin_max = 5.0
 
             # Ray angle constraints
-            self.chief_ray_angle_max = 30.0 # deg
-            self.obliq_min = 1.0
+            self.chief_ray_angle_max = 30.0  # deg
+            self.bend_angle_max = 30.0  # degrees
 
         else:
             self.is_cellphone = False
@@ -148,13 +147,17 @@ class GeoLensOptim:
 
             # Surface shape constraints
             self.sag2diam_max = 0.2
-            self.grad_max = 0.84 # tan(40deg)
+            self.surf_angle_max = 40.0  # degrees; converted to tan at use site
             self.diam2thick_max = 20.0
             self.tmax2tmin_max = 10.0
 
             # Ray angle constraints
-            self.chief_ray_angle_max = 40.0 # deg
-            self.obliq_min = 1.0
+            self.chief_ray_angle_max = 40.0  # deg
+            self.bend_angle_max = 30.0  # degrees
+
+        # Propagate bend angle limit onto every surface so refract() reads it.
+        for s in self.surfaces:
+            s.bend_angle_max = self.bend_angle_max
 
     def loss_reg(self, w_focus=1.0, w_ray_angle=1.0, w_clearance=1.0, w_envelope=1.0, w_profile=1.0):
         """Compute combined regularization loss for lens design.
@@ -230,23 +233,15 @@ class GeoLensOptim:
         The "profile" is the z(r) curve of a single surface. This loss makes
         sure each surface is physically manufacturable by checking:
             1. Sag-to-diameter ratio exceeding ``sag2diam_max``.
-            2. Maximum surface gradient exceeding ``grad_max``.
-            3. Diameter-to-thickness ratio exceeding ``diam2thick_max``
-               (currently disabled).
-            4. Maximum-to-minimum thickness ratio exceeding ``tmax2tmin_max``
-               (currently disabled).
+            2. Maximum surface slope angle exceeding ``surf_angle_max`` (deg).
 
         Returns:
             Tensor: Scalar profile feasibility penalty.
         """
         sag2diam_max = self.sag2diam_max
-        grad_max = self.grad_max
-        diam2thick_max = self.diam2thick_max
-        tmax2tmin_max = self.tmax2tmin_max
+        grad_max = math.tan(math.radians(self.surf_angle_max))
 
         loss_grad = torch.tensor(0.0, device=self.device)
-        loss_diam2thick = torch.tensor(0.0, device=self.device)
-        loss_tmax2tmin = torch.tensor(0.0, device=self.device)
         loss_sag2diam = torch.tensor(0.0, device=self.device)
         for i in self.find_diff_surf():
             # Sample points on the surface
@@ -283,7 +278,7 @@ class GeoLensOptim:
 
             #     loss_tmax2tmin += torch.nn.functional.softplus(tmax2tmin - tmax2tmin_max, beta=50.0)
 
-        return loss_sag2diam + loss_grad + loss_diam2thick + loss_tmax2tmin
+        return loss_sag2diam + loss_grad
 
     def loss_bound(self):
         """Penalize geometry-bound violations in a single surface-sampling pass.
