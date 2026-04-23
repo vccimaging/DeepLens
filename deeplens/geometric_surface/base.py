@@ -292,7 +292,7 @@ class Surface(DeepObj):
         # keeps the gradient magnitude consistent with the CRA loss in optim.py.
         # Summing per-surface values gives an additive, uncoupled penalty
         # focused on the worst bends.
-        bend_gate_deg = 30.0
+        bend_gate_deg = getattr(self, "bend_angle_max", 30.0)
         cos_gate = math.cos(math.radians(bend_gate_deg))
         bend_scale = 1.0 - cos_gate  # cos-headroom; matches CRA normalization
         cos_bend = torch.sum(new_d * ray.d, axis=-1).unsqueeze(-1)

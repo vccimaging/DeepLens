@@ -838,6 +838,7 @@ class GeoLensIO:
         data["r_sensor"] = self.r_sensor
         data["(d_sensor)"] = round(self.d_sensor.item(), 4)
         data["(sensor_size)"] = [round(i, 4) for i in self.sensor_size]
+        data["sensor_res"] = list(self.sensor_res)
         data["surfaces"] = []
         for i, s in enumerate(self.surfaces):
             surf_dict = {"idx": i}
