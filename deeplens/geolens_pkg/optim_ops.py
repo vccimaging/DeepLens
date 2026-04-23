@@ -419,10 +419,7 @@ class GeoLensSurfOps:
         # ------------------------------------------------------------------
         # 2. Trace rays at full FoV to find maximum ray height per surface
         # ------------------------------------------------------------------
-        if self.rfov is not None:
-            fov_deg = self.rfov * 180 / torch.pi
-        elif self.rfov_eff is not None:
-            fov_deg = self.rfov_eff * 180 / torch.pi
+        fov_deg = self.rfov * 180 / torch.pi
 
         fov_y = [f * fov_deg / 10 for f in range(0, 11)]
         ray = self.sample_from_fov(
@@ -444,79 +441,90 @@ class GeoLensSurfOps:
             self.surfaces[i].r = saved_radii[i]
 
         # ------------------------------------------------------------------
-        # 3. Set new surface radii = ray-traced clear aperture + margin
+        # 3. Propose new radii (not yet committed to surfaces).
         # ------------------------------------------------------------------
+        proposed_r = [float(self.surfaces[i].r) for i in range(num_surfs)]
         for i in surface_range:
             if surf_r_max[i] > 0:
-                r_clear = surf_r_max[i].item()
-                if mounting_margin is not None:
-                    r_new = r_clear + mounting_margin
-                else:
-                    r_expand = r_clear * expand_factor
-                    r_expand = max(min(r_expand, 2.0), 0.1)
-                    r_new = r_clear + r_expand
-                self.surfaces[i].update_r(r_new)
+                base = float(surf_r_max[i].item())
             else:
                 print(f"No valid rays for Surf {i}, expand existing radius.")
-                if mounting_margin is not None:
-                    self.surfaces[i].update_r(self.surfaces[i].r + mounting_margin)
-                else:
-                    r_expand = self.surfaces[i].r * expand_factor
-                    r_expand = max(min(r_expand, 2.0), 0.1)
-                    self.surfaces[i].update_r(self.surfaces[i].r + r_expand)
+                base = float(self.surfaces[i].r)
+            if mounting_margin is not None:
+                proposed_r[i] = base + mounting_margin
+            else:
+                r_expand = max(min(base * expand_factor, 2.0), 0.1)
+                proposed_r[i] = base + r_expand
 
         # ------------------------------------------------------------------
-        # 4. Air gap clearance check
-        #    For each air gap (surface i with mat2 = "air"), ensure that
-        #    surfaces do not physically intersect at the clear aperture edge.
+        # 4. Edge-clearance pass — proactively cap each adjacent pair so the
+        #    committed radii never produce self-intersection at the edge.
+        #    Both air gaps and glass-glass pairs are checked; aperture
+        #    surfaces are skipped and handled by Phase 6 below. The cap is
+        #    computed via a vectorised grid search (64 candidate radii × 16
+        #    edge samples) rather than a serial binary loop.
         # ------------------------------------------------------------------
-        if self.r_sensor < 10.0:
-            air_gap_min = 0.05  # mm
-        else:
-            air_gap_min = 0.1  # mm
-
+        min_radius_floor = 0.1  # mm
+        n_cand = 64
+        r_frac = torch.linspace(0.5, 1.0, 16, device=self.device)
+        cand_frac = torch.linspace(1.0 / n_cand, 1.0, n_cand, device=self.device)
         for i in range(num_surfs - 1):
-            if self.surfaces[i].mat2.name != "air":
+            a, b = self.surfaces[i], self.surfaces[i + 1]
+            if isinstance(a, Aperture) or isinstance(b, Aperture):
                 continue
-            if isinstance(self.surfaces[i], Aperture):
-                continue
-
-            curr = self.surfaces[i]
-            nxt = self.surfaces[i + 1]
-            r_check = min(curr.r, nxt.r)
-
+            edge_min = (
+                self.air_edge_min if a.mat2.name == "air" else self.thick_edge_min
+            )
+            r_check = min(proposed_r[i], proposed_r[i + 1])
             if r_check <= 0:
                 continue
 
-            # Check gap at multiple radial points along the edge
-            r_pts = torch.linspace(0.5 * r_check, r_check, 8, device=self.device)
-            z_curr = curr.surface_with_offset(r_pts, 0.0, valid_check=False)
-            z_nxt = nxt.surface_with_offset(r_pts, 0.0, valid_check=False)
-            min_gap = (z_nxt - z_curr).min().item()
+            # Probe 16 radial samples — most pairs clear and we short-circuit.
+            r_pts = r_frac * r_check
+            z_a = a.surface_with_offset(r_pts, 0.0, valid_check=False)
+            z_b = b.surface_with_offset(r_pts, 0.0, valid_check=False)
+            gap = float((z_b - z_a).min().item())
+            if gap >= edge_min:
+                continue
 
-            if min_gap < air_gap_min:
-                # Shrink radius until air gap is met (binary search)
-                r_lo, r_hi = 0.0, r_check
-                for _ in range(20):
-                    r_mid = (r_lo + r_hi) / 2
-                    r_pts = torch.linspace(0.5 * r_mid, r_mid, 8, device=self.device)
-                    z_c = curr.surface_with_offset(r_pts, 0.0, valid_check=False)
-                    z_n = nxt.surface_with_offset(r_pts, 0.0, valid_check=False)
-                    if (z_n - z_c).min().item() >= air_gap_min:
-                        r_lo = r_mid
-                    else:
-                        r_hi = r_mid
+            # Vectorised cap: for each candidate radius, probe 16 radial
+            # samples within its own edge window and take the minimum gap.
+            r_grid = cand_frac.unsqueeze(1) * r_frac.unsqueeze(0) * r_check
+            z_a_grid = a.surface_with_offset(
+                r_grid.reshape(-1), 0.0, valid_check=False
+            ).reshape(n_cand, 16)
+            z_b_grid = b.surface_with_offset(
+                r_grid.reshape(-1), 0.0, valid_check=False
+            ).reshape(n_cand, 16)
+            per_cand_gap = (z_b_grid - z_a_grid).min(dim=-1).values
+            valid_mask = per_cand_gap >= edge_min
+            if bool(valid_mask.any()):
+                r_safe = float((cand_frac[valid_mask].max() * r_check).item())
+            else:
+                r_safe = 0.0
+            r_safe = max(r_safe, min_radius_floor)
+            print(
+                f"Surf {i}-{i+1} ({a.mat2.name}): edge gap {gap:.3f} mm "
+                f"< {edge_min:.3f} mm, capping radius {r_check:.3f} -> "
+                f"{r_safe:.3f} mm."
+            )
+            if proposed_r[i] > r_safe:
+                proposed_r[i] = r_safe
+            if proposed_r[i + 1] > r_safe:
+                proposed_r[i + 1] = r_safe
 
-                r_safe = r_lo
-                if r_safe > 0 and r_safe < r_check:
-                    print(
-                        f"Surf {i}-{i+1}: air gap {min_gap:.3f} mm "
-                        f"< {air_gap_min} mm, shrinking radius {r_check:.3f} -> {r_safe:.3f} mm."
-                    )
-                    if curr.r > r_safe:
-                        curr.update_r(r_safe)
-                    if nxt.r > r_safe:
-                        nxt.update_r(r_safe)
+            if not bool(valid_mask.any()):
+                print(
+                    f"Warning: Surf {i}-{i+1} still below edge_min after cap "
+                    f"(possible sag crossing near axis)."
+                )
+
+        # ------------------------------------------------------------------
+        # 4b. Commit the capped proposed radii to the surfaces.
+        # ------------------------------------------------------------------
+        for i in surface_range:
+            if proposed_r[i] > 0:
+                self.surfaces[i].update_r(proposed_r[i])
 
         # ------------------------------------------------------------------
         # 6. Validate aperture radius consistency

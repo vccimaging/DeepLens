@@ -940,7 +940,7 @@ class GeoLensEval:
             for fov_idx, fov_relative in enumerate(relative_fov_list):
                 # Calculate rgb PSF
                 point = [0, -fov_relative, depth]
-                psf_rgb = self.psf_rgb(points=point, ks=psf_ks, recenter=False)
+                psf_rgb = self.psf_rgb(points=point, ks=psf_ks, recenter=True)
 
                 # Calculate MTF curves for rgb wavelengths
                 for wvln_idx, wvln in enumerate(WAVE_RGB):
