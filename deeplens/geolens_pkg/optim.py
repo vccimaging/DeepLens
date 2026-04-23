@@ -37,7 +37,6 @@ from torch.nn.functional import softplus
 from tqdm import tqdm
 
 from ..config import (
-    DEPTH,
     EPSILON,
     GEO_GRID,
     SPP_CALC,
@@ -439,7 +438,7 @@ class GeoLensOptim:
     def loss_rms(
         self,
         num_grid=GEO_GRID,
-        depth=DEPTH,
+        depth=None,
         num_rays=SPP_PSF,
         sample_more_off_axis=False,
     ):
@@ -447,13 +446,15 @@ class GeoLensOptim:
 
         Args:
             num_grid (int, optional): Number of grid points. Defaults to GEO_GRID.
-            depth (float, optional): Depth of the lens. Defaults to DEPTH.
+            depth (float, optional): Depth of the lens. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             num_rays (int, optional): Number of rays. Defaults to SPP_CALC.
             sample_more_off_axis (bool, optional): Whether to sample more off-axis rays. Defaults to False.
 
         Returns:
             avg_rms_error (torch.Tensor): RMS error averaged over wavelengths and grid points.
         """
+        depth = self.obj_depth if depth is None else depth
         # Iterate green first so the error-adaptive weight mask is anchored
         # on the reference wavelength (same ordering as optimize()).
         loss_rms_ls = []
@@ -502,7 +503,7 @@ class GeoLensOptim:
     # ================================================================
     # Example optimization function
     # ================================================================
-    def sample_ring_arm_rays(self, num_ring=8, num_arm=8, spp=2048, depth=DEPTH, wvln=None, scale_pupil=1.0, sample_more_off_axis=True):
+    def sample_ring_arm_rays(self, num_ring=8, num_arm=8, spp=2048, depth=None, wvln=None, scale_pupil=1.0, sample_more_off_axis=True):
         """Sample rays from object space using a ring-arm pattern.
 
         This method distributes sampling points (origins of ray bundles) on a polar grid in the object plane,
@@ -516,7 +517,8 @@ class GeoLensOptim:
             num_ring (int): Number of rings to sample in the field of view.
             num_arm (int): Number of arms (spokes) to sample for each ring.
             spp (int): Total number of rays to be sampled, distributed among field points.
-            depth (float): Depth of the object plane.
+            depth (float): Depth of the object plane. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             wvln (float): Wavelength in µm. When ``None`` (default), falls
                 back to ``self.primary_wvln``.
             scale_pupil (float): Scale factor for the pupil size.
@@ -525,6 +527,7 @@ class GeoLensOptim:
             Ray: A Ray object containing the sampled rays.
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         # Create points on rings and arms
         max_fov_rad = self.rfov
         if sample_more_off_axis:
@@ -589,7 +592,7 @@ class GeoLensOptim:
                 5. More iterations with larger ray sampling improves convergence.
         """
         # Experiment settings
-        depth = DEPTH
+        depth = self.obj_depth
         num_ring = 32
         num_arm = 8
         spp = 2048

@@ -24,7 +24,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from ..config import DEPTH
 from ..light import Ray
 
 
@@ -127,7 +126,7 @@ class GeoLensVis:
     def sample_point_source_2D(
         self,
         fov=0.0,
-        depth=DEPTH,
+        depth=None,
         num_rays=7,
         wvln=None,
         entrance_pupil=True,
@@ -138,7 +137,8 @@ class GeoLensVis:
 
         Args:
             fov (float, optional): incident angle (in degree). Defaults to 0.0.
-            depth (float, optional): sampling depth. Defaults to DEPTH.
+            depth (float, optional): sampling depth. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             num_rays (int, optional): ray number. Defaults to 7.
             wvln (float, optional): ray wvln in µm. When ``None`` (default),
                 falls back to ``self.primary_wvln``.
@@ -148,6 +148,7 @@ class GeoLensVis:
             ray (Ray object): Ray object. Shape [num_rays, 3]
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
         # Sample point on the object plane
         ray_o = torch.tensor([depth * float(np.tan(np.deg2rad(fov))), 0.0, depth])
         ray_o = ray_o.unsqueeze(0).repeat(num_rays, 1)

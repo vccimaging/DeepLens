@@ -57,6 +57,7 @@ class DiffractiveLens(Lens):
         device=None,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
+        obj_depth=DEPTH,
     ):
         """Initialize a diffractive lens.
 
@@ -69,8 +70,16 @@ class DiffractiveLens(Lens):
             wvln_rgb (sequence of float, optional): Three wavelengths used
                 for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
                 to ``WAVE_RGB``.
+            obj_depth (float, optional): Default object depth [mm], used
+                when a method is called without an explicit ``depth``.
+                Defaults to ``DEPTH``.
         """
-        super().__init__(device=device, primary_wvln=primary_wvln, wvln_rgb=wvln_rgb)
+        super().__init__(
+            device=device,
+            primary_wvln=primary_wvln,
+            wvln_rgb=wvln_rgb,
+            obj_depth=obj_depth,
+        )
 
         # Load lens file
         if filename is not None:
@@ -423,7 +432,7 @@ class DiffractiveLens(Lens):
 
     def draw_psf(
         self,
-        depth=DEPTH,
+        depth=None,
         ks=PSF_KS,
         save_name="./psf_doelens.png",
         log_scale=True,
@@ -434,12 +443,14 @@ class DiffractiveLens(Lens):
         Computes and saves a visualization of the RGB PSF for a given depth.
 
         Args:
-            depth (float, optional): Depth of the point source. Defaults to DEPTH.
+            depth (float, optional): Depth of the point source. When ``None``
+                (default), falls back to ``self.obj_depth``.
             ks (int, optional): Size of the PSF kernel in pixels. Defaults to PSF_KS.
             save_name (str, optional): Path to save the PSF image. Defaults to './psf_doelens.png'.
             log_scale (bool, optional): If True, display PSF in log scale. Defaults to True.
             eps (float, optional): Small value for log scale to avoid log(0). Defaults to 1e-4.
         """
+        depth = self.obj_depth if depth is None else depth
         psf_rgb = self.psf_rgb(point=[0, 0, depth], ks=ks)
 
         if log_scale:
