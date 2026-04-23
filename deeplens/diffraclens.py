@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from .config import DEFAULT_WAVE, DEPTH, PSF_KS
+from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
 from .lens import Lens
 from .diffractive_surface import (
     Binary2,
@@ -55,14 +55,31 @@ class DiffractiveLens(Lens):
         self,
         filename=None,
         device=None,
+        primary_wvln=DEFAULT_WAVE,
+        wvln_rgb=WAVE_RGB,
+        obj_depth=DEPTH,
     ):
         """Initialize a diffractive lens.
 
         Args:
             filename (str, optional): Path to the lens configuration JSON file. If provided, loads the lens configuration from file. Defaults to None.
             device (str, optional): Computation device ('cpu' or 'cuda'). Defaults to 'cpu'.
+            primary_wvln (float, optional): Primary design wavelength [µm].
+                Used as fallback when a method is called without an explicit
+                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
+            wvln_rgb (sequence of float, optional): Three wavelengths used
+                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
+                to ``WAVE_RGB``.
+            obj_depth (float, optional): Default object depth [mm], used
+                when a method is called without an explicit ``depth``.
+                Defaults to ``DEPTH``.
         """
-        super().__init__(device=device)
+        super().__init__(
+            device=device,
+            primary_wvln=primary_wvln,
+            wvln_rgb=wvln_rgb,
+            obj_depth=obj_depth,
+        )
 
         # Load lens file
         if filename is not None:
@@ -262,27 +279,30 @@ class DiffractiveLens(Lens):
     # =============================================
     # Image simulation
     # =============================================
-    def render_mono(self, img, wvln=DEFAULT_WAVE, ks=PSF_KS):
+    def render_mono(self, img, wvln=None, ks=PSF_KS):
         """Simulate monochromatic lens blur by convolving an image with the point spread function.
 
         Args:
             img (torch.Tensor): Input image. Shape: (B, 1, H, W)
-            wvln (float, optional): Wavelength. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             ks (int, optional): PSF kernel size. Defaults to PSF_KS.
 
         Returns:
             torch.Tensor: Rendered image after applying lens blur with shape (B, 1, H, W).
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         psf = self.psf_infinite(wvln=wvln, ks=ks).unsqueeze(0)  # (1, ks, ks)
         img_render = conv_psf(img, psf)
         return img_render
 
-    def psf(self, depth=float("inf"), wvln=DEFAULT_WAVE, ks=PSF_KS, upsample_factor=1):
+    def psf(self, depth=float("inf"), wvln=None, ks=PSF_KS, upsample_factor=1):
         """Calculate monochromatic point PSF by wave propagation approach.
 
         Args:
             depth (float, optional): Depth of the point source. Defaults to float('inf').
-            wvln (float, optional): Wavelength in micrometers. Defaults to DEFAULT_WAVE.
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``.
             ks (int, optional): PSF kernel size. Defaults to PSF_KS.
             upsample_factor (int, optional): Upsampling factor to meet Nyquist sampling constraint. Defaults to 1.
 
@@ -292,6 +312,7 @@ class DiffractiveLens(Lens):
         Note:
             [1] Usually we only consider the on-axis PSF because paraxial approximation is implicitly applied for wave optical model. For the shifted phase issue, refer to "Modeling off-axis diffraction with the least-sampling angular spectrum method".
         """
+        wvln = self.primary_wvln if wvln is None else wvln
         # Sample input wave field (We have to sample high resolution to meet Nyquist sampling constraint)
         field_res = [
             self.surfaces[0].res[0] * upsample_factor,
@@ -411,7 +432,7 @@ class DiffractiveLens(Lens):
 
     def draw_psf(
         self,
-        depth=DEPTH,
+        depth=None,
         ks=PSF_KS,
         save_name="./psf_doelens.png",
         log_scale=True,
@@ -422,12 +443,14 @@ class DiffractiveLens(Lens):
         Computes and saves a visualization of the RGB PSF for a given depth.
 
         Args:
-            depth (float, optional): Depth of the point source. Defaults to DEPTH.
+            depth (float, optional): Depth of the point source. When ``None``
+                (default), falls back to ``self.obj_depth``.
             ks (int, optional): Size of the PSF kernel in pixels. Defaults to PSF_KS.
             save_name (str, optional): Path to save the PSF image. Defaults to './psf_doelens.png'.
             log_scale (bool, optional): If True, display PSF in log scale. Defaults to True.
             eps (float, optional): Small value for log scale to avoid log(0). Defaults to 1e-4.
         """
+        depth = self.obj_depth if depth is None else depth
         psf_rgb = self.psf_rgb(point=[0, 0, depth], ks=ks)
 
         if log_scale:

@@ -9,7 +9,7 @@
 import torch
 import torch.nn.functional as F
 
-from ..config import DEFAULT_WAVE, EPSILON
+from ..config import EPSILON
 from ..base import DeepObj
 
 
@@ -32,13 +32,15 @@ class Ray(DeepObj):
         coherent (bool): Whether OPL tracking is enabled.
     """
 
-    def __init__(self, o, d, wvln=DEFAULT_WAVE, coherent=False, device="cpu"):
+    def __init__(self, o, d, wvln, coherent=False, device="cpu"):
         """Initialize a ray object.
 
         Args:
             o (torch.Tensor): Ray origin, shape ``(..., num_rays, 3)`` [mm].
             d (torch.Tensor): Ray direction, shape ``(..., num_rays, 3)``.
-            wvln (float): Ray wavelength [µm].
+            wvln (float): Ray wavelength [µm]. Required — must be passed
+                explicitly (the Lens carries ``primary_wvln``/``wvln_rgb``,
+                not the Ray).
             coherent (bool): Enable optical path length tracking for coherent
                 tracing. Defaults to ``False``.
             device (str): Compute device. Defaults to ``"cpu"``.

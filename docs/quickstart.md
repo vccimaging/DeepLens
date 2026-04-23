@@ -19,10 +19,14 @@ The point spread function (PSF) describes how the lens images a point source at 
 
 ```python
 # Single on-axis PSF (monochromatic)
-psf = lens.psf(point=[0.0, 0.0, -10000.0], ks=128, wvln=0.589)
+psf = lens.psf(points=[0.0, 0.0, -10000.0], ks=128, wvln=0.589)
 
 # RGB PSF (weighted sum over visible wavelengths)
-psf_rgb = lens.psf_rgb(point=[0.0, 0.0, -10000.0], ks=128)
+psf_rgb = lens.psf_rgb(points=[0.0, 0.0, -10000.0], ks=128)
+
+# Omitting ``wvln`` falls back to ``lens.primary_wvln``; omitting the
+# depth in ``render``/``psf_map`` falls back to ``lens.obj_depth``.
+psf = lens.psf(points=[0.0, 0.0, -10000.0], ks=128)
 ```
 
 ## Visualize the PSF
@@ -46,7 +50,20 @@ import torchvision
 img = torchvision.io.read_image("datasets/images/example.png").float() / 255.0
 img = img.unsqueeze(0)  # (1, 3, H, W)
 
-rendered = lens.render(img, depth=10000.0)
+rendered = lens.render(img, depth=-10000.0)
+```
+
+## Configuring Design Wavelength and Depth
+
+Every lens carries a primary wavelength, an RGB wavelength triplet, and a default object depth as attributes.  These propagate as fallbacks to every PSF / ray-sampling / render / evaluation method, so you can set them once at construction instead of passing ``wvln=`` and ``depth=`` everywhere.
+
+```python
+lens = GeoLens(
+    filename="datasets/lenses/cellphone/cellphone80deg.json",
+    primary_wvln=0.550,         # design wavelength [µm]
+    wvln_rgb=[0.620, 0.540, 0.460],  # [R, G, B] in µm
+    obj_depth=-5000.0,          # default object depth [mm] (negative = in front of lens)
+)
 ```
 
 ## Lens Types

@@ -15,7 +15,7 @@ import numpy as np
 import torch
 
 from .lens import Lens
-from .config import DEPTH, EPSILON, PSF_KS
+from .config import DEFAULT_WAVE, DEPTH, EPSILON, PSF_KS, WAVE_RGB
 from .imgsim import conv_psf_depth_interp, conv_psf_occlusion
 
 
@@ -34,7 +34,17 @@ class ParaxialLens(Lens):
         pixel_size (float): Pixel pitch [mm].
     """
 
-    def __init__(self, foclen, fnum, sensor_size=None, sensor_res=None, device="cpu"):
+    def __init__(
+        self,
+        foclen,
+        fnum,
+        sensor_size=None,
+        sensor_res=None,
+        device="cpu",
+        primary_wvln=DEFAULT_WAVE,
+        wvln_rgb=WAVE_RGB,
+        obj_depth=DEPTH,
+    ):
         """Initialize a paraxial lens.
 
         Args:
@@ -43,8 +53,22 @@ class ParaxialLens(Lens):
             sensor_size (tuple, optional): Physical sensor size as (W, H) in [mm]. Defaults to (8.0, 8.0).
             sensor_res (tuple, optional): Sensor resolution as (W, H) in pixels. Defaults to (2000, 2000).
             device (str, optional): Computation device. Defaults to "cpu".
+            primary_wvln (float, optional): Primary design wavelength [µm].
+                Used as fallback when a method is called without an explicit
+                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
+            wvln_rgb (sequence of float, optional): Three wavelengths used
+                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
+                to ``WAVE_RGB``.
+            obj_depth (float, optional): Default object depth [mm], used
+                when a method is called without an explicit ``depth``.
+                Defaults to ``DEPTH``.
         """
-        super(ParaxialLens, self).__init__(device=device)
+        super(ParaxialLens, self).__init__(
+            device=device,
+            primary_wvln=primary_wvln,
+            wvln_rgb=wvln_rgb,
+            obj_depth=obj_depth,
+        )
 
         # Lens parameters
         self.foclen = foclen  # Focal length [mm]
@@ -228,7 +252,7 @@ class ParaxialLens(Lens):
         psf = self.psf(points, ks=ks, psf_type="gaussian", **kwargs)
         return psf.unsqueeze(1).repeat(1, 3, 1, 1)
 
-    def psf_map(self, grid=(5, 5), ks=PSF_KS, depth=DEPTH, **kwargs):
+    def psf_map(self, grid=(5, 5), ks=PSF_KS, depth=None, **kwargs):
         """Compute a spatially-uniform monochrome PSF map.
 
         Because the paraxial model has no spatially-varying aberrations, every
@@ -238,12 +262,14 @@ class ParaxialLens(Lens):
             grid (tuple, optional): Grid dimensions ``(rows, cols)``.
                 Defaults to ``(5, 5)``.
             ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
-            depth (float, optional): Object depth [mm]. Defaults to ``DEPTH``.
+            depth (float, optional): Object depth [mm]. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             **kwargs: Forwarded to :meth:`psf`.
 
         Returns:
             torch.Tensor: PSF map, shape ``[rows, cols, 1, ks, ks]``.
         """
+        depth = self.obj_depth if depth is None else depth
         points = torch.tensor([[0, 0, depth]], device=self.device)
         psf = self.psf(points=points, ks=ks, psf_type="gaussian", **kwargs)
         psf_map = psf.unsqueeze(0).unsqueeze(0).repeat(grid[0], grid[1], 1, 1, 1)
@@ -318,20 +344,22 @@ class ParaxialLens(Lens):
         psf_r = psf_r.unsqueeze(1).repeat(1, 3, 1, 1)
         return psf_l, psf_r
 
-    def psf_map_dp(self, grid=(5, 5), ks=PSF_KS, depth=DEPTH, **kwargs):
+    def psf_map_dp(self, grid=(5, 5), ks=PSF_KS, depth=None, **kwargs):
         """Compute spatially-uniform dual-pixel PSF maps.
 
         Args:
             grid (tuple, optional): Grid dimensions ``(rows, cols)``.
                 Defaults to ``(5, 5)``.
             ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
-            depth (float, optional): Object depth [mm]. Defaults to ``DEPTH``.
+            depth (float, optional): Object depth [mm]. When ``None`` (default),
+                falls back to ``self.obj_depth``.
             **kwargs: Forwarded to :meth:`psf_dp`.
 
         Returns:
             tuple: ``(psf_map_left, psf_map_right)`` each of shape
                 ``[rows, cols, 1, ks, ks]``.
         """
+        depth = self.obj_depth if depth is None else depth
         points = torch.tensor([[0, 0, depth]], device=self.device)
         psf_l, psf_r = self.psf_dp(points, ks=ks, **kwargs)
         psf_map_l = psf_l.unsqueeze(0).unsqueeze(0).repeat(grid[0], grid[1], 1, 1, 1)
