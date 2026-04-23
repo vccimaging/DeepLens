@@ -570,6 +570,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuring-design-wavelength-and-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring Design Wavelength and Depth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#lens-types" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -875,6 +886,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuring-design-wavelength-and-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring Design Wavelength and Depth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#lens-types" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -928,10 +950,14 @@
 <h2 id="compute-a-psf">Compute a PSF</h2>
 <p>The point spread function (PSF) describes how the lens images a point source at a given field angle and wavelength.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Single on-axis PSF (monochromatic)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">psf</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">psf</span><span class="p">(</span><span class="n">point</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">10000.0</span><span class="p">],</span> <span class="n">ks</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">wvln</span><span class="o">=</span><span class="mf">0.589</span><span class="p">)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">psf</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">psf</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">10000.0</span><span class="p">],</span> <span class="n">ks</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">wvln</span><span class="o">=</span><span class="mf">0.589</span><span class="p">)</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># RGB PSF (weighted sum over visible wavelengths)</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">psf_rgb</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">psf_rgb</span><span class="p">(</span><span class="n">point</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">10000.0</span><span class="p">],</span> <span class="n">ks</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">psf_rgb</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">psf_rgb</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">10000.0</span><span class="p">],</span> <span class="n">ks</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Omitting ``wvln`` falls back to ``lens.primary_wvln``; omitting the</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># depth in ``render``/``psf_map`` falls back to ``lens.obj_depth``.</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">psf</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">psf</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">10000.0</span><span class="p">],</span> <span class="n">ks</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="visualize-the-psf">Visualize the PSF</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
@@ -948,7 +974,16 @@
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">img</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_image</span><span class="p">(</span><span class="s2">&quot;datasets/images/example.png&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">/</span> <span class="mf">255.0</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># (1, 3, H, W)</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">rendered</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mf">10000.0</span><span class="p">)</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">rendered</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">10000.0</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="configuring-design-wavelength-and-depth">Configuring Design Wavelength and Depth</h2>
+<p>Every lens carries a primary wavelength, an RGB wavelength triplet, and a default object depth as attributes.  These propagate as fallbacks to every PSF / ray-sampling / render / evaluation method, so you can set them once at construction instead of passing <code>wvln=</code> and <code>depth=</code> everywhere.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">lens</span> <span class="o">=</span> <span class="n">GeoLens</span><span class="p">(</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;datasets/lenses/cellphone/cellphone80deg.json&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">primary_wvln</span><span class="o">=</span><span class="mf">0.550</span><span class="p">,</span>         <span class="c1"># design wavelength [µm]</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">wvln_rgb</span><span class="o">=</span><span class="p">[</span><span class="mf">0.620</span><span class="p">,</span> <span class="mf">0.540</span><span class="p">,</span> <span class="mf">0.460</span><span class="p">],</span>  <span class="c1"># [R, G, B] in µm</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">obj_depth</span><span class="o">=-</span><span class="mf">5000.0</span><span class="p">,</span>          <span class="c1"># default object depth [mm] (negative = in front of lens)</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
 </code></pre></div>
 <h2 id="lens-types">Lens Types</h2>
 <p>DeepLens provides several lens models for different use cases:</p>
