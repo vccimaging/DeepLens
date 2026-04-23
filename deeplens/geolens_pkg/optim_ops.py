@@ -498,10 +498,20 @@ class GeoLensSurfOps:
             ).reshape(n_cand, 16)
             per_cand_gap = (z_b_grid - z_a_grid).min(dim=-1).values
             valid_mask = per_cand_gap >= edge_min
-            if bool(valid_mask.any()):
-                r_safe = float((cand_frac[valid_mask].max() * r_check).item())
-            else:
-                r_safe = 0.0
+            if not bool(valid_mask.any()):
+                # Pair is self-intersecting at every probed radius — there is
+                # no cap that satisfies edge_min.  Leave the radii untouched
+                # rather than collapsing both surfaces to ``min_radius_floor``
+                # (which made the element disappear); loss_bound will flag
+                # the violation during optimisation.
+                print(
+                    f"Warning: Surf {i}-{i+1} ({a.mat2.name}): edge gap "
+                    f"{gap:.3f} mm < {edge_min:.3f} mm and no candidate "
+                    f"radius satisfies clearance; leaving radii unchanged."
+                )
+                continue
+
+            r_safe = float((cand_frac[valid_mask].max() * r_check).item())
             r_safe = max(r_safe, min_radius_floor)
             print(
                 f"Surf {i}-{i+1} ({a.mat2.name}): edge gap {gap:.3f} mm "
@@ -512,12 +522,6 @@ class GeoLensSurfOps:
                 proposed_r[i] = r_safe
             if proposed_r[i + 1] > r_safe:
                 proposed_r[i + 1] = r_safe
-
-            if not bool(valid_mask.any()):
-                print(
-                    f"Warning: Surf {i}-{i+1} still below edge_min after cap "
-                    f"(possible sag crossing near axis)."
-                )
 
         # ------------------------------------------------------------------
         # 4b. Commit the capped proposed radii to the surfaces.
