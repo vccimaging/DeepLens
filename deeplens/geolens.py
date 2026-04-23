@@ -108,6 +108,7 @@ class GeoLens(
         device=None,
         dtype=torch.float32,
         primary_wvln=DEFAULT_WAVE,
+        wvln_rgb=WAVE_RGB,
     ):
         """Initialize a refractive lens.
 
@@ -124,8 +125,16 @@ class GeoLens(
                 ``wvln``.  If a lens file is loaded, its ``primary_wvln``
                 (when present) overrides this argument.  Defaults to
                 ``DEFAULT_WAVE``.
+            wvln_rgb (sequence of float, optional): Three wavelengths used
+                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
+                to ``WAVE_RGB``.
         """
-        super().__init__(device=device, dtype=dtype, primary_wvln=primary_wvln)
+        super().__init__(
+            device=device,
+            dtype=dtype,
+            primary_wvln=primary_wvln,
+            wvln_rgb=wvln_rgb,
+        )
 
         # Load lens file
         if filename is not None:
@@ -807,7 +816,7 @@ class GeoLens(
         for i in range(3):
             img_render[:, i, :, :] = self.render_raytracing_mono(
                 img=img[:, i, :, :],
-                wvln=WAVE_RGB[i],
+                wvln=self.wvln_rgb[i],
                 depth=depth,
                 spp=spp,
                 vignetting=vignetting,

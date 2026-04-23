@@ -42,7 +42,6 @@ from ..config import (
     GEO_GRID,
     SPP_CALC,
     SPP_PSF,
-    WAVE_RGB,
 )
 from ..geometric_surface import Aperture, Aspheric, Plane, Spheric, ThinLens
 from ..phase_surface import Phase
@@ -210,10 +209,11 @@ class GeoLensOptim:
 
         Args:
             target (float, optional): target of RMS loss. Defaults to 0.005 [mm].
-            wvln (float, optional): Wavelength in um. Defaults to WAVE_RGB[1].
+            wvln (float, optional): Wavelength in µm.  When ``None`` (default),
+                falls back to the green channel of ``self.wvln_rgb``.
         """
         if wvln is None:
-            wvln = WAVE_RGB[1]
+            wvln = self.wvln_rgb[1]
         loss = torch.tensor(0.0, device=self.device)
 
         # Ray tracing and calculate RMS error
@@ -458,7 +458,9 @@ class GeoLensOptim:
         # on the reference wavelength (same ordering as optimize()).
         loss_rms_ls = []
         w_mask = None
-        for i, wvln in enumerate([WAVE_RGB[1], WAVE_RGB[0], WAVE_RGB[2]]):
+        for i, wvln in enumerate(
+            [self.wvln_rgb[1], self.wvln_rgb[0], self.wvln_rgb[2]]
+        ):
             ray = self.sample_grid_rays(
                 depth=depth,
                 num_grid=num_grid,
@@ -636,7 +638,7 @@ class GeoLensOptim:
                     # Sample rays
                     self.calc_pupil()
                     rays_backup = []
-                    for wv in WAVE_RGB:
+                    for wv in self.wvln_rgb:
                         ray = self.sample_ring_arm_rays(num_ring=num_ring, num_arm=num_arm, spp=spp, depth=depth, wvln=wv, scale_pupil=1.05, sample_more_off_axis=sample_more_off_axis)
                         rays_backup.append(ray)
 
@@ -650,7 +652,7 @@ class GeoLensOptim:
 
             # ===> Optimize lens by minimizing RMS
             loss_rms_ls = []
-            for wv_idx, wv in enumerate(WAVE_RGB):
+            for wv_idx, wv in enumerate(self.wvln_rgb):
                 # Ray tracing to sensor, [num_grid, num_grid, num_rays, 3]
                 ray = rays_backup[wv_idx].clone()
                 ray = self.trace2sensor(ray)

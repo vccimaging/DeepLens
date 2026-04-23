@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from ..config import DEPTH, WAVE_RGB
+from ..config import DEPTH
 from ..light import Ray
 
 
@@ -207,7 +207,7 @@ class GeoLensVis:
             eff_foclen = round(self.foclen, 2)
             fov_deg = round(2 * self.rfov * 180 / torch.pi, 1)
             imgh = round(self.r_sensor, 1)
-            wvl_nm = [int(round(w * 1000)) for w in WAVE_RGB]  # µm → nm
+            wvl_nm = [int(round(w * 1000)) for w in self.wvln_rgb]  # µm → nm
 
             if self.aper_idx is not None:
                 _, pupil_r = self.calc_entrance_pupil()
@@ -242,7 +242,7 @@ class GeoLensVis:
                 if depth == float("inf"):
                     ray = self.sample_parallel_2D(
                         fov=fov,
-                        wvln=WAVE_RGB[2 - i],
+                        wvln=self.wvln_rgb[2 - i],
                         num_rays=num_rays,
                         depth=-1.0,
                         plane="sagittal",
@@ -252,7 +252,7 @@ class GeoLensVis:
                         fov=fov,
                         depth=depth,
                         num_rays=num_rays,
-                        wvln=WAVE_RGB[2 - i],
+                        wvln=self.wvln_rgb[2 - i],
                     )
                     ray.prop_to(-1.0)
 
@@ -267,7 +267,7 @@ class GeoLensVis:
         else:
             fig, axs = plt.subplots(1, 3, figsize=(15, 5))
             fig.suptitle(lens_title, fontsize=10, fontfamily="Nimbus Sans")
-            for i, wvln in enumerate(WAVE_RGB):
+            for i, wvln in enumerate(self.wvln_rgb):
                 ax = axs[i]
                 ax, fig = self.draw_lens_2d(ax=ax, fig=fig, zmx_format=zmx_format)
                 for fov in fov_ls:

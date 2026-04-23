@@ -102,7 +102,6 @@ from ..config import (
     SPP_COHERENT,
     SPP_PSF,
     SPP_RENDER,
-    WAVE_RGB,
 )
 from ..imgsim import assign_points_to_pixels
 from ..light import Ray
@@ -198,7 +197,7 @@ class GeoLensEval:
         num_fov=5,
         depth=DEPTH,
         num_rays=SPP_PSF,
-        wvln_list=WAVE_RGB,
+        wvln_list=None,
         direction="y",
         show=False,
     ):
@@ -227,14 +226,15 @@ class GeoLensEval:
                 Defaults to ``DEPTH``.
             num_rays (int): Rays per field position per wavelength.
                 Defaults to ``SPP_PSF``.
-            wvln_list (list[float]): Wavelengths in micrometers.
-                Defaults to ``WAVE_RGB`` (red, green, blue).
+            wvln_list (list[float]): Wavelengths in µm.  When ``None``
+                (default), falls back to ``self.wvln_rgb``.
             direction (str): Sampling direction —
                 ``"y"`` (meridional, default), ``"x"`` (sagittal),
                 ``"diagonal"`` (45°).
             show (bool): If ``True``, display the figure interactively instead
                 of saving to disk. Defaults to ``False``.
         """
+        wvln_list = self.wvln_rgb if wvln_list is None else wvln_list
         assert isinstance(wvln_list, list), "wvln_list must be a list"
         if depth == float("inf"):
             depth = DEPTH
@@ -284,7 +284,7 @@ class GeoLensEval:
         num_grid=5,
         depth=DEPTH,
         num_rays=SPP_PSF,
-        wvln_list=WAVE_RGB,
+        wvln_list=None,
         show=False,
     ):
         """Draw a 2-D grid of spot diagrams across the full field of view.
@@ -311,10 +311,11 @@ class GeoLensEval:
             depth (float): Object distance in mm. Defaults to ``DEPTH``.
             num_rays (int): Rays per grid cell per wavelength.
                 Defaults to ``SPP_PSF``.
-            wvln_list (list[float]): Wavelengths in micrometers.
-                Defaults to ``WAVE_RGB``.
+            wvln_list (list[float]): Wavelengths in µm.  When ``None``
+                (default), falls back to ``self.wvln_rgb``.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
+        wvln_list = self.wvln_rgb if wvln_list is None else wvln_list
         assert isinstance(wvln_list, list), "wvln_list must be a list"
         if isinstance(num_grid, int):
             num_grid = (num_grid, num_grid)
@@ -458,15 +459,15 @@ class GeoLensEval:
         """
         # Green first to obtain the shared reference centroid
         rms_g, green_centroid = self.rms_map(
-            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[1]
+            num_grid=num_grid, depth=depth, wvln=self.wvln_rgb[1]
         )
 
         # Red and blue relative to the green centroid
         rms_r, _ = self.rms_map(
-            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[0], center=green_centroid
+            num_grid=num_grid, depth=depth, wvln=self.wvln_rgb[0], center=green_centroid
         )
         rms_b, _ = self.rms_map(
-            num_grid=num_grid, depth=depth, wvln=WAVE_RGB[2], center=green_centroid
+            num_grid=num_grid, depth=depth, wvln=self.wvln_rgb[2], center=green_centroid
         )
 
         return torch.stack([rms_r, rms_g, rms_b], dim=0)
@@ -955,7 +956,7 @@ class GeoLensEval:
                 psf_rgb = self.psf_rgb(points=point, ks=psf_ks, recenter=True)
 
                 # Calculate MTF curves for rgb wavelengths
-                for wvln_idx, wvln in enumerate(WAVE_RGB):
+                for wvln_idx, wvln in enumerate(self.wvln_rgb):
                     # Calculate MTF curves from PSF
                     psf = psf_rgb[wvln_idx]
                     freq, mtf_tan, _ = self.psf2mtf(psf, pixel_size)
@@ -1010,7 +1011,7 @@ class GeoLensEval:
         num_points=64,
         z_span=1.0,
         z_steps=201,
-        wvln_list=WAVE_RGB,
+        wvln_list=None,
         spp=256,
         show=False,
     ):
@@ -1044,12 +1045,13 @@ class GeoLensEval:
             z_steps (int): Number of uniformly-spaced defocus planes within
                 ``±z_span``. Higher values give finer axial resolution.
                 Defaults to 201.
-            wvln_list (list[float]): Wavelengths in micrometers.
-                Defaults to ``WAVE_RGB``.
+            wvln_list (list[float]): Wavelengths in µm.  When ``None``
+                (default), falls back to ``self.wvln_rgb``.
             spp (int): Rays per field point (sampled uniformly across the
                 entrance pupil in the meridional plane). Defaults to 256.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
+        wvln_list = self.wvln_rgb if wvln_list is None else wvln_list
         device = self.device
         rfov_deg = self.rfov * 180 / torch.pi
 
@@ -1957,7 +1959,7 @@ class GeoLensEval:
         # Trace each wavelength and pool rays across wavelengths per field
         xy_list = []
         valid_list = []
-        for wvln in WAVE_RGB:
+        for wvln in self.wvln_rgb:
             ray = self.sample_radial_rays(
                 num_field=num_field, depth=depth, num_rays=SPP_PSF, wvln=wvln
             )

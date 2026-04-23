@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from .config import DEFAULT_WAVE, DEPTH, PSF_KS
+from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
 from .lens import Lens
 from .diffractive_surface import (
     Binary2,
@@ -56,6 +56,7 @@ class DiffractiveLens(Lens):
         filename=None,
         device=None,
         primary_wvln=DEFAULT_WAVE,
+        wvln_rgb=WAVE_RGB,
     ):
         """Initialize a diffractive lens.
 
@@ -65,8 +66,11 @@ class DiffractiveLens(Lens):
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
                 ``wvln``.  Defaults to ``DEFAULT_WAVE``.
+            wvln_rgb (sequence of float, optional): Three wavelengths used
+                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
+                to ``WAVE_RGB``.
         """
-        super().__init__(device=device, primary_wvln=primary_wvln)
+        super().__init__(device=device, primary_wvln=primary_wvln, wvln_rgb=wvln_rgb)
 
         # Load lens file
         if filename is not None:

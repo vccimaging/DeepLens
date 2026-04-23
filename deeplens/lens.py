@@ -29,7 +29,13 @@ from .imgsim import (
 
 
 class Lens(DeepObj):
-    def __init__(self, dtype=torch.float32, device=None, primary_wvln=DEFAULT_WAVE):
+    def __init__(
+        self,
+        dtype=torch.float32,
+        device=None,
+        primary_wvln=DEFAULT_WAVE,
+        wvln_rgb=WAVE_RGB,
+    ):
         """Initialize a lens class.
 
         Args:
@@ -38,6 +44,9 @@ class Lens(DeepObj):
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
                 ``wvln``.  Defaults to ``DEFAULT_WAVE`` (0.587, d-line).
+            wvln_rgb (sequence of float, optional): Three wavelengths used for
+                RGB (polychromatic) computations, ordered ``[R, G, B]`` in
+                µm.  Defaults to ``WAVE_RGB``.
         """
         # Lens device
         if device is None:
@@ -48,8 +57,9 @@ class Lens(DeepObj):
         # Lens default dtype
         self.dtype = dtype
 
-        # Primary design wavelength [µm].  IO (read_lens_json) may override.
+        # Design wavelengths [µm].  IO may override.
         self.primary_wvln = primary_wvln
+        self.wvln_rgb = list(wvln_rgb)
 
     def read_lens_json(self, filename):
         """Read lens from a json file."""
@@ -156,8 +166,8 @@ class Lens(DeepObj):
     def psf_rgb(self, points, ks=PSF_KS, **kwargs):
         """Compute the RGB (tri-chromatic) PSF by stacking three wavelength calls.
 
-        Calls :meth:`psf` three times for the RGB primary wavelengths defined
-        in ``WAVE_RGB`` and stacks the results along the channel axis.
+        Calls :meth:`psf` three times for the RGB primary wavelengths stored
+        in ``self.wvln_rgb`` and stacks the results along the channel axis.
 
         Args:
             points (torch.Tensor): Point source coordinates, shape ``[N, 3]``
@@ -170,7 +180,7 @@ class Lens(DeepObj):
             or ``[N, 3, ks, ks]`` for a batch.
         """
         psfs = []
-        for wvln in WAVE_RGB:
+        for wvln in self.wvln_rgb:
             psfs.append(self.psf(points=points, ks=ks, wvln=wvln, **kwargs))
         psf_rgb = torch.stack(psfs, dim=-3)  # shape [3, ks, ks] or [N, 3, ks, ks]
         return psf_rgb
@@ -272,7 +282,7 @@ class Lens(DeepObj):
             psf_map: Shape of [grid_h, grid_w, 3, ks, ks].
         """
         psfs = []
-        for wvln in WAVE_RGB:
+        for wvln in self.wvln_rgb:
             psf_map = self.psf_map(grid=grid, ks=ks, depth=depth, wvln=wvln, **kwargs)
             psfs.append(psf_map)
         psf_map = torch.cat(psfs, dim=2)  # shape [grid_h, grid_w, 3, ks, ks]
