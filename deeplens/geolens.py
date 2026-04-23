@@ -123,9 +123,7 @@ class GeoLens(
             dtype (torch.dtype, optional): Data type for computations. Defaults to torch.float32.
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
-                ``wvln``.  If a lens file is loaded, its ``primary_wvln``
-                (when present) overrides this argument.  Defaults to
-                ``DEFAULT_WAVE``.
+                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
             wvln_rgb (sequence of float, optional): Three wavelengths used
                 for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
                 to ``WAVE_RGB``.

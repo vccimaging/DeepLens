@@ -456,7 +456,7 @@ class GeoLensOptim:
         """
         depth = self.obj_depth if depth is None else depth
         # Iterate green first so the error-adaptive weight mask is anchored
-        # on the reference wavelength (same ordering as optimize()).
+        # on the reference (green) wavelength.
         loss_rms_ls = []
         w_mask = None
         for i, wvln in enumerate(
@@ -625,7 +625,7 @@ class GeoLensOptim:
         pbar = tqdm(
             total=iterations + 1,
             desc="Progress",
-            postfix={"loss_rms": 0, "loss_focus": 0},
+            postfix={"loss_rms": 0},
         )
         for i in range(iterations + 1):
             # ===> Evaluate the lens

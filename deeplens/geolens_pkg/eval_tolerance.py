@@ -151,8 +151,8 @@ class GeoLensTolerance:
         """
 
         def merit_func(lens, fov=0.0, depth=None):
-            depth = lens.obj_depth if depth is None else depth
             """Evaluate MTF merit at a single field point."""
+            depth = lens.obj_depth if depth is None else depth
             try:
                 point = [0, -fov / lens.rfov, depth]
                 psf = lens.psf(points=point, spp=spp, recenter=True)
