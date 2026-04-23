@@ -95,7 +95,7 @@ class Spheric(Surface):
 
         # Compute surface sag
         r2 = x**2 + y**2
-        sag = c * r2 / (1 + torch.sqrt(1 - r2 * c**2))
+        sag = c * r2 / (1 + torch.sqrt((1 - r2 * c**2).clamp(min=EPSILON)))
         return sag
 
     def _dfdxy(self, x, y):
@@ -108,7 +108,7 @@ class Spheric(Surface):
 
         # Compute surface sag derivatives
         r2 = x**2 + y**2
-        sf = torch.sqrt(1 - r2 * c**2 + EPSILON)
+        sf = torch.sqrt((1 - r2 * c**2).clamp(min=EPSILON))
         dfdr2 = c / (2 * sf)
 
         dfdx = dfdr2 * 2 * x
@@ -136,7 +136,7 @@ class Spheric(Surface):
 
         # Compute surface sag derivatives
         r2 = x**2 + y**2
-        sf = torch.sqrt(1 - r2 * c**2 + EPSILON)
+        sf = torch.sqrt((1 - r2 * c**2).clamp(min=EPSILON))
 
         # First derivative (df/dr2)
         dfdr2 = c / (2 * sf)
