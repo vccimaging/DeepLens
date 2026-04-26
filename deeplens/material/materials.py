@@ -10,6 +10,7 @@ import json
 import os
 import re
 
+import numpy as np
 import torch
 
 from ..base import DeepObj
@@ -159,11 +160,21 @@ class Material(DeepObj):
         # Material found in custom JSON file
         elif self.name in CUSTOM_data["INTERP_TABLE"]:
             self.dispersion = "interp"
-            self.ref_wvlns = CUSTOM_data["INTERP_TABLE"]["wvlns"]
-            self.ref_n = CUSTOM_data["INTERP_TABLE"][self.name]
-            self.n = sum(self.ref_n) / len(self.ref_n)
+            mat_data = CUSTOM_data["INTERP_TABLE"][self.name]
+            self.ref_wvlns = mat_data["wvlns"]
+            self.ref_n = mat_data["n"]
+            if len(self.ref_wvlns) != len(self.ref_n):
+                raise ValueError(
+                    f"Interpolation wavelength and index tables for {self.name} "
+                    f"have different lengths."
+                )
             self._ref_wvlns_t = torch.tensor(self.ref_wvlns)
             self._ref_n_t = torch.tensor(self.ref_n)
+            nd = float(np.interp(0.5893, self.ref_wvlns, self.ref_n))
+            nF = float(np.interp(0.4861, self.ref_wvlns, self.ref_n))
+            nC = float(np.interp(0.6563, self.ref_wvlns, self.ref_n))
+            self.n = nd
+            self.V = (nd - 1) / (nF - nC) if nF != nC else 1e38
 
         elif self.name in CUSTOM_data["SELLMEIER_TABLE"]:
             self.dispersion = "sellmeier"
@@ -284,9 +295,16 @@ class Material(DeepObj):
 
         elif self.dispersion == "interp":
             # Use cached tensors, move to correct device if needed
-            if self._ref_wvlns_t.device != wvln.device:
-                self._ref_wvlns_t = self._ref_wvlns_t.to(wvln.device)
-                self._ref_n_t = self._ref_n_t.to(wvln.device)
+            if (
+                self._ref_wvlns_t.device != wvln.device
+                or self._ref_wvlns_t.dtype != wvln.dtype
+            ):
+                self._ref_wvlns_t = self._ref_wvlns_t.to(
+                    device=wvln.device, dtype=wvln.dtype
+                )
+                self._ref_n_t = self._ref_n_t.to(
+                    device=wvln.device, dtype=wvln.dtype
+                )
             ref_wvlns = self._ref_wvlns_t
             ref_n = self._ref_n_t
 
@@ -302,7 +320,14 @@ class Material(DeepObj):
             n_ref_high = ref_n[idx_high]
 
             # Interpolate n
-            weight_high = (wvln - wvln_ref_low) / (wvln_ref_high - wvln_ref_low)
+            denom = wvln_ref_high - wvln_ref_low
+            has_interval = denom != 0
+            safe_denom = torch.where(has_interval, denom, torch.ones_like(denom))
+            weight_high = torch.where(
+                has_interval,
+                (wvln - wvln_ref_low) / safe_denom,
+                torch.zeros_like(wvln),
+            )
             weight_low = 1.0 - weight_high
             n = n_ref_low * weight_low + n_ref_high * weight_high
 

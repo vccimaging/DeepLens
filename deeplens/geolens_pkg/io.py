@@ -26,7 +26,7 @@ import math
 import torch
 
 from ..geometric_surface import Aperture, Aspheric, Cubic, Plane, Spheric, ThinLens
-from ..phase_surface import Phase
+from ..phase_surface import Binary2Phase, Phase
 
 
 class GeoLensIO:
@@ -782,6 +782,9 @@ class GeoLensIO:
                 elif surf_dict["type"] == "Phase":
                     s = Phase.init_from_dict(surf_dict)
 
+                elif surf_dict["type"] == "Binary2Phase":
+                    s = Binary2Phase.init_from_dict(surf_dict)
+
                 elif surf_dict["type"] == "Plane":
                     s = Plane.init_from_dict(surf_dict)
 
@@ -802,6 +805,7 @@ class GeoLensIO:
                         f"Surface type {surf_dict['type']} is not implemented in GeoLens.read_lens_json()."
                     )
 
+                s.is_aperture = bool(surf_dict.get("is_aperture", False))
                 self.surfaces.append(s)
                 d += surf_dict["d_next"]
 
@@ -842,6 +846,8 @@ class GeoLensIO:
         for i, s in enumerate(self.surfaces):
             surf_dict = {"idx": i}
             surf_dict.update(s.surf_dict())
+            if getattr(s, "is_aperture", False):
+                surf_dict["is_aperture"] = True
             if i < len(self.surfaces) - 1:
                 surf_dict["d_next"] = round(
                     self.surfaces[i + 1].d.item() - self.surfaces[i].d.item(), 4
