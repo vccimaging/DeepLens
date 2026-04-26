@@ -728,12 +728,14 @@ class GeoLens(
         else:
             ray_o_record = None
 
-        mat1 = Material("air")
-        for i in np.flip(surf_range):
+        surf_indices = list(surf_range)
+        mat1 = self.surfaces[surf_indices[-1]].mat2 if surf_indices else Material("air")
+        for i in reversed(surf_indices):
             n1 = mat1.ior(ray.wvln)
-            n2 = self.surfaces[i - 1].mat2.ior(ray.wvln)
+            mat2 = Material("air") if i == 0 else self.surfaces[i - 1].mat2
+            n2 = mat2.ior(ray.wvln)
             ray = self.surfaces[i].ray_reaction(ray, n1, n2)
-            mat1 = self.surfaces[i - 1].mat2
+            mat1 = mat2
 
             if record:
                 ray_out_o = ray.o.clone().detach()
@@ -1223,9 +1225,15 @@ class GeoLens(
         # Find aperture
         self.aper_idx = None
         for i in range(len(self.surfaces)):
-            if isinstance(self.surfaces[i], Aperture):
+            if getattr(self.surfaces[i], "is_aperture", False):
                 self.aper_idx = i
                 break
+
+        if self.aper_idx is None:
+            for i in range(len(self.surfaces)):
+                if isinstance(self.surfaces[i], Aperture):
+                    self.aper_idx = i
+                    break
 
         if self.aper_idx is None:
             self.aper_idx = np.argmin([s.r for s in self.surfaces])
@@ -1579,5 +1587,3 @@ class GeoLens(
         """
         self.rfov_eff = rfov
         self.eqfl = 21.63 / math.tan(self.rfov_eff)
-
-

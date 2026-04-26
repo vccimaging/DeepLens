@@ -498,10 +498,13 @@ def AngularSpectrumMethod(u, z, wvln, ps, n=1.0, padding=True):
 
     # Propagation with angular spectrum method
     # Compute fx²+fy² via outer sum of 1D arrays (avoids meshgrid allocation)
-    fx_1d = torch.fft.fftfreq(Wimg, d=ps, device=u.device)
-    fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device)
+    real_dtype = u.real.dtype
+    fx_1d = torch.fft.fftfreq(Wimg, d=ps, device=u.device, dtype=real_dtype)
+    fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=real_dtype)
     f2 = fx_1d.unsqueeze(0) ** 2 + fy_1d.unsqueeze(1) ** 2
-    square_root = torch.sqrt(1 - wvln_mm**2 * f2)
+    radicand = 1 - wvln_mm**2 * f2
+    complex_dtype = torch.complex128 if radicand.dtype == torch.float64 else torch.complex64
+    square_root = torch.sqrt(radicand.to(complex_dtype))
 
     # H is defined on the unshifted frequency grid to match fft2(u)
     H = torch.exp(1j * k * z * square_root)

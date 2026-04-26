@@ -131,10 +131,10 @@ class Phase(DeepObj):
         self.diffraction_order = diffraction_order
         print("Diffraction of DOE in ray tracing is enabled.")
 
-    def ray_reaction(self, ray, n1=None, n2=None):
+    def ray_reaction(self, ray, n1, n2):
         """Ray reaction on DOE surface."""
         ray = self.to_local_coord(ray)
-        ray = self.intersect(ray)
+        ray = self.intersect(ray, n1)
         ray = self.refract(ray, n1 / n2)
         if self.diffraction:
             ray = self.diffract(ray, n2=n2)
@@ -351,6 +351,10 @@ class Phase(DeepObj):
     def surface_with_offset(self, *args, **kwargs):
         """Surface sag with offset, only used in layout drawing."""
         return self.d
+
+    def draw_r(self):
+        """Effective drawing radius for 2D layout drawing."""
+        return self.r
 
     # ==============================
     # Optimization

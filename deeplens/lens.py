@@ -62,12 +62,30 @@ class Lens(DeepObj):
         # Lens default dtype
         self.dtype = dtype
 
+        primary_wvln = torch.as_tensor(primary_wvln, dtype=torch.float64)
+        wvln_rgb = torch.as_tensor(wvln_rgb, dtype=torch.float64)
+        obj_depth = torch.as_tensor(obj_depth, dtype=torch.float64)
+
+        if primary_wvln.numel() != 1:
+            raise ValueError("primary_wvln must be a scalar wavelength in [µm].")
+        if wvln_rgb.numel() != 3:
+            raise ValueError("wvln_rgb must contain exactly three wavelengths in [µm].")
+        if obj_depth.numel() != 1:
+            raise ValueError("obj_depth must be a scalar depth in [mm].")
+
+        if not (primary_wvln.item() > 0.1 and primary_wvln.item() < 10.0):
+            raise ValueError("primary_wvln must be in [µm] and satisfy 0.1 < primary_wvln < 10.")
+        if not torch.all((wvln_rgb > 0.1) & (wvln_rgb < 10.0)):
+            raise ValueError("wvln_rgb must be in [µm] and every value must satisfy 0.1 < wvln < 10.")
+        if not obj_depth.item() < 0.0:
+            raise ValueError("obj_depth must be negative [mm], with the object in front of the lens.")
+
         # Design wavelengths [µm].  IO may override.
-        self.primary_wvln = primary_wvln
-        self.wvln_rgb = list(wvln_rgb)
+        self.primary_wvln = float(primary_wvln.item())
+        self.wvln_rgb = [float(w) for w in wvln_rgb.tolist()]
 
         # Default object depth [mm].
-        self.obj_depth = obj_depth
+        self.obj_depth = float(obj_depth.item())
 
     def read_lens_json(self, filename):
         """Read lens from a json file."""

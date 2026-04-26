@@ -57,6 +57,7 @@ class Binary2Phase(Phase):
         """Initialize Binary2 phase surface from dictionary."""
         mat2 = surf_dict.get("mat2", "air")
         norm_radii = surf_dict.get("norm_radii", None)
+        is_square = surf_dict.get("is_square", True)
         obj = cls(
             surf_dict["r"],
             surf_dict["d"],
@@ -68,6 +69,7 @@ class Binary2Phase(Phase):
             surf_dict.get("order12", 0.0),
             norm_radii,
             mat2,
+            is_square=is_square,
         )
         return obj
 
