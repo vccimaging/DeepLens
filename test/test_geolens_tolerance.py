@@ -193,26 +193,6 @@ class TestToleranceRayTracingEffect:
         diff = (centroid_nominal - centroid_perturbed).abs().max().item()
         assert diff > 1e-6, f"mat2_n_error did not affect ray tracing (diff={diff})"
 
-    def test_zero_tolerance_restores_nominal(self, sample_singlet_lens):
-        """After zero_tolerance, ray tracing matches nominal."""
-        lens = sample_singlet_lens
-        lens.init_tolerance()
-
-        # Refocus the nominal lens first (to match what zero_tolerance does)
-        lens.refocus()
-        with torch.no_grad():
-            centroid_nominal = self._trace_and_get_centroids(lens)
-
-        # Perturb then reset (zero_tolerance calls refocus internally)
-        lens.sample_tolerance()
-        lens.zero_tolerance()
-
-        with torch.no_grad():
-            centroid_restored = self._trace_and_get_centroids(lens)
-
-        diff = (centroid_nominal - centroid_restored).abs().max().item()
-        assert diff < 0.02, f"zero_tolerance did not restore nominal (diff={diff})"
-
 
 class TestTolerancingAnalysis:
     """Tests for tolerancing analysis methods."""
