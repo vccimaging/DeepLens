@@ -16,7 +16,7 @@ PSF convolution functions:
         - conv_psf_map_depth_interp(): depth-varying PSF map for the whole image, spatial varying across different image patches, no spatial variation within the patch.
     
     Per-pixel PSF. 
-        - conv_psf_pixel(): each pixel has a unique PSF, spatial variance and defocus.
+        - splat_psf_per_pixel(): each pixel has a unique PSF, spatial variance and defocus.
 
 Other functions:
     - crop_psf_map(): crop a PSF map to a smaller size.
@@ -440,10 +440,12 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
     return result
 
 
-def conv_psf_pixel(img, psf):
-    """Convolve an image batch with pixel-wise PSF.
+def splat_psf_per_pixel(img, psf):
+    """Render an image batch by splatting each pixel through its own PSF.
 
-    Use the different PSF kernel for different pixels (folding approach). Application example: Blurs image with dynamic Gaussian blur.
+    Uses a different PSF kernel for each input pixel and accumulates the
+    scattered contributions with a folding approach. Application example:
+    blurs an image with dynamic Gaussian blur.
 
     Args:
         img (Tensor): The image to be blurred (B, C, H, W).
@@ -457,7 +459,7 @@ def conv_psf_pixel(img, psf):
     assert C == C_psf, ("Image and PSF channels mismatch.")
     assert H == H_psf and W == W_psf, ("Image and PSF size mismatch.")
 
-    # Scattering for PSF convolution
+    # Splat each pixel through its local PSF.
     img = img.unsqueeze(-1).unsqueeze(-1)  # [B, C, H, W, 1, 1]
     kernels = psf.permute(2, 0, 1, 3, 4).unsqueeze(0)  # [1, C, H, W, ks, ks]
     y = img * kernels  # [B, C, H, W, ks, ks]
@@ -532,7 +534,7 @@ def conv_psf_pixel_high_res(img, psf, patch_num=(4, 4), expand=False):
             psf_patch = psf[low_i:up_i, low_j:up_j, :, :, :]
 
             # Process patch, expand boundary to [B, C, Himg+pad*2, Wimg+pad*2]
-            rendered_patch = conv_psf_pixel(img_patch, psf_patch, expand=True)
+            rendered_patch = splat_psf_per_pixel(img_patch, psf_patch, expand=True)
 
             # Accumulate weighted result
             img_render[:, :, low_i : up_i + pad * 2, low_j : up_j + pad * 2] += (

@@ -8,12 +8,12 @@ import torch
 from deeplens.imgsim import (
     conv_psf,
     conv_psf_map,
-    conv_psf_pixel,
     conv_psf_depth_interp,
     conv_psf_map_depth_interp,
     crop_psf_map,
     interp_psf_map,
     rotate_psf,
+    splat_psf_per_pixel,
 )
 
 
@@ -106,10 +106,10 @@ class TestConvPSFMap:
         assert torch.allclose(result_map, result_single, atol=0.1)
 
 
-class TestConvPSFPixel:
-    """Test per-pixel PSF convolution."""
+class TestSplatPSFPerPixel:
+    """Test per-pixel PSF splatting."""
 
-    def test_conv_psf_pixel_shape(self, device_auto):
+    def test_splat_psf_per_pixel_shape(self, device_auto):
         """Output should have same shape as input."""
         img = torch.rand(1, 3, 32, 32, device=device_auto)
         
@@ -117,7 +117,7 @@ class TestConvPSFPixel:
         psf = torch.rand(32, 32, 3, 5, 5, device=device_auto)
         psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
         
-        result = conv_psf_pixel(img, psf)
+        result = splat_psf_per_pixel(img, psf)
         
         assert result.shape == img.shape
 

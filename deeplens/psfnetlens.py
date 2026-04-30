@@ -22,7 +22,7 @@ from .lens import Lens
 from .surrogate import MLP
 from .surrogate.psfnet_mplconv import PSFNet_MLPConv
 from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
-from .imgsim import conv_psf_pixel, conv_psf_pixel_high_res, rotate_psf
+from .imgsim import conv_psf_pixel_high_res, rotate_psf, splat_psf_per_pixel
 
 
 class PSFNetLens(Lens):
@@ -467,10 +467,10 @@ class PSFNetLens(Lens):
         points = torch.stack((x, y, depth), -1).float()
         psf = self.psf_rgb(points=points, ks=ks)
 
-        # Render image with per-pixel PSF convolution
+        # Render image with per-pixel PSF splatting
         if high_res:
             render = conv_psf_pixel_high_res(img, psf)
         else:
-            render = conv_psf_pixel(img, psf)
+            render = splat_psf_per_pixel(img, psf)
 
         return render

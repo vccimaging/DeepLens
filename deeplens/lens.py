@@ -24,7 +24,7 @@ from .imgsim import (
     conv_psf_depth_interp,
     conv_psf_map,
     conv_psf_map_depth_interp,
-    conv_psf_pixel,
+    splat_psf_per_pixel,
 )
 
 
@@ -765,7 +765,7 @@ class Lens(DeepObj):
             return img_render
 
         elif method == "psf_pixel":
-            # Render full resolution image with pixel-wise PSF convolution. This method is computationally expensive.
+            # Render full resolution image with per-pixel PSF splatting. This method is computationally expensive.
             psf_ks = kwargs.get("psf_ks", PSF_KS)
             assert img_obj.shape[0] == 1, "Now only support batch size 1"
 
@@ -786,7 +786,7 @@ class Lens(DeepObj):
             )  # shape [H, W, 3, ks, ks]
 
             # Image simulation
-            img_render = conv_psf_pixel(img_obj, psfs)  # shape [1, C, H, W]
+            img_render = splat_psf_per_pixel(img_obj, psfs)  # shape [1, C, H, W]
             return img_render
 
         else:
