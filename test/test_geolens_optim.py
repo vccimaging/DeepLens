@@ -66,7 +66,8 @@ class TestLossFunctions:
         assert "loss_clearance" in loss_dict
         assert "loss_envelope" in loss_dict
         assert "loss_profile" in loss_dict
-        assert "loss_ray_angle" in loss_dict
+        assert "loss_cra" in loss_dict
+        assert "loss_ray_bend" in loss_dict
 
     def test_loss_infocus_scalar(self, sample_singlet_lens):
         """loss_infocus returns a scalar >= 0."""
@@ -97,13 +98,23 @@ class TestLossFunctions:
         assert loss_clearance.item() >= 0
         assert loss_envelope.item() >= 0
 
-    def test_loss_ray_angle_scalar(self, sample_singlet_lens):
-        """loss_ray_angle returns a scalar tensor."""
+    def test_loss_cra_scalar(self, sample_singlet_lens):
+        """loss_cra returns a scalar tensor >= 0."""
         lens = sample_singlet_lens
         lens.init_constraints()
-        loss = lens.loss_ray_angle()
+        loss = lens.loss_cra()
         assert isinstance(loss, torch.Tensor)
         assert loss.dim() == 0
+        assert loss.item() >= 0
+
+    def test_loss_ray_bend_scalar(self, sample_singlet_lens):
+        """loss_ray_bend returns a scalar tensor >= 0."""
+        lens = sample_singlet_lens
+        lens.init_constraints()
+        loss = lens.loss_ray_bend()
+        assert isinstance(loss, torch.Tensor)
+        assert loss.dim() == 0
+        assert loss.item() >= 0
 
     def test_loss_mat_scalar(self, sample_singlet_lens):
         """loss_mat returns a scalar >= 0."""

@@ -20,7 +20,8 @@ Functions:
     - loss_infocus: Sample parallel rays and compute RMS loss on the sensor plane
     - loss_profile: Penalize per-surface profile shape (sag, slope)
     - loss_bound: Penalize geometry-bound violations (clearance and envelope)
-    - loss_ray_angle: Loss function to penalize large chief ray angle
+    - loss_cra: Penalize chief ray angle at sensor exceeding chief_ray_angle_max
+    - loss_ray_bend: Penalize accumulated per-surface bend angles exceeding bend_angle_max
     - loss_rms: Loss function to compute RGB spot error RMS
     - sample_ring_arm_rays: Sample rays from object space using a ring-arm pattern
     - optimize: Optimize the lens by minimizing rms errors
@@ -156,7 +157,7 @@ class GeoLensOptim:
         for s in self.surfaces:
             s.bend_angle_max = self.bend_angle_max
 
-    def loss_reg(self, w_focus=1.0, w_ray_angle=1.0, w_clearance=1.0, w_envelope=1.0, w_profile=1.0):
+    def loss_reg(self, w_focus=1.0, w_cra=1.0, w_ray_bend=1.0, w_clearance=1.0, w_envelope=1.0, w_profile=1.0):
         """Compute combined regularization loss for lens design.
 
         Aggregates multiple constraint losses to keep the lens physically valid
@@ -164,7 +165,8 @@ class GeoLensOptim:
 
         Args:
             w_focus (float, optional): Weight for focus loss. Defaults to 1.0.
-            w_ray_angle (float, optional): Weight for chief ray angle loss. Defaults to 1.0.
+            w_cra (float, optional): Weight for chief ray angle loss. Defaults to 1.0.
+            w_ray_bend (float, optional): Weight for per-surface bend penalty. Defaults to 1.0.
             w_clearance (float, optional): Weight for the clearance penalty
                 (min air gap, min thickness, min BFL, min TTL). Defaults to 1.0.
             w_envelope (float, optional): Weight for the envelope penalty
@@ -179,7 +181,8 @@ class GeoLensOptim:
         """
         # Loss functions for regularization
         # loss_focus = self.loss_infocus()
-        loss_ray_angle = self.loss_ray_angle()
+        loss_cra = self.loss_cra()
+        loss_ray_bend = self.loss_ray_bend()
         loss_clearance, loss_envelope = self.loss_bound()
         loss_profile = self.loss_profile()
         # loss_mat = self.loss_mat()
@@ -188,7 +191,8 @@ class GeoLensOptim:
             + w_clearance * loss_clearance
             + w_envelope * loss_envelope
             + w_profile * loss_profile
-            + w_ray_angle * loss_ray_angle
+            + w_cra * loss_cra
+            + w_ray_bend * loss_ray_bend
             # w_mat * loss_mat
         )
 
@@ -198,7 +202,8 @@ class GeoLensOptim:
             "loss_clearance": loss_clearance.item(),
             "loss_envelope": loss_envelope.item(),
             "loss_profile": loss_profile.item(),
-            'loss_ray_angle': loss_ray_angle.item(),
+            "loss_cra": loss_cra.item(),
+            "loss_ray_bend": loss_ray_bend.item(),
             # 'loss_mat': loss_mat.item(),
         }
         return loss_reg, loss_dict
@@ -366,44 +371,43 @@ class GeoLensOptim:
 
         return loss_clearance, loss_envelope
 
-    def loss_ray_angle(self):
-        """Penalize rays that violate chief ray angle or surface bend limits.
+    def loss_cra(self):
+        """Penalize chief ray angle at sensor exceeding chief_ray_angle_max.
 
-        Two soft-constraint terms, both non-negative and smooth:
-
-        - **Chief ray angle at sensor**: ``softplus(cos_ref - cos(CRA))``.
-          Rises smoothly once CRA approaches ``chief_ray_angle_max``.
-        - **Per-surface bend accumulator**: reads ``ray.bend_penalty``, an
-          additive sum of ``softplus(cos_gate - cos(bend_i))`` contributions
-          collected during ``trace2sensor`` across every refraction. Each
-          surface contributes independently, so large bends at one surface
-          are not hidden by small bends at another, and compliant surfaces
-          contribute essentially zero.
+        Uses a near-paraxial pupil sample (scale_pupil=0.2) over the full FoV.
+        Penalty is ``softplus((cos_ref - cos(CRA)) / cra_scale)`` where
+        ``cra_scale = 1 - cos_ref`` normalizes the argument to fractional units
+        of the allowed-to-backward range.
 
         Returns:
-            Tensor: Scalar ray-angle penalty loss (always >= 0).
+            Tensor: Scalar CRA penalty (always >= 0).
         """
         cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
-        # Normalize cos-difference by cos-headroom (1 - cos_ref) so softplus
-        # arg is in fractional units of the allowed-to-backward range.
         cra_scale = 1.0 - cos_cra_ref
 
-        # Loss on chief ray angle (near-paraxial pupil sample, full FoV).
         ray = self.sample_ring_arm_rays(num_ring=4, num_arm=8, spp=SPP_CALC, scale_pupil=0.2)
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
         valid = ray.is_valid > 0
         penalty_cra = softplus((cos_cra_ref - cos_cra) / cra_scale, beta=10.0)
-        loss_cra = (penalty_cra * valid).sum() / (valid.sum() + EPSILON)
+        return (penalty_cra * valid).sum() / (valid.sum() + EPSILON)
 
-        # Loss on accumulated per-surface bend penalty (full pupil, full FoV).
+    def loss_ray_bend(self):
+        """Penalize accumulated per-surface bend angles exceeding bend_angle_max.
+
+        Reads ``ray.bend_penalty``, an additive sum of per-surface softplus
+        contributions collected during ``trace2sensor``.  Each surface
+        contributes independently, so large bends at one surface are not hidden
+        by small bends at another.  Uses a full-pupil sample (scale_pupil=1.0).
+
+        Returns:
+            Tensor: Scalar bend penalty (always >= 0).
+        """
         ray = self.sample_ring_arm_rays(num_ring=4, num_arm=8, spp=SPP_CALC, scale_pupil=1.0)
         ray = self.trace2sensor(ray)
         bend_penalty = ray.bend_penalty.squeeze(-1)
         valid = ray.is_valid > 0
-        loss_bend = (bend_penalty * valid).sum() / (valid.sum() + EPSILON)
-
-        return loss_cra + loss_bend
+        return (bend_penalty * valid).sum() / (valid.sum() + EPSILON)
 
     def loss_mat(self):
         """Penalize material parameters outside manufacturable ranges.
