@@ -16,6 +16,8 @@ deeplens/do_code/
 debug.py
 *.log
 temp/*
+logs/
+dist/
 
 lenses/pancake/
 datasets/BSDS300/
