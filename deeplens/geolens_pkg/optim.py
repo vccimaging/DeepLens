@@ -22,7 +22,7 @@ Functions:
     - loss_bound: Penalize geometry-bound violations (clearance and envelope)
     - loss_cra: Penalize chief ray angle at sensor exceeding chief_ray_angle_max
     - loss_ray_bend: Penalize accumulated per-surface bend angles exceeding bend_angle_max
-    - loss_rms: Loss function to compute RGB spot error RMS
+    - loss_rms: RGB spot RMS with optional centroid reference and distortion regularization
     - sample_ring_arm_rays: Sample rays from object space using a ring-arm pattern
     - optimize: Optimize the lens by minimizing rms errors
 """
@@ -124,6 +124,9 @@ class GeoLensOptim:
             self.chief_ray_angle_max = 30.0  # deg
             self.bend_angle_max = 30.0  # degrees
 
+            # Distortion constraint
+            self.distortion_max = 0.10  # 10 % relative distortion
+
         else:
             self.is_cellphone = False
 
@@ -152,6 +155,9 @@ class GeoLensOptim:
             # Ray angle constraints
             self.chief_ray_angle_max = 40.0  # deg
             self.bend_angle_max = 30.0  # degrees
+
+            # Distortion constraint
+            self.distortion_max = 0.02  # 2 % relative distortion
 
         # Propagate bend angle limit onto every surface so refract() reads it.
         for s in self.surfaces:
@@ -452,7 +458,7 @@ class GeoLensOptim:
             num_grid (int, optional): Number of grid points. Defaults to GEO_GRID.
             depth (float, optional): Depth of the lens. When ``None`` (default),
                 falls back to ``self.obj_depth``.
-            num_rays (int, optional): Number of rays. Defaults to SPP_CALC.
+            num_rays (int, optional): Number of rays. Defaults to SPP_PSF.
             sample_more_off_axis (bool, optional): Whether to sample more off-axis rays. Defaults to False.
 
         Returns:
@@ -557,7 +563,6 @@ class GeoLensOptim:
         lrs=[1e-3, 1e-4, 1e-1, 1e-4],
         iterations=5000,
         test_per_iter=100,
-        centroid=False,
         optim_mat=False,
         shape_control=True,
         sample_more_off_axis=False,
@@ -575,8 +580,6 @@ class GeoLensOptim:
             iterations (int, optional): Total training iterations. Defaults to 5000.
             test_per_iter (int, optional): Evaluate and save every N iterations.
                 Defaults to 100.
-            centroid (bool, optional): If True, use chief-ray centroid as PSF centre
-                reference; otherwise use pinhole model. Defaults to False.
             optim_mat (bool, optional): If True, include material parameters (n, V)
                 in optimisation. Defaults to False.
             shape_control (bool, optional): If True, call ``correct_shape()`` at each
@@ -649,28 +652,46 @@ class GeoLensOptim:
                         ray = self.sample_ring_arm_rays(num_ring=num_ring, num_arm=num_arm, spp=spp, depth=depth, wvln=wv, scale_pupil=1.05, sample_more_off_axis=sample_more_off_axis)
                         rays_backup.append(ray)
 
-                    # Calculate ray centers
-                    if centroid:
-                        center_ref = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="chief_ray")
-                        center_ref = center_ref.unsqueeze(-2).repeat(1, 1, spp, 1)
-                    else:
-                        center_ref = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="pinhole")
-                        center_ref = center_ref.unsqueeze(-2).repeat(1, 1, spp, 1)
+                    # Pinhole ideal for distortion reference (distortion-free).
+                    pinhole_ref = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="pinhole")
 
             # ===> Optimize lens by minimizing RMS
+            # Green is traced first: its centroid sets center_ref and drives
+            # the distortion penalty; red and blue reuse the same center_ref.
             loss_rms_ls = []
+            loss_distortion = torch.tensor(0.0, device=self.device)
             w_mask = None
-            for wv_idx, wv in enumerate(self.wvln_rgb):
+            center_ref = None
+            wvln_order = [1, 0, 2]  # green, red, blue
+            for wv_idx in wvln_order:
                 # Ray tracing to sensor, [num_ring, num_arm, num_rays, 3]
                 ray = rays_backup[wv_idx].clone()
                 ray = self.trace2sensor(ray)
 
+                if center_ref is None:
+                    # Green centroid at sensor, shape [num_ring, num_arm, 2].
+                    centroid_xy = ray.centroid()[..., :2]
+
+                    # Distortion: relative displacement of green centroid from
+                    # pinhole ideal, averaged equally over all off-axis fields.
+                    ideal_height = pinhole_ref.norm(dim=-1)
+                    field_mask = ideal_height > EPSILON
+                    distortion = (centroid_xy - pinhole_ref).norm(dim=-1)
+                    distortion = distortion / ideal_height.clamp_min(EPSILON)
+                    violation = distortion - self.distortion_max
+                    penalty = softplus(violation / self.distortion_max, beta=20.0)
+                    n_fields = field_mask.sum().clamp_min(1)
+                    loss_distortion = (penalty * field_mask.float()).sum() / n_fields
+
+                    # Detach so RMS gradient moves spot shape, not its
+                    # position; distortion loss handles placement.
+                    center_ref = centroid_xy.detach().unsqueeze(-2)
+
                 # Ray error to center and valid mask.
                 # Use torch.where to zero out invalid rays BEFORE squaring,
                 # preventing NaN from Inf*0 (IEEE 754: inf * 0 = nan).
-                ray_xy = ray.o[..., :2]
                 ray_valid = ray.is_valid
-                ray_err = ray_xy - center_ref
+                ray_err = ray.o[..., :2] - center_ref
                 ray_err = torch.where(
                     ray_valid.bool().unsqueeze(-1), ray_err, torch.zeros_like(ray_err)
                 )
@@ -686,7 +707,7 @@ class GeoLensOptim:
                     # ``sample_ring_arm_rays`` orders fields center-outward
                     # along the first axis, so the first ring is the on-axis
                     # field (duplicated across every arm).
-                    w_mask[0, :] = 1.0
+                    w_mask[0, :] = 2.0
 
                 # RMS and weighted loss
                 l_rms = torch.clamp(mse, min=EPSILON).sqrt()
@@ -699,7 +720,7 @@ class GeoLensOptim:
             # Total loss
             w_reg = 0.1
             loss_reg, loss_dict = self.loss_reg()
-            L_total = loss_rms + w_reg * loss_reg
+            L_total = loss_rms + w_reg * (loss_reg + loss_distortion)
 
             # Back-propagation
             optimizer.zero_grad()
@@ -707,7 +728,11 @@ class GeoLensOptim:
             optimizer.step()
             scheduler.step()
 
-            pbar.set_postfix(loss_rms=loss_rms.item(), **loss_dict)
+            pbar.set_postfix(
+                loss_rms=loss_rms.item(),
+                loss_dist=loss_distortion.item(),
+                **loss_dict,
+            )
             pbar.update(1)
 
         pbar.close()
