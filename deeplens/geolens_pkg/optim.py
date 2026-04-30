@@ -715,6 +715,23 @@ class GeoLensOptim:
     # ====================================================================================
     # Optimizer helpers
     # ====================================================================================
+    def find_diff_surf(self):
+        """Get differentiable/optimizable surface indices.
+
+        Returns a list of surface indices that can be optimized during lens design.
+        Excludes the aperture surface from optimization.
+
+        Returns:
+            list or range: Surface indices excluding the aperture.
+        """
+        if self.aper_idx is None:
+            diff_surf_range = range(len(self.surfaces))
+        else:
+            diff_surf_range = list(range(0, self.aper_idx)) + list(
+                range(self.aper_idx + 1, len(self.surfaces))
+            )
+        return diff_surf_range
+
     def get_optimizer_params(
         self,
         lrs=[1e-4, 1e-4, 1e-2, 1e-4],

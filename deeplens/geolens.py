@@ -959,23 +959,6 @@ class GeoLens(
     # Geometrical optics calculation
     # ====================================================================================
 
-    def find_diff_surf(self):
-        """Get differentiable/optimizable surface indices.
-
-        Returns a list of surface indices that can be optimized during lens design.
-        Excludes the aperture surface from optimization.
-
-        Returns:
-            list or range: Surface indices excluding the aperture.
-        """
-        if self.aper_idx is None:
-            diff_surf_range = range(len(self.surfaces))
-        else:
-            diff_surf_range = list(range(0, self.aper_idx)) + list(
-                range(self.aper_idx + 1, len(self.surfaces))
-            )
-        return diff_surf_range
-
     @torch.no_grad()
     def calc_foclen(self, paraxial_fov=0.01):
         """Compute effective focal length (EFL).
