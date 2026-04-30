@@ -46,14 +46,14 @@ def create_lens(
     Contributor: Rayengineer
 
     Exactly one of ``foclen`` or ``imgh`` must be provided.  The other is
-    derived via ``imgh = 2 * foclen * tan(fov / 2)``.
+    derived via ``imgh = foclen * tan(fov / 2)``.
 
     Args:
         fov: Diagonal field of view in degrees.
         fnum: Maximum f-number.
         bfl: Back focal length — distance from last surface to sensor in mm.
         foclen: Focal length in mm.  Mutually exclusive with ``imgh``.
-        imgh: Full diagonal image height in mm.  Mutually exclusive with ``foclen``.
+        imgh: Half-diagonal image height in mm (= r_sensor).  Mutually exclusive with ``foclen``.
         thickness: Total thickness in mm.  Defaults to ``foclen + bfl``.
         surf_list: List of surface types defining each lens element and aperture.
         save_dir: Directory to save the lens JSON and analysis.
@@ -65,9 +65,9 @@ def create_lens(
     if foclen is not None and imgh is not None:
         raise ValueError("Specify exactly one of foclen or imgh, not both.")
     elif foclen is not None:
-        imgh = round(2 * foclen * float(np.tan(half_fov)), 2)
+        imgh = round(foclen * float(np.tan(half_fov)), 2)
     elif imgh is not None:
-        foclen = round(imgh / 2 / float(np.tan(half_fov)), 4)
+        foclen = round(imgh / float(np.tan(half_fov)), 4)
     else:
         raise ValueError("Specify exactly one of foclen or imgh.")
 
@@ -143,7 +143,7 @@ def create_lens(
     # Lens sensor (dummy sensor resolution)
     lens = lens.to(lens.device)
     lens.d_sensor = torch.tensor(thickness, device=lens.device)
-    lens.r_sensor = imgh / 2
+    lens.r_sensor = imgh
     lens.set_sensor_res(sensor_res=(2000, 2000))
 
     # Lens calculation
