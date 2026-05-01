@@ -41,7 +41,7 @@ Other functions:
 import torch
 import torch.nn.functional as F
 
-from ..config import DELTA, PSF_KS
+from ..config import DELTA
 
 
 # ================================================
@@ -639,92 +639,3 @@ def rotate_psf(psf, theta):
 
     return rotated_psf
 
-
-# ================================================
-# Inverse PSF calculation from images
-# ================================================
-def solve_psf(img_org, img_render, ks=PSF_KS, eps=1e-6):
-    """Estimate a spatially invariant PSF by frequency-domain deconvolution.
-
-    Solves the approximate relation ``img_render = img_org * psf`` in the
-    Fourier domain, crops the centered spatial-domain kernel to ``ks × ks``,
-    and normalizes each color channel.
-
-    Args:
-        img_org (torch.Tensor): Source image, shape ``[1, 3, H, W]``.
-        img_render (torch.Tensor): Rendered or observed image, shape
-            ``[1, 3, H, W]``.
-        ks (int): Output PSF kernel size.
-        eps (float): Small value to avoid division by zero in the frequency
-            domain.
-
-    Returns:
-        torch.Tensor: Estimated PSF, shape ``[3, ks, ks]``.
-    """
-    # Move to frequency domain
-    F_org = torch.fft.fftn(img_org, dim=[2, 3])
-    F_render = torch.fft.fftn(img_render, dim=[2, 3])
-
-    # Solve for F_psf in frequency domain
-    F_psf = F_render / (F_org + eps)
-
-    # Inverse FFT to get PSF in spatial domain
-    # Here, we take the real part assuming the PSF should be real-valued
-    psf = torch.fft.ifftn(F_psf, dim=[2, 3]).real
-    psf = torch.fft.fftshift(psf, dim=[2, 3])
-
-    # Crop to get PSF size [3,ks, ks]
-    _, _, H, W = psf.shape
-    start_h = (H - ks) // 2
-    start_w = (W - ks) // 2
-    psf = psf[0, :, start_h : start_h + ks, start_w : start_w + ks]
-
-    # Normalize PSF to sum to 1
-    psf = psf / torch.sum(psf, dim=[1, 2], keepdim=True)
-
-    return psf
-
-
-def solve_psf_map(img_org, img_render, ks=PSF_KS, grid=10):
-    """Estimate a packed PSF map by solving one PSF per image patch.
-
-    Splits square input images into a ``grid × grid`` patch layout, estimates a
-    spatially invariant PSF for each corresponding patch pair using
-    :func:`solve_psf`, and stores the result as a packed PSF map.
-
-    Args:
-        img_org (torch.Tensor): Source image batch, shape ``[B, 3, H, W]``.
-        img_render (torch.Tensor): Rendered image batch, shape
-            ``[B, 3, H, W]``.
-        ks (int): Output PSF kernel size.
-        grid (int): Number of PSF grid cells per spatial dimension.
-
-    Returns:
-        torch.Tensor: Packed PSF map, shape ``[3, grid*ks, grid*ks]``.
-    """
-    assert img_org.shape[-1] == img_org.shape[-2], "Image should be square"
-    assert (img_org.shape[-1] % grid == 0) and (img_org.shape[-2] % grid == 0), (
-        "Image size should be divisible by grid"
-    )
-    patch_size = int(img_org.shape[-1] / grid)
-    psf_map = torch.zeros((3, grid * ks, grid * ks), device=img_org.device)
-
-    for i in range(grid):
-        for j in range(grid):
-            img_org_patch = img_org[
-                :,
-                :,
-                i * patch_size : (i + 1) * patch_size,
-                j * patch_size : (j + 1) * patch_size,
-            ]
-            img_render_patch = img_render[
-                :,
-                :,
-                i * patch_size : (i + 1) * patch_size,
-                j * patch_size : (j + 1) * patch_size,
-            ]
-            psf_patch = solve_psf(img_org_patch, img_render_patch, ks=ks)
-
-            psf_map[:, i * ks : (i + 1) * ks, j * ks : (j + 1) * ks] = psf_patch
-
-    return psf_map

@@ -7,8 +7,6 @@ from .psf import (
     conv_psf_occlusion,
     interp_psf_map,
     rotate_psf,
-    solve_psf,
-    solve_psf_map,
     splat_psf_per_pixel,
 )
 
@@ -23,7 +21,5 @@ __all__ = [
     "conv_psf_occlusion",
     "interp_psf_map",
     "rotate_psf",
-    "solve_psf",
-    "solve_psf_map",
     "splat_psf_per_pixel",
 ]
