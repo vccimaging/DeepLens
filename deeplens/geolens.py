@@ -767,6 +767,8 @@ class GeoLens(
                 - psf_ks (int): Kernel size for PSF methods. Defaults to PSF_KS.
                 - patch_center (tuple): Center position for PSF patch method.
                 - spp (int): Samples per pixel for ray tracing. Defaults to SPP_RENDER.
+                - distortion (bool): For PSF map rendering, apply geometric
+                  distortion using ``warp()``. Defaults to True.
 
         Returns:
             Tensor: Rendered image tensor. Shape of [N, C, H, W].
@@ -783,6 +785,11 @@ class GeoLens(
             )
             psf_grid = kwargs.get("psf_grid", (10, 10))
             psf_ks = kwargs.get("psf_ks", PSF_KS)
+            if kwargs.get("distortion", True):
+                img_obj = self.warp(
+                    img_obj,
+                    depth=depth,
+                )
             img_render = self.render_psf_map(
                 img_obj, depth=depth, psf_grid=psf_grid, psf_ks=psf_ks
             )
@@ -905,6 +912,32 @@ class GeoLens(
             image = image.squeeze(1)
 
         return image
+
+    def warp(self, img, depth=None, num_grid=128):
+        """Apply lens distortion to an image using inverse distortion mapping.
+
+        Args:
+            img (tensor): Undistorted image tensor, shape ``[B, C, H, W]``.
+            depth (float, optional): Object depth. When ``None`` (default),
+                falls back to ``self.obj_depth``.
+            num_grid (int or tuple): Resolution of the inverse distortion grid.
+
+        Returns:
+            tensor: Distorted image tensor, shape ``[B, C, H, W]``.
+        """
+        depth = self.obj_depth if depth is None else depth
+        inv_distortion_map = self.calc_inv_distortion_map(
+            depth=depth, num_grid=num_grid
+        )
+        inv_distortion_map = inv_distortion_map.permute(2, 0, 1).unsqueeze(0)
+        inv_distortion_map = F.interpolate(
+            inv_distortion_map, img.shape[-2:], mode="bilinear", align_corners=True
+        )
+        inv_distortion_map = inv_distortion_map.permute(0, 2, 3, 1).repeat(
+            img.shape[0], 1, 1, 1
+        )
+        img_warped = F.grid_sample(img, inv_distortion_map, align_corners=True)
+        return img_warped
 
     def unwarp(self, img, depth=None, num_grid=128, crop=True, flip=True):
         """Unwarp rendered images using distortion map.

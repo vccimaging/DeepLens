@@ -514,7 +514,9 @@ class Lens(DeepObj):
             **kwargs: Method-specific keyword arguments:
 
                 * For ``"psf_map"``: ``psf_grid`` (tuple, default ``(10, 10)``),
-                  ``psf_ks`` (int, default ``PSF_KS``).
+                  ``psf_ks`` (int, default ``PSF_KS``), ``distortion`` (bool,
+                  default ``True``). Distortion is applied only when the lens
+                  provides a ``warp()`` method.
                 * For ``"psf_patch"``: ``patch_center`` (tuple or Tensor,
                   default ``(0.0, 0.0)``), ``psf_ks`` (int).
 
@@ -547,6 +549,12 @@ class Lens(DeepObj):
             )
             psf_grid = kwargs.get("psf_grid", (10, 10))
             psf_ks = kwargs.get("psf_ks", PSF_KS)
+            warp = getattr(self, "warp", None)
+            if kwargs.get("distortion", True) and callable(warp):
+                img_obj = warp(
+                    img_obj,
+                    depth=depth,
+                )
             img_render = self.render_psf_map(
                 img_obj, depth=depth, psf_grid=psf_grid, psf_ks=psf_ks
             )

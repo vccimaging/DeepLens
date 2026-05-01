@@ -40,8 +40,13 @@ img = img.unsqueeze(0).to(lens.device)
 lens.set_sensor_res((3000, 2000))
 
 with torch.no_grad():
-    img_ray = lens.render(img, depth=DEPTH, method="ray_tracing", spp=32)
-    img_psf = lens.render(img, depth=DEPTH, method="psf_map", psf_grid=(30, 20))
+    img_ray = lens.render(img, depth=DEPTH, method="ray_tracing", spp=8)
+    img_psf = lens.render(
+        img,
+        depth=DEPTH,
+        method="psf_map",
+        psf_grid=(30, 20),
+    )
 
 save_image(img_ray.clamp(0, 1), "./hello_render_ray_tracing.png")
 save_image(img_psf.clamp(0, 1), "./hello_render_psf_map.png")
