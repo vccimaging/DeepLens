@@ -80,11 +80,11 @@ def conv_psf(img, psf):
     psf = psf.unsqueeze(1)  # shape [C, 1, ks, ks]
 
     # Padding
-    pad_h_left  = (ks - 1) // 2
-    pad_h_right = ks // 2
-    pad_w_left  = (ks - 1) // 2
-    pad_w_right = ks // 2
-    img_pad = F.pad(img, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="reflect")
+    pad_top  = (ks - 1) // 2
+    pad_bottom = ks // 2
+    pad_left  = (ks - 1) // 2
+    pad_right = ks // 2
+    img_pad = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
     # Convolution
     img_render = F.conv2d(img_pad, psf, groups=C)
@@ -110,11 +110,11 @@ def conv_psf_map(img, psf_map):
     assert C_psf == C, f"PSF map channels ({C_psf}) must match image channels ({C})."
     
     # Padding
-    pad_h_left  = (ks - 1) // 2
-    pad_h_right = ks // 2
-    pad_w_left  = (ks - 1) // 2
-    pad_w_right = ks // 2
-    img_pad = F.pad(img, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="reflect")
+    pad_top  = (ks - 1) // 2
+    pad_bottom = ks // 2
+    pad_left  = (ks - 1) // 2
+    pad_right = ks // 2
+    img_pad = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
     # Pre-flip entire PSF map once (instead of flipping each PSF inside the loop)
     psf_map_flipped = torch.flip(psf_map, dims=(-2, -1))
@@ -136,8 +136,8 @@ def conv_psf_map(img, psf_map):
             img_pad_patch = img_pad[
                 :,
                 :,
-                h_low : h_high + pad_h_left + pad_h_right,
-                w_low : w_high + pad_w_left + pad_w_right,
+                h_low : h_high + pad_top + pad_bottom,
+                w_low : w_high + pad_left + pad_right,
             ]
 
             # Convolution, [B, C, h_high-h_low, w_high-w_low]
@@ -169,10 +169,10 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
     assert C == C_psf, ("Image and PSF channels mismatch.")
     assert H == H_psf and W == W_psf, ("Image and PSF size mismatch.")
 
-    pad_h_left = (ks - 1) // 2
-    pad_h_right = ks // 2
-    pad_w_left = (ks - 1) // 2
-    pad_w_right = ks // 2
+    pad_top = (ks - 1) // 2
+    pad_bottom = ks // 2
+    pad_left = (ks - 1) // 2
+    pad_right = ks // 2
 
     if chunk_size is None:
         img_expand = img.unsqueeze(-1).unsqueeze(-1)  # [B, C, H, W, 1, 1]
@@ -186,8 +186,8 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
         img_render = img.new_zeros(
             B,
             C,
-            H + pad_h_left + pad_h_right,
-            W + pad_w_left + pad_w_right,
+            H + pad_top + pad_bottom,
+            W + pad_left + pad_right,
         )
 
         for y0 in range(0, H, chunk_size):
@@ -216,8 +216,8 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
     return img_render[
         :,
         :,
-        pad_h_left : pad_h_left + H,
-        pad_w_left : pad_w_left + W,
+        pad_top : pad_top + H,
+        pad_left : pad_left + W,
     ]
 
 
@@ -259,11 +259,11 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
     # Pad the full image once to avoid boundary artifacts at patch seams.
     # Without this, each patch would be padded independently (reflecting within
     # its own boundary), producing visible seams at grid boundaries.
-    pad_h_left  = (ks - 1) // 2
-    pad_h_right = ks // 2
-    pad_w_left  = (ks - 1) // 2
-    pad_w_right = ks // 2
-    img_pad = F.pad(img, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="reflect")
+    pad_top  = (ks - 1) // 2
+    pad_bottom = ks // 2
+    pad_left  = (ks - 1) // 2
+    pad_right = ks // 2
+    img_pad = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
     # Pre-flip entire PSF map once: [grid_h, grid_w, num_depths, C, ks, ks]
     psf_map_flipped = torch.flip(psf_map, dims=(-2, -1))
@@ -316,8 +316,8 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
             # Extract overlapping patch from pre-padded image (no per-patch padding needed)
             img_pad_patch = img_pad[
                 :, :,
-                h_low : h_high + pad_h_left + pad_h_right,
-                w_low : w_high + pad_w_left + pad_w_right,
+                h_low : h_high + pad_top + pad_bottom,
+                w_low : w_high + pad_left + pad_right,
             ]
 
             # Expand patch for all depths: [B, C, patch_h+pad, patch_w+pad] -> [B, num_depths*C, ...]
@@ -397,11 +397,11 @@ def conv_psf_depth_interp(img, depth, psf_kernels, psf_depths, interp_mode="dept
 
     # Pad before expand: pad [B, C, H, W] first (C channels), then expand to num_depths*C
     # This reduces padding work by a factor of num_depths
-    pad_h_left  = (ks - 1) // 2
-    pad_h_right = ks // 2
-    pad_w_left  = (ks - 1) // 2
-    pad_w_right = ks // 2
-    img_padded_small = F.pad(img, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="reflect")
+    pad_top  = (ks - 1) // 2
+    pad_bottom = ks // 2
+    pad_left  = (ks - 1) // 2
+    pad_right = ks // 2
+    img_padded_small = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
     # Expand padded img: [B, C, H+pad, W+pad] -> [B, num_depths*C, H+pad, W+pad]
     img_padded = img_padded_small.repeat(1, num_depths, 1, 1)
@@ -503,10 +503,10 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
 
     # Pre-compute flipped PSFs and padding for convolution
     psf_flipped = torch.flip(psf_kernels, [-2, -1])  # [num_layers, C, ks, ks]
-    pad_h_left = (ks - 1) // 2
-    pad_h_right = ks // 2
-    pad_w_left = (ks - 1) // 2
-    pad_w_right = ks // 2
+    pad_top = (ks - 1) // 2
+    pad_bottom = ks // 2
+    pad_left = (ks - 1) // 2
+    pad_right = ks // 2
 
     # Back-to-front compositing (layer 0 is farthest, layer num_layers-1 is nearest)
     result = torch.zeros(B, C, H, W, device=device, dtype=dtype)
@@ -524,13 +524,13 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
 
         # Convolve layer RGB with this layer's PSF
         psf_i = psf_flipped[i].unsqueeze(1)  # [C, 1, ks, ks]
-        layer_rgb_pad = F.pad(layer_rgb, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="constant", value=0)
+        layer_rgb_pad = F.pad(layer_rgb, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0)
         blurred_rgb = F.conv2d(layer_rgb_pad, psf_i, groups=C)  # [B, C, H, W]
 
         # Convolve mask with the same PSF (use one channel of PSF, since PSF sums to 1 per channel)
         # Average across channels for mask blurring (PSF is same across channels for paraxial)
         psf_i_mono = psf_flipped[i, 0:1].unsqueeze(1)  # [1, 1, ks, ks]
-        mask_pad = F.pad(mask, (pad_w_left, pad_w_right, pad_h_left, pad_h_right), mode="constant", value=0)
+        mask_pad = F.pad(mask, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0)
         blurred_mask = F.conv2d(mask_pad, psf_i_mono, groups=1)  # [B, 1, H, W]
         blurred_mask = blurred_mask.clamp(0, 1)
 
