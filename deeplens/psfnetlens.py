@@ -22,7 +22,7 @@ from .lens import Lens
 from .surrogate import MLP
 from .surrogate.psfnet_mplconv import PSFNet_MLPConv
 from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
-from .imgsim import conv_psf_pixel_high_res, rotate_psf, splat_psf_per_pixel
+from .imgsim import rotate_psf, splat_psf_per_pixel
 
 
 class PSFNetLens(Lens):
@@ -436,7 +436,7 @@ class PSFNetLens(Lens):
     # Image simulation
     # ==================================================
     @torch.no_grad()
-    def render_rgbd(self, img, depth, foc_dist, ks=64, high_res=False):
+    def render_rgbd(self, img, depth, foc_dist, ks=64, high_res=False, chunk_size=256):
         """Render image with aif image and depth map. Receive [N, C, H, W] image.
 
         Args:
@@ -445,6 +445,7 @@ class PSFNetLens(Lens):
             foc_dist (tensor): [1], unit in mm, range from [-20000, -200]
             ks (int): kernel size
             high_res (bool): whether to use high resolution rendering
+            chunk_size (int): tile size used when ``high_res`` is True
 
         Returns:
             render (tensor): [1, C, H, W]
@@ -469,7 +470,7 @@ class PSFNetLens(Lens):
 
         # Render image with per-pixel PSF splatting
         if high_res:
-            render = conv_psf_pixel_high_res(img, psf)
+            render = splat_psf_per_pixel(img, psf, chunk_size=chunk_size)
         else:
             render = splat_psf_per_pixel(img, psf)
 

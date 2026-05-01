@@ -440,7 +440,7 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
     return result
 
 
-def splat_psf_per_pixel(img, psf):
+def splat_psf_per_pixel(img, psf, chunk_size=None):
     """Render an image batch by splatting each pixel through its own PSF.
 
     Uses a different PSF kernel for each input pixel and accumulates the
@@ -450,6 +450,8 @@ def splat_psf_per_pixel(img, psf):
     Args:
         img (Tensor): The image to be blurred (B, C, H, W).
         psf (Tensor): Per pixel local PSFs (H, W, C, ks, ks). ks can be odd or even.
+        chunk_size (int, optional): Source tile size for memory-efficient
+            rendering. If ``None``, render the whole image at once.
     
     Returns:
         img_render (Tensor): Rendered image (B, C, H, W).
@@ -459,93 +461,56 @@ def splat_psf_per_pixel(img, psf):
     assert C == C_psf, ("Image and PSF channels mismatch.")
     assert H == H_psf and W == W_psf, ("Image and PSF size mismatch.")
 
-    # Splat each pixel through its local PSF.
-    img = img.unsqueeze(-1).unsqueeze(-1)  # [B, C, H, W, 1, 1]
-    kernels = psf.permute(2, 0, 1, 3, 4).unsqueeze(0)  # [1, C, H, W, ks, ks]
-    y = img * kernels  # [B, C, H, W, ks, ks]
+    pad_h_left = (ks - 1) // 2
+    pad_h_right = ks // 2
+    pad_w_left = (ks - 1) // 2
+    pad_w_right = ks // 2
 
-    # Fold the result, shape [B, C*ks*ks, H*W]
-    y = y.permute(0, 1, 4, 5, 2, 3).reshape(B, C * ks * ks, H * W)
-
-    # Output processing
-    if ks % 2 == 0:
-        pad_h_left  = (ks - 1) // 2
-        pad_h_right = ks // 2
-        pad_w_left  = (ks - 1) // 2
-        pad_w_right = ks // 2
-        img_render = F.fold(y, (H + pad_h_left + pad_h_right, W + pad_w_left + pad_w_right), (ks, ks), padding=0)
-        img_render = img_render[:, :, pad_h_left:-pad_h_right, pad_w_left:-pad_w_right]
+    if chunk_size is None:
+        img_expand = img.unsqueeze(-1).unsqueeze(-1)  # [B, C, H, W, 1, 1]
+        kernels = psf.permute(2, 0, 1, 3, 4).unsqueeze(0)  # [1, C, H, W, ks, ks]
+        y = img_expand * kernels  # [B, C, H, W, ks, ks]
+        y = y.permute(0, 1, 4, 5, 2, 3).reshape(B, C * ks * ks, H * W)
+        img_render = F.fold(y, (H + ks - 1, W + ks - 1), (ks, ks), padding=0)
     else:
-        pad = (ks - 1) // 2
-        img_render = F.fold(y, (H, W), (ks, ks), padding=pad)
-    
-    return img_render
+        assert chunk_size > 0, "chunk_size must be positive."
 
-def conv_psf_pixel_high_res(img, psf, patch_num=(4, 4), expand=False):
-    """Convolve an image batch with pixel-wise PSF patch by patch. Overlapping windows are used to avoid boundary artifacts.
+        img_render = img.new_zeros(
+            B,
+            C,
+            H + pad_h_left + pad_h_right,
+            W + pad_w_left + pad_w_right,
+        )
 
-    Args:
-        img (Tensor): The image to be blurred (1, C, H, W).
-        psf (Tensor): Per pixel local PSFs (H, W, 3, ks, ks). ks can be odd or even.
-        patch_num (list): Number of patches in each dimension. Defaults to (4, 4).
-        expand (bool): Whether to expand image for the final output. Default is False.
+        for y0 in range(0, H, chunk_size):
+            y1 = min(y0 + chunk_size, H)
+            for x0 in range(0, W, chunk_size):
+                x1 = min(x0 + chunk_size, W)
+                img_patch = img[:, :, y0:y1, x0:x1]
+                psf_patch = psf[y0:y1, x0:x1, :, :, :]
 
-    Returns:
-        img_render (Tensor): Rendered image with same shape (1, C, H, W) as input. if expand is True, the output will be (1, C, H+pad*2, W+pad*2)
-    """
-    raise Exception("This function has not been tested.")
-    B, Cimg, Himg, Wimg = img.shape
-    Hpsf, Wpsf, Cpsf, _, ks = psf.shape
-    assert B == 1, "Only support batch size 1"
-    assert Cimg == Cpsf and Himg == Hpsf and Wimg == Wpsf, (
-        "Input and PSF shape mismatch"
-    )
+                patch_h, patch_w = y1 - y0, x1 - x0
+                img_patch = img_patch.unsqueeze(-1).unsqueeze(-1)
+                kernels = psf_patch.permute(2, 0, 1, 3, 4).unsqueeze(0)
+                y = img_patch * kernels
+                y = y.permute(0, 1, 4, 5, 2, 3).reshape(
+                    B, C * ks * ks, patch_h * patch_w
+                )
+                img_render[:, :, y0 : y1 + ks - 1, x0 : x1 + ks - 1] += (
+                    F.fold(
+                        y,
+                        (patch_h + ks - 1, patch_w + ks - 1),
+                        (ks, ks),
+                        padding=0,
+                    )
+                )
 
-    # Calculate base patch size and image padding
-    patch_h, patch_w = patch_num
-    base_patch_h = Himg // patch_h
-    base_patch_w = Wimg // patch_w
-    pad = int((ks - 1) / 2)
-
-    # Initialize output and weight accumulation tensors
-    img_render = torch.zeros_like(img)  # [1, C, Himg, Wimg]
-    img_render = F.pad(
-        img_render, (pad, pad, pad, pad), mode="reflect"
-    )  # [1, C, Himg+pad*2, Wimg+pad*2]
-
-    # Process each patch with overlap
-    for pi in range(patch_h):
-        for pj in range(patch_w):
-            # Calculate patch boundaries with overlap
-            low_i = pi * base_patch_h
-            up_i = (pi + 1) * base_patch_h
-            low_j = pj * base_patch_w
-            up_j = (pj + 1) * base_patch_w
-
-            # take care of the residual on last patch
-            # for example, if Himg=100, patch_h=3, then the last patch will be [66:100] instead of [66:99]
-            if pi == patch_h - 1:
-                up_i = Himg
-            if pj == patch_w - 1:
-                up_j = Wimg
-
-            # Extract patches
-            img_patch = img[:, :, low_i:up_i, low_j:up_j]
-            psf_patch = psf[low_i:up_i, low_j:up_j, :, :, :]
-
-            # Process patch, expand boundary to [B, C, Himg+pad*2, Wimg+pad*2]
-            rendered_patch = splat_psf_per_pixel(img_patch, psf_patch, expand=True)
-
-            # Accumulate weighted result
-            img_render[:, :, low_i : up_i + pad * 2, low_j : up_j + pad * 2] += (
-                rendered_patch
-            )
-
-    if not expand:
-        # Remove padding
-        img_render = img_render[:, :, pad:-pad, pad:-pad]
-
-    return img_render
+    return img_render[
+        :,
+        :,
+        pad_h_left : pad_h_left + H,
+        pad_w_left : pad_w_left + W,
+    ]
 
 
 # ================================================

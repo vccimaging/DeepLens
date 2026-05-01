@@ -121,6 +121,19 @@ class TestSplatPSFPerPixel:
         
         assert result.shape == img.shape
 
+    @pytest.mark.parametrize("ks", [5, 6])
+    def test_splat_psf_per_pixel_chunked_matches_full(self, device_auto, ks):
+        """Chunked rendering should match the full-image splat."""
+        img = torch.rand(1, 3, 31, 29, device=device_auto)
+
+        psf = torch.rand(31, 29, 3, ks, ks, device=device_auto)
+        psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
+
+        result_full = splat_psf_per_pixel(img, psf)
+        result_chunked = splat_psf_per_pixel(img, psf, chunk_size=8)
+
+        assert torch.allclose(result_chunked, result_full, atol=1e-6)
+
 
 class TestConvPSFDepthInterp:
     """Test depth-interpolated PSF convolution."""
