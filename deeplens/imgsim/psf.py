@@ -6,11 +6,11 @@
 
 """PSF-related functions.
 
-Image formation with a per-pixel PSF is fundamentally a splatting/scattering
-operation: each source pixel distributes its energy to neighboring output
-pixels according to its local PSF. When the PSF is spatially invariant, this
-splatting operation is equivalent to convolution with that fixed PSF kernel, so
-convolution can be used as an efficient implementation.
+PSF-based image simulation is physically a splatting operation: each input
+pixel distributes energy to the sensor according to its PSF. When the PSF is
+spatially invariant, this splatting operation is mathematically equivalent to
+convolution, so we can implement it efficiently with convolution by accounting
+for kernel orientation.
 
 Rendering functions:
     Spatially invariant PSF.
@@ -256,8 +256,8 @@ def conv_psf_depth_interp(
     assert depth.min() < 0 and depth.max() < 0, f"depth must be negative, got {depth.min()} and {depth.max()}"
     assert psf_depths.min() < 0 and psf_depths.max() < 0, f"psf_depths must be negative, got {psf_depths.min()} and {psf_depths.max()}"
     
-    # assert img.device != torch.device("cpu"), "Image must be on GPU"
     num_depths, C_psf, ks, _ = psf_kernels.shape
+    psf_depths = psf_depths.to(device=depth.device, dtype=depth.dtype)
 
     # =================================
     # PSF convolution for all depths
@@ -303,8 +303,6 @@ def conv_psf_depth_interp(
     assert H_depth == H and W_depth == W, (
         f"Depth shape ({H_depth}, {W_depth}) must match rendered shape ({H}, {W})."
     )
-    # Ensure psf_depths is on the same device as depth to avoid GPU-CPU sync
-    psf_depths = psf_depths.to(depth.device)
     depth_flat = depth.flatten(1)  # shape [B, H*W]
     depth_flat = depth_flat.clamp(psf_depths[0], psf_depths[-1])
     indices = torch.searchsorted(psf_depths, depth_flat, right=True)  # shape [B, H*W]
@@ -366,7 +364,7 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
     Returns:
         torch.Tensor: Rendered image, shape ``[B, C, H, W]``.
     """
-    B, C, H, W = img.shape
+    _, _, H, W = img.shape
     grid_h, grid_w, _, _, ks, _ = psf_map.shape
 
     # Pad the full image once to avoid boundary artifacts at patch seams.
@@ -439,14 +437,12 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
     B, C_img, H, W = img.shape
     assert C == C_img, f"PSF channels ({C}) must match image channels ({C_img})"
 
-    # Compute layer boundaries (midpoints between adjacent depths in disparity)
-    # psf_depths is sorted ascending: [-far, ..., -near]
     device = img.device
     dtype = img.dtype
+    psf_depths = psf_depths.to(device=device, dtype=dtype)
 
     # Assign each pixel to its nearest depth layer
     # depth and psf_depths are both negative; depth_map shape [B, 1, H, W]
-    depth_expanded = depth.expand(B, num_layers, H, W)  # broadcast via view
     depth_expanded = depth.view(B, 1, H, W).expand(B, num_layers, H, W)
     psf_depths_view = psf_depths.view(1, num_layers, 1, 1)
     dist = torch.abs(depth_expanded - psf_depths_view)  # [B, num_layers, H, W]
@@ -461,11 +457,10 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
 
     # Back-to-front compositing (layer 0 is farthest, layer num_layers-1 is nearest)
     result = torch.zeros(B, C, H, W, device=device, dtype=dtype)
-    accum_alpha = torch.zeros(B, 1, H, W, device=device, dtype=dtype)
 
     for i in range(num_layers):
         # Create soft mask for this layer: 1 where pixels belong to this layer
-        mask = (layer_assignment == i).float()  # [B, 1, H, W]
+        mask = (layer_assignment == i).to(dtype=dtype)  # [B, 1, H, W]
 
         if mask.sum() == 0:
             continue
@@ -488,7 +483,6 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
         # Over-compositing (back-to-front):
         # result = blurred_rgb + result * (1 - blurred_mask)
         result = blurred_rgb + result * (1 - blurred_mask)
-        accum_alpha = blurred_mask + accum_alpha * (1 - blurred_mask)
 
     return result
 
