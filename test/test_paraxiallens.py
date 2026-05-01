@@ -382,6 +382,30 @@ class TestParaxialLensPSFMap:
 class TestParaxialLensRendering:
     """Test RGBD rendering."""
 
+    def test_paraxial_render_psf_map_skips_missing_warp(self, device_auto):
+        """Should ignore distortion request when lens has no warp method."""
+        lens = ParaxialLens(
+            foclen=50.0,
+            fnum=1.8,
+            sensor_size=(20.0, 20.0),
+            sensor_res=(32, 32),
+            device=device_auto,
+        )
+
+        lens.refocus(-1000.0)
+
+        img = torch.rand(1, 3, 32, 32, device=device_auto)
+        img_render = lens.render(
+            img,
+            depth=-500.0,
+            method="psf_map",
+            psf_grid=(2, 2),
+            psf_ks=15,
+            distortion=True,
+        )
+
+        assert img_render.shape == img.shape
+
     def test_paraxial_render_rgbd_dp(self, device_auto):
         """Should render dual-pixel images from RGBD."""
         lens = ParaxialLens(
