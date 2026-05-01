@@ -182,6 +182,22 @@ class TestConvPSFDepthInterp:
         assert result.shape == img.shape
         assert not torch.isnan(result).any()
 
+    def test_conv_psf_depth_interp_exact_endpoints(self, device_auto):
+        """Depths at reference endpoints should use endpoint PSFs exactly."""
+        img = torch.rand(1, 3, 32, 32, device=device_auto)
+        psf_kernels = torch.rand(2, 3, 5, 5, device=device_auto)
+        psf_kernels = psf_kernels / psf_kernels.sum(dim=(-1, -2), keepdim=True)
+        psf_depths = torch.tensor([-3.0, -1.0], device=device_auto)
+
+        far_depth = torch.full((1, 1, 32, 32), -3.0, device=device_auto)
+        near_depth = torch.full((1, 1, 32, 32), -1.0, device=device_auto)
+
+        result_far = conv_psf_depth_interp(img, far_depth, psf_kernels, psf_depths)
+        result_near = conv_psf_depth_interp(img, near_depth, psf_kernels, psf_depths)
+
+        assert torch.allclose(result_far, conv_psf(img, psf_kernels[0]), atol=1e-6)
+        assert torch.allclose(result_near, conv_psf(img, psf_kernels[1]), atol=1e-6)
+
     def test_conv_psf_depth_interp_invalid_mode(self, device_auto):
         """Should raise error for invalid interpolation mode."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
@@ -223,6 +239,23 @@ class TestConvPSFMapDepthInterp:
         
         assert result.shape == img.shape
         assert not torch.isnan(result).any()
+
+    def test_conv_psf_map_depth_interp_exact_endpoints(self, device_auto):
+        """Depths at reference endpoints should use endpoint PSF maps exactly."""
+        img = torch.rand(1, 3, 32, 32, device=device_auto)
+        psf_map = torch.rand(2, 2, 2, 3, 5, 5, device=device_auto)
+        psf_map = psf_map / psf_map.sum(dim=(-1, -2), keepdim=True)
+        psf_depths = torch.tensor([-3.0, -1.0], device=device_auto)
+
+        far_depth = torch.full((1, 1, 32, 32), -3.0, device=device_auto)
+        near_depth = torch.full((1, 1, 32, 32), -1.0, device=device_auto)
+
+        result_far = conv_psf_map_depth_interp(img, far_depth, psf_map, psf_depths)
+        result_near = conv_psf_map_depth_interp(img, near_depth, psf_map, psf_depths)
+
+        assert torch.allclose(result_far, conv_psf_map(img, psf_map[:, :, 0]), atol=1e-6)
+        assert torch.allclose(result_near, conv_psf_map(img, psf_map[:, :, 1]), atol=1e-6)
+
 
 class TestInterpPSFMap:
     """Test PSF map interpolation."""
