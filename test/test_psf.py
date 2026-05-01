@@ -10,7 +10,6 @@ from deeplens.imgsim import (
     conv_psf_map,
     conv_psf_depth_interp,
     conv_psf_map_depth_interp,
-    crop_psf_map,
     interp_psf_map,
     rotate_psf,
     splat_psf_per_pixel,
@@ -224,45 +223,6 @@ class TestConvPSFMapDepthInterp:
         
         assert result.shape == img.shape
         assert not torch.isnan(result).any()
-
-    """Test PSF map cropping."""
-
-    def test_crop_psf_map_shape(self, device_auto):
-        """Should crop PSF patches correctly."""
-        grid = 4
-        ks = 21
-        ks_crop = 11
-        
-        psf_map = torch.rand(3, grid * ks, grid * ks, device=device_auto)
-        
-        cropped = crop_psf_map(psf_map, grid=grid, ks_crop=ks_crop)
-        
-        assert cropped.shape == (3, grid * ks_crop, grid * ks_crop)
-
-    def test_crop_psf_map_center(self, device_auto):
-        """Cropping should take center of each patch."""
-        grid = 2
-        ks = 11
-        ks_crop = 5
-        
-        # Create PSF map with known values
-        psf_map = torch.zeros(3, grid * ks, grid * ks, device=device_auto)
-        # Put value in center of each patch
-        for i in range(grid):
-            for j in range(grid):
-                center_y = i * ks + ks // 2
-                center_x = j * ks + ks // 2
-                psf_map[:, center_y, center_x] = 1.0
-        
-        cropped = crop_psf_map(psf_map, grid=grid, ks_crop=ks_crop)
-        
-        # Center values should be preserved
-        for i in range(grid):
-            for j in range(grid):
-                center_y = i * ks_crop + ks_crop // 2
-                center_x = j * ks_crop + ks_crop // 2
-                assert cropped[0, center_y, center_x] == 1.0
-
 
 class TestInterpPSFMap:
     """Test PSF map interpolation."""

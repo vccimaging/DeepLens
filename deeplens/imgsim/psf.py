@@ -34,16 +34,13 @@ Rendering functions:
           occlusion-aware back-to-front compositing.
 
 Other functions:
-    - crop_psf_map(): crop a PSF map to a smaller size.
     - interp_psf_map(): interpolate a PSF map to a different grid size.
-    - read_psf_map(): read a PSF map from a file.
     - rotate_psf(): rotate a PSF kernel.
     - solve_psf(): estimate one spatially invariant PSF from an
       input/output image pair.
     - solve_psf_map(): estimate a packed PSF map from input/output image patches.
 """
 
-import cv2 as cv
 import torch
 import torch.nn.functional as F
 
@@ -547,71 +544,6 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
 
 
 
-# ================================================
-# PSF map operations
-# ================================================
-def crop_psf_map(psf_map, grid, ks_crop, psf_center=None):
-    """Crop each tiled PSF kernel in a packed PSF map.
-
-    The input map stores a ``grid × grid`` array of PSF kernels in image form,
-    with shape ``[C, grid*ks, grid*ks]``. This function crops the center
-    ``ks_crop × ks_crop`` region from every kernel and renormalizes each color
-    channel independently.
-
-    Args:
-        psf_map (torch.Tensor): Packed PSF map, shape
-            ``[C, grid*ks, grid*ks]`` or ``[1, C, grid*ks, grid*ks]``.
-        grid (int): Number of PSF grid cells per spatial dimension.
-        ks_crop (int): Output kernel size for each cropped PSF.
-        psf_center (torch.Tensor, optional): Custom crop centers. This path is
-            currently not tested.
-
-    Returns:
-        torch.Tensor: Cropped packed PSF map, shape
-            ``[C, grid*ks_crop, grid*ks_crop]``.
-    """
-    if len(psf_map.shape) == 4:
-        psf_map = psf_map.squeeze(0)
-    C, H, W = psf_map.shape
-    assert H % grid == 0 and W % grid == 0, "PSF map size should be divisible by grid"
-    ks = int(H / grid)
-    assert ks % 2 == 1, "PSF kernel size should be odd"
-
-    psf_map_crop = torch.zeros((C, grid * ks_crop, grid * ks_crop), device=psf_map.device)
-    for i in range(grid):
-        for j in range(grid):
-            psf = psf_map[:, i * ks : (i + 1) * ks, j * ks : (j + 1) * ks]
-
-            # Without re-center
-            if psf_center is None:
-                psf_crop = psf[
-                    :,
-                    int((ks - ks_crop) / 2) : int((ks + ks_crop) / 2),
-                    int((ks - ks_crop) / 2) : int((ks + ks_crop) / 2),
-                ]
-            else:
-                raise Exception("Not tested")
-                psf_crop = psf[
-                    :,
-                    psf_center[0] - int((ks_crop - 1) / 2) : psf_center[0]
-                    + int((ks_crop + 1) / 2),
-                    psf_center[1] - int((ks_crop - 1) / 2) : psf_center[1]
-                    + int((ks_crop + 1) / 2),
-                ]
-
-            # Normalize cropped PSF
-            psf_crop[0, :, :] = psf_crop[0, :, :] / torch.sum(psf_crop[0, :, :])
-            psf_crop[1, :, :] = psf_crop[1, :, :] / torch.sum(psf_crop[1, :, :])
-            psf_crop[2, :, :] = psf_crop[2, :, :] / torch.sum(psf_crop[2, :, :])
-
-            # Put cropped PSF into the map
-            psf_map_crop[
-                :, i * ks_crop : (i + 1) * ks_crop, j * ks_crop : (j + 1) * ks_crop
-            ] = psf_crop
-
-    return psf_map_crop
-
-
 def interp_psf_map(psf_map, grid_old, grid_new):
     """Resample a PSF map to a different spatial grid size.
 
@@ -674,44 +606,6 @@ def interp_psf_map(psf_map, grid_old, grid_new):
     )
 
     return psf_map_interp
-
-
-def read_psf_map(filename, grid=10):
-    """Read and normalize a packed RGB PSF map image.
-
-    The image is interpreted as a ``grid × grid`` array of PSF kernels. Each
-    RGB channel of each kernel is normalized independently so every channel
-    sums to one.
-
-    Args:
-        filename (str): Path to the PSF map image.
-        grid (int): Number of PSF grid cells per spatial dimension.
-
-    Returns:
-        torch.Tensor: Packed PSF map, shape ``[3, grid*ks, grid*ks]``.
-    """
-    psf_map = cv.cvtColor(cv.imread(filename), cv.COLOR_BGR2RGB)
-    psf_map = torch.tensor(psf_map).permute(2, 0, 1).float() / 255.0
-    psf_ks = psf_map.shape[-1] // grid
-    for i in range(grid):
-        for j in range(grid):
-            psf_map[
-                0, i * psf_ks : (i + 1) * psf_ks, j * psf_ks : (j + 1) * psf_ks
-            ] /= torch.sum(
-                psf_map[0, i * psf_ks : (i + 1) * psf_ks, j * psf_ks : (j + 1) * psf_ks]
-            )
-            psf_map[
-                1, i * psf_ks : (i + 1) * psf_ks, j * psf_ks : (j + 1) * psf_ks
-            ] /= torch.sum(
-                psf_map[1, i * psf_ks : (i + 1) * psf_ks, j * psf_ks : (j + 1) * psf_ks]
-            )
-            psf_map[
-                2, i * psf_ks : (i + 1) * psf_ks, j * psf_ks : (j + 1) * psf_ks
-            ] /= torch.sum(
-                psf_map[2, i * psf_ks : (i + 1) * psf_ks, j * psf_ks : (j + 1) * psf_ks]
-            )
-
-    return psf_map
 
 
 def rotate_psf(psf, theta):
