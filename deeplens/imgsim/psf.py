@@ -36,9 +36,6 @@ Rendering functions:
 Other functions:
     - interp_psf_map(): interpolate a PSF map to a different grid size.
     - rotate_psf(): rotate a PSF kernel.
-    - solve_psf(): estimate one spatially invariant PSF from an
-      input/output image pair.
-    - solve_psf_map(): estimate a packed PSF map from input/output image patches.
 """
 
 import torch
