@@ -1,7 +1,7 @@
 """Hello, world! for DeepLens GeoLens class.
 
-In this code, we will load a lens from a file. Then we will plot the lens setup
-and render a sample image with ray tracing and PSF-map image simulation.
+In this code, we will load a geometric lens. Then we will plot the lens layout and run analysis.
+We will also render an example image with ray tracing and PSF-map image simulation.
 
 Technical Paper:
     [1] Xinge Yang, Qiang Fu and Wolfgang Heidrich, "Curriculum learning for ab initio deep learned refractive optics," Nature Communications 2024.
