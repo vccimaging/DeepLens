@@ -11,7 +11,7 @@ import numpy as np
 
 DEPTH = -20000.0  # approximate infinity [mm]
 
-SPP_PSF = 2 << 13  # 16384 — samples per pixel for PSF calculation
+SPP_PSF = 2 << 12  # 8192 — samples per pixel for PSF calculation
 SPP_COHERENT = 2 << 23  # ~16.7 M — samples for coherent optics
 SPP_CALC = 1024  # samples for low-accuracy computations (e.g. refocusing)
 SPP_RENDER = 32  # samples for rendering

@@ -45,6 +45,8 @@ Functions:
             angles along the meridional direction
         draw_distortion_radial: Distortion-vs-field-angle curve (Zemax style).
         calc_distortion_map: 2-D grid of actual-vs-ideal image positions.
+        calc_inv_distortion_map: Inverse grid for applying distortion with
+            ``grid_sample``.
         draw_distortion_map: Scatter plot of the distortion grid.
         distortion_center: Normalized centroid positions for arbitrary object
             points (used for warp/unwarp).
@@ -709,6 +711,61 @@ class GeoLensEval:
         y_dist = ray_xy[..., 1] / (sensor_h / 2)
         distortion_grid = torch.stack((x_dist, y_dist), dim=-1)
         return distortion_grid
+
+    @torch.no_grad()
+    def calc_inv_distortion_map(self, num_grid=16, depth=None, wvln=None):
+        """Compute a grid for applying lens distortion with ``grid_sample``.
+
+        For each point on the distorted sensor grid, backward rays are traced
+        through the lens to the target object-depth plane. The traced object
+        intersections are converted to normalized ideal image coordinates.
+        Passing this grid to ``torch.nn.functional.grid_sample`` samples an
+        undistorted image and produces a distorted image.
+
+        Args:
+            num_grid (int or tuple): Grid resolution. If a tuple is supplied,
+                it is interpreted as ``(grid_w, grid_h)``.
+            depth (float): Object distance in mm. When ``None`` (default),
+                falls back to ``self.obj_depth``.
+            wvln (float): Wavelength in µm. When ``None`` (default), falls
+                back to ``self.primary_wvln``.
+
+        Returns:
+            torch.Tensor: Inverse distortion grid with shape
+            ``[grid_h, grid_w, 2]`` in ``grid_sample`` coordinates.
+        """
+        wvln = self.primary_wvln if wvln is None else wvln
+        depth = self.obj_depth if depth is None else depth
+        if isinstance(num_grid, int):
+            num_grid = (num_grid, num_grid)
+
+        grid_w, grid_h = num_grid
+        sensor_w, sensor_h = self.sensor_size
+        device = self.device
+
+        # Convert grid_sample output coordinates to physical sensor positions.
+        # Existing distortion maps use -sensor_centroid as image coordinates.
+        x, y = torch.meshgrid(
+            torch.linspace(sensor_w / 2, -sensor_w / 2, grid_w, device=device),
+            torch.linspace(sensor_h / 2, -sensor_h / 2, grid_h, device=device),
+            indexing="xy",
+        )
+        z = torch.full_like(x, self.d_sensor.item())
+
+        pupilz, pupilr = self.get_exit_pupil()
+        ray_o2 = self.sample_circle(r=pupilr, z=pupilz, shape=(grid_h, grid_w, SPP_CALC))
+        ray_o = torch.stack((x, y, z), dim=-1).unsqueeze(2).repeat(1, 1, SPP_CALC, 1)
+        ray = Ray(ray_o, ray_o2 - ray_o, wvln, device=device)
+
+        ray = self.trace2obj(ray)
+        ray = ray.prop_to(depth)
+        point_obj = ray.centroid()[..., :2]
+
+        scale = self.calc_scale(depth)
+        x_ideal = point_obj[..., 0] / (scale * sensor_w / 2)
+        y_ideal = point_obj[..., 1] / (scale * sensor_h / 2)
+        inv_distortion_grid = torch.stack((x_ideal, y_ideal), dim=-1)
+        return inv_distortion_grid
 
     def distortion_center(self, points):
         """Compute the distorted image centroid for arbitrary normalized object points.

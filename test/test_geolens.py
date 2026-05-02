@@ -507,6 +507,41 @@ class TestGeoLensDistortion:
         # Distortion values should be normalized to approximately [-1, 1]
         assert distortion_map.abs().max() <= 2.0
 
+    def test_geolens_inv_distortion_map(self, sample_cellphone_lens):
+        """Should compute inverse distortion grid for image warping."""
+        lens = sample_cellphone_lens
+
+        inv_distortion_map = lens.calc_inv_distortion_map(num_grid=(5, 3), depth=DEPTH)
+
+        assert inv_distortion_map.shape == (3, 5, 2)
+        assert not torch.isnan(inv_distortion_map).any()
+        assert inv_distortion_map.abs().max() <= 2.0
+
+        x, y = torch.meshgrid(
+            torch.linspace(-1, 1, 5, device=lens.device),
+            torch.linspace(-1, 1, 3, device=lens.device),
+            indexing="xy",
+        )
+        expected_grid = torch.stack((x, y), dim=-1)
+        points = torch.cat(
+            [
+                inv_distortion_map.reshape(-1, 2),
+                torch.full((15, 1), DEPTH, device=lens.device),
+            ],
+            dim=-1,
+        )
+        actual_grid = lens.distortion_center(points).reshape(3, 5, 2)
+        assert torch.allclose(actual_grid, expected_grid, atol=5e-2)
+
+    def test_geolens_warp_shape(self, sample_cellphone_lens):
+        """Warp should preserve image shape."""
+        lens = sample_cellphone_lens
+        img = torch.rand(1, 3, 32, 48, device=lens.device)
+
+        img_warped = lens.warp(img, depth=DEPTH, num_grid=(5, 3))
+
+        assert img_warped.shape == img.shape
+
     def test_geolens_distortion_center_single_point(self, sample_cellphone_lens):
         """Should compute distortion center for single point."""
         lens = sample_cellphone_lens
@@ -556,4 +591,3 @@ class TestGeoLensDistortion:
         # Most distortion centers should be within reasonable range
         # (may exceed 1.0 due to lens distortion, but shouldn't be extreme)
         assert distortion_center.abs().max() < 3.0
-

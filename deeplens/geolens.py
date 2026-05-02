@@ -37,6 +37,7 @@ from .geolens_pkg.optim_ops import GeoLensSurfOps
 from .geolens_pkg.eval_tolerance import GeoLensTolerance
 from .geolens_pkg.vis3d import GeoLensVis3D
 from .geolens_pkg.vis import GeoLensVis
+from .imgsim import backward_integral
 from .lens import Lens
 from .geometric_surface import Aperture
 from .material import Material
@@ -782,6 +783,7 @@ class GeoLens(
             )
             psf_grid = kwargs.get("psf_grid", (10, 10))
             psf_ks = kwargs.get("psf_ks", PSF_KS)
+            img_obj = self.warp(img_obj, depth=depth)
             img_render = self.render_psf_map(
                 img_obj, depth=depth, psf_grid=psf_grid, psf_ks=psf_ks
             )
@@ -872,12 +874,13 @@ class GeoLens(
         """
         assert torch.is_tensor(img), "Input image should be Tensor."
 
-        # Padding
         H, W = img.shape[-2:]
+        squeeze_channel = False
         if len(img.shape) == 3:
-            img = F.pad(img.unsqueeze(1), (1, 1, 1, 1), "replicate").squeeze(1)
+            img = img.unsqueeze(1)
+            squeeze_channel = True
         elif len(img.shape) == 4:
-            img = F.pad(img, (1, 1, 1, 1), "replicate")
+            pass
         else:
             raise ValueError("Input image should be [N, C, H, W] or [N, H, W] tensor.")
 
@@ -891,36 +894,42 @@ class GeoLens(
             * (torch.abs(p[..., 1] / pixel_size) < (H / 2 + 1))
         )
 
-        # Convert to uv coordinates in object image coordinate
-        # (we do padding so corrdinates should add 1)
-        u = torch.clamp(W / 2 + p[..., 0] / pixel_size, min=-0.99, max=W - 0.01)
-        v = torch.clamp(H / 2 + p[..., 1] / pixel_size, min=0.01, max=H + 0.99)
-
-        # (idx_i, idx_j) denotes left-top pixel (reference pixel). Index does not store gradients
-        # (idx + 1 because we did padding)
-        idx_i = H - v.ceil().long() + 1
-        idx_j = u.floor().long() + 1
-
-        # Gradients are stored in interpolation weight parameters
-        w_i = v - v.floor().long()
-        w_j = u.ceil().long() - u
-
-        # Bilinear interpolation
-        # (img shape [B, N, H', W'], idx_i shape [H, W, spp], w_i shape [H, W, spp], irr_img shape [N, C, H, W, spp])
-        irr_img = img[..., idx_i, idx_j] * w_i * w_j
-        irr_img += img[..., idx_i + 1, idx_j] * (1 - w_i) * w_j
-        irr_img += img[..., idx_i, idx_j + 1] * w_i * (1 - w_j)
-        irr_img += img[..., idx_i + 1, idx_j + 1] * (1 - w_i) * (1 - w_j)
-
-        # Computation image
-        if not vignetting:
-            image = torch.sum(irr_img * ray.is_valid, -1) / (
-                torch.sum(ray.is_valid, -1) + EPSILON
-            )
-        else:
-            image = torch.sum(irr_img * ray.is_valid, -1) / torch.numel(ray.is_valid)
+        image = backward_integral(
+            ray=ray,
+            img_obj=img,
+            ps=pixel_size,
+            vignetting=vignetting,
+        )
+        if squeeze_channel:
+            image = image.squeeze(1)
 
         return image
+
+    def warp(self, img, depth=None, num_grid=128):
+        """Apply lens distortion to an image using inverse distortion mapping.
+
+        Args:
+            img (tensor): Undistorted image tensor, shape ``[B, C, H, W]``.
+            depth (float, optional): Object depth. When ``None`` (default),
+                falls back to ``self.obj_depth``.
+            num_grid (int or tuple): Resolution of the inverse distortion grid.
+
+        Returns:
+            tensor: Distorted image tensor, shape ``[B, C, H, W]``.
+        """
+        depth = self.obj_depth if depth is None else depth
+        inv_distortion_map = self.calc_inv_distortion_map(
+            depth=depth, num_grid=num_grid
+        )
+        inv_distortion_map = inv_distortion_map.permute(2, 0, 1).unsqueeze(0)
+        inv_distortion_map = F.interpolate(
+            inv_distortion_map, img.shape[-2:], mode="bilinear", align_corners=True
+        )
+        inv_distortion_map = inv_distortion_map.permute(0, 2, 3, 1).repeat(
+            img.shape[0], 1, 1, 1
+        )
+        img_warped = F.grid_sample(img, inv_distortion_map, align_corners=True)
+        return img_warped
 
     def unwarp(self, img, depth=None, num_grid=128, crop=True, flip=True):
         """Unwarp rendered images using distortion map.
