@@ -171,9 +171,13 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
     if chunk_size is None:
         img_expand = img.unsqueeze(-1).unsqueeze(-1)  # [B, C, H, W, 1, 1]
         kernels = psf.permute(2, 0, 1, 3, 4).unsqueeze(0)  # [1, C, H, W, ks, ks]
-        y = img_expand * kernels  # [B, C, H, W, ks, ks]
-        y = y.permute(0, 1, 4, 5, 2, 3).reshape(B, C * ks * ks, H * W)
-        img_render = F.fold(y, (H + ks - 1, W + ks - 1), (ks, ks), padding=0)
+        render_patch = img_expand * kernels  # [B, C, H, W, ks, ks]
+        render_patch = render_patch.permute(0, 1, 4, 5, 2, 3).reshape(
+            B, C * ks * ks, H * W
+        )
+        img_render = F.fold(
+            render_patch, (H + ks - 1, W + ks - 1), (ks, ks), padding=0
+        )
     else:
         assert chunk_size > 0, "chunk_size must be positive."
 
@@ -194,17 +198,15 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
                 patch_h, patch_w = y1 - y0, x1 - x0
                 img_patch = img_patch.unsqueeze(-1).unsqueeze(-1)
                 kernels = psf_patch.permute(2, 0, 1, 3, 4).unsqueeze(0)
-                y = img_patch * kernels
-                y = y.permute(0, 1, 4, 5, 2, 3).reshape(
+                render_patch = img_patch * kernels
+                render_patch = render_patch.permute(0, 1, 4, 5, 2, 3).reshape(
                     B, C * ks * ks, patch_h * patch_w
                 )
-                img_render[:, :, y0 : y1 + ks - 1, x0 : x1 + ks - 1] += (
-                    F.fold(
-                        y,
-                        (patch_h + ks - 1, patch_w + ks - 1),
-                        (ks, ks),
-                        padding=0,
-                    )
+                img_render[:, :, y0 : y1 + ks - 1, x0 : x1 + ks - 1] += F.fold(
+                    render_patch,
+                    (patch_h + ks - 1, patch_w + ks - 1),
+                    (ks, ks),
+                    padding=0,
                 )
 
     return img_render[
