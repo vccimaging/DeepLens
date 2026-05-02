@@ -121,8 +121,6 @@ def backward_integral(
     ray,
     img_obj,
     ps,
-    H,
-    W,
     interpolate=True,
     energy_correction=None,
     vignetting=False,
@@ -135,10 +133,8 @@ def backward_integral(
 
     Args:
         ray: Ray object. Shape of ``ray.o`` is ``[h, w, spp, 3]``.
-        img_obj: [B, C, H, W]
+        img_obj: [B, C, H, W]. Spatial size ``H, W`` is read from this tensor.
         ps: pixel size
-        H: image height
-        W: image width
         interpolate: whether to interpolate
         energy_correction: Optional per-ray weight tensor of shape
             ``[h, w, spp, 1]`` (e.g. ``ray.en``). When supplied, it is used as
@@ -156,9 +152,8 @@ def backward_integral(
         output: shape [B, C, h, w]
     """
     assert len(img_obj.shape) == 4
-    h, w, spp, _ = ray.o.shape
+    H, W = img_obj.shape[-2:]
     p = ray.o[..., :2]  # shape [h, w, spp, 2]
-
     img_obj = F.pad(img_obj, (1, 1, 1, 1), "replicate")
 
     # Convert ray positions to uv coordinates
@@ -177,7 +172,9 @@ def backward_integral(
     if ray.coherent:
         raise Exception("Backward coherent integral needs to be checked.")
 
-    if interpolate:  # Bilinear interpolation
+    # Monte-Carlo integration over the spp axis (last dim).
+    if interpolate:
+        # Bilinear splatting
         # img_obj [B, C, H+2, W+2], idx_i/idx_j [h, w, spp] -> out_img [B, C, h, w, spp]
         out_img = img_obj[..., idx_i, idx_j] * w_i * w_j
         out_img += img_obj[..., idx_i + 1, idx_j] * (1 - w_i) * w_j
@@ -186,17 +183,18 @@ def backward_integral(
     else:
         out_img = img_obj[..., idx_i, idx_j]
 
-    # Monte-Carlo integration over the spp axis (last dim).
+    # Extra per-ray energy correction factor (e.g. for non-uniform ray sampling).
     weight = ray.is_valid
     if energy_correction is not None:
         weight = weight * energy_correction.squeeze(-1)
+
+    # Normalize by the sum of weights (or fixed denominator if vignetting) to get the Monte-Carlo mean.
     if vignetting:
         output = torch.sum(out_img * weight, -1) / torch.numel(ray.is_valid)
     else:
         output = torch.sum(out_img * weight, -1) / (torch.sum(weight, -1) + EPSILON)
+
     return output
-
-
 
 def assign_points_to_pixels(
     points,

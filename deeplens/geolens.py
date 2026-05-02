@@ -904,8 +904,6 @@ class GeoLens(
             ray=ray,
             img_obj=img,
             ps=pixel_size,
-            H=H,
-            W=W,
             vignetting=vignetting,
         )
         if squeeze_channel:
