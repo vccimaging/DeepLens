@@ -48,5 +48,5 @@ with torch.no_grad():
         psf_grid=(30, 20),
     )
 
-save_image(img_ray.clamp(0, 1), "./hello_render_ray_tracing.png")
-save_image(img_psf.clamp(0, 1), "./hello_render_psf_map.png")
+save_image(img_ray.clamp(0, 1), "./render_ray_tracing.png")
+save_image(img_psf.clamp(0, 1), "./render_psf_map.png")
