@@ -171,12 +171,12 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
     if chunk_size is None:
         img_expand = img.unsqueeze(-1).unsqueeze(-1)  # [B, C, H, W, 1, 1]
         kernels = psf.permute(2, 0, 1, 3, 4).unsqueeze(0)  # [1, C, H, W, ks, ks]
-        render_patch = img_expand * kernels  # [B, C, H, W, ks, ks]
-        render_patch = render_patch.permute(0, 1, 4, 5, 2, 3).reshape(
+        img_render = img_expand * kernels  # [B, C, H, W, ks, ks]
+        img_render = img_render.permute(0, 1, 4, 5, 2, 3).reshape(
             B, C * ks * ks, H * W
         )
         img_render = F.fold(
-            render_patch, (H + ks - 1, W + ks - 1), (ks, ks), padding=0
+            img_render, (H + ks - 1, W + ks - 1), (ks, ks), padding=0
         )
     else:
         assert chunk_size > 0, "chunk_size must be positive."
