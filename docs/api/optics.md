@@ -92,8 +92,30 @@ Complex electromagnetic field with Angular Spectrum Method (ASM), Fresnel, and F
 
 ## PSF Utilities
 
-Functions for convolving images with point spread functions.
+Functions for rendering images with point spread functions.
 
 ::: deeplens.imgsim.psf.conv_psf
 
 ::: deeplens.imgsim.psf.conv_psf_map
+
+::: deeplens.imgsim.psf.conv_psf_depth_interp
+
+::: deeplens.imgsim.psf.conv_psf_map_depth_interp
+
+::: deeplens.imgsim.psf.conv_psf_occlusion
+
+::: deeplens.imgsim.psf.splat_psf_per_pixel
+
+::: deeplens.imgsim.psf.interp_psf_map
+
+::: deeplens.imgsim.psf.rotate_psf
+
+## Monte Carlo Image Integrals
+
+Utilities for ray-bundle accumulation and ray-traced image sampling.
+
+::: deeplens.imgsim.monte_carlo.forward_integral
+
+::: deeplens.imgsim.monte_carlo.backward_integral
+
+::: deeplens.imgsim.monte_carlo.assign_points_to_pixels
