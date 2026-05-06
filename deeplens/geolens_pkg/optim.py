@@ -87,7 +87,7 @@ class GeoLensOptim:
     # ================================================================
     def init_constraints(self, constraint_params=None):
         """Initialize constraints for the lens design.
-        
+
         Args:
             constraint_params (dict): Constraint parameters.
         """
@@ -99,30 +99,30 @@ class GeoLensOptim:
             self.is_cellphone = True
 
             self.air_edge_min = 0.05
-            self.air_edge_max = 3.0
+            self.air_edge_max = 5.0
             self.air_center_min = 0.05
-            self.air_center_max = 1.5
+            self.air_center_max = 5.0
 
             self.thick_edge_min = 0.25
-            self.thick_edge_max = 2.0
+            self.thick_edge_max = 5.0
             self.thick_center_min = 0.25
-            self.thick_center_max = 3.0
+            self.thick_center_max = 5.0
 
             self.bfl_min = 0.8
-            self.bfl_max = 3.0
+            self.bfl_max = 5.0
 
-            self.ttl_min = 0.0  # disabled by default
-            self.ttl_max = 20.0
+            self.ttl_min = 0.0
+            self.ttl_max = 50.0
 
             # Surface shape constraints
-            self.sag2diam_max = 0.1
-            self.surf_angle_max = 30.0  # degrees; converted to tan at use site
+            self.sag2diam_max = 0.5
             self.diam2thick_max = 15.0
             self.tmax2tmin_max = 5.0
+            self.surf_angle_max = 45.0  # deg
 
             # Ray angle constraints
-            self.chief_ray_angle_max = 30.0  # deg
-            self.bend_angle_max = 30.0  # degrees
+            self.chief_ray_angle_max = 45.0  # deg
+            self.bend_angle_max = 30.0  # deg
 
             # Distortion constraint
             self.distortion_max = 0.10  # 10 % relative distortion
@@ -147,14 +147,14 @@ class GeoLensOptim:
             self.ttl_max = 300.0  # float("inf")
 
             # Surface shape constraints
-            self.sag2diam_max = 0.2
-            self.surf_angle_max = 40.0  # degrees; converted to tan at use site
+            self.sag2diam_max = 0.5
             self.diam2thick_max = 20.0
             self.tmax2tmin_max = 10.0
+            self.surf_angle_max = 45.0  # deg
 
             # Ray angle constraints
-            self.chief_ray_angle_max = 40.0  # deg
-            self.bend_angle_max = 30.0  # degrees
+            self.chief_ray_angle_max = 45.0  # deg
+            self.bend_angle_max = 30.0  # deg
 
             # Distortion constraint
             self.distortion_max = 0.02  # 2 % relative distortion
@@ -163,7 +163,15 @@ class GeoLensOptim:
         for s in self.surfaces:
             s.bend_angle_max = self.bend_angle_max
 
-    def loss_reg(self, w_focus=1.0, w_cra=1.0, w_ray_bend=1.0, w_clearance=1.0, w_envelope=1.0, w_profile=1.0):
+    def loss_reg(
+        self,
+        w_focus=1.0,
+        w_cra=1.0,
+        w_ray_bend=1.0,
+        w_clearance=1.0,
+        w_envelope=1.0,
+        w_profile=1.0,
+    ):
         """Compute combined regularization loss for lens design.
 
         Aggregates multiple constraint losses to keep the lens physically valid
@@ -194,7 +202,7 @@ class GeoLensOptim:
         # loss_mat = self.loss_mat()
         loss_reg = (
             # w_focus * loss_focus
-            + w_clearance * loss_clearance
+            +w_clearance * loss_clearance
             + w_envelope * loss_envelope
             + w_profile * loss_profile
             + w_cra * loss_cra
@@ -260,7 +268,9 @@ class GeoLensOptim:
             # Sag
             sag_ls = self.surfaces[i].sag(x_ls, y_ls)
             sag2diam = sag_ls.abs().max() / self.surfaces[i].r / 2
-            loss_sag2diam += softplus((sag2diam - sag2diam_max) / sag2diam_max, beta=10.0)
+            loss_sag2diam += softplus(
+                (sag2diam - sag2diam_max) / sag2diam_max, beta=10.0
+            )
 
             # 1st-order derivative
             grad_ls = self.surfaces[i].dfdxyz(x_ls, y_ls)[0]
@@ -320,10 +330,6 @@ class GeoLensOptim:
 
         loss_clearance = torch.tensor(0.0, device=self.device)
         loss_envelope = torch.tensor(0.0, device=self.device)
-        # Normalize each violation by the allowed range (max - min) of its
-        # bound pair, so softplus arg is "fractional violation of the usable
-        # band". β=10 → gate width ≈ 10% of that range; gradients scale as
-        # 1/(max - min) and stay balanced with loss_rms.
         air_c_range = air_center_max - air_center_min
         air_e_range = air_edge_max - air_edge_min
         thick_c_range = thick_center_max - thick_center_min
@@ -337,11 +343,17 @@ class GeoLensOptim:
 
             # Sample surfaces once and reuse for both clearance and envelope
             r_center = torch.tensor(0.0, device=self.device) * current_surf.r
-            z_prev_center = current_surf.surface_with_offset(r_center, 0.0, valid_check=False)
-            z_next_center = next_surf.surface_with_offset(r_center, 0.0, valid_check=False)
+            z_prev_center = current_surf.surface_with_offset(
+                r_center, 0.0, valid_check=False
+            )
+            z_next_center = next_surf.surface_with_offset(
+                r_center, 0.0, valid_check=False
+            )
 
             r_edge = torch.linspace(0.5, 1.0, 16, device=self.device) * current_surf.r
-            z_prev_edge = current_surf.surface_with_offset(r_edge, 0.0, valid_check=False)
+            z_prev_edge = current_surf.surface_with_offset(
+                r_edge, 0.0, valid_check=False
+            )
             z_next_edge = next_surf.surface_with_offset(r_edge, 0.0, valid_check=False)
 
             dist_center = z_next_center - z_prev_center
@@ -360,7 +372,7 @@ class GeoLensOptim:
                 loss_envelope += softplus((dist_center - thick_center_max) / thick_c_range, beta=10.0)
                 loss_envelope += softplus((dist_edge_hi - thick_edge_max) / thick_e_range, beta=10.0)
 
-        # Back focal length: sample last surface once, take min and max
+        # Back focal length
         last_surf = self.surfaces[-1]
         r = torch.linspace(0.0, 1.0, 32, device=self.device) * last_surf.r
         z_last_surf = self.d_sensor - last_surf.surface_with_offset(r, 0.0)
@@ -369,8 +381,7 @@ class GeoLensOptim:
         loss_clearance += softplus((bfl_min - bfl_lo) / bfl_range, beta=10.0)
         loss_envelope += softplus((bfl_hi - bfl_max) / bfl_range, beta=10.0)
 
-        # Total track length. ttl_range = ttl_max - ttl_min (ttl_min may be 0
-        # to disable the lower side — only envelope is active then).
+        # Total track length
         ttl = self.d_sensor - self.surfaces[0].d
         loss_clearance += softplus((ttl_min - ttl) / ttl_range, beta=10.0)
         loss_envelope += softplus((ttl - ttl_max) / ttl_range, beta=10.0)
@@ -391,7 +402,7 @@ class GeoLensOptim:
         cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
         cra_scale = 1.0 - cos_cra_ref
 
-        ray = self.sample_ring_arm_rays(num_ring=4, num_arm=8, spp=SPP_CALC, scale_pupil=0.2)
+        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=0.2)
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
         valid = ray.is_valid > 0
@@ -409,7 +420,7 @@ class GeoLensOptim:
         Returns:
             Tensor: Scalar bend penalty (always >= 0).
         """
-        ray = self.sample_ring_arm_rays(num_ring=4, num_arm=8, spp=SPP_CALC, scale_pupil=1.0)
+        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=1.0)
         ray = self.trace2sensor(ray)
         bend_penalty = ray.bend_penalty.squeeze(-1)
         valid = ray.is_valid > 0
@@ -439,7 +450,7 @@ class GeoLensOptim:
                     loss_mat += (self.surfaces[i].mat2.V - V_max) / (V_max - V_min)
                 if self.surfaces[i].mat2.V < V_min:
                     loss_mat += (V_min - self.surfaces[i].mat2.V) / (V_max - V_min)
-        
+
         return loss_mat
 
     # ================================================================
@@ -483,7 +494,9 @@ class GeoLensOptim:
             # Reference center from green chief-ray (pinhole), broadcast to rays.
             if i == 0:
                 with torch.no_grad():
-                    center_ref = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="pinhole")
+                    center_ref = -self.psf_center(
+                        points_obj=ray.o[:, :, 0, :], method="pinhole"
+                    )
                 center_ref = center_ref.unsqueeze(-2)
 
             ray = self.trace2sensor(ray)
@@ -513,7 +526,16 @@ class GeoLensOptim:
     # ================================================================
     # Example optimization function
     # ================================================================
-    def sample_ring_arm_rays(self, num_ring=8, num_arm=8, spp=2048, depth=None, wvln=None, scale_pupil=1.0, sample_more_off_axis=True):
+    def sample_ring_arm_rays(
+        self,
+        num_ring=8,
+        num_arm=2,
+        spp=2048,
+        depth=None,
+        wvln=None,
+        scale_pupil=1.0,
+        sample_more_off_axis=True,
+    ):
         """Sample rays from object space using a ring-arm pattern.
 
         This method distributes sampling points (origins of ray bundles) on a polar grid in the object plane,
@@ -542,20 +564,26 @@ class GeoLensOptim:
         max_fov_rad = self.rfov
         if sample_more_off_axis:
             beta_values = torch.linspace(0.0, 1.0, num_ring, device=self.device)
-            beta_transformed = beta_values ** 0.5
+            beta_transformed = beta_values**0.5
             ring_fovs = max_fov_rad * beta_transformed
         else:
-            ring_fovs = max_fov_rad * torch.linspace(0.0, 1.0, num_ring, device=self.device)
-        
-        arm_angles = torch.linspace(0.0, 2 * torch.pi, num_arm + 1, device=self.device)[:-1]
+            ring_fovs = max_fov_rad * torch.linspace(
+                0.0, 1.0, num_ring, device=self.device
+            )
+
+        arm_angles = torch.linspace(0.0, 2 * torch.pi, num_arm + 1, device=self.device)[
+            :-1
+        ]
         ring_grid, arm_grid = torch.meshgrid(ring_fovs, arm_angles, indexing="ij")
         x = depth * torch.tan(ring_grid) * torch.cos(arm_grid)
-        y = depth * torch.tan(ring_grid) * torch.sin(arm_grid)        
+        y = depth * torch.tan(ring_grid) * torch.sin(arm_grid)
         z = torch.full_like(x, depth)
         points = torch.stack([x, y, z], dim=-1)  # shape: [num_ring, num_arm, 3]
 
         # Sample rays
-        rays = self.sample_from_points(points=points, num_rays=spp, wvln=wvln, scale_pupil=scale_pupil)
+        rays = self.sample_from_points(
+            points=points, num_rays=spp, wvln=wvln, scale_pupil=scale_pupil
+        )
         return rays
 
     def optimize(
@@ -606,13 +634,17 @@ class GeoLensOptim:
 
         # Result directory and logger
         if result_dir is None:
-            result_dir = f"./results/{datetime.now().strftime('%m%d-%H%M%S')}-DesignLens"
+            result_dir = (
+                f"./results/{datetime.now().strftime('%m%d-%H%M%S')}-DesignLens"
+            )
 
         os.makedirs(result_dir, exist_ok=True)
         if not logging.getLogger().hasHandlers():
             logger = logging.getLogger()
             logger.setLevel("DEBUG")
-            fmt = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s", "%Y-%m-%d %H:%M:%S")
+            fmt = logging.Formatter(
+                "%(asctime)s:%(levelname)s:%(message)s", "%Y-%m-%d %H:%M:%S"
+            )
             sh = logging.StreamHandler()
             sh.setFormatter(fmt)
             sh.setLevel("INFO")
@@ -621,12 +653,18 @@ class GeoLensOptim:
             fh.setLevel("INFO")
             logger.addHandler(sh)
             logger.addHandler(fh)
-        logging.info(f"lr:{lrs}, iterations:{iterations}, num_ring:{num_ring}, num_arm:{num_arm}, rays_per_fov:{spp}.")
-        logging.info("If Out-of-Memory, try to reduce num_ring, num_arm, and rays_per_fov.")
+        logging.info(
+            f"lr:{lrs}, iterations:{iterations}, num_ring:{num_ring}, num_arm:{num_arm}, rays_per_fov:{spp}."
+        )
+        logging.info(
+            "If Out-of-Memory, try to reduce num_ring, num_arm, and rays_per_fov."
+        )
 
         # Optimizer and scheduler
         optimizer = self.get_optimizer(lrs, optim_mat=optim_mat)
-        scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=100, num_training_steps=iterations)
+        scheduler = get_cosine_schedule_with_warmup(
+            optimizer, num_warmup_steps=100, num_training_steps=iterations
+        )
 
         # Training loop
         pbar = tqdm(
@@ -640,20 +678,29 @@ class GeoLensOptim:
                 with torch.no_grad():
                     if shape_control and i > 0:
                         self.correct_shape()
-                        # self.refocus()
 
                     self.write_lens_json(f"{result_dir}/iter{i}.json")
                     self.analysis(f"{result_dir}/iter{i}")
-            
+
                     # Sample rays
                     self.calc_pupil()
                     rays_backup = []
                     for wv in self.wvln_rgb:
-                        ray = self.sample_ring_arm_rays(num_ring=num_ring, num_arm=num_arm, spp=spp, depth=depth, wvln=wv, scale_pupil=1.05, sample_more_off_axis=sample_more_off_axis)
+                        ray = self.sample_ring_arm_rays(
+                            num_ring=num_ring,
+                            num_arm=num_arm,
+                            spp=spp,
+                            depth=depth,
+                            wvln=wv,
+                            scale_pupil=1.05,
+                            sample_more_off_axis=sample_more_off_axis,
+                        )
                         rays_backup.append(ray)
 
                     # Pinhole ideal for distortion reference (distortion-free).
-                    pinhole_ref = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="pinhole")
+                    pinhole_ref = -self.psf_center(
+                        points_obj=ray.o[:, :, 0, :], method="pinhole"
+                    )
 
             # ===> Optimize lens by minimizing RMS
             # Green is traced first: its centroid sets center_ref and drives
@@ -687,27 +734,21 @@ class GeoLensOptim:
                     # position; distortion loss handles placement.
                     center_ref = centroid_xy.detach().unsqueeze(-2)
 
-                # Ray error to center and valid mask.
-                # Use torch.where to zero out invalid rays BEFORE squaring,
-                # preventing NaN from Inf*0 (IEEE 754: inf * 0 = nan).
+                # Ray error to center and valid mask
                 ray_valid = ray.is_valid
                 ray_err = ray.o[..., :2] - center_ref
                 ray_err = torch.where(
                     ray_valid.bool().unsqueeze(-1), ray_err, torch.zeros_like(ray_err)
                 )
 
-                # MSE per field point, shape [num_ring, num_arm].
-                mse = (ray_err ** 2).sum(-1).sum(-1) / (ray_valid.sum(-1) + EPSILON)
+                # MSE per field point, shape [num_ring, num_arm]
+                mse = (ray_err**2).sum(-1).sum(-1) / (ray_valid.sum(-1) + EPSILON)
 
-                # Weight mask — built on the first wavelength only so every
-                # wavelength uses the same per-field weights.
+                # Weight mask
                 if w_mask is None:
                     w_mask = mse.detach().sqrt().clone()
                     w_mask = w_mask / (w_mask.mean() + EPSILON)
-                    # ``sample_ring_arm_rays`` orders fields center-outward
-                    # along the first axis, so the first ring is the on-axis
-                    # field (duplicated across every arm).
-                    w_mask[0, :] = 2.0
+                    w_mask[0, :] = 1.0
 
                 # RMS and weighted loss
                 l_rms = torch.clamp(mse, min=EPSILON).sqrt()
@@ -797,9 +838,7 @@ class GeoLensOptim:
                 params += surf.get_optimizer_params(lrs=[lrs[0]])
 
             elif isinstance(surf, Aspheric):
-                params += surf.get_optimizer_params(
-                    lrs=lrs[:4], optim_mat=optim_mat
-                )
+                params += surf.get_optimizer_params(lrs=lrs[:4], optim_mat=optim_mat)
 
             elif isinstance(surf, Phase):
                 params += surf.get_optimizer_params(lrs=[lrs[0], lrs[4]])
@@ -863,4 +902,3 @@ class GeoLensOptim:
         optimizer = torch.optim.Adam(params)
         # optimizer = torch.optim.SGD(params)
         return optimizer
-

@@ -1558,6 +1558,8 @@ class GeoLens(
         else:
             self.rfov_eff = rfov
 
+        self.rfov = self.rfov_eff
+        self.real_dfov = 2 * self.rfov
         self.foclen = self.r_sensor / math.tan(self.rfov_eff)
         self.eqfl = 21.63 / math.tan(self.rfov_eff)
         self.fnum = fnum
@@ -1578,4 +1580,6 @@ class GeoLens(
             rfov (float): Half-diagonal FoV in radians.
         """
         self.rfov_eff = rfov
+        self.rfov = rfov
+        self.real_dfov = 2 * self.rfov
         self.eqfl = 21.63 / math.tan(self.rfov_eff)

@@ -79,8 +79,8 @@ def curriculum_design(
     # Preparation
     depth = DEPTH
     num_ring = 16
-    num_arm = 8
-    spp = 2048
+    num_arm = 4
+    spp = 1024
 
     aper_start = self.surfaces[self.aper_idx].r * 0.25
     aper_final = self.surfaces[self.aper_idx].r
@@ -244,11 +244,14 @@ if __name__ == "__main__":
 
     # To obtain optimal optical performance, we typically need additional training iterations. This code uses strong lens design constraints with small learning rates, making optimization slow but steadily improving optical performance. For demonstration purposes, here we only train for 3000 steps.
     lens = GeoLens(filename=f"{result_dir}/curriculum_final.json")
+    lens.set_target_fov_fnum(
+        rfov=args["fov"] / 2 / 57.3,
+        fnum=args["fnum"],
+    )
     lens.optimize(
-        lrs=[float(lr) * 0.1 for lr in args["lrs"]],
+        lrs=[float(lr) for lr in args["lrs"]],
         iterations=5000,
         test_per_iter=100,
-        centroid=False,
         optim_mat=False,
         shape_control=True,
         result_dir=f"{args['result_dir']}/fine-tune",
