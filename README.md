@@ -1,6 +1,6 @@
 # DeepLens
 
-**DeepLens** is a differentiable optical lens simulator that contains multiple optical models (eg., geometric, diffractive, hybrid, neural, and interpolation). It can be used for (1) image simulation, (2) optical design, and (3) end-to-end optics-algorithm co-design ([End2endImaging](https://github.com/vccimaging/End2endImaging)). DeepLens helps researchers build differentiable simulation for custom optical systems with minimal effort.
+**DeepLens** is a differentiable optical lens simulator that contains multiple optical models (eg., geometric, diffractive, hybrid, neural, and interpolation). It can be used for (1) image simulation, (2) optical design, and (3) end-to-end optics-algorithm co-design ([End2end-Imaging](https://github.com/vccimaging/End2endImaging)). DeepLens helps researchers build differentiable simulation for custom optical systems with minimal effort.
 
 <div style="text-align:center;">
     <img src="assets/logo.png"/>
@@ -13,19 +13,13 @@
     <a href="https://pypi.org/project/deeplens-core/">PyPI</a>
 </p>
 
-```python
-from deeplens import GeoLens
-
-lens = GeoLens(filename="./datasets/lenses/cellphone/cellphone80deg.json")
-lens.analysis(full_eval=True, render=True)
-```
 
 ## Features
 
 1. **Differentiable Simulation.** DeepLens builds on differentiable physical simulation and enables accurate, efficient gradient calculation for lens optimization.
 2. **Automated Design.** DeepLens demonstrates outstanding optimization power compared with classical optimization, especially for complex optical systems (e.g., mobile lenses, metasurfaces, and AR/VR displays). Automated lens design is demonstrated with curriculum learning and optical regularization losses.
 3. **Multiple Optical Models.** DeepLens supports not only geometric ray tracing, but also various other optical models, including hybrid ray-wave models, neural lens representations, and reference-data interpolation.
-4. **Image Simulation.** DeepLens delivers photorealistic image simulations with spatially varying and depth-dependent aberration simulation, bridging sim-to-real gaps when combined with [End2endImaging](https://github.com/vccimaging/End2endImaging).
+4. **Image Simulation.** DeepLens delivers photorealistic image simulations with spatially varying and depth-dependent aberration simulation, bridging sim-to-real gaps when combined with [End2end-Imaging](https://github.com/vccimaging/End2endImaging).
 
 Additional features (available via collaboration):
 
@@ -36,7 +30,7 @@ Additional features (available via collaboration):
 
 ## Applications
 
-#### 1. Automated lens design
+#### 1. Automated geometric lens design
 
 Fully automated lens design from scratch with differentiable optimization. Try it with [AutoLens](https://github.com/vccimaging/AutoLens)!
 
@@ -47,9 +41,9 @@ Fully automated lens design from scratch with differentiable optimization. Try i
     <img src="assets/autolens2.gif" alt="AutoLens" height="270px"/>
 </div>
 
-#### 2. Neural Lens Representation
+#### 2. Neural Lens PSF Representation
 
-A surrogate network for efficient lens representation ang image simulation (spatially-varying aberration + defocus).
+A surrogate network for efficient lens PSF representation ang image simulation (spatially-varying aberration + defocus).
 
 [![paper](https://img.shields.io/badge/TPAMI-2023-orange)](https://ieeexplore.ieee.org/document/10209238) [![link](https://img.shields.io/badge/Project-green)](https://github.com/vccimaging/Aberration-Aware-Depth-from-Focus)
 
@@ -57,7 +51,7 @@ A surrogate network for efficient lens representation ang image simulation (spat
     <img src="assets/implicit_net.png" alt="Implicit" height="150px"/>
 </div>
 
-#### 3. Hybrid Refractive-Diffractive Lens Model
+#### 3. Hybrid Ray-Wave Optical Model
 
 Design hybrid refractive-diffractive lenses with differentiable ray-wave model.
 
