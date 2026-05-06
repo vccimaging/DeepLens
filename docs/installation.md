@@ -34,6 +34,14 @@ import torch
 print(torch.cuda.is_available())  # Should print True
 ```
 
+## Run the GeoLens Demo
+
+The root-level demo loads a geometric lens, runs layout/spot/MTF/distortion analysis, and renders a chart with both ray tracing and PSF-map simulation:
+
+```bash
+python 0_hello_geolens.py
+```
+
 ## Troubleshooting
 
 **`torch.cuda.is_available()` returns `False`:**

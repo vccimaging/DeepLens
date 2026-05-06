@@ -1,6 +1,6 @@
 # Quickstart
 
-This guide walks through the core DeepLens workflow: loading a lens, computing PSFs, and rendering images.
+This guide walks through the core DeepLens workflow: loading a lens, computing PSFs, rendering images, and choosing the default wavelength/depth settings used throughout the API.
 
 ## Load a Lens
 
@@ -42,20 +42,32 @@ plt.show()
 
 ## Render an Image
 
-Render a full image by convolving with the lens PSF:
+`GeoLens.render()` defaults to direct ray tracing. Full-frame ray tracing and PSF-map rendering require the input image resolution to match `lens.sensor_res`.
 
 ```python
 import torchvision
 
-img = torchvision.io.read_image("datasets/images/example.png").float() / 255.0
+img = torchvision.io.read_image("datasets/charts/Cam_acc_chart_6MP.png").float() / 255.0
+img = img[:3]
 img = img.unsqueeze(0)  # (1, 3, H, W)
 
-rendered = lens.render(img, depth=-10000.0)
+lens.set_sensor_res((img.shape[-1], img.shape[-2]))
+
+rendered_ray = lens.render(img, depth=-10000.0, method="ray_tracing", spp=32)
+rendered_psf = lens.render(
+    img,
+    depth=-10000.0,
+    method="psf_map",
+    psf_grid=(10, 10),
+    psf_ks=64,
+)
 ```
+
+For `GeoLens`, `method="psf_map"` first applies lens distortion with `lens.warp()` and then renders the spatially varying PSF map. Use `method="psf_patch"` for a single local PSF on image patches that do not cover the full sensor.
 
 ## Configuring Design Wavelength and Depth
 
-Every lens carries a primary wavelength, an RGB wavelength triplet, and a default object depth as attributes.  These propagate as fallbacks to every PSF / ray-sampling / render / evaluation method, so you can set them once at construction instead of passing ``wvln=`` and ``depth=`` everywhere.
+Every lens carries a primary wavelength, an RGB wavelength triplet, and a default object depth as attributes. These values are validated at construction and propagate as fallbacks to PSF, ray-sampling, rendering, and evaluation methods, so you can set them once instead of passing `wvln=` and `depth=` everywhere.
 
 ```python
 lens = GeoLens(
@@ -66,6 +78,8 @@ lens = GeoLens(
 )
 ```
 
+`primary_wvln` must be a scalar in micrometers, `wvln_rgb` must contain exactly three wavelengths, and `obj_depth` must be negative in millimeters.
+
 ## Lens Types
 
 DeepLens provides several lens models for different use cases:
@@ -73,7 +87,7 @@ DeepLens provides several lens models for different use cases:
 | Lens Type | Description | Use Case |
 |-----------|-------------|----------|
 | `GeoLens` | Multi-element refractive ray tracing | Automated lens design, image simulation |
-| `HybridLens` | Refractive lens + diffractive optical element | Hybrid optics co-design |
+| `HybridLens` | JSON-defined refractive lens + DOE/metasurface phase element | Hybrid ray-wave optics co-design |
 | `DiffractiveLens` | Pure wave-optics diffractive surfaces | Flat optics, DOE design |
 | `PSFNetLens` | Neural network PSF surrogate | Fast PSF approximation |
 | `ParaxialLens` | Thin-lens / circle-of-confusion model | Simple bokeh simulation |
