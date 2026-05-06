@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
     
     
       
@@ -576,6 +576,50 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#image-simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image simulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-regularization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization regularization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lens-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#materials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Materials
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -826,6 +870,50 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#image-simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image simulation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-regularization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization regularization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lens-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lens JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#materials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Materials
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -876,7 +964,7 @@
 <p>The <code>deeplens</code> package contains differentiable lens models that simulate how light passes through an optical system. Each lens computes a point spread function (PSF) and renders images via PSF convolution.</p>
 <ul>
 <li><strong><code>GeoLens</code></strong> — Multi-element refractive lens via differentiable ray tracing. The primary lens model, supporting Zemax/Code V/JSON file I/O. Uses a mixin architecture for PSF computation, evaluation, Seidel aberration analysis, optimization, surface operations, visualization, and tolerancing.</li>
-<li><strong><code>HybridLens</code></strong> — Refractive lens (<code>GeoLens</code>) combined with a diffractive optical element (DOE). Coherent ray tracing to the DOE plane, then Angular Spectrum Method (ASM) propagation to the sensor.</li>
+<li><strong><code>HybridLens</code></strong> — JSON-defined refractive lens (<code>GeoLens</code>) combined with a diffractive optical element (DOE). Coherent ray tracing to the DOE plane, DOE phase modulation, then Angular Spectrum Method (ASM) propagation to the sensor.</li>
 <li><strong><code>DiffractiveLens</code></strong> — Pure wave-optics lens using diffractive surfaces and scalar diffraction.</li>
 <li><strong><code>PSFNetLens</code></strong> — Neural surrogate wrapping a <code>GeoLens</code> with an MLP for fast PSF prediction.</li>
 <li><strong><code>ParaxialLens</code></strong> — Thin-lens model for simple depth-of-field and bokeh simulation.</li>
@@ -884,6 +972,21 @@
 <p>All lens types inherit from <code>Lens</code>, which defines the shared interface (<code>psf()</code>, <code>render()</code>, etc.). All optical objects inherit from <code>DeepObj</code>, which provides <code>to(device)</code>, <code>clone()</code>, and dtype conversion.</p>
 <h3 id="key-design-differentiable-surface-intersection">Key design: differentiable surface intersection</h3>
 <p>Surface intersection in <code>geometric_surface/base.py</code> uses a non-differentiable Newton's method loop (under <code>torch.no_grad()</code>) to find the intersection point, followed by <strong>one differentiable Newton step</strong> to enable gradient flow through the intersection. Surface refraction implements differentiable vector Snell's law.</p>
+<h3 id="image-simulation">Image simulation</h3>
+<p>DeepLens uses several rendering paths:</p>
+<ul>
+<li><strong>Direct ray tracing</strong> (<code>GeoLens.render(..., method="ray_tracing")</code>) traces sensor rays backward to the object plane and samples the input image with <code>backward_integral()</code>.</li>
+<li><strong>PSF patch rendering</strong> uses one local RGB PSF and <code>conv_psf()</code>.</li>
+<li><strong>PSF-map rendering</strong> computes a grid of spatially varying PSFs and renders patches with <code>conv_psf_map()</code>. For <code>GeoLens</code>, the input is first warped with an inverse distortion grid from <code>calc_inv_distortion_map()</code>.</li>
+<li><strong>RGBD rendering</strong> samples reference depth layers and blends with <code>conv_psf_depth_interp()</code> or <code>conv_psf_map_depth_interp()</code>.</li>
+<li><strong>Per-pixel PSF rendering</strong> uses <code>splat_psf_per_pixel()</code>, with optional chunking for lower peak memory.</li>
+</ul>
+<h3 id="optimization-regularization">Optimization regularization</h3>
+<p><code>GeoLensOptim</code> separates manufacturability and ray-geometry constraints into explicit losses. The former combined ray-angle loss is now split into <code>loss_cra()</code> for chief ray angle at the sensor and <code>loss_ray_bend()</code> for per-surface bend angle accumulation. The built-in <code>optimize()</code> loop also uses a green-channel centroid reference for RMS spot shape and a distortion regularizer against the pinhole field location.</p>
+<h3 id="lens-json">Lens JSON</h3>
+<p>Lens JSON I/O preserves <code>is_aperture</code> markers and supports phase surfaces such as <code>Binary2Phase</code>. Hybrid-lens JSON files include a top-level <code>DOE</code> block; supported DOE models include <code>Binary2</code>, <code>Pixel2D</code>, <code>Fresnel</code>, <code>Zernike</code>, and <code>Grating</code>.</p>
+<h3 id="materials">Materials</h3>
+<p>Custom interpolation-table materials store wavelength/index arrays together and derive the d-line refractive index and Abbe number from the table. Interpolated refractive-index tensors are moved to the active device and dtype on demand.</p>
 <h2 id="surrogate-networks">Surrogate Networks</h2>
 <p>The <code>deeplens.surrogate</code> subpackage provides neural networks that learn to predict PSFs from lens parameters, replacing ray tracing during training: <code>MLP</code>, <code>MLPConv</code>, <code>Siren</code>, <code>ModulateSiren</code>. These are used by <code>PSFNetLens</code>.</p>
 

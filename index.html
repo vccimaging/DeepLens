@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
     
     
       
@@ -855,8 +855,9 @@
 <ul>
 <li><strong>Differentiable ray tracing</strong> through multi-element lens systems with automatic differentiation</li>
 <li><strong>Multiple lens models</strong>: geometric (<code>GeoLens</code>), hybrid refractive-diffractive (<code>HybridLens</code>), pure diffractive (<code>DiffractiveLens</code>), neural surrogate (<code>PSFNetLens</code>), and thin-lens (<code>ParaxialLens</code>)</li>
-<li><strong>Accurate image simulation</strong> via PSF convolution (single, spatially-varying, depth-varying, per-pixel)</li>
+<li><strong>Accurate image simulation</strong> via direct ray tracing, distortion-aware PSF-map rendering, depth-interpolated PSFs, and per-pixel PSF splatting</li>
 <li><strong>Standard lens file I/O</strong>: read/write Zemax <code>.zmx</code>, Code V <code>.seq</code>, and JSON formats</li>
+<li><strong>Hybrid ray-wave simulation</strong> for JSON-defined refractive lenses with DOE/metasurface phase elements</li>
 </ul>
 <h2 id="quick-install">Quick Install</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>deeplens-core

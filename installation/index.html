@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
     
     
       
@@ -553,6 +553,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#run-the-geolens-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the GeoLens Demo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -886,6 +897,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#run-the-geolens-demo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the GeoLens Demo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -939,16 +961,20 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">())</span>  <span class="c1"># Should print True</span>
 </code></pre></div>
+<h2 id="run-the-geolens-demo">Run the GeoLens Demo</h2>
+<p>The root-level demo loads a geometric lens, runs layout/spot/MTF/distortion analysis, and renders a chart with both ray tracing and PSF-map simulation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>0_hello_geolens.py
+</code></pre></div>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <p><strong><code>torch.cuda.is_available()</code> returns <code>False</code>:</strong>
 Install PyTorch with CUDA support following <a href="https://pytorch.org/get-started/locally/">pytorch.org</a>.</p>
 <p><strong>Import errors after install:</strong>
 Make sure you're using Python &gt;= 3.12:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>--version
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>--version
 </code></pre></div>
 <p><strong>Missing dependencies:</strong>
 The package installs all required dependencies automatically. If you encounter issues, try:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev]&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev]&quot;</span>
 </code></pre></div>
 
 
