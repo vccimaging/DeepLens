@@ -1,6 +1,6 @@
 # DeepLens
 
-**DeepLens** is a differentiable optical lens simulator that contains multiple optical models (eg., geometric, diffractive, hybrid, neural, and interpolation). It can be used for (1) image simulation, (2) optical design, and (3) end-to-end optics-algorithm co-design ([End2end-Imaging](https://github.com/vccimaging/End2endImaging)). DeepLens helps researchers build differentiable simulation for custom optical systems with minimal effort.
+**DeepLens** is a differentiable optical lens simulator that supports multiple optical models (eg., geometric, diffractive, hybrid, neural, and interpolation). It can be used for (1) image simulation, (2) optical design, and (3) end-to-end optics-algorithm co-design ([End2end-Imaging](https://github.com/vccimaging/End2endImaging)). DeepLens enables researchers to rapidly prototype and optimize custom optical systems through differentiable simulation.
 
 <div style="text-align:center;">
     <img src="assets/logo.png"/>
@@ -30,7 +30,15 @@ Additional features (available via collaboration):
 
 ## Applications
 
-#### 1. Automated geometric lens design
+#### 1. Lens Analysis and Image Simulation
+
+DeepLens supports comprehensive lens analysis (spot diagram, PSF, MTF, distortion, etc.) and photorealistic image simulation with spatially-varying, depth-dependent aberrations.
+
+<div align="center">
+    <img src="assets/feature.png" alt="Lens Analysis and Image Simulation"/>
+</div>
+
+#### 2. Automated geometric lens design
 
 Fully automated lens design from scratch with differentiable optimization. Try it with [AutoLens](https://github.com/vccimaging/AutoLens)!
 
@@ -41,7 +49,7 @@ Fully automated lens design from scratch with differentiable optimization. Try i
     <img src="assets/autolens2.gif" alt="AutoLens" height="270px"/>
 </div>
 
-#### 2. Neural Lens PSF Representation
+#### 3. Neural Lens PSF Representation
 
 A surrogate network for efficient lens PSF representation ang image simulation (spatially-varying aberration + defocus).
 
@@ -51,7 +59,7 @@ A surrogate network for efficient lens PSF representation ang image simulation (
     <img src="assets/implicit_net.png" alt="Implicit" height="150px"/>
 </div>
 
-#### 3. Hybrid Ray-Wave Optical Model
+#### 4. Hybrid Ray-Wave Optical Model
 
 Design hybrid refractive-diffractive lenses with differentiable ray-wave model.
 
@@ -61,7 +69,7 @@ Design hybrid refractive-diffractive lenses with differentiable ray-wave model.
     <img src="assets/hybridlens.png" alt="Implicit" height="200px"/>
 </div>
 
-#### 4. End-to-End Computational Imaging
+#### 5. End-to-End Computational Imaging
 
 DeepLens serves as the differentiable optics engine in [**End2endImaging**](https://github.com/vccimaging/End2endImaging), an end-to-end differentiable computational imaging framework. End2endImaging integrates optics (DeepLens), sensor/ISP simulation, and neural reconstruction networks into a single PyTorch computation graph, enabling joint optimization of the entire camera pipeline.
 
