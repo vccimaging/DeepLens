@@ -18,6 +18,8 @@ debug.py
 temp/*
 logs/
 dist/
+datasets/lenses/private/
+.claude/
 
 lenses/pancake/
 datasets/BSDS300/

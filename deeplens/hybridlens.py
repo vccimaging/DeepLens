@@ -160,9 +160,12 @@ class HybridLens(Lens):
                 raise ValueError(f"Unsupported DOE parameter model: {doe_param_model}")
             self.doe = doe
 
-        # Add a Plane/Phase surface to GeoLens (DOE placeholder)
-        r_doe = float(np.sqrt(doe.w**2 + doe.h**2) / 2)
-        geolens.surfaces.append(Plane(d=doe.d.item(), r=r_doe, mat2="air"))
+        # Add a Plane/Phase surface to GeoLens (DOE placeholder).
+        # Match the DOE's actual aperture (square vs circular) so that rays
+        # outside the DOE region are correctly culled at the placeholder.
+        geolens.surfaces.append(
+            Plane(d=doe.d.item(), r=doe.r, mat2="air", is_square=doe.is_square)
+        )
         # r_doe = float(np.sqrt(doe.w**2 + doe.h**2) / 2)
         # geolens.surfaces.append(Phase(r=r_doe, d=doe.d))
         self.geolens = geolens
@@ -504,6 +507,9 @@ class HybridLens(Lens):
         else:
             save_fig = False
 
+        # Draw DOE as orange Fresnel-style widget
+        self.doe.draw_widget(ax, color="orange")
+
         # Draw light path
         color_list = ["#CC0000", "#006600", "#0066CC"]
         views = [
@@ -512,7 +518,8 @@ class HybridLens(Lens):
             float(np.rad2deg(geolens.rfov) * 0.99),
         ]
         arc_radi_list = [0.1, 0.4, 0.7, 1.0, 1.4, 1.8]
-        num_rays = 7
+        num_rays = 11
+        arc_half_angle = 20
         for i, view in enumerate(views):
             # Draw ray tracing
             ray = geolens.sample_point_source_2D(
@@ -550,8 +557,8 @@ class HybridLens(Lens):
                     ray_center_sensor[2] - ray_center_doe[2],
                 )
             )
-            theta1 = chief_theta - 10
-            theta2 = chief_theta + 10
+            theta1 = chief_theta - arc_half_angle
+            theta2 = chief_theta + arc_half_angle
 
             for j in arc_radi_list:
                 arc_radi_j = arc_radi * j
