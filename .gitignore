@@ -18,6 +18,9 @@ debug.py
 temp/*
 logs/
 dist/
+datasets/lenses/private/
+.claude/
+deeplens_core.egg-info/
 
 lenses/pancake/
 datasets/BSDS300/

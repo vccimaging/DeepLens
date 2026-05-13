@@ -28,6 +28,7 @@ class DiffractiveSurface(DeepObj):
         wvln0=0.55,
         mat="fused_silica",
         design_ps=None,
+        is_square=True,
         device="cpu",
     ):
         """Diffractive (multi-layer diffractive) surface class. Optical properties of diffractive surfaces are simulated with wave optics.
@@ -50,6 +51,10 @@ class DiffractiveSurface(DeepObj):
         self.ps = fab_ps if design_ps is None else design_ps
         self.w = self.res[0] * self.ps
         self.h = self.res[1] * self.ps
+        self.is_square = is_square
+        # Surface radius: half-diagonal (circumscribed-circle radius) so it
+        # is consistent with Phase / Surface conventions for square apertures.
+        self.r = float(np.sqrt(self.w**2 + self.h**2) / 2)
 
         # Phase map
         self.mat = Material(mat)
@@ -345,35 +350,21 @@ class DiffractiveSurface(DeepObj):
         fig.savefig(save_name, dpi=600, bbox_inches="tight")
         plt.close(fig)
 
-    def surface(self, x, y, max_offset=0.2):
-        """When drawing the lens setup, this function is called to compute the surface height.
+    def draw_widget(self, ax, color="orange", linestyle="-"):
+        """Draw a 2D Fresnel-style widget for the DOE in a layout plot.
 
-        Here we use a fake height ONLY for drawing.
+        Plots the cross-section along the x-axis at y=0. For a square aperture
+        the half-extent is the half-side (``w/2``); for a circular aperture it
+        is the full radius ``r`` (= half-diagonal).
         """
-        roc = self.l
-        r = torch.sqrt(x**2 + y**2 + EPSILON)
-        sag = roc * (1 - torch.sqrt(1 - r**2 / roc**2))
-        sag = max_offset - torch.fmod(sag, max_offset)
-        return sag
-
-    def draw_widget(self, ax, color="black"):
-        """Draw 2d widget in the plot."""
-        # Create radius points
-        r = torch.linspace(-self.r, self.r, 256, device=self.device)
-        offset = 0.1
-
-        # Draw base at z = self.d
-        base_z = torch.tensor([self.d + offset, self.d, self.d, self.d + offset])
-        base_x = torch.tensor([-self.r, -self.r, self.r, self.r])
-        base_points = torch.stack((base_x, torch.zeros_like(base_x), base_z), dim=-1)
-        base_points = base_points.cpu().detach().numpy()
-        ax.plot(base_points[..., 2], base_points[..., 0], color=color, linewidth=0.8)
-
-        # Calculate and draw surface
-        z = self.surface(r, torch.zeros_like(r), max_offset=offset) + self.d + offset
-        points = torch.stack((r, torch.zeros_like(r), z), dim=-1)
-        points = points.cpu().detach().numpy()
-        ax.plot(points[..., 2], points[..., 0], color=color, linewidth=0.8)
+        d = self.d.item()
+        max_offset = d / 100
+        roc = self.r * 2
+        x_half = self.w / 2 if self.is_square else self.r
+        x = np.linspace(-x_half, x_half, 256)
+        sag = roc * (1 - np.sqrt(1 - x**2 / roc**2))
+        sag = max_offset - np.fmod(sag, max_offset)
+        ax.plot(d + sag, x, color=color, linestyle=linestyle, linewidth=0.75)
 
     # =======================================
     # Utils
