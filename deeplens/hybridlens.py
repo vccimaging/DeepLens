@@ -577,7 +577,7 @@ class HybridLens(Lens):
             # Save figure
             ax.axis("off")
             ax.set_title("DOE Lens")
-            fig.savefig(save_name, bbox_inches="tight", format="png", dpi=600)
+            fig.savefig(save_name, bbox_inches="tight", dpi=600)
             plt.close()
         else:
             return ax, fig
