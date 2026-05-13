@@ -258,7 +258,7 @@ if __name__ == "__main__":
     )
 
     # Analyze final result
-    lens.prune_surf(expand_factor=0.05)
+    lens.prune_surf()
     lens.post_computation()
 
     logging.info(
