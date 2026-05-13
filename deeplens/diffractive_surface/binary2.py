@@ -19,11 +19,13 @@ class Binary2(DiffractiveSurface):
         wvln0=0.55,
         fab_ps=0.001,
         fab_step=16,
+        is_square=True,
         device="cpu",
     ):
         """Initialize Binary DOE."""
         super().__init__(
-            d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step, device=device
+            d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step,
+            is_square=is_square, device=device,
         )
 
         # Initialize with random small values
@@ -54,6 +56,7 @@ class Binary2(DiffractiveSurface):
             wvln0=doe_dict.get("wvln0", 0.55),
             fab_ps=doe_dict.get("fab_ps", 0.001),
             fab_step=doe_dict.get("fab_step", 16),
+            is_square=doe_dict.get("is_square", True),
         )
 
     def phase_func(self):

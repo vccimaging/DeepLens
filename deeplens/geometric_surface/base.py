@@ -82,13 +82,14 @@ class Surface(DeepObj):
         # Material after the surface
         self.mat2 = Material(mat2)
 
-        # Surface aperture radius (non-differentiable)
+        # Surface aperture radius (non-differentiable).
+        # For a square aperture, r is the circumscribed-circle radius
+        # (i.e. the half-diagonal), so the side length is r * sqrt(2).
         self.r = float(r)
         self.is_square = is_square
         if is_square:
-            # r is the incircle radius
-            self.h = 2 * self.r
-            self.w = 2 * self.r
+            self.w = self.r * float(np.sqrt(2))
+            self.h = self.r * float(np.sqrt(2))
 
         # Newton method parameters
         self.newton_maxiter = 8  # [int], maximum number of Newton iterations
