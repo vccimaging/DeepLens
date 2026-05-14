@@ -8,6 +8,7 @@ from .grating import GratingPhase
 from .zernike import ZernikePhase
 from .cubic import CubicPhase
 from .nurbs import NURBSPhase
+from .vortex import VortexPhase
 
 __all__ = [
     "Phase",
@@ -18,4 +19,5 @@ __all__ = [
     "ZernikePhase",
     "CubicPhase",
     "NURBSPhase",
+    "VortexPhase",
 ]
