@@ -109,8 +109,8 @@ class NURBSPhase(Phase):
                 f"weights must have shape ({control_points_u}, {control_points_v})"
             )
 
+        self.param_model = "nurbs"
         self.to(device)
-        self.init_param_model()
 
     def _generate_clamped_knots(self, n_control_points, degree):
         """Generate clamped knot vector for B-spline.
@@ -261,9 +261,6 @@ class NURBSPhase(Phase):
 
         return point
 
-    def init_param_model(self):
-        """Initialize NURBS parameters."""
-        self.param_model = "nurbs"
 
     @classmethod
     def init_from_dict(cls, surf_dict):
@@ -402,7 +399,6 @@ class NURBSPhase(Phase):
 
     def load_ckpt(self, load_path="./nurbs_doe.pth"):
         """Load NURBS DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.control_points = ckpt["control_points"].to(self.device)
