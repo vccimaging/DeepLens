@@ -29,7 +29,7 @@ class Ray(DeepObj):
         bend_penalty (torch.Tensor): Accumulated per-surface bend penalty, shape ``(*batch, num_rays, 1)``.
         opl (torch.Tensor): Optical path length (coherent mode only),
             shape ``(*batch, num_rays, 1)`` [mm].
-        coherent (bool): Whether OPL tracking is enabled.
+        is_coherent (bool): Whether OPL tracking is enabled.
     """
 
     def __init__(self, o, d, wvln, is_coherent=False, device="cpu"):
@@ -41,7 +41,7 @@ class Ray(DeepObj):
             wvln (float): Ray wavelength [µm]. Required — must be passed
                 explicitly (the Lens carries ``primary_wvln``/``wvln_rgb``,
                 not the Ray).
-            coherent (bool): Enable optical path length tracking for coherent
+            is_coherent (bool): Enable optical path length tracking for coherent
                 tracing. Defaults to ``False``.
             device (str): Compute device. Defaults to ``"cpu"``.
         """

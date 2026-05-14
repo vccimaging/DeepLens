@@ -76,7 +76,26 @@ psf = lens.psf(points=[0.0, 0.0, -10000.0], ks=128, wvln=0.589, spp=1_000_000)
 print(f"Focal length: {lens.geolens.foclen:.2f} mm")
 ```
 
-Supported DOE models include `Binary2`, `Pixel2D`, `Fresnel`, `Zernike`, and `Grating`.
+Supported DOE models include `Binary2`, `Pixel2D`, `Fresnel`, `Zernike`, `Grating`, and `Vortex`.
+
+### VortexPhase
+
+`VortexPhase` imparts orbital angular momentum (OAM) via a spiral phase profile and can optionally combine it with a Fresnel focusing term:
+
+```python
+from deeplens.phase_surface import VortexPhase
+
+# Topological charge 1 vortex phase with a co-centered Fresnel lens
+doe = VortexPhase(r=3.0, d=20.0, charge=1, f0=0.3, device="cuda")
+
+# Export the height map for fabrication (design wavelength 0.55 µm, n=1.5)
+height_map = doe.phase2height_map(design_wvln=0.55, refractive_idx=1.5, res=512)
+# height_map: torch.Tensor of shape [512, 512], units µm
+
+doe.draw_phase_map(save_name="./vortex_phase.png")
+```
+
+`f0` is the phase curvature parameter in mm²; setting `f0=None` gives a pure vortex (no focusing). The topological charge `charge` is discrete and not differentiable; `f0` is optimizable.
 
 ## Image Simulation Methods
 
@@ -86,6 +105,10 @@ Supported DOE models include `Binary2`, `Pixel2D`, `Fresnel`, `Zernike`, and `Gr
 img_ray = lens.render(img, depth=-20000.0, method="ray_tracing", spp=32)
 img_patch = lens.render(img, depth=-20000.0, method="psf_patch", patch_center=(0.0, 0.0))
 img_map = lens.render(img, depth=-20000.0, method="psf_map", psf_grid=(10, 10), psf_ks=64)
+
+# psf_spp controls samples per PSF in psf_map mode (default: 8192).
+# Reduce for faster approximate renders during training.
+img_map_fast = lens.render(img, depth=-20000.0, method="psf_map", psf_grid=(10, 10), psf_ks=64, psf_spp=1024)
 ```
 
 For RGBD scenes, `Lens.render_rgbd()` supports:

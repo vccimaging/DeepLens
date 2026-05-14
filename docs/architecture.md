@@ -44,7 +44,9 @@ DeepLens uses several rendering paths:
 
 ### Lens JSON
 
-Lens JSON I/O preserves `is_aperture` markers and supports phase surfaces such as `Binary2Phase`. Hybrid-lens JSON files include a top-level `DOE` block; supported DOE models include `Binary2`, `Pixel2D`, `Fresnel`, `Zernike`, and `Grating`.
+Lens JSON I/O preserves `is_aperture` markers and supports phase surfaces such as `Binary2Phase`. Hybrid-lens JSON files include a top-level `DOE` block; supported DOE models include `Binary2`, `Pixel2D`, `Fresnel`, `Zernike`, `Grating`, and `Vortex`.
+
+`Phase.phase2height_map(design_wvln, refractive_idx, res)` converts any optimized phase profile to a physical height map (in µm) for fabrication, using the transmissive DOE relation φ = 2π/λ · (n−1) · h.
 
 ### Materials
 

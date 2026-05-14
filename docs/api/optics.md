@@ -78,6 +78,32 @@ Even-asphere surface: spherical base with polynomial corrections.
 
 ---
 
+## Phase Surfaces
+
+Phase surfaces model flat diffractive optical elements (DOEs) and metasurfaces via a wavelength-scaled phase profile. All classes inherit from `Phase` and implement `phi()` (phase map) and `dphi_dxy()` (phase gradient) for the generalized Snell's law deflection in `diffract()`.
+
+> **Note**: `Phase.diffract()` treats the phase profile as wavelength-independent. Only the λ scaling in the generalized Snell's law and the OPL accumulation vary with wavelength. For a physical DOE whose phase profile changes with wavelength via the height-index relation `(n(λ)−1)·h`, use `DiffractiveSurface` instead.
+
+::: deeplens.phase_surface.Phase
+
+::: deeplens.phase_surface.Binary2Phase
+
+::: deeplens.phase_surface.FresnelPhase
+
+::: deeplens.phase_surface.ZernikePhase
+
+::: deeplens.phase_surface.PolyPhase
+
+::: deeplens.phase_surface.CubicPhase
+
+::: deeplens.phase_surface.GratingPhase
+
+::: deeplens.phase_surface.NURBSPhase
+
+::: deeplens.phase_surface.VortexPhase
+
+---
+
 ## Light Representations
 
 Geometric ray representation carrying origin, direction, wavelength, validity mask, energy, and optical path length (OPL).
