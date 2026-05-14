@@ -132,10 +132,10 @@ class Phase(DeepObj):
         return ray
 
     def diffract(self, ray, n2=1.0):
-        """Diffraction of DOE surface.
+        """Diffraction of a phase surface.
 
-        1. The phase φ in radians adds to the optical path length of the ray.
-        2. The gradient of the phase profile (phase slope) changes the direction
+        Step 1. The phase φ in radians adds to the optical path length of the ray.
+        Step 2. The gradient of the phase profile (phase slope) changes the direction
            of rays via the generalized Snell's law:
            ``n₂·sin(θ₂) = n₁·sin(θ₁) + m · λ / (2π) · dφ/dx``
 
@@ -147,6 +147,13 @@ class Phase(DeepObj):
             ray: Ray object with position, direction, and wavelength.
             n2: Refractive index of the medium after the surface. Required for
                 correct generalized Snell's law: deflection scales as 1/n₂.
+
+        Note:
+            Material dispersion is not modelled here. The phase profile ``φ(x,y)``
+            is treated as wavelength-independent; only the λ scaling in the
+            generalized Snell's law and the OPL accumulation vary with wavelength.
+            For a physical DOE whose phase profile itself changes with wavelength
+            (via ``(n(λ)-1)·h``), use ``DiffractiveSurface`` instead.
 
         Reference:
             [1] https://support.zemax.com/hc/en-us/articles/1500005489061-How-diffractive-surfaces-are-modeled-in-OpticStudio
