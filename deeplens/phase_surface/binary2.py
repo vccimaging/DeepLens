@@ -111,21 +111,16 @@ class Binary2Phase(Phase):
 
         # Optimize polynomial coefficients
         self.order2.requires_grad = True
-        params.append({"params": [self.order2], "lr": lrs[1]})
-
         self.order4.requires_grad = True
-        params.append({"params": [self.order4], "lr": lrs[1]})
-
         self.order6.requires_grad = True
-        params.append({"params": [self.order6], "lr": lrs[1]})
-
         self.order8.requires_grad = True
-        params.append({"params": [self.order8], "lr": lrs[1]})
-
         self.order10.requires_grad = True
-        params.append({"params": [self.order10], "lr": lrs[1]})
-
         self.order12.requires_grad = True
+        params.append({"params": [self.order2], "lr": lrs[1]})
+        params.append({"params": [self.order4], "lr": lrs[1]})
+        params.append({"params": [self.order6], "lr": lrs[1]})
+        params.append({"params": [self.order8], "lr": lrs[1]})
+        params.append({"params": [self.order10], "lr": lrs[1]})
         params.append({"params": [self.order12], "lr": lrs[1]})
 
         # We do not optimize material parameters for phase surface.
