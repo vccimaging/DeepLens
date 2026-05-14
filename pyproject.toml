@@ -75,6 +75,10 @@ Changelog = "https://github.com/singer-yang/DeepLens/releases"
 deeplens = ["material/*.AGF", "material/*.json"]
 
 [tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:Can't initialize NVML:UserWarning",
+    "ignore:Can't get nvml device count:UserWarning",
+]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]

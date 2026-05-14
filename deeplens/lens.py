@@ -139,9 +139,9 @@ class Lens(DeepObj):
         if not hasattr(self, "foclen"):
             return
 
-        self.vfov = 2 * float(np.atan(self.sensor_size[0] / 2 / self.foclen))
-        self.hfov = 2 * float(np.atan(self.sensor_size[1] / 2 / self.foclen))
-        self.dfov = 2 * float(np.atan(self.r_sensor / self.foclen))
+        self.vfov = 2 * float(np.arctan(self.sensor_size[0] / 2 / self.foclen))
+        self.hfov = 2 * float(np.arctan(self.sensor_size[1] / 2 / self.foclen))
+        self.dfov = 2 * float(np.arctan(self.r_sensor / self.foclen))
         self.rfov_eff = self.dfov / 2  # effective (paraxial) half-diagonal FoV
         self.rfov = self.rfov_eff  # default to effective; GeoLens overrides with ray-traced value
 
@@ -547,8 +547,13 @@ class Lens(DeepObj):
             )
             psf_grid = kwargs.get("psf_grid", (10, 10))
             psf_ks = kwargs.get("psf_ks", PSF_KS)
+            psf_spp = kwargs.get("psf_spp", SPP_PSF)
             img_render = self.render_psf_map(
-                img_obj, depth=depth, psf_grid=psf_grid, psf_ks=psf_ks
+                img_obj,
+                depth=depth,
+                psf_grid=psf_grid,
+                psf_ks=psf_ks,
+                psf_spp=psf_spp,
             )
 
         elif method == "psf_patch":
@@ -609,7 +614,14 @@ class Lens(DeepObj):
         img_render = conv_psf(img_obj, psf=psf)
         return img_render
 
-    def render_psf_map(self, img_obj, depth=None, psf_grid=7, psf_ks=PSF_KS):
+    def render_psf_map(
+        self,
+        img_obj,
+        depth=None,
+        psf_grid=7,
+        psf_ks=PSF_KS,
+        psf_spp=SPP_PSF,
+    ):
         """Render image using PSF block convolution.
 
         Note:
@@ -626,7 +638,7 @@ class Lens(DeepObj):
             img_render: Rendered image. Shape of [B, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
-        psf_map = self.psf_map_rgb(grid=psf_grid, ks=psf_ks, depth=depth)
+        psf_map = self.psf_map_rgb(grid=psf_grid, ks=psf_ks, depth=depth, spp=psf_spp)
         img_render = conv_psf_map(img_obj, psf_map)
         return img_render
 

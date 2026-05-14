@@ -2,6 +2,7 @@
 Shared pytest fixtures for DeepLens test suite.
 """
 
+import copy
 import os
 import sys
 
@@ -42,45 +43,63 @@ def device_auto():
 # Lens fixtures
 # =============================================================================
 @pytest.fixture(scope="function")
-def sample_singlet_lens(device_auto):
+def sample_singlet_lens(_sample_singlet_lens_cached, device_auto):
     """Load a simple singlet lens for testing."""
+    lens = copy.deepcopy(_sample_singlet_lens_cached)
+    lens.to(device_auto)
+    return lens
+
+
+@pytest.fixture(scope="session")
+def _sample_singlet_lens_cached():
+    """Session-cached singlet lens template."""
     from deeplens import GeoLens
 
     lens_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "datasets/lenses/singlet/example1.json",
     )
-    lens = GeoLens(filename=lens_path)
+    return GeoLens(filename=lens_path)
+
+
+@pytest.fixture(scope="function")
+def sample_cellphone_lens(_sample_cellphone_lens_cached, device_auto):
+    """Load a cellphone lens with aspheric surfaces for testing."""
+    lens = copy.deepcopy(_sample_cellphone_lens_cached)
     lens.to(device_auto)
     return lens
 
 
-@pytest.fixture(scope="function")
-def sample_cellphone_lens(device_auto):
-    """Load a cellphone lens with aspheric surfaces for testing."""
+@pytest.fixture(scope="session")
+def _sample_cellphone_lens_cached():
+    """Session-cached cellphone lens template."""
     from deeplens import GeoLens
 
     lens_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "datasets/lenses/cellphone/cellphone68deg.json",
     )
-    lens = GeoLens(filename=lens_path)
+    return GeoLens(filename=lens_path)
+
+
+@pytest.fixture(scope="function")
+def sample_camera_lens(_sample_camera_lens_cached, device_auto):
+    """Load a camera lens for testing."""
+    lens = copy.deepcopy(_sample_camera_lens_cached)
     lens.to(device_auto)
     return lens
 
 
-@pytest.fixture(scope="function")
-def sample_camera_lens(device_auto):
-    """Load a camera lens for testing."""
+@pytest.fixture(scope="session")
+def _sample_camera_lens_cached():
+    """Session-cached camera lens template."""
     from deeplens import GeoLens
 
     lens_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "datasets/lenses/camera/ef50mm_f1.8.json",
     )
-    lens = GeoLens(filename=lens_path)
-    lens.to(device_auto)
-    return lens
+    return GeoLens(filename=lens_path)
 
 
 # =============================================================================
@@ -168,16 +187,27 @@ def test_output_dir(project_root):
 # HybridLens / DiffractiveLens fixtures
 # =============================================================================
 @pytest.fixture(scope="function")
-def sample_hybridlens(device_auto):
+def sample_hybridlens(_sample_hybridlens_cached, device_auto):
     """Load hybrid lens for testing."""
+    lens = copy.deepcopy(_sample_hybridlens_cached)
+    lens.to(device_auto)
+    return lens
+
+
+@pytest.fixture(scope="session")
+def _sample_hybridlens_cached():
+    """Session-cached hybrid lens template."""
     from deeplens import HybridLens
 
     lens_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "datasets/lenses/hybridlens/a489_doe.json",
     )
-    lens = HybridLens(filename=lens_path)
-    return lens
+    old_dtype = torch.get_default_dtype()
+    try:
+        return HybridLens(filename=lens_path)
+    finally:
+        torch.set_default_dtype(old_dtype)
 
 
 @pytest.fixture(scope="function")
