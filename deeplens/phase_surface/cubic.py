@@ -1,6 +1,5 @@
 """Cubic phase on a plane substrate."""
 
-import numpy as np
 import torch
 
 from .phase import Phase
@@ -37,14 +36,12 @@ class CubicPhase(Phase):
             device=device,
         )
 
-        # Initialize cubic polynomial coefficients with random small values if not provided
-        rand_value = np.random.rand(6) * 0.001
-        self.coeff_x3 = torch.tensor(coeff_x3 if coeff_x3 != 0.0 else rand_value[0])
-        self.coeff_y3 = torch.tensor(coeff_y3 if coeff_y3 != 0.0 else rand_value[1])
-        self.coeff_x2y = torch.tensor(coeff_x2y if coeff_x2y != 0.0 else rand_value[2])
-        self.coeff_xy2 = torch.tensor(coeff_xy2 if coeff_xy2 != 0.0 else rand_value[3])
-        self.coeff_x3y = torch.tensor(coeff_x3y if coeff_x3y != 0.0 else rand_value[4])
-        self.coeff_xy3 = torch.tensor(coeff_xy3 if coeff_xy3 != 0.0 else rand_value[5])
+        self.coeff_x3 = torch.tensor(coeff_x3)
+        self.coeff_y3 = torch.tensor(coeff_y3)
+        self.coeff_x2y = torch.tensor(coeff_x2y)
+        self.coeff_xy2 = torch.tensor(coeff_xy2)
+        self.coeff_x3y = torch.tensor(coeff_x3y)
+        self.coeff_xy3 = torch.tensor(coeff_xy3)
 
         self.param_model = "cubic"
         self.to(device)

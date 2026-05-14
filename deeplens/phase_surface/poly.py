@@ -1,6 +1,5 @@
 """Polynomial phase on a plane substrate."""
 
-import numpy as np
 import torch
 
 from ..config import EPSILON
@@ -38,14 +37,12 @@ class PolyPhase(Phase):
             device=device,
         )
 
-        # Initialize polynomial coefficients with random small values if not provided
-        rand_value = np.random.rand(6) * 0.001
-        self.order2 = torch.tensor(order2 if order2 != 0.0 else rand_value[0])
-        self.order3 = torch.tensor(order3 if order3 != 0.0 else rand_value[1])
-        self.order4 = torch.tensor(order4 if order4 != 0.0 else rand_value[2])
-        self.order5 = torch.tensor(order5 if order5 != 0.0 else rand_value[3])
-        self.order6 = torch.tensor(order6 if order6 != 0.0 else rand_value[4])
-        self.order7 = torch.tensor(order7 if order7 != 0.0 else rand_value[5])
+        self.order2 = torch.tensor(order2)
+        self.order3 = torch.tensor(order3)
+        self.order4 = torch.tensor(order4)
+        self.order5 = torch.tensor(order5)
+        self.order6 = torch.tensor(order6)
+        self.order7 = torch.tensor(order7)
 
         self.param_model = "poly1d"
         self.to(device)
