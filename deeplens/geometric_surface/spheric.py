@@ -219,7 +219,7 @@ class Spheric(Surface):
         ray.o = torch.where(valid.unsqueeze(-1), new_o, ray.o)
         ray.is_valid = ray.is_valid * valid
 
-        if ray.coherent:
+        if ray.is_coherent:
             if t.abs().max() > 100 and torch.get_default_dtype() == torch.float32:
                 raise Exception(
                     "Using float32 may cause precision problem for OPL calculation."

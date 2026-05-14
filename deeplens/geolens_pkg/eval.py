@@ -1442,7 +1442,7 @@ class GeoLensEval:
         ray = self.sample_from_points(
             points=point_obj, num_rays=num_rays, wvln=wvln
         )
-        ray.coherent = True
+        ray.is_coherent = True
         ray = self.trace2exit_pupil(ray)
 
         # Get exit pupil parameters
