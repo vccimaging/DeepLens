@@ -145,7 +145,7 @@ class TestRayPropTo:
         """Coherent ray should track OPL during propagation."""
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto, dtype=torch.float64)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto, dtype=torch.float64)
-        ray = Ray(o, d, wvln=0.55, coherent=True, device=device_auto)
+        ray = Ray(o, d, wvln=0.55, is_coherent=True, device=device_auto)
         
         ray.prop_to(z=10.0, n=1.5)
         
@@ -269,7 +269,7 @@ class TestRayClone:
         """Clone should duplicate all tensor attributes without shared storage."""
         o = torch.tensor([[1.0, 2.0, 3.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
-        ray = Ray(o, d, wvln=0.55, coherent=True, device=device_auto)
+        ray = Ray(o, d, wvln=0.55, is_coherent=True, device=device_auto)
 
         cloned = ray.clone()
 
@@ -279,7 +279,7 @@ class TestRayClone:
             assert torch.allclose(src, dst)
             assert src.data_ptr() != dst.data_ptr()
 
-        assert cloned.coherent == ray.coherent
+        assert cloned.is_coherent == ray.is_coherent
         assert cloned.device == ray.device
         assert cloned.shape == ray.shape
 

@@ -203,7 +203,7 @@ class TestForwardIntegralCoherent:
         d = torch.zeros(n_rays, 3, device=device_auto, dtype=torch.float64)
         d[:, 2] = 1.0
         
-        ray = Ray(o, d, wvln=0.55, coherent=True, device=device_auto)
+        ray = Ray(o, d, wvln=0.55, is_coherent=True, device=device_auto)
         ray.opl = torch.randn(n_rays, 1, device=device_auto, dtype=torch.float64)
         
         ks = 21

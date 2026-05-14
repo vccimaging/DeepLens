@@ -86,7 +86,7 @@ class ThinLens(Plane):
         ray.d = new_d
 
         # Optical path length change
-        if ray.coherent:
+        if ray.is_coherent:
             valid = ray.is_valid > 0
             if forward:
                 new_opl = (

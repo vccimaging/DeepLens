@@ -124,7 +124,7 @@ class Phase(DeepObj):
         ray.o = torch.where(valid.unsqueeze(-1), new_o, ray.o)
         ray.is_valid = ray.is_valid * valid
 
-        if ray.coherent:
+        if ray.is_coherent:
             ray.opl = torch.where(
                 valid.unsqueeze(-1), ray.opl + n * t.unsqueeze(-1), ray.opl
             )
@@ -156,7 +156,7 @@ class Phase(DeepObj):
         valid = ray.is_valid > 0
 
         # Step 1: DOE phase modulation
-        if ray.coherent:
+        if ray.is_coherent:
             phi = self.phi(ray.o[..., 0], ray.o[..., 1])
             new_opl = ray.opl + phi.unsqueeze(-1) * (ray.wvln * 1e-3) / (2 * torch.pi)
             ray.opl = torch.where(valid.unsqueeze(-1), new_opl, ray.opl)

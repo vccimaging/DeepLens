@@ -66,7 +66,7 @@ class Plane(Surface):
         ray.o = torch.where(valid.unsqueeze(-1), new_o, ray.o)
         ray.is_valid = ray.is_valid * valid
 
-        if ray.coherent:
+        if ray.is_coherent:
             ray.opl = torch.where(
                 valid.unsqueeze(-1), ray.opl + n * t.unsqueeze(-1), ray.opl
             )

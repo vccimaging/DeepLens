@@ -32,7 +32,7 @@ class Ray(DeepObj):
         coherent (bool): Whether OPL tracking is enabled.
     """
 
-    def __init__(self, o, d, wvln, coherent=False, device="cpu"):
+    def __init__(self, o, d, wvln, is_coherent=False, device="cpu"):
         """Initialize a ray object.
 
         Args:
@@ -60,7 +60,7 @@ class Ray(DeepObj):
         self.bend_penalty = torch.zeros((*self.shape, 1), device=device)
 
         # Coherent ray tracing
-        self.coherent = coherent  # bool
+        self.is_coherent = is_coherent  # bool
         self.opl = torch.zeros((*self.shape, 1), device=device)
 
         self.device = device
@@ -78,7 +78,7 @@ class Ray(DeepObj):
         valid_mask = (self.is_valid > 0).unsqueeze(-1)
         self.o = torch.where(valid_mask, new_o, self.o)
 
-        if self.coherent:
+        if self.is_coherent:
             if t.dtype != torch.float64:
                 raise Warning("Should use float64 in coherent ray tracing.")
             else:
@@ -148,7 +148,7 @@ class Ray(DeepObj):
         ray.bend_penalty = self.bend_penalty.clone().to(target_device)
         ray.opl = self.opl.clone().to(target_device)
 
-        ray.coherent = self.coherent
+        ray.is_coherent = self.is_coherent
         ray.device = target_device
         ray.shape = ray.o.shape[:-1]
 

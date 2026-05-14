@@ -333,7 +333,7 @@ class HybridLens(Lens):
 
         # Ray tracing to the DOE plane
         ray = geolens.sample_from_points(points=point_obj, num_rays=spp, wvln=wvln)
-        ray.coherent = True
+        ray.is_coherent = True
         ray, _ = geolens.trace(ray)
         ray = ray.prop_to(doe.d)
 
