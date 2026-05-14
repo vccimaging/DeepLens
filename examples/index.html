@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -729,6 +729,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Hybrid Lens Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vortexphase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VortexPhase
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -845,6 +862,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Hybrid Lens Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vortexphase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VortexPhase
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -950,29 +984,47 @@
 <a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="c1"># Access the refractive lens properties through geolens attribute</span>
 <a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Focal length: </span><span class="si">{</span><span class="n">lens</span><span class="o">.</span><span class="n">geolens</span><span class="o">.</span><span class="n">foclen</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> mm&quot;</span><span class="p">)</span>
 </code></pre></div>
-<p>Supported DOE models include <code>Binary2</code>, <code>Pixel2D</code>, <code>Fresnel</code>, <code>Zernike</code>, and <code>Grating</code>.</p>
+<p>Supported DOE models include <code>Binary2</code>, <code>Pixel2D</code>, <code>Fresnel</code>, <code>Zernike</code>, <code>Grating</code>, and <code>Vortex</code>.</p>
+<h3 id="vortexphase">VortexPhase</h3>
+<p><code>VortexPhase</code> imparts orbital angular momentum (OAM) via a spiral phase profile and can optionally combine it with a Fresnel focusing term:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">deeplens.phase_surface</span><span class="w"> </span><span class="kn">import</span> <span class="n">VortexPhase</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Topological charge 1 vortex phase with a co-centered Fresnel lens</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">doe</span> <span class="o">=</span> <span class="n">VortexPhase</span><span class="p">(</span><span class="n">r</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mf">20.0</span><span class="p">,</span> <span class="n">charge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">f0</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># Export the height map for fabrication (design wavelength 0.55 µm, n=1.5)</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">height_map</span> <span class="o">=</span> <span class="n">doe</span><span class="o">.</span><span class="n">phase2height_map</span><span class="p">(</span><span class="n">design_wvln</span><span class="o">=</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">refractive_idx</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">res</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1"># height_map: torch.Tensor of shape [512, 512], units µm</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">doe</span><span class="o">.</span><span class="n">draw_phase_map</span><span class="p">(</span><span class="n">save_name</span><span class="o">=</span><span class="s2">&quot;./vortex_phase.png&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><code>f0</code> is the phase curvature parameter in mm²; setting <code>f0=None</code> gives a pure vortex (no focusing). The topological charge <code>charge</code> is discrete and not differentiable; <code>f0</code> is optimizable.</p>
 <h2 id="image-simulation-methods">Image Simulation Methods</h2>
 <p><code>GeoLens.render()</code> supports three flat-scene rendering modes:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">img_ray</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ray_tracing&quot;</span><span class="p">,</span> <span class="n">spp</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">img_patch</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;psf_patch&quot;</span><span class="p">,</span> <span class="n">patch_center</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">img_map</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;psf_map&quot;</span><span class="p">,</span> <span class="n">psf_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">psf_ks</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">img_ray</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ray_tracing&quot;</span><span class="p">,</span> <span class="n">spp</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">img_patch</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;psf_patch&quot;</span><span class="p">,</span> <span class="n">patch_center</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">img_map</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;psf_map&quot;</span><span class="p">,</span> <span class="n">psf_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">psf_ks</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1"># psf_spp controls samples per PSF in psf_map mode (default: 8192).</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># Reduce for faster approximate renders during training.</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">img_map_fast</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;psf_map&quot;</span><span class="p">,</span> <span class="n">psf_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">psf_ks</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">psf_spp</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
 </code></pre></div>
 <p>For RGBD scenes, <code>Lens.render_rgbd()</code> supports:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># depth_map is positive depth in millimeters, shape [B, 1, H, W].</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">img_rgbd</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render_rgbd</span><span class="p">(</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">img</span><span class="p">,</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">depth_map</span><span class="p">,</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;psf_map&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">psf_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">num_layers</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">interp_mode</span><span class="o">=</span><span class="s2">&quot;disparity&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># depth_map is positive depth in millimeters, shape [B, 1, H, W].</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">img_rgbd</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">render_rgbd</span><span class="p">(</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">img</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">depth_map</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;psf_map&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">psf_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">num_layers</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">interp_mode</span><span class="o">=</span><span class="s2">&quot;disparity&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="p">)</span>
 </code></pre></div>
 <p>Use <code>method="psf_pixel"</code> only when you need per-pixel PSFs and can afford the cost. The implementation uses <code>splat_psf_per_pixel()</code>; pass <code>chunk_size</code> when using <code>PSFNetLens.render_rgbd(..., high_res=True)</code> to reduce peak memory.</p>
 <h2 id="distortion-warp">Distortion Warp</h2>
 <p><code>GeoLens</code> can now compute an inverse distortion grid and apply the lens distortion to an image:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">inv_grid</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">calc_inv_distortion_map</span><span class="p">(</span><span class="n">num_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">)</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">img_distorted</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">warp</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">num_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">inv_grid</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">calc_inv_distortion_map</span><span class="p">(</span><span class="n">num_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">24</span><span class="p">),</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">img_distorted</span> <span class="o">=</span> <span class="n">lens</span><span class="o">.</span><span class="n">warp</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">=-</span><span class="mf">20000.0</span><span class="p">,</span> <span class="n">num_grid</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span>
 </code></pre></div>
 <p>This is used internally before <code>GeoLens.render(..., method="psf_map")</code>.</p>
 

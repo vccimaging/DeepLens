@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -984,7 +984,8 @@
 <h3 id="optimization-regularization">Optimization regularization</h3>
 <p><code>GeoLensOptim</code> separates manufacturability and ray-geometry constraints into explicit losses. The former combined ray-angle loss is now split into <code>loss_cra()</code> for chief ray angle at the sensor and <code>loss_ray_bend()</code> for per-surface bend angle accumulation. The built-in <code>optimize()</code> loop also uses a green-channel centroid reference for RMS spot shape and a distortion regularizer against the pinhole field location.</p>
 <h3 id="lens-json">Lens JSON</h3>
-<p>Lens JSON I/O preserves <code>is_aperture</code> markers and supports phase surfaces such as <code>Binary2Phase</code>. Hybrid-lens JSON files include a top-level <code>DOE</code> block; supported DOE models include <code>Binary2</code>, <code>Pixel2D</code>, <code>Fresnel</code>, <code>Zernike</code>, and <code>Grating</code>.</p>
+<p>Lens JSON I/O preserves <code>is_aperture</code> markers and supports phase surfaces such as <code>Binary2Phase</code>. Hybrid-lens JSON files include a top-level <code>DOE</code> block; supported DOE models include <code>Binary2</code>, <code>Pixel2D</code>, <code>Fresnel</code>, <code>Zernike</code>, <code>Grating</code>, and <code>Vortex</code>.</p>
+<p><code>Phase.phase2height_map(design_wvln, refractive_idx, res)</code> converts any optimized phase profile to a physical height map (in µm) for fabrication, using the transmissive DOE relation φ = 2π/λ · (n−1) · h.</p>
 <h3 id="materials">Materials</h3>
 <p>Custom interpolation-table materials store wavelength/index arrays together and derive the d-line refractive index and Abbe number from the table. Interpolated refractive-index tensors are moved to the active device and dtype on demand.</p>
 <h2 id="surrogate-networks">Surrogate Networks</h2>
