@@ -50,12 +50,8 @@ class CubicPhase(Phase):
         self.coeff_x3y = torch.tensor(coeff_x3y if coeff_x3y != 0.0 else rand_value[4])
         self.coeff_xy3 = torch.tensor(coeff_xy3 if coeff_xy3 != 0.0 else rand_value[5])
 
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize cubic parameters."""
         self.param_model = "cubic"
+        self.to(device)
 
     def phi(self, x, y):
         """Reference phase map at design wavelength."""
@@ -147,7 +143,6 @@ class CubicPhase(Phase):
 
     def load_ckpt(self, load_path="./cubic_doe.pth"):
         """Load cubic DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.coeff_x3 = ckpt["coeff_x3"].to(self.device)

@@ -51,12 +51,8 @@ class PolyPhase(Phase):
         self.order6 = torch.tensor(order6 if order6 != 0.0 else rand_value[4])
         self.order7 = torch.tensor(order7 if order7 != 0.0 else rand_value[5])
 
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize Poly1D parameters."""
         self.param_model = "poly1d"
+        self.to(device)
 
     def phi(self, x, y):
         """Reference phase map at design wavelength."""
@@ -152,7 +148,6 @@ class PolyPhase(Phase):
 
     def load_ckpt(self, load_path="./poly1d_doe.pth"):
         """Load Poly1D DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.order2 = ckpt["order2"].to(self.device)

@@ -28,17 +28,12 @@ class Phase(DeepObj):
         d,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=True,
         device="cpu",
     ):
         super().__init__()
-
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
 
         # Global direction vector, always pointing to the positive z-axis
         self.vec_global = torch.tensor([0.0, 0.0, 1.0])
@@ -60,8 +55,6 @@ class Phase(DeepObj):
         self.w = self.r * float(np.sqrt(2))
         self.h = self.r * float(np.sqrt(2))
 
-        # Use ray tracing to simulate diffraction, the same as Zemax
-        self.diffraction = True
         self.diffraction_order = 1
         self.norm_radii = self.r if norm_radii is None else norm_radii
 
@@ -98,46 +91,15 @@ class Phase(DeepObj):
         """Calculate phase derivatives. Must be implemented by subclasses."""
         raise NotImplementedError("dphi_dxy() must be implemented by subclasses")
 
-    def init_param_model(self):
-        """Initialize parameterization parameters. Must be implemented by subclasses."""
-        raise NotImplementedError(
-            "init_param_model() must be implemented by subclasses"
-        )
-
-    def get_optimizer_params(self, lrs=[1e-4, 1e-2], optim_mat=False):
-        """Generate optimizer parameters. Must be implemented by subclasses."""
-        raise NotImplementedError(
-            "get_optimizer_params() must be implemented by subclasses"
-        )
-
-    def save_ckpt(self, save_path="./doe.pth"):
-        """Save DOE parameters. Must be implemented by subclasses."""
-        raise NotImplementedError("save_ckpt() must be implemented by subclasses")
-
-    def load_ckpt(self, load_path="./doe.pth"):
-        """Load DOE parameters. Must be implemented by subclasses."""
-        raise NotImplementedError("load_ckpt() must be implemented by subclasses")
-
-    def surf_dict(self):
-        """Return surface parameters. Must be implemented by subclasses."""
-        raise NotImplementedError("surf_dict() must be implemented by subclasses")
-
     # ==============================
     # Computation (ray tracing)
     # ==============================
-    def activate_diffraction(self, diffraction_order=1):
-        """Activate diffraction of DOE in ray tracing."""
-        self.diffraction = True
-        self.diffraction_order = diffraction_order
-        print("Diffraction of DOE in ray tracing is enabled.")
-
     def ray_reaction(self, ray, n1, n2):
         """Ray reaction on DOE surface."""
         ray = self.to_local_coord(ray)
         ray = self.intersect(ray, n1)
         ray = self.refract(ray, n1 / n2)
-        if self.diffraction:
-            ray = self.diffract(ray, n2=n2)
+        ray = self.diffract(ray, n2=n2)
         ray = self.to_global_coord(ray)
         return ray
 
@@ -193,13 +155,13 @@ class Phase(DeepObj):
         forward = (ray.d * ray.is_valid.unsqueeze(-1))[..., 2].sum() > 0
         valid = ray.is_valid > 0
 
-        # Diffraction 1: DOE phase modulation
+        # Step 1: DOE phase modulation
         if ray.coherent:
             phi = self.phi(ray.o[..., 0], ray.o[..., 1])
             new_opl = ray.opl + phi.unsqueeze(-1) * (ray.wvln * 1e-3) / (2 * torch.pi)
             ray.opl = torch.where(valid.unsqueeze(-1), new_opl, ray.opl)
 
-        # Diffraction 2: bend rays via generalized Snell's law
+        # Step 2: bend rays via generalized Snell's law
         # n₂·l₂ = n₁·l₁ + M·λ/(2π)·dφ/dx
         # After refraction: l₂ = l_refracted + M·λ/(2π·n₂)·dφ/dx
         dphidx, dphidy = self.dphi_dxy(ray.o[..., 0], ray.o[..., 1])
@@ -348,17 +310,15 @@ class Phase(DeepObj):
         rotated_flat = torch.mm(vectors_flat, R.t())
         return rotated_flat.view(original_shape)
 
-    def surface_with_offset(self, *args, **kwargs):
-        """Surface sag with offset, only used in layout drawing."""
-        return self.d
-
-    def draw_r(self):
-        """Effective drawing radius for 2D layout drawing."""
-        return self.r
-
     # ==============================
     # Optimization
     # ==============================
+    def get_optimizer_params(self, lrs=[1e-4, 1e-2], optim_mat=False):
+        """Generate optimizer parameters. Must be implemented by subclasses."""
+        raise NotImplementedError(
+            "get_optimizer_params() must be implemented by subclasses"
+        )
+
     def get_optimizer(self, lrs):
         """Generate optimizer.
 
@@ -367,7 +327,6 @@ class Phase(DeepObj):
         """
         if isinstance(lrs, float):
             lrs = [lrs]
-        assert self.diffraction, "Diffraction is not activated yet."
         params = self.get_optimizer_params(lrs)
         optimizer = torch.optim.Adam(params)
         return optimizer
@@ -384,6 +343,14 @@ class Phase(DeepObj):
     # =========================================
     # Visualization
     # =========================================
+    def draw_r(self):
+        """Effective drawing radius for 2D layout drawing."""
+        return self.r
+
+    def surface_with_offset(self, *args, **kwargs):
+        """Surface sag with offset, only used in layout drawing."""
+        return self.d
+
     def draw_phase_map(self, save_name="./DOE_phase_map.png"):
         """Draw phase map. Range from [0, 2*pi]."""
         x, y = torch.meshgrid(
@@ -419,3 +386,14 @@ class Phase(DeepObj):
     # =========================================
     # IO
     # =========================================
+    def save_ckpt(self, save_path="./doe.pth"):
+        """Save DOE parameters. Must be implemented by subclasses."""
+        raise NotImplementedError("save_ckpt() must be implemented by subclasses")
+
+    def load_ckpt(self, load_path="./doe.pth"):
+        """Load DOE parameters. Must be implemented by subclasses."""
+        raise NotImplementedError("load_ckpt() must be implemented by subclasses")
+
+    def surf_dict(self):
+        """Return surface parameters. Must be implemented by subclasses."""
+        raise NotImplementedError("surf_dict() must be implemented by subclasses")

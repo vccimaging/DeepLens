@@ -51,8 +51,6 @@ class ZernikePhase(Phase):
             is_square: Whether the aperture is square
             device: Computation device
         """
-        # Initialize parent Phase class but skip param_model initialization
-        # We'll set up Zernike-specific parameters manually
         super().__init__(
             r=r,
             d=d,
@@ -64,7 +62,6 @@ class ZernikePhase(Phase):
             device=device,
         )
 
-        # Override param_model to "zernike"
         self.param_model = "zernike"
 
         # Zernike polynomial parameterization
@@ -488,7 +485,6 @@ class ZernikePhase(Phase):
 
     def load_ckpt(self, load_path="./zernike_doe.pth"):
         """Load Zernike DOE coefficients."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.z_coeff = ckpt["z_coeff"].to(self.device)
         self.zernike_order = ckpt["zernike_order"]

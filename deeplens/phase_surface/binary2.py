@@ -49,8 +49,8 @@ class Binary2Phase(Phase):
         self.order10 = torch.tensor(order10)
         self.order12 = torch.tensor(order12)
 
+        self.param_model = "binary2"
         self.to(device)
-        self.init_param_model()
 
     @classmethod
     def init_from_dict(cls, surf_dict):
@@ -72,10 +72,6 @@ class Binary2Phase(Phase):
             is_square=is_square,
         )
         return obj
-
-    def init_param_model(self):
-        """Initialize Binary2 parameters."""
-        self.param_model = "binary2"
 
     def phi(self, x, y):
         """Reference phase map at design wavelength."""
@@ -160,7 +156,6 @@ class Binary2Phase(Phase):
 
     def load_ckpt(self, load_path="./binary2_doe.pth"):
         """Load Binary2 DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.order2 = ckpt["order2"].to(self.device)

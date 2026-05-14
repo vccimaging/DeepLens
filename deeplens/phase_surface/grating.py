@@ -40,12 +40,8 @@ class GratingPhase(Phase):
         self.theta = torch.tensor(theta)  # angle from x-axis to grating vector
         self.alpha = torch.tensor(alpha)  # slope of the grating
 
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize grating parameters."""
         self.param_model = "grating"
+        self.to(device)
 
     @classmethod
     def init_from_dict(cls, param_dict):
@@ -125,7 +121,6 @@ class GratingPhase(Phase):
 
     def load_ckpt(self, load_path="./grating_doe.pth"):
         """Load grating DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.theta = ckpt["theta"].to(self.device)

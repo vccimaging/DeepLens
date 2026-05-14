@@ -56,12 +56,8 @@ class QuarticPhase(Phase):
         self.coeff_x3y2 = torch.tensor(coeff_x3y2 if coeff_x3y2 != 0.0 else rand_value[7])
         self.coeff_x2y3 = torch.tensor(coeff_x2y3 if coeff_x2y3 != 0.0 else rand_value[8])
 
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize quartic parameters."""
         self.param_model = "quartic"
+        self.to(device)
 
     def phi(self, x, y):
         """Reference phase map at design wavelength."""
@@ -171,7 +167,6 @@ class QuarticPhase(Phase):
 
     def load_ckpt(self, load_path="./quartic_doe.pth"):
         """Load quartic DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.coeff_x4 = ckpt["coeff_x4"].to(self.device)

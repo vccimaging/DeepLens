@@ -37,12 +37,8 @@ class FresnelPhase(Phase):
 
         # Focal length at 550nm
         self.f0 = torch.tensor(f0)
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize Fresnel parameters."""
         self.param_model = "fresnel"
+        self.to(device)
 
     @classmethod
     def init_from_dict(cls, param_dict):
@@ -109,7 +105,6 @@ class FresnelPhase(Phase):
 
     def load_ckpt(self, load_path="./fresnel_doe.pth"):
         """Load Fresnel DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.f0 = ckpt["f0"].to(self.device)
