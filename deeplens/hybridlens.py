@@ -333,7 +333,7 @@ class HybridLens(Lens):
 
         # Ray tracing to the DOE plane
         ray = geolens.sample_from_points(points=point_obj, num_rays=spp, wvln=wvln)
-        ray.coherent = True
+        ray.is_coherent = True
         ray, _ = geolens.trace(ray)
         ray = ray.prop_to(doe.d)
 
@@ -476,7 +476,14 @@ class HybridLens(Lens):
     # Visualization
     # =====================================================================
     @torch.no_grad()
-    def draw_layout(self, save_name="./DOELens.png", depth=-10000.0, ax=None, fig=None):
+    def draw_layout(
+        self,
+        save_name="./DOELens.png",
+        depth=-10000.0,
+        ax=None,
+        fig=None,
+        dpi=600,
+    ):
         """Draw the hybrid-lens layout with ray paths and wave-propagation arcs.
 
         Renders the refractive elements via ``GeoLens.draw_lens_2d()``, traces
@@ -493,6 +500,8 @@ class HybridLens(Lens):
                 into.  If ``None``, a new figure is created and saved.
             fig (matplotlib.figure.Figure, optional): Pre-existing figure.
                 Required when *ax* is provided.
+            dpi (int, optional): Resolution used when saving a new figure.
+                Defaults to 600.
 
         Returns:
             tuple or None: ``(ax, fig)`` when *ax* was provided; otherwise
@@ -577,7 +586,7 @@ class HybridLens(Lens):
             # Save figure
             ax.axis("off")
             ax.set_title("DOE Lens")
-            fig.savefig(save_name, bbox_inches="tight", dpi=600)
+            fig.savefig(save_name, bbox_inches="tight", dpi=dpi)
             plt.close()
         else:
             return ax, fig

@@ -192,7 +192,7 @@ class Surface(DeepObj):
         ray.o = torch.where(valid.unsqueeze(-1), new_o, ray.o)
         ray.is_valid = ray.is_valid * valid
 
-        if ray.coherent:
+        if ray.is_coherent:
             if t.abs().max() > 100 and torch.get_default_dtype() == torch.float32:
                 raise Exception(
                     "Using float32 may cause precision problem for OPL calculation."
@@ -313,7 +313,7 @@ class Surface(DeepObj):
         cos_bend_min = math.cos(math.radians(bend_angle_max))
         bend_scale = 1.0 - cos_bend_min
         cos_bend = torch.sum(ray.d * old_d, dim=-1).unsqueeze(-1)
-        per_surf_penalty = F.softplus((cos_bend_min - cos_bend) / bend_scale, beta=10.0)
+        per_surf_penalty = F.relu((cos_bend_min - cos_bend) / bend_scale)
         valid = ray.is_valid > 0
         ray.bend_penalty = ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
         return ray

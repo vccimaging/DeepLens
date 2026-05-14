@@ -1,4 +1,4 @@
-"""Zernike phase on a plane surface."""
+"""Zernike phase on a plane substrate."""
 
 import math
 
@@ -9,7 +9,7 @@ from .phase import Phase
 
 
 class ZernikePhase(Phase):
-    """Zernike phase on a plane surface.
+    """Zernike phase on a plane substrate.
 
     This class implements a diffractive surface using Zernike polynomials
     to represent the phase profile. It supports up to 37 Zernike terms.
@@ -29,15 +29,11 @@ class ZernikePhase(Phase):
         zernike_coeff=None,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=False,
         device="cpu",
     ):
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
         """Initialize Zernike phase surface.
 
         Args:
@@ -51,8 +47,6 @@ class ZernikePhase(Phase):
             is_square: Whether the aperture is square
             device: Computation device
         """
-        # Initialize parent Phase class but skip param_model initialization
-        # We'll set up Zernike-specific parameters manually
         super().__init__(
             r=r,
             d=d,
@@ -64,7 +58,6 @@ class ZernikePhase(Phase):
             device=device,
         )
 
-        # Override param_model to "zernike"
         self.param_model = "zernike"
 
         # Zernike polynomial parameterization
@@ -488,7 +481,6 @@ class ZernikePhase(Phase):
 
     def load_ckpt(self, load_path="./zernike_doe.pth"):
         """Load Zernike DOE coefficients."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.z_coeff = ckpt["z_coeff"].to(self.device)
         self.zernike_order = ckpt["zernike_order"]

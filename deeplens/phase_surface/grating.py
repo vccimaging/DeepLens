@@ -1,4 +1,4 @@
-"""Grating phase on a plane surface."""
+"""Grating phase on a plane substrate."""
 
 import torch
 
@@ -6,7 +6,7 @@ from .phase import Phase
 
 
 class GratingPhase(Phase):
-    """Grating phase on a plane surface."""
+    """Grating phase on a plane substrate."""
 
     def __init__(
         self,
@@ -16,15 +16,11 @@ class GratingPhase(Phase):
         alpha=0.0,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=True,
         device="cpu",
     ):
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
         super().__init__(
             r=r,
             d=d,
@@ -40,12 +36,8 @@ class GratingPhase(Phase):
         self.theta = torch.tensor(theta)  # angle from x-axis to grating vector
         self.alpha = torch.tensor(alpha)  # slope of the grating
 
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize grating parameters."""
         self.param_model = "grating"
+        self.to(device)
 
     @classmethod
     def init_from_dict(cls, param_dict):
@@ -125,7 +117,6 @@ class GratingPhase(Phase):
 
     def load_ckpt(self, load_path="./grating_doe.pth"):
         """Load grating DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.theta = ckpt["theta"].to(self.device)

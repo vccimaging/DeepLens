@@ -193,7 +193,6 @@ class TestPhaseBaseRayReaction:
         """Phase.ray_reaction with diffraction modifies ray direction."""
         # Use FresnelPhase which implements phi and dphi_dxy
         s = FresnelPhase(r=5.0, d=5.0, f0=50.0)
-        s.activate_diffraction()
         o = torch.tensor([[0.0, 1.0, 0.0]])
         d = torch.tensor([[0.0, 0.0, 1.0]])
         ray = Ray(o, d, wvln=0.55)

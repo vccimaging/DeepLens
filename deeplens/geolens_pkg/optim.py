@@ -34,7 +34,7 @@ from datetime import datetime
 
 import numpy as np
 import torch
-from torch.nn.functional import softplus
+from torch.nn.functional import relu
 from tqdm import tqdm
 
 from ..config import (
@@ -240,7 +240,7 @@ class GeoLensOptim:
         rms_error = ray.rms_error()
 
         # Smooth penalty: activates when rms_error exceeds target
-        loss += softplus(rms_error - target, beta=50.0)
+        loss += relu(rms_error - target)
 
         return loss
 
@@ -268,14 +268,13 @@ class GeoLensOptim:
             # Sag
             sag_ls = self.surfaces[i].sag(x_ls, y_ls)
             sag2diam = sag_ls.abs().max() / self.surfaces[i].r / 2
-            loss_sag2diam += softplus(
-                (sag2diam - sag2diam_max) / sag2diam_max, beta=10.0
-            )
+            loss_sag2diam += relu(
+                (sag2diam - sag2diam_max) / sag2diam_max)
 
             # 1st-order derivative
             grad_ls = self.surfaces[i].dfdxyz(x_ls, y_ls)[0]
             grad = grad_ls.abs().max()
-            loss_grad += softplus((grad - grad_max) / grad_max, beta=10.0)
+            loss_grad += relu((grad - grad_max) / grad_max)
 
             # # Diameter to thickness ratio, thick_max to thick_min ratio
             # if not self.surfaces[i].mat2.name == "air":
@@ -284,7 +283,7 @@ class GeoLensOptim:
 
             #     # Penalize diameter to thickness ratio
             #     diam2thick = 2 * max(surf2.r, surf1.r) / (surf2.d - surf1.d)
-            #     loss_diam2thick += torch.nn.functional.softplus(diam2thick - diam2thick_max, beta=50.0)
+            #     loss_diam2thick += torch.nn.functional.relu(diam2thick - diam2thick_max)
 
             #     # Penalize thick_max to thick_min ratio.
             #     # Use torch.maximum/minimum for differentiable max/min.
@@ -295,7 +294,7 @@ class GeoLensOptim:
             #     thick_min = torch.minimum(thick_center, thick_edge).clamp(min=0.01)
             #     tmax2tmin = thick_max / thick_min
 
-            #     loss_tmax2tmin += torch.nn.functional.softplus(tmax2tmin - tmax2tmin_max, beta=50.0)
+            #     loss_tmax2tmin += torch.nn.functional.relu(tmax2tmin - tmax2tmin_max)
 
         return loss_sag2diam + loss_grad
 
@@ -303,7 +302,7 @@ class GeoLensOptim:
         """Penalize geometry-bound violations in a single surface-sampling pass.
 
         Each surface pair is sampled once and its distances feed both the
-        clearance (min) and envelope (max) softplus penalties for air gaps,
+        clearance (min) and envelope (max) relu penalties for air gaps,
         glass thickness, BFL, and TTL.
 
         Returns:
@@ -362,15 +361,15 @@ class GeoLensOptim:
             dist_edge_hi = torch.max(dist_edges)
 
             if current_surf.mat2.name == "air":
-                loss_clearance += softplus((air_center_min - dist_center) / air_c_range, beta=10.0)
-                loss_clearance += softplus((air_edge_min - dist_edge_lo) / air_e_range, beta=10.0)
-                loss_envelope += softplus((dist_center - air_center_max) / air_c_range, beta=10.0)
-                loss_envelope += softplus((dist_edge_hi - air_edge_max) / air_e_range, beta=10.0)
+                loss_clearance += relu((air_center_min - dist_center) / air_c_range)
+                loss_clearance += relu((air_edge_min - dist_edge_lo) / air_e_range)
+                loss_envelope += relu((dist_center - air_center_max) / air_c_range)
+                loss_envelope += relu((dist_edge_hi - air_edge_max) / air_e_range)
             else:
-                loss_clearance += softplus((thick_center_min - dist_center) / thick_c_range, beta=10.0)
-                loss_clearance += softplus((thick_edge_min - dist_edge_lo) / thick_e_range, beta=10.0)
-                loss_envelope += softplus((dist_center - thick_center_max) / thick_c_range, beta=10.0)
-                loss_envelope += softplus((dist_edge_hi - thick_edge_max) / thick_e_range, beta=10.0)
+                loss_clearance += relu((thick_center_min - dist_center) / thick_c_range)
+                loss_clearance += relu((thick_edge_min - dist_edge_lo) / thick_e_range)
+                loss_envelope += relu((dist_center - thick_center_max) / thick_c_range)
+                loss_envelope += relu((dist_edge_hi - thick_edge_max) / thick_e_range)
 
         # Back focal length
         last_surf = self.surfaces[-1]
@@ -378,13 +377,13 @@ class GeoLensOptim:
         z_last_surf = self.d_sensor - last_surf.surface_with_offset(r, 0.0)
         bfl_lo = torch.min(z_last_surf)
         bfl_hi = torch.max(z_last_surf)
-        loss_clearance += softplus((bfl_min - bfl_lo) / bfl_range, beta=10.0)
-        loss_envelope += softplus((bfl_hi - bfl_max) / bfl_range, beta=10.0)
+        loss_clearance += relu((bfl_min - bfl_lo) / bfl_range)
+        loss_envelope += relu((bfl_hi - bfl_max) / bfl_range)
 
         # Total track length
         ttl = self.d_sensor - self.surfaces[0].d
-        loss_clearance += softplus((ttl_min - ttl) / ttl_range, beta=10.0)
-        loss_envelope += softplus((ttl - ttl_max) / ttl_range, beta=10.0)
+        loss_clearance += relu((ttl_min - ttl) / ttl_range)
+        loss_envelope += relu((ttl - ttl_max) / ttl_range)
 
         return loss_clearance, loss_envelope
 
@@ -392,7 +391,7 @@ class GeoLensOptim:
         """Penalize chief ray angle at sensor exceeding chief_ray_angle_max.
 
         Uses a near-paraxial pupil sample (scale_pupil=0.2) over the full FoV.
-        Penalty is ``softplus((cos_ref - cos(CRA)) / cra_scale)`` where
+        Penalty is ``relu((cos_ref - cos(CRA)) / cra_scale)`` where
         ``cra_scale = 1 - cos_ref`` normalizes the argument to fractional units
         of the allowed-to-backward range.
 
@@ -406,13 +405,13 @@ class GeoLensOptim:
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
         valid = ray.is_valid > 0
-        penalty_cra = softplus((cos_cra_ref - cos_cra) / cra_scale, beta=10.0)
+        penalty_cra = relu((cos_cra_ref - cos_cra) / cra_scale)
         return (penalty_cra * valid).sum() / (valid.sum() + EPSILON)
 
     def loss_ray_bend(self):
         """Penalize accumulated per-surface bend angles exceeding bend_angle_max.
 
-        Reads ``ray.bend_penalty``, an additive sum of per-surface softplus
+        Reads ``ray.bend_penalty``, an additive sum of per-surface relu
         contributions collected during ``trace2sensor``.  Each surface
         contributes independently, so large bends at one surface are not hidden
         by small bends at another.  Uses a full-pupil sample (scale_pupil=1.0).
@@ -726,7 +725,7 @@ class GeoLensOptim:
                     distortion = (centroid_xy - pinhole_ref).norm(dim=-1)
                     distortion = distortion / ideal_height.clamp_min(EPSILON)
                     violation = distortion - self.distortion_max
-                    penalty = softplus(violation / self.distortion_max, beta=20.0)
+                    penalty = relu(violation / self.distortion_max)
                     n_fields = field_mask.sum().clamp_min(1)
                     loss_distortion = (penalty * field_mask.float()).sum() / n_fields
 

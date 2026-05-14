@@ -1,11 +1,21 @@
 """DeepLens - differentiable optical lens simulator."""
 
+import warnings
+
 import torch
+
+
+def _cuda_is_available():
+    """Return CUDA availability without surfacing benign NVML probe warnings."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Can't initialize NVML", category=UserWarning)
+        warnings.filterwarnings("ignore", message="Can't get nvml device count", category=UserWarning)
+        return torch.cuda.is_available()
 
 
 def init_device():
     """Initialize and return the default compute device (CUDA, MPS, or CPU)."""
-    if torch.cuda.is_available():
+    if _cuda_is_available():
         device = torch.device("cuda")
         device_name = torch.cuda.get_device_name(0)
         print(f"Using CUDA: {device_name} for DeepLens")

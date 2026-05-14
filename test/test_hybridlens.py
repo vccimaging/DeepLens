@@ -38,7 +38,12 @@ class TestHybridLensPSF:
         """psf() returns [ks, ks] tensor normalized to ~1."""
         lens = sample_hybridlens
         ks = 64
-        psf = lens.psf(points=[0.0, 0.0, -10000.0], ks=ks, spp=1_000_000)
+        old_dtype = torch.get_default_dtype()
+        torch.set_default_dtype(torch.float64)
+        try:
+            psf = lens.psf(points=[0.0, 0.0, -10000.0], ks=ks, spp=1_000_000)
+        finally:
+            torch.set_default_dtype(old_dtype)
         assert psf.shape == (ks, ks)
         assert psf.sum().item() == pytest.approx(1.0, abs=0.05)
         assert (psf >= 0).all()
@@ -99,5 +104,5 @@ class TestHybridLensVis:
         """draw_layout produces a file without crashing."""
         lens = sample_hybridlens
         path = os.path.join(test_output_dir, "test_hybridlens_layout.png")
-        lens.draw_layout(save_name=path)
+        lens.draw_layout(save_name=path, dpi=100)
         assert os.path.exists(path)

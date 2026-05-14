@@ -1,4 +1,4 @@
-"""Phase class: a plane surface with phase pattern on it."""
+"""Phase class: a plane substrate with phase pattern on it."""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,17 +28,12 @@ class Phase(DeepObj):
         d,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=True,
         device="cpu",
     ):
         super().__init__()
-
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
 
         # Global direction vector, always pointing to the positive z-axis
         self.vec_global = torch.tensor([0.0, 0.0, 1.0])
@@ -60,8 +55,6 @@ class Phase(DeepObj):
         self.w = self.r * float(np.sqrt(2))
         self.h = self.r * float(np.sqrt(2))
 
-        # Use ray tracing to simulate diffraction, the same as Zemax
-        self.diffraction = True
         self.diffraction_order = 1
         self.norm_radii = self.r if norm_radii is None else norm_radii
 
@@ -98,46 +91,15 @@ class Phase(DeepObj):
         """Calculate phase derivatives. Must be implemented by subclasses."""
         raise NotImplementedError("dphi_dxy() must be implemented by subclasses")
 
-    def init_param_model(self):
-        """Initialize parameterization parameters. Must be implemented by subclasses."""
-        raise NotImplementedError(
-            "init_param_model() must be implemented by subclasses"
-        )
-
-    def get_optimizer_params(self, lrs=[1e-4, 1e-2], optim_mat=False):
-        """Generate optimizer parameters. Must be implemented by subclasses."""
-        raise NotImplementedError(
-            "get_optimizer_params() must be implemented by subclasses"
-        )
-
-    def save_ckpt(self, save_path="./doe.pth"):
-        """Save DOE parameters. Must be implemented by subclasses."""
-        raise NotImplementedError("save_ckpt() must be implemented by subclasses")
-
-    def load_ckpt(self, load_path="./doe.pth"):
-        """Load DOE parameters. Must be implemented by subclasses."""
-        raise NotImplementedError("load_ckpt() must be implemented by subclasses")
-
-    def surf_dict(self):
-        """Return surface parameters. Must be implemented by subclasses."""
-        raise NotImplementedError("surf_dict() must be implemented by subclasses")
-
     # ==============================
     # Computation (ray tracing)
     # ==============================
-    def activate_diffraction(self, diffraction_order=1):
-        """Activate diffraction of DOE in ray tracing."""
-        self.diffraction = True
-        self.diffraction_order = diffraction_order
-        print("Diffraction of DOE in ray tracing is enabled.")
-
     def ray_reaction(self, ray, n1, n2):
         """Ray reaction on DOE surface."""
         ray = self.to_local_coord(ray)
         ray = self.intersect(ray, n1)
         ray = self.refract(ray, n1 / n2)
-        if self.diffraction:
-            ray = self.diffract(ray, n2=n2)
+        ray = self.diffract(ray, n2=n2)
         ray = self.to_global_coord(ray)
         return ray
 
@@ -162,7 +124,7 @@ class Phase(DeepObj):
         ray.o = torch.where(valid.unsqueeze(-1), new_o, ray.o)
         ray.is_valid = ray.is_valid * valid
 
-        if ray.coherent:
+        if ray.is_coherent:
             ray.opl = torch.where(
                 valid.unsqueeze(-1), ray.opl + n * t.unsqueeze(-1), ray.opl
             )
@@ -170,10 +132,10 @@ class Phase(DeepObj):
         return ray
 
     def diffract(self, ray, n2=1.0):
-        """Diffraction of DOE surface.
+        """Diffraction of a phase surface.
 
-        1. The phase φ in radians adds to the optical path length of the ray.
-        2. The gradient of the phase profile (phase slope) changes the direction
+        Step 1. The phase φ in radians adds to the optical path length of the ray.
+        Step 2. The gradient of the phase profile (phase slope) changes the direction
            of rays via the generalized Snell's law:
            ``n₂·sin(θ₂) = n₁·sin(θ₁) + m · λ / (2π) · dφ/dx``
 
@@ -186,6 +148,13 @@ class Phase(DeepObj):
             n2: Refractive index of the medium after the surface. Required for
                 correct generalized Snell's law: deflection scales as 1/n₂.
 
+        Note:
+            Material dispersion is not modelled here. The phase profile ``φ(x,y)``
+            is treated as wavelength-independent; only the λ scaling in the
+            generalized Snell's law and the OPL accumulation vary with wavelength.
+            For a physical DOE whose phase profile itself changes with wavelength
+            (via ``(n(λ)-1)·h``), use ``DiffractiveSurface`` instead.
+
         Reference:
             [1] https://support.zemax.com/hc/en-us/articles/1500005489061-How-diffractive-surfaces-are-modeled-in-OpticStudio
             [2] Light propagation with phase discontinuities: generalized laws of reflection and refraction. Science 2011.
@@ -193,13 +162,13 @@ class Phase(DeepObj):
         forward = (ray.d * ray.is_valid.unsqueeze(-1))[..., 2].sum() > 0
         valid = ray.is_valid > 0
 
-        # Diffraction 1: DOE phase modulation
-        if ray.coherent:
+        # Step 1: DOE phase modulation
+        if ray.is_coherent:
             phi = self.phi(ray.o[..., 0], ray.o[..., 1])
             new_opl = ray.opl + phi.unsqueeze(-1) * (ray.wvln * 1e-3) / (2 * torch.pi)
             ray.opl = torch.where(valid.unsqueeze(-1), new_opl, ray.opl)
 
-        # Diffraction 2: bend rays via generalized Snell's law
+        # Step 2: bend rays via generalized Snell's law
         # n₂·l₂ = n₁·l₁ + M·λ/(2π)·dφ/dx
         # After refraction: l₂ = l_refracted + M·λ/(2π·n₂)·dφ/dx
         dphidx, dphidy = self.dphi_dxy(ray.o[..., 0], ray.o[..., 1])
@@ -348,17 +317,15 @@ class Phase(DeepObj):
         rotated_flat = torch.mm(vectors_flat, R.t())
         return rotated_flat.view(original_shape)
 
-    def surface_with_offset(self, *args, **kwargs):
-        """Surface sag with offset, only used in layout drawing."""
-        return self.d
-
-    def draw_r(self):
-        """Effective drawing radius for 2D layout drawing."""
-        return self.r
-
     # ==============================
     # Optimization
     # ==============================
+    def get_optimizer_params(self, lrs=[1e-4, 1e-2], optim_mat=False):
+        """Generate optimizer parameters. Must be implemented by subclasses."""
+        raise NotImplementedError(
+            "get_optimizer_params() must be implemented by subclasses"
+        )
+
     def get_optimizer(self, lrs):
         """Generate optimizer.
 
@@ -367,7 +334,6 @@ class Phase(DeepObj):
         """
         if isinstance(lrs, float):
             lrs = [lrs]
-        assert self.diffraction, "Diffraction is not activated yet."
         params = self.get_optimizer_params(lrs)
         optimizer = torch.optim.Adam(params)
         return optimizer
@@ -381,9 +347,42 @@ class Phase(DeepObj):
         self.w = self.r * float(np.sqrt(2))
         self.h = self.r * float(np.sqrt(2))
 
+    def phase2height_map(self, design_wvln, refractive_idx=1.5, res=512):
+        """Convert the phase map to a physical height map for DOE fabrication.
+
+        Derived from the phase-height relation of a transmissive DOE in air:
+            φ = 2π/λ · (n−1) · h  →  h = φ · λ / (2π · (n−1))
+
+        Args:
+            design_wvln: Design wavelength [um].
+            refractive_idx: Refractive index of the DOE material at ``design_wvln``.
+            res: Pixel resolution of the returned height map (square grid).
+
+        Returns:
+            Tensor of shape ``[res, res]`` with height values in the same units
+            as ``design_wvln`` (um).
+        """
+        x, y = torch.meshgrid(
+            torch.linspace(-self.w / 2, self.w / 2, res),
+            torch.linspace(self.h / 2, -self.h / 2, res),
+            indexing="xy",
+        )
+        x, y = x.to(self.device), y.to(self.device)
+        phi = self.phi(x, y)  # [0, 2π], shape [res, res]
+        height_map = phi * design_wvln / (2 * torch.pi * (refractive_idx - 1))
+        return height_map
+
     # =========================================
     # Visualization
     # =========================================
+    def draw_r(self):
+        """Effective drawing radius for 2D layout drawing."""
+        return self.r
+
+    def surface_with_offset(self, *args, **kwargs):
+        """Surface sag with offset, only used in layout drawing."""
+        return self.d
+
     def draw_phase_map(self, save_name="./DOE_phase_map.png"):
         """Draw phase map. Range from [0, 2*pi]."""
         x, y = torch.meshgrid(
@@ -419,3 +418,14 @@ class Phase(DeepObj):
     # =========================================
     # IO
     # =========================================
+    def save_ckpt(self, save_path="./doe.pth"):
+        """Save DOE parameters. Must be implemented by subclasses."""
+        raise NotImplementedError("save_ckpt() must be implemented by subclasses")
+
+    def load_ckpt(self, load_path="./doe.pth"):
+        """Load DOE parameters. Must be implemented by subclasses."""
+        raise NotImplementedError("load_ckpt() must be implemented by subclasses")
+
+    def surf_dict(self):
+        """Return surface parameters. Must be implemented by subclasses."""
+        raise NotImplementedError("surf_dict() must be implemented by subclasses")

@@ -1,4 +1,4 @@
-"""Binary2 phase on a plane surface."""
+"""Binary2 phase on a plane substrate."""
 
 import torch
 
@@ -7,7 +7,7 @@ from .phase import Phase
 
 
 class Binary2Phase(Phase):
-    """Binary2 phase on a plane surface."""
+    """Binary2 phase on a plane substrate."""
 
     def __init__(
         self,
@@ -21,15 +21,11 @@ class Binary2Phase(Phase):
         order12=0.0,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=True,
         device="cpu",
     ):
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
         super().__init__(
             r=r,
             d=d,
@@ -49,8 +45,8 @@ class Binary2Phase(Phase):
         self.order10 = torch.tensor(order10)
         self.order12 = torch.tensor(order12)
 
+        self.param_model = "binary2"
         self.to(device)
-        self.init_param_model()
 
     @classmethod
     def init_from_dict(cls, surf_dict):
@@ -72,10 +68,6 @@ class Binary2Phase(Phase):
             is_square=is_square,
         )
         return obj
-
-    def init_param_model(self):
-        """Initialize Binary2 parameters."""
-        self.param_model = "binary2"
 
     def phi(self, x, y):
         """Reference phase map at design wavelength."""
@@ -119,21 +111,16 @@ class Binary2Phase(Phase):
 
         # Optimize polynomial coefficients
         self.order2.requires_grad = True
-        params.append({"params": [self.order2], "lr": lrs[1]})
-
         self.order4.requires_grad = True
-        params.append({"params": [self.order4], "lr": lrs[1]})
-
         self.order6.requires_grad = True
-        params.append({"params": [self.order6], "lr": lrs[1]})
-
         self.order8.requires_grad = True
-        params.append({"params": [self.order8], "lr": lrs[1]})
-
         self.order10.requires_grad = True
-        params.append({"params": [self.order10], "lr": lrs[1]})
-
         self.order12.requires_grad = True
+        params.append({"params": [self.order2], "lr": lrs[1]})
+        params.append({"params": [self.order4], "lr": lrs[1]})
+        params.append({"params": [self.order6], "lr": lrs[1]})
+        params.append({"params": [self.order8], "lr": lrs[1]})
+        params.append({"params": [self.order10], "lr": lrs[1]})
         params.append({"params": [self.order12], "lr": lrs[1]})
 
         # We do not optimize material parameters for phase surface.
@@ -160,7 +147,6 @@ class Binary2Phase(Phase):
 
     def load_ckpt(self, load_path="./binary2_doe.pth"):
         """Load Binary2 DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.order2 = ckpt["order2"].to(self.device)

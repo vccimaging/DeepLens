@@ -1,6 +1,5 @@
-"""Polynomial phase on a plane surface."""
+"""Polynomial phase on a plane substrate."""
 
-import numpy as np
 import torch
 
 from ..config import EPSILON
@@ -8,7 +7,7 @@ from .phase import Phase
 
 
 class PolyPhase(Phase):
-    """Polynomial phase on a plane surface."""
+    """Polynomial phase on a plane substrate."""
 
     def __init__(
         self,
@@ -22,15 +21,11 @@ class PolyPhase(Phase):
         order7=0.0,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=True,
         device="cpu",
     ):
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
         super().__init__(
             r=r,
             d=d,
@@ -42,21 +37,15 @@ class PolyPhase(Phase):
             device=device,
         )
 
-        # Initialize polynomial coefficients with random small values if not provided
-        rand_value = np.random.rand(6) * 0.001
-        self.order2 = torch.tensor(order2 if order2 != 0.0 else rand_value[0])
-        self.order3 = torch.tensor(order3 if order3 != 0.0 else rand_value[1])
-        self.order4 = torch.tensor(order4 if order4 != 0.0 else rand_value[2])
-        self.order5 = torch.tensor(order5 if order5 != 0.0 else rand_value[3])
-        self.order6 = torch.tensor(order6 if order6 != 0.0 else rand_value[4])
-        self.order7 = torch.tensor(order7 if order7 != 0.0 else rand_value[5])
+        self.order2 = torch.tensor(order2)
+        self.order3 = torch.tensor(order3)
+        self.order4 = torch.tensor(order4)
+        self.order5 = torch.tensor(order5)
+        self.order6 = torch.tensor(order6)
+        self.order7 = torch.tensor(order7)
 
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize Poly1D parameters."""
         self.param_model = "poly1d"
+        self.to(device)
 
     def phi(self, x, y):
         """Reference phase map at design wavelength."""
@@ -152,7 +141,6 @@ class PolyPhase(Phase):
 
     def load_ckpt(self, load_path="./poly1d_doe.pth"):
         """Load Poly1D DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.order2 = ckpt["order2"].to(self.device)

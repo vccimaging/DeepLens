@@ -783,9 +783,15 @@ class GeoLens(
             )
             psf_grid = kwargs.get("psf_grid", (10, 10))
             psf_ks = kwargs.get("psf_ks", PSF_KS)
-            img_obj = self.warp(img_obj, depth=depth)
+            psf_spp = kwargs.get("psf_spp", SPP_PSF)
+            warp_grid = kwargs.get("warp_grid", 128)
+            img_obj = self.warp(img_obj, depth=depth, num_grid=warp_grid)
             img_render = self.render_psf_map(
-                img_obj, depth=depth, psf_grid=psf_grid, psf_ks=psf_ks
+                img_obj,
+                depth=depth,
+                psf_grid=psf_grid,
+                psf_ks=psf_ks,
+                psf_spp=psf_spp,
             )
 
         elif method == "psf_patch":

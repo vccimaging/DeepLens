@@ -41,7 +41,7 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
     Returns:
         torch.Tensor: Accumulated field, shape ``[N, ks, ks]`` (or
         ``[ks, ks]`` for a single input point). Dtype is complex when
-        ``ray.coherent`` is ``True``, otherwise float.
+        ``ray.is_coherent`` is ``True``, otherwise float.
     """
     if ray.o.ndim == 2:
         single_point = True
@@ -70,7 +70,7 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
     valid = valid * in_window.to(valid.dtype)
 
     # Per-ray intensity (real) or complex amplitude.
-    if ray.coherent:
+    if ray.is_coherent:
         amp = torch.sqrt(ray.d[..., 2].abs())           # sqrt(|dz|)
         opl = ray.opl.squeeze(-1)                       # [N, spp]
         opl_min = opl.min(dim=-1, keepdim=True).values
@@ -169,7 +169,7 @@ def backward_integral(
     w_i = v - v.floor().long()
     w_j = u.ceil().long() - u
 
-    if ray.coherent:
+    if ray.is_coherent:
         raise Exception("Backward coherent integral needs to be checked.")
 
     # Monte-Carlo integration over the spp axis (last dim).

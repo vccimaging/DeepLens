@@ -142,7 +142,7 @@ class GeoLensPSF:
         ray = self.sample_from_points(points=point_obj, num_rays=spp, wvln=wvln)
 
         # Trace rays to sensor plane (incoherent)
-        ray.coherent = False
+        ray.is_coherent = False
         ray = self.trace2sensor(ray)
 
         # Calculate PSF center, shape [N, 2]
@@ -315,7 +315,7 @@ class GeoLensPSF:
 
         # Ray-tracing to exit_pupil
         ray = self.sample_from_points(points=points_obj, num_rays=spp, wvln=wvln)
-        ray.coherent = True
+        ray.is_coherent = True
         ray = self.trace2exit_pupil(ray)
 
         # Calculate complex field (same physical size and resolution as the sensor)
@@ -399,7 +399,7 @@ class GeoLensPSF:
         ray = self.sample_from_points(points=point_obj, num_rays=spp, wvln=wvln)
 
         # Trace rays coherently through the lens to exit pupil
-        ray.coherent = True
+        ray.is_coherent = True
         ray = self.trace2exit_pupil(ray)
 
         # Calculate PSF center (not flipped here)

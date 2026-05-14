@@ -191,7 +191,13 @@ class TestGeoLensPSF:
         torch.set_default_dtype(torch.float64)
         try:
             points = torch.tensor([[0.0, 0.0, DEPTH]], device=lens.device, dtype=torch.float64)
-            psf = lens.psf(points, wvln=DEFAULT_WAVE, ks=31, model="coherent")
+            psf = lens.psf(
+                points,
+                wvln=DEFAULT_WAVE,
+                ks=31,
+                model="coherent",
+                spp=1_000_000,
+            )
             
             assert psf.shape == (31, 31)  # psf_pupil_prop always returns 2D for now
             assert psf.sum().item() == pytest.approx(1.0, abs=0.1)
@@ -320,11 +326,20 @@ class TestGeoLensRendering:
         """Should render image with spatially-varying PSF."""
         lens = sample_cellphone_lens
         img = sample_image_small
+        lens.set_sensor_res((64, 64))
         
         # psf_map requires image resolution to match sensor resolution
         # Resize input image to match sensor resolution
-        img_large = torch.nn.functional.interpolate(img, size=lens.sensor_res, mode='bilinear')
-        img_render = lens.render(img_large, depth=DEPTH, method="psf_map")
+        img_large = torch.nn.functional.interpolate(img, size=(64, 64), mode='bilinear')
+        img_render = lens.render(
+            img_large,
+            depth=DEPTH,
+            method="psf_map",
+            psf_grid=(2, 2),
+            psf_ks=31,
+            psf_spp=1024,
+            warp_grid=8,
+        )
         
         # Output shape should match sensor resolution, not input image small shape
         assert img_render.shape[-2:] == lens.sensor_res

@@ -1,13 +1,12 @@
-"""Quartic (Q-type) phase on a plane surface."""
+"""Quartic (Q-type) phase on a plane substrate."""
 
-import numpy as np
 import torch
 
 from .phase import Phase
 
 
 class QuarticPhase(Phase):
-    """Quartic phase on a plane surface."""
+    """Quartic phase on a plane substrate."""
 
     def __init__(
         self,
@@ -24,15 +23,11 @@ class QuarticPhase(Phase):
         coeff_x2y3=0.0,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=True,
         device="cpu",
     ):
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
         super().__init__(
             r=r,
             d=d,
@@ -44,24 +39,18 @@ class QuarticPhase(Phase):
             device=device,
         )
 
-        # Initialize quartic polynomial coefficients with random small values if not provided
-        rand_value = np.random.rand(9) * 0.001
-        self.coeff_x4 = torch.tensor(coeff_x4 if coeff_x4 != 0.0 else rand_value[0])
-        self.coeff_y4 = torch.tensor(coeff_y4 if coeff_y4 != 0.0 else rand_value[1])
-        self.coeff_x3y = torch.tensor(coeff_x3y if coeff_x3y != 0.0 else rand_value[2])
-        self.coeff_xy3 = torch.tensor(coeff_xy3 if coeff_xy3 != 0.0 else rand_value[3])
-        self.coeff_x2y2 = torch.tensor(coeff_x2y2 if coeff_x2y2 != 0.0 else rand_value[4])
-        self.coeff_x4y = torch.tensor(coeff_x4y if coeff_x4y != 0.0 else rand_value[5])
-        self.coeff_xy4 = torch.tensor(coeff_xy4 if coeff_xy4 != 0.0 else rand_value[6])
-        self.coeff_x3y2 = torch.tensor(coeff_x3y2 if coeff_x3y2 != 0.0 else rand_value[7])
-        self.coeff_x2y3 = torch.tensor(coeff_x2y3 if coeff_x2y3 != 0.0 else rand_value[8])
+        self.coeff_x4 = torch.tensor(coeff_x4)
+        self.coeff_y4 = torch.tensor(coeff_y4)
+        self.coeff_x3y = torch.tensor(coeff_x3y)
+        self.coeff_xy3 = torch.tensor(coeff_xy3)
+        self.coeff_x2y2 = torch.tensor(coeff_x2y2)
+        self.coeff_x4y = torch.tensor(coeff_x4y)
+        self.coeff_xy4 = torch.tensor(coeff_xy4)
+        self.coeff_x3y2 = torch.tensor(coeff_x3y2)
+        self.coeff_x2y3 = torch.tensor(coeff_x2y3)
 
-        self.to(device)
-        self.init_param_model()
-
-    def init_param_model(self):
-        """Initialize quartic parameters."""
         self.param_model = "quartic"
+        self.to(device)
 
     def phi(self, x, y):
         """Reference phase map at design wavelength."""
@@ -171,7 +160,6 @@ class QuarticPhase(Phase):
 
     def load_ckpt(self, load_path="./quartic_doe.pth"):
         """Load quartic DOE parameters."""
-        self.diffraction = True
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.coeff_x4 = ckpt["coeff_x4"].to(self.device)
