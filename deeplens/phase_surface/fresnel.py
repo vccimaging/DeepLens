@@ -15,15 +15,11 @@ class FresnelPhase(Phase):
         f0=100.0,
         norm_radii=None,
         mat2="air",
-        pos_xy=None,
-        vec_local=None,
+        pos_xy=(0.0, 0.0),
+        vec_local=(0.0, 0.0, 1.0),
         is_square=True,
         device="cpu",
     ):
-        if pos_xy is None:
-            pos_xy = [0.0, 0.0]
-        if vec_local is None:
-            vec_local = [0.0, 0.0, 1.0]
         super().__init__(
             r=r,
             d=d,

@@ -4,23 +4,23 @@ seed: ~
 # experiment settings
 EXP_NAME: 'Auto lens design'
 
-# lens target example 1 (camera lens)
-foclen: 85.0
-fov: 40.0
-fnum: 4.0
-bfl: 18.0
-thickness: 120.0
-surf_list: [["Spheric", "Spheric"], ["Spheric", "Spheric"], ["Spheric", "Spheric", "Spheric"], ["Aperture"], ["Spheric", "Spheric", "Spheric"], ["Spheric", "Aspheric"], ["Spheric", "Aspheric"]]
-lrs: [1e-3, 1e-4, 1e-2, 1e-4]
+# # lens target example 1 (camera lens)
+# foclen: 85.0
+# fov: 40.0
+# fnum: 4.0
+# bfl: 18.0
+# thickness: 120.0
+# surf_list: [["Spheric", "Spheric"], ["Spheric", "Spheric"], ["Spheric", "Spheric", "Spheric"], ["Aperture"], ["Spheric", "Spheric", "Spheric"], ["Spheric", "Aspheric"], ["Spheric", "Aspheric"]]
+# lrs: [1e-3, 1e-4, 1e-2, 1e-4]
 
-# # lens target example 2 (mobile lens)
-# foclen: 5.5
-# fov: 70.0
-# fnum: 2.0
-# bfl: 1.0
-# thickness: 8.0
-# surf_list: [["Aperture"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"]]
-# lrs: [1e-3, 1e-3, 1e-2, 1e-3]
+# lens target example 2 (mobile lens)
+foclen: 6.1
+fov: 85.0
+fnum: 1.9
+bfl: 0.97
+thickness: 7.3
+surf_list: [["Aperture"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"], ["Aspheric", "Aspheric"]]
+lrs: [1e-3, 1e-3, 1e-2, 1e-3]
 
 # # lens target example 3 (camera lens)
 # foclen: 35.0
