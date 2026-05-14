@@ -1,4 +1,4 @@
-"""Polynomial phase on a plane surface."""
+"""Polynomial phase on a plane substrate."""
 
 import numpy as np
 import torch
@@ -8,7 +8,7 @@ from .phase import Phase
 
 
 class PolyPhase(Phase):
-    """Polynomial phase on a plane surface."""
+    """Polynomial phase on a plane substrate."""
 
     def __init__(
         self,

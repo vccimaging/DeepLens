@@ -1,4 +1,4 @@
-"""Quartic (Q-type) phase on a plane surface."""
+"""Quartic (Q-type) phase on a plane substrate."""
 
 import numpy as np
 import torch
@@ -7,7 +7,7 @@ from .phase import Phase
 
 
 class QuarticPhase(Phase):
-    """Quartic phase on a plane surface."""
+    """Quartic phase on a plane substrate."""
 
     def __init__(
         self,

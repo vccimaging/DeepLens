@@ -1,4 +1,4 @@
-"""Binary2 phase on a plane surface."""
+"""Binary2 phase on a plane substrate."""
 
 import torch
 
@@ -7,7 +7,7 @@ from .phase import Phase
 
 
 class Binary2Phase(Phase):
-    """Binary2 phase on a plane surface."""
+    """Binary2 phase on a plane substrate."""
 
     def __init__(
         self,

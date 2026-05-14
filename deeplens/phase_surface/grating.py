@@ -1,4 +1,4 @@
-"""Grating phase on a plane surface."""
+"""Grating phase on a plane substrate."""
 
 import torch
 
@@ -6,7 +6,7 @@ from .phase import Phase
 
 
 class GratingPhase(Phase):
-    """Grating phase on a plane surface."""
+    """Grating phase on a plane substrate."""
 
     def __init__(
         self,

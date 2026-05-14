@@ -1,4 +1,4 @@
-"""Fresnel phase on a plane surface."""
+"""Fresnel phase on a plane substrate."""
 
 import torch
 
@@ -6,7 +6,7 @@ from .phase import Phase
 
 
 class FresnelPhase(Phase):
-    """Fresnel phase on a plane surface."""
+    """Fresnel phase on a plane substrate."""
 
     def __init__(
         self,

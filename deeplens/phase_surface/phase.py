@@ -1,4 +1,4 @@
-"""Phase class: a plane surface with phase pattern on it."""
+"""Phase class: a plane substrate with phase pattern on it."""
 
 import matplotlib.pyplot as plt
 import numpy as np

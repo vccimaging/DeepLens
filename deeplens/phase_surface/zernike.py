@@ -1,4 +1,4 @@
-"""Zernike phase on a plane surface."""
+"""Zernike phase on a plane substrate."""
 
 import math
 
@@ -9,7 +9,7 @@ from .phase import Phase
 
 
 class ZernikePhase(Phase):
-    """Zernike phase on a plane surface.
+    """Zernike phase on a plane substrate.
 
     This class implements a diffractive surface using Zernike polynomials
     to represent the phase profile. It supports up to 37 Zernike terms.

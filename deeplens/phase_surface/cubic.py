@@ -1,4 +1,4 @@
-"""Cubic phase on a plane surface."""
+"""Cubic phase on a plane substrate."""
 
 import numpy as np
 import torch
@@ -7,7 +7,7 @@ from .phase import Phase
 
 
 class CubicPhase(Phase):
-    """Cubic phase on a plane surface."""
+    """Cubic phase on a plane substrate."""
 
     def __init__(
         self,

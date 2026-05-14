@@ -1,4 +1,4 @@
-"""NURBS (Non-Uniform Rational B-Spline) phase on a plane surface."""
+"""NURBS (Non-Uniform Rational B-Spline) phase on a plane substrate."""
 
 import torch
 
@@ -7,7 +7,7 @@ from .phase import Phase
 
 
 class NURBSPhase(Phase):
-    """NURBS phase on a plane surface.
+    """NURBS phase on a plane substrate.
 
     This class implements a diffractive surface where the phase profile is
     represented by a NURBS surface. The NURBS surface is defined by control
