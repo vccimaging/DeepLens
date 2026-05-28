@@ -27,6 +27,7 @@ from .diffractive_surface import (
     Fresnel,
     Pixel2D,
     Rank1,
+    RotationallySymmetric,
     ThinLens,
     Zernike,
 )
@@ -169,6 +170,8 @@ class DiffractiveLens(Lens):
                     s = Rank1.init_from_dict(surf_dict)
                 elif surf_dict["type"].lower() == "diffractedrotation":
                     s = DiffractedRotation.init_from_dict(surf_dict)
+                elif surf_dict["type"].lower() == "rotationallysymmetric":
+                    s = RotationallySymmetric.init_from_dict(surf_dict)
                 else:
                     raise ValueError(
                         f"Diffractive surface type {surf_dict['type']} not implemented."
@@ -203,7 +206,7 @@ class DiffractiveLens(Lens):
 
             if isinstance(s, Pixel2D):
                 surf_data = s.surf_dict(filename.replace(".json", "_pixel2d.pth"))
-            elif isinstance(s, Rank1):
+            elif isinstance(s, (Rank1, RotationallySymmetric)):
                 surf_data = s.surf_dict(filename.replace(".json", f"_surf{i + 1}.pth"))
             else:
                 surf_data = s.surf_dict()

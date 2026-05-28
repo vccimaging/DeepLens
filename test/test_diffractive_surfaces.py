@@ -11,6 +11,7 @@ from deeplens.diffractive_surface import (
     Grating,
     Pixel2D,
     Rank1,
+    RotationallySymmetric,
     Zernike,
 )
 
@@ -248,6 +249,32 @@ class TestDiffractedRotation:
         assert doe.f0.requires_grad
 
 
+class TestRotationallySymmetric:
+    """Tests for RotationallySymmetric DOE."""
+
+    def test_init(self):
+        doe = RotationallySymmetric(d=0.0, f0=50.0, res=100)
+        assert doe.res == (100, 100)
+        assert doe.n_rings == 50
+        assert doe.radial_phase.shape == (50,)
+
+    def test_phase_func_shape(self):
+        doe = RotationallySymmetric(d=0.0, f0=50.0, res=100)
+        assert doe.phase_func().shape == (100, 100)
+
+    def test_phase_is_radially_symmetric(self):
+        """Phase depends only on radius => transpose-symmetric on a square grid."""
+        doe = RotationallySymmetric(d=0.0, f0=50.0, res=128)
+        phase = doe.phase_func()
+        assert torch.allclose(phase, phase.T, atol=1e-4)
+
+    def test_optimizer_params(self):
+        doe = RotationallySymmetric(d=0.0, f0=50.0, res=100)
+        params = doe.get_optimizer_params()
+        assert len(params) == 1
+        assert doe.radial_phase.requires_grad
+
+
 class TestDiffractiveLensLoad:
     """The new surfaces load from JSON via DiffractiveLens and produce a PSF."""
 
@@ -269,5 +296,16 @@ class TestDiffractiveLensLoad:
             device=device_auto,
         )
         psf = lens.psf(points=[0.0, 0.0, float("-inf")], ks=32, wvln=0.55)
+        assert psf.shape == (32, 32)
+        assert torch.isfinite(psf).all()
+
+    def test_load_rotational_symmetric(self, device_auto):
+        from deeplens import DiffractiveLens
+
+        lens = DiffractiveLens(
+            filename="./datasets/lenses/diffraclens/rotational_symmetric.json",
+            device=device_auto,
+        )
+        psf = lens.psf(points=[0.0, 0.0, float("-inf")], ks=32)
         assert psf.shape == (32, 32)
         assert torch.isfinite(psf).all()
