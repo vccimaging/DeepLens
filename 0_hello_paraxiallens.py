@@ -19,7 +19,6 @@ Reference:
 """
 
 import torch
-import torch.nn.functional as F
 from torchvision.io import read_image
 from torchvision.utils import save_image
 
@@ -61,12 +60,13 @@ psf = lens.psf(point, ks=31, psf_type="pillbox")
 print(f"Defocus PSF: shape {tuple(psf.shape[-2:])}, sum {psf.sum():.3f}")
 save_image(psf.clamp(min=0), f"{save_name}_psf.png", normalize=True)
 
-# Render a test chart through the lens at a uniform out-of-focus depth.
+# Render a test chart through the lens at a uniform out-of-focus depth. Match the
+# sensor to the input image instead of resizing the image.
 img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0
-img = F.interpolate(img.unsqueeze(0), size=(512, 512), mode="bilinear", align_corners=False)
-img = img.to(lens.device)
-depth_map = torch.full((1, 1, 512, 512), 2000.0, device=lens.device)  # object depth [mm]
-img_render = lens.render_rgbd(img, depth_map)
+img = img.unsqueeze(0).to(lens.device)  # [1, 3, H, W]
+lens.set_sensor_res((img.shape[-1], img.shape[-2]))  # (W, H)
+depth_map = torch.full_like(img[:, :1], 2000.0)  # object depth [mm], positive
+img_render = lens.render_rgbd(img, depth_map, psf_ks=128)
 print(f"Rendered chart through lens: shape {tuple(img_render.shape)}")
 save_image(img_render.clamp(0, 1), f"{save_name}_render.png")
 print(f"Saved outputs to {save_name}_psf.png and {save_name}_render.png")

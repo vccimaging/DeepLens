@@ -88,9 +88,8 @@ class ParaxialLens(Lens):
                 "Use set_sensor() to change."
             )
 
-        self.sensor_size = sensor_size
-        self.sensor_res = sensor_res
-        self.pixel_size = self.sensor_size[0] / self.sensor_res[0]  # Pixel size [mm]
+        # Configure sensor (sets sensor_size, sensor_res, pixel_size, r_sensor).
+        self.set_sensor(sensor_size, sensor_res)
 
         self.d_far = -20000.0
         self.d_close = -200.0

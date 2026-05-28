@@ -357,32 +357,34 @@ class DiffractiveLens(Lens):
             align_corners=False,
         )[0, 0, :, :]
 
-        # Crop or pad wave to the sensor resolution
+        # Center crop / pad the intensity to the sensor resolution. ``sensor_res``
+        # is (W, H) while the intensity tensor is indexed [H, W]; handle each
+        # dimension independently so that non-square sensors work correctly.
+        target_h, target_w = int(self.sensor_res[1]), int(self.sensor_res[0])
         intensity_h, intensity_w = intensity.shape[-2:]
-        sensor_h, sensor_w = self.sensor_res
-        if sensor_h < intensity_h or sensor_w < intensity_w:
-            # crop
-            start_h = (intensity_h - sensor_h) // 2
-            start_w = (intensity_w - sensor_w) // 2
-            intensity = intensity[
-                start_h : start_h + sensor_h, start_w : start_w + sensor_w
-            ]
-        elif sensor_h > intensity_h or sensor_w > intensity_w:
-            # pad
-            pad_top = (sensor_h - intensity_h) // 2
-            pad_bottom = sensor_h - intensity_h - pad_top
-            pad_left = (sensor_w - intensity_w) // 2
-            pad_right = sensor_w - intensity_w - pad_left
+
+        # Pad dimensions that are smaller than the sensor.
+        pad_h = max(target_h - intensity_h, 0)
+        pad_w = max(target_w - intensity_w, 0)
+        if pad_h > 0 or pad_w > 0:
             intensity = F.pad(
                 intensity,
-                (pad_left, pad_right, pad_top, pad_bottom),
+                (pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2),
                 mode="constant",
                 value=0,
             )
 
-        # Crop the valid patch from the full-resolution intensity map as the PSF
-        coord_c_i = int(self.sensor_res[1] / 2)
-        coord_c_j = int(self.sensor_res[0] / 2)
+        # Center crop dimensions that are larger than the sensor.
+        intensity_h, intensity_w = intensity.shape[-2:]
+        start_h = (intensity_h - target_h) // 2
+        start_w = (intensity_w - target_w) // 2
+        intensity = intensity[
+            start_h : start_h + target_h, start_w : start_w + target_w
+        ]
+
+        # Crop the central patch from the sensor-resolution intensity map as the PSF
+        coord_c_i = int(target_h / 2)
+        coord_c_j = int(target_w / 2)
         intensity = F.pad(
             intensity,
             [ks // 2, ks // 2, ks // 2, ks // 2],

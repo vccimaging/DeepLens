@@ -21,7 +21,6 @@ Technical Paper:
 """
 
 import torch
-import torch.nn.functional as F
 from torchvision.io import read_image
 from torchvision.utils import save_image
 
@@ -63,12 +62,15 @@ print(f"On-axis PSF: shape {tuple(psf.shape)}, sum {psf.sum():.3f}")
 # =====================================================================
 # Build an RGB PSF (one per wavelength) and convolve a test chart to simulate
 # how the hybrid lens images a distant scene (on-axis PSF, spatially invariant).
+# Match the sensor to the input image instead of resizing the image.
 img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0
-img = F.interpolate(img.unsqueeze(0), size=(512, 512), mode="bilinear", align_corners=False)
+img = img.unsqueeze(0)  # [1, 3, H, W]
+lens.geolens.set_sensor_res((img.shape[-1], img.shape[-2]))  # (W, H); PSF samples geolens sensor
+
 psf_rgb = torch.stack(
-    [lens.psf(points=[0.0, 0.0, -10000.0], ks=64, wvln=w, spp=1_000_000) for w in WAVE_RGB],
+    [lens.psf(points=[0.0, 0.0, -10000.0], ks=128, wvln=w, spp=1_000_000) for w in WAVE_RGB],
     dim=0,
-)  # [3, ks, ks]
+).float()  # [3, ks, ks], fp32 for rendering
 img = img.to(psf_rgb)  # match PSF dtype and device
 img_render = conv_psf(img, psf_rgb)
 save_image(img_render.clamp(0, 1), f"{save_name}_render.png")

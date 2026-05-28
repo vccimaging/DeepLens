@@ -19,7 +19,6 @@ Technical Paper:
         High Dynamic Range Imaging," CVPR 2020.
 """
 
-import torch.nn.functional as F
 from torchvision.io import read_image
 from torchvision.utils import save_image
 
@@ -58,12 +57,15 @@ print(f"Saved PSF images to {save_name}_psf_inf.png and {save_name}_psf_near.png
 # =====================================================================
 # Image simulation (PSF convolution)
 # =====================================================================
-# Simulate how the lens images a scene at infinity by convolving a test chart
-# with the (primary-wavelength) infinity PSF computed above.
+# Simulate how the lens images a scene at infinity. Match the sensor to the
+# input image (instead of resizing the image), then convolve the chart with the
+# (primary-wavelength) infinity PSF.
 img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0
-img = F.interpolate(img.unsqueeze(0), size=(512, 512), mode="bilinear", align_corners=False)
+img = img.unsqueeze(0)  # [1, 3, H, W]
+lens.set_sensor_res((img.shape[-1], img.shape[-2]))  # (W, H)
 
-psf_rgb = psf_inf[None].repeat(3, 1, 1)  # [3, ks, ks], same PSF for each channel
+psf_render = lens.psf(depth=float("inf"), ks=64)
+psf_rgb = psf_render[None].repeat(3, 1, 1).float()  # [3, ks, ks], fp32 for rendering
 img = img.to(psf_rgb)
 img_render = conv_psf(img, psf_rgb)
 save_image(img_render.clamp(0, 1), f"{save_name}_render.png")
