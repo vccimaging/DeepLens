@@ -43,6 +43,6 @@ This document outlines the file structure of the `deeplens` package.
     -   `monte_carlo.py`: `forward_integral()` for differentiable PSF accumulation.
     -   `psf.py`: PSF convolution variants (single, spatially-varying, depth-varying, per-pixel).
 
--   **`geolens_pkg/`**: `GeoLens` mixins (PSF compute, evaluation, Seidel/tolerance analysis, optimization, I/O, 2D/3D visualization).
+-   **`geolens_pkg/`**: `GeoLens` mixins (PSF compute, evaluation, optimization, I/O, 2D/3D visualization).
 
 -   **`surrogate/`**: Neural surrogate networks (MLP, MLPConv, Siren, ModulateSiren, PSFNetMLPConv).

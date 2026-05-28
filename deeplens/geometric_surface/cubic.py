@@ -161,30 +161,6 @@ class Cubic(Surface):
         return params
 
     # =========================================
-    # Manufacturing
-    # =========================================
-    def perturb(self, tolerance_params):
-        """Perturb the surface"""
-        super().perturb(tolerance_params)
-        self.r_error = np.random.randn() * tolerance_params.get("r_tole", 0.001)
-        if self.d.item() != 0:
-            self.d_error = np.random.randn() * tolerance_params.get("d_tole", 0.0005)
-
-        if self.b_degree == 1:
-            self.b3_error = np.random.randn() * tolerance_params.get("b3_tole", 0.001)
-        elif self.b_degree == 2:
-            self.b3_error = np.random.randn() * tolerance_params.get("b3_tole", 0.001)
-            self.b5_error = np.random.randn() * tolerance_params.get("b5_tole", 0.001)
-        elif self.b_degree == 3:
-            self.b3_error = np.random.randn() * tolerance_params.get("b3_tole", 0.001)
-            self.b5_error = np.random.randn() * tolerance_params.get("b5_tole", 0.001)
-            self.b7_error = np.random.randn() * tolerance_params.get("b7_tole", 0.001)
-
-        self.rotate_angle_error = np.random.randn() * tolerance_params.get(
-            "angle_tole", 0.01
-        )
-
-    # =========================================
     # IO
     # =========================================
     def surf_dict(self):

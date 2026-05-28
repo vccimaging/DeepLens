@@ -6,7 +6,6 @@
 
 """Spheric surface."""
 
-import numpy as np
 import torch
 
 from .base import EPSILON, Surface
@@ -64,8 +63,6 @@ class Spheric(Surface):
             device=device,
         )
         self.c = torch.tensor(c)
-
-        self.tolerancing = False
         self.to(device)
 
     @classmethod
@@ -87,11 +84,7 @@ class Spheric(Surface):
 
     def _sag(self, x, y):
         """Compute surfaces sag z = r**2 * c / (1 - sqrt(1 - r**2 * c**2))"""
-        # Tolerance
-        if self.tolerancing:
-            c = self.c + self.c_error
-        else:
-            c = self.c
+        c = self.c
 
         # Compute surface sag
         r2 = x**2 + y**2
@@ -100,11 +93,7 @@ class Spheric(Surface):
 
     def _dfdxy(self, x, y):
         """Compute surface sag derivatives to x and y: dz / dx, dz / dy."""
-        # Tolerance
-        if self.tolerancing:
-            c = self.c + self.c_error
-        else:
-            c = self.c
+        c = self.c
 
         # Compute surface sag derivatives
         r2 = x**2 + y**2
@@ -128,11 +117,7 @@ class Spheric(Surface):
             d2f_dxdy (tensor): ∂²f / ∂x∂y
             d2f_dy2 (tensor): ∂²f / ∂y²
         """
-        # Tolerance
-        if self.tolerancing:
-            c = self.c + self.c_error
-        else:
-            c = self.c
+        c = self.c
 
         # Compute surface sag derivatives
         r2 = x**2 + y**2
@@ -165,11 +150,7 @@ class Spheric(Surface):
         Returns:
             ray (Ray): ray with updated position and opl.
         """
-        # Tolerance
-        if self.tolerancing:
-            c = self.c + self.c_error
-        else:
-            c = self.c
+        c = self.c
 
         if torch.abs(c) < EPSILON:
             # Handle flat surface as a plane
@@ -231,59 +212,15 @@ class Spheric(Surface):
 
     def is_within_data_range(self, x, y):
         """Invalid when shape is non-defined."""
-        if self.tolerancing:
-            c = self.c + self.c_error
-        else:
-            c = self.c
-
+        c = self.c
         valid = (x**2 + y**2) < 1 / c**2
         return valid
 
     def max_height(self):
         """Maximum valid height."""
-        if self.tolerancing:
-            c = self.c + self.c_error
-        else:
-            c = self.c
-
+        c = self.c
         max_height = torch.sqrt(1 / c**2).item() - 0.001
         return max_height
-
-    # =========================================
-    # Tolerancing
-    # =========================================
-    def init_tolerance(self, tolerance_params=None):
-        """Initialize tolerance parameters for the surface.
-
-        Args:
-            tolerance_params (dict): Tolerance for surface parameters.
-        """
-        super().init_tolerance(tolerance_params)
-        if tolerance_params is None:
-            tolerance_params = {}
-        self.c_tole = tolerance_params.get("c_tole", 0.0001)
-        self.c_error = 0.0
-
-    def sample_tolerance(self):
-        """Randomly perturb surface parameters to simulate manufacturing errors."""
-        super().sample_tolerance()
-        self.c_error = float(np.random.randn() * self.c_tole)
-
-    def zero_tolerance(self):
-        """Zero tolerance."""
-        super().zero_tolerance()
-        self.c_error = 0.0
-
-    def sensitivity_score(self):
-        """Tolerance squared sum."""
-        score_dict = super().sensitivity_score()
-        if self.c.grad is not None:
-            idx = getattr(self, "surf_idx", id(self))
-            score_dict[f"surf{idx}_c_grad"] = round(self.c.grad.item(), 6)
-            score_dict[f"surf{idx}_c_score"] = round(
-                (self.c_tole**2 * self.c.grad**2).item(), 6
-            )
-        return score_dict
 
     # =========================================
     # Optimization
