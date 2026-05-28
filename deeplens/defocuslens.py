@@ -4,11 +4,10 @@
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
-"""Paraxial geometric/ABCD matrix lens model. The paraxial lens model can simulate defocus (Circle of Confusion) but not optical aberrations. This model is commonly used in software such as Blender.
+"""Defocus lens model. This model does not use ray transfer (ABCD) matrices or thin-lens ray tracing; instead it pre-computes the circle-of-confusion (CoC) PSF from the focal length, F-number and focus distance and applies it directly. It simulates defocus blur (depth of field) but not optical aberrations, and is commonly used in software such as Blender.
 
 Reference:
     [1] https://en.wikipedia.org/wiki/Circle_of_confusion
-    [2] https://en.wikipedia.org/wiki/Ray_transfer_matrix_analysis
 """
 
 import numpy as np
@@ -19,12 +18,15 @@ from .config import DEFAULT_WAVE, DEPTH, EPSILON, PSF_KS, WAVE_RGB
 from .imgsim import conv_psf_depth_interp, conv_psf_occlusion
 
 
-class ParaxialLens(Lens):
-    """Thin-lens / ABCD-matrix model for fast defocus simulation.
+class DefocusLens(Lens):
+    """Defocus lens that pre-computes the circle-of-confusion (CoC) PSF.
 
-    Models the circle of confusion (CoC) caused by defocus but not
-    higher-order optical aberrations.  Useful as a fast baseline renderer for
-    depth-of-field effects, as commonly used in Blender and similar tools.
+    Rather than ray transfer (ABCD) matrices or thin-lens ray tracing, this
+    model derives the circle of confusion from the focal length, F-number and
+    focus distance, builds the corresponding PSF, and applies it directly. It
+    simulates defocus blur (depth of field) but not higher-order optical
+    aberrations. Useful as a fast baseline renderer, as commonly used in
+    Blender and similar tools.
 
     Attributes:
         foclen (float): Focal length [mm].
@@ -45,7 +47,7 @@ class ParaxialLens(Lens):
         wvln_rgb=WAVE_RGB,
         obj_depth=DEPTH,
     ):
-        """Initialize a paraxial lens.
+        """Initialize a defocus lens.
 
         Args:
             foclen (float): Focal length in [mm].
@@ -63,7 +65,7 @@ class ParaxialLens(Lens):
                 when a method is called without an explicit ``depth``.
                 Defaults to ``DEPTH``.
         """
-        super(ParaxialLens, self).__init__(
+        super(DefocusLens, self).__init__(
             device=device,
             primary_wvln=primary_wvln,
             wvln_rgb=wvln_rgb,
@@ -238,7 +240,7 @@ class ParaxialLens(Lens):
     def psf_rgb(self, points, ks=PSF_KS, **kwargs):
         """Compute RGB PSF by replicating the monochrome PSF across three channels.
 
-        The paraxial model is achromatic, so all channels share the same PSF.
+        The defocus model is achromatic, so all channels share the same PSF.
 
         Args:
             points (torch.Tensor): Point source positions, shape ``[N, 3]``.
@@ -254,7 +256,7 @@ class ParaxialLens(Lens):
     def psf_map(self, grid=(5, 5), ks=PSF_KS, depth=None, **kwargs):
         """Compute a spatially-uniform monochrome PSF map.
 
-        Because the paraxial model has no spatially-varying aberrations, every
+        Because the defocus model has no spatially-varying aberrations, every
         grid position receives the same on-axis PSF.
 
         Args:
@@ -369,10 +371,10 @@ class ParaxialLens(Lens):
     # RGBD rendering (occlusion-aware)
     # =============================================
     def render_rgbd(self, img_obj, depth_map, method="psf_patch", **kwargs):
-        """Occlusion-aware RGBD rendering for paraxial lens.
+        """Occlusion-aware RGBD rendering for defocus lens.
 
         Uses back-to-front layered compositing to prevent color bleeding at depth
-        discontinuities. Since paraxial lenses have no spatially varying
+        discontinuities. Since defocus lenses have no spatially varying
         aberrations, all methods (psf_patch, psf_map, psf_pixel) produce
         identical results; the `method` parameter is accepted for API
         compatibility but ignored.
@@ -466,12 +468,12 @@ class ParaxialLens(Lens):
 if __name__ == "__main__":
     from torchvision.utils import make_grid, save_image
 
-    lens = ParaxialLens(
+    lens = DefocusLens(
         foclen=50, fnum=1.8, sensor_size=(20.0, 20.0), sensor_res=(2000, 2000)
     )
     lens.refocus(-1000)
     lens.draw_psf_map(
-        save_name="./psf_map_paraxial_depth1500_focus1000.png",
+        save_name="./psf_map_defocus_depth1500_focus1000.png",
         grid=(11, 11),
         ks=PSF_KS,
         depth=-1500,

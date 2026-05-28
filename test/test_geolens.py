@@ -227,7 +227,7 @@ class TestGeoLensPSF:
         points = torch.tensor([[0.0, 0.0, DEPTH]], device=lens.device)
         psf = lens.psf(points, wvln=DEFAULT_WAVE, ks=64)
         
-        # ParaxialLens PSF is usually single channel unless psf_rgb implied
+        # DefocusLens PSF is usually single channel unless psf_rgb implied
         # psf() returns [N_points, ks, ks] for single point
         assert psf.shape == (1, 64, 64)
         assert psf.sum().item() == pytest.approx(1.0, abs=0.1)

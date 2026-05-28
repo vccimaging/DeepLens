@@ -8,7 +8,7 @@ Scene → [ Optics ] → Output PSF / Image
           GeoLens
         HybridLens
        DiffractiveLens
-        ParaxialLens
+        DefocusLens
         PSFNetLens
 ```
 
@@ -20,7 +20,7 @@ The `deeplens` package contains differentiable lens models that simulate how lig
 - **`HybridLens`** — JSON-defined refractive lens (`GeoLens`) combined with a diffractive optical element (DOE). Coherent ray tracing to the DOE plane, DOE phase modulation, then Angular Spectrum Method (ASM) propagation to the sensor.
 - **`DiffractiveLens`** — Pure wave-optics lens using diffractive surfaces and scalar diffraction.
 - **`PSFNetLens`** — Neural surrogate wrapping a `GeoLens` with an MLP for fast PSF prediction.
-- **`ParaxialLens`** — Thin-lens model for simple depth-of-field and bokeh simulation.
+- **`DefocusLens`** — Defocus (circle-of-confusion) model for depth-of-field and bokeh simulation.
 
 All lens types inherit from `Lens`, which defines the shared interface (`psf()`, `render()`, etc.). All optical objects inherit from `DeepObj`, which provides `to(device)`, `clone()`, and dtype conversion.
 

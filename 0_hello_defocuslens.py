@@ -1,34 +1,34 @@
-"""Hello, world! for DeepLens ParaxialLens class.
+"""Hello, world! for DeepLens DefocusLens class.
 
-In this code, we construct a paraxial (thin-lens / ABCD-matrix) lens. This
-simple model simulates defocus blur via the circle of confusion (CoC) but not
-higher-order optical aberrations. It is a fast baseline renderer for
-depth-of-field effects, as commonly used in Blender and similar tools.
+In this code, we construct a defocus lens, which pre-computes the circle-of-
+confusion (CoC) PSF and applies it directly (no ray transfer / thin-lens ray
+tracing). It simulates defocus blur but not higher-order optical aberrations,
+and is a fast baseline renderer for depth-of-field effects, as commonly used in
+Blender and similar tools.
 
 We refocus the lens, inspect the circle of confusion and depth of field at a few
 depths, generate a defocus PSF, and simulate an image by rendering a test chart
 with depth-dependent defocus blur.
 
 Note:
-    ParaxialLens is a thin-lens model with no surface ray tracing, so image
-    simulation is PSF-based only (occlusion-aware PSF compositing).
+    DefocusLens pre-computes the circle-of-confusion PSF (no ray tracing), so
+    image simulation is PSF-based only (occlusion-aware PSF compositing).
 
 Reference:
     [1] https://en.wikipedia.org/wiki/Circle_of_confusion
-    [2] https://en.wikipedia.org/wiki/Ray_transfer_matrix_analysis
 """
 
 import torch
 from torchvision.io import read_image
 from torchvision.utils import save_image
 
-from deeplens import ParaxialLens
+from deeplens import DefocusLens
 
 # =====================================================================
 # Lens construction and focusing
 # =====================================================================
 # A 50 mm f/1.8 lens on a 20 x 20 mm sensor.
-lens = ParaxialLens(
+lens = DefocusLens(
     foclen=50.0,
     fnum=1.8,
     sensor_size=(20.0, 20.0),
@@ -37,7 +37,7 @@ lens = ParaxialLens(
 
 # Focus the lens at 1 m in front of the camera (depths are negative, in mm).
 lens.refocus(-1000.0)
-print(f"ParaxialLens: f={lens.foclen} mm, f/{lens.fnum}, focused at {lens.foc_dist} mm.")
+print(f"DefocusLens: f={lens.foclen} mm, f/{lens.fnum}, focused at {lens.foc_dist} mm.")
 
 # =====================================================================
 # Defocus analysis: circle of confusion (CoC) and depth of field (DoF)
@@ -52,7 +52,7 @@ for d, c, f in zip(depths.tolist(), coc.tolist(), dof.tolist()):
 # =====================================================================
 # PSF and image simulation
 # =====================================================================
-save_name = "./hello_paraxiallens"
+save_name = "./hello_defocuslens"
 
 # A defocused on-axis point source produces a blur disk (pillbox) PSF.
 point = torch.tensor([[0.0, 0.0, -500.0]])

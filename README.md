@@ -120,7 +120,7 @@ DeepLens/
 │   ├── geolens.py          (multi-element refractive lens)
 │   ├── hybridlens.py       (refractive + diffractive hybrid lens)
 │   ├── diffraclens.py      (pure diffractive lens)
-│   ├── paraxiallens.py     (thin-lens model)
+│   ├── defocuslens.py     (defocus / circle-of-confusion model)
 │   ├── psfnetlens.py       (neural surrogate lens)
 │   ├── geometric_surface/  (spheric, aspheric, aperture, etc.)
 │   ├── diffractive_surface/(DOE surfaces)

@@ -48,7 +48,7 @@ Pure wave-optics lens using diffractive surfaces and scalar diffraction propagat
 
 Thin-lens / circle-of-confusion model for simple depth-of-field and bokeh simulation.
 
-::: deeplens.ParaxialLens
+::: deeplens.DefocusLens
 
 Neural surrogate that wraps a `GeoLens` with an MLP to predict PSFs. Useful for fast, differentiable PSF evaluation during end-to-end training.
 

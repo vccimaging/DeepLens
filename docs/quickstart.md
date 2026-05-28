@@ -90,7 +90,7 @@ DeepLens provides several lens models for different use cases:
 | `HybridLens` | JSON-defined refractive lens + DOE/metasurface phase element | Hybrid ray-wave optics co-design |
 | `DiffractiveLens` | Pure wave-optics diffractive surfaces | Flat optics, DOE design |
 | `PSFNetLens` | Neural network PSF surrogate | Fast PSF approximation |
-| `ParaxialLens` | Thin-lens / circle-of-confusion model | Simple bokeh simulation |
+| `DefocusLens` | Circle-of-confusion (defocus) model | Simple bokeh simulation |
 
 ## Next Steps
 
