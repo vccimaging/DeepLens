@@ -101,53 +101,6 @@ class DiffractiveLens(Lens):
         # Move all tensors (surfaces, sensor params) to the target device.
         self.to(self.device)
 
-    @classmethod
-    def load_example1(cls):
-        """Create an example diffractive lens with a single Fresnel DOE.
-
-        Returns:
-            DiffractiveLens: A configured diffractive lens with a Fresnel surface
-                at f=50mm, 4mm size, and 4000 resolution.
-        """
-        self = cls(sensor_size=(4.0, 4.0), sensor_res=(2000, 2000))
-
-        # Diffractive Fresnel DOE
-        self.surfaces = [Fresnel(f0=50, d=0, size=4, res=4000)]
-
-        # Sensor
-        self.d_sensor = torch.tensor(50)
-        self.foclen = float(self.d_sensor)
-        self.calc_fov()
-
-        self.to(self.device)
-        return self
-
-    @classmethod
-    def load_example2(cls):
-        """Create an example diffractive lens with a thin lens and binary DOE combination.
-
-        Returns:
-            DiffractiveLens: A configured diffractive lens with a ThinLens (f=50mm)
-                and a Binary2 DOE, both at 4mm size and 4000 resolution.
-        """
-        self = cls(sensor_size=(8.0, 8.0), sensor_res=(2000, 2000))
-
-        # Diffractive Fresnel DOE
-        self.surfaces = [
-            ThinLens(f0=50, d=0, size=4, res=4000),
-            Binary2(d=0, size=4, res=4000),
-        ]
-
-        # Sensor
-        self.d_sensor = torch.tensor(50)
-        self.sensor_size = (8.0, 8.0)
-        self.sensor_res = (2000, 2000)
-        self.foclen = float(self.d_sensor)
-        self.calc_fov()
-
-        self.to(self.device)
-        return self
-
     def read_lens_json(self, filename):
         """Load the lens configuration from a JSON file.
 
