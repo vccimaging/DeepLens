@@ -6,8 +6,12 @@ higher-order optical aberrations. It is a fast baseline renderer for
 depth-of-field effects, as commonly used in Blender and similar tools.
 
 We refocus the lens, inspect the circle of confusion and depth of field at a few
-depths, generate a defocus PSF, and render a synthetic RGB-D image with
-out-of-focus blur.
+depths, generate a defocus PSF, and simulate an image by rendering a test chart
+with depth-dependent defocus blur.
+
+Note:
+    ParaxialLens is a thin-lens model with no surface ray tracing, so image
+    simulation is PSF-based only (occlusion-aware PSF compositing).
 
 Reference:
     [1] https://en.wikipedia.org/wiki/Circle_of_confusion
@@ -15,6 +19,8 @@ Reference:
 """
 
 import torch
+import torch.nn.functional as F
+from torchvision.io import read_image
 from torchvision.utils import save_image
 
 from deeplens import ParaxialLens
@@ -55,10 +61,12 @@ psf = lens.psf(point, ks=31, psf_type="pillbox")
 print(f"Defocus PSF: shape {tuple(psf.shape[-2:])}, sum {psf.sum():.3f}")
 save_image(psf.clamp(min=0), f"{save_name}_psf.png", normalize=True)
 
-# Render a synthetic scene: a random RGB image at a uniform out-of-focus depth.
-rgb = torch.rand(1, 3, 64, 64)
-depth_map = torch.full((1, 1, 64, 64), 500.0)  # object-space depth [mm]
-img = lens.render_rgbd(rgb, depth_map)
-print(f"Rendered RGB-D image: shape {tuple(img.shape)}")
-save_image(img.clamp(0, 1), f"{save_name}_render.png")
+# Render a test chart through the lens at a uniform out-of-focus depth.
+img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0
+img = F.interpolate(img.unsqueeze(0), size=(512, 512), mode="bilinear", align_corners=False)
+img = img.to(lens.device)
+depth_map = torch.full((1, 1, 512, 512), 2000.0, device=lens.device)  # object depth [mm]
+img_render = lens.render_rgbd(img, depth_map)
+print(f"Rendered chart through lens: shape {tuple(img_render.shape)}")
+save_image(img_render.clamp(0, 1), f"{save_name}_render.png")
 print(f"Saved outputs to {save_name}_psf.png and {save_name}_render.png")

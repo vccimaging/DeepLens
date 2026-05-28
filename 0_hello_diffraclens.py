@@ -4,7 +4,8 @@ In this code, we load a paraxial diffractive lens (a single Fresnel DOE in
 front of the sensor) from a JSON configuration file. Each optical element is modelled as a phase
 function and the wavefront is propagated to the sensor with the Angular Spectrum
 Method (ASM). We then compute on-axis PSFs for an object at infinity and at a
-finite depth, and save them as images.
+finite depth, and finally simulate an image by convolving a test chart with the
+RGB point spread function.
 
 Note:
     DiffractiveLens runs in float64 for numerical stability of the wave
@@ -18,9 +19,12 @@ Technical Paper:
         High Dynamic Range Imaging," CVPR 2020.
 """
 
+import torch.nn.functional as F
+from torchvision.io import read_image
 from torchvision.utils import save_image
 
 from deeplens import DiffractiveLens
+from deeplens.imgsim import conv_psf
 
 # =====================================================================
 # Lens loading
@@ -50,3 +54,17 @@ print(f"Finite-depth PSF:  shape {tuple(psf_near.shape)}, sum {psf_near.sum():.3
 save_image(psf_inf[None].clamp(min=0), f"{save_name}_psf_inf.png", normalize=True)
 save_image(psf_near[None].clamp(min=0), f"{save_name}_psf_near.png", normalize=True)
 print(f"Saved PSF images to {save_name}_psf_inf.png and {save_name}_psf_near.png")
+
+# =====================================================================
+# Image simulation (PSF convolution)
+# =====================================================================
+# Simulate how the lens images a scene at infinity by convolving a test chart
+# with the (primary-wavelength) infinity PSF computed above.
+img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0
+img = F.interpolate(img.unsqueeze(0), size=(512, 512), mode="bilinear", align_corners=False)
+
+psf_rgb = psf_inf[None].repeat(3, 1, 1)  # [3, ks, ks], same PSF for each channel
+img = img.to(psf_rgb)
+img_render = conv_psf(img, psf_rgb)
+save_image(img_render.clamp(0, 1), f"{save_name}_render.png")
+print(f"Saved simulated image to {save_name}_render.png")

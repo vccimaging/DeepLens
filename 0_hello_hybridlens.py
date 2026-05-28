@@ -6,8 +6,9 @@ tracing computes the complex wavefront at the DOE plane (capturing geometric
 aberrations), the DOE modulates the phase, and the Angular Spectrum Method
 propagates the field to the sensor.
 
-This is a MINIMAL intro: we load a hybrid lens, draw its layout, and compute a
-single on-axis PSF. For the full end-to-end joint optimization loop, see
+This is a MINIMAL intro: we load a hybrid lens, draw its layout, compute a
+single on-axis PSF, and simulate an image by convolving a test chart with the
+RGB PSF. For the full end-to-end joint optimization loop, see
 6_hybridlens_design.py.
 
 Note:
@@ -20,8 +21,13 @@ Technical Paper:
 """
 
 import torch
+import torch.nn.functional as F
+from torchvision.io import read_image
+from torchvision.utils import save_image
 
 from deeplens import HybridLens
+from deeplens.config import WAVE_RGB
+from deeplens.imgsim import conv_psf
 
 # HybridLens requires float64 as the default dtype for accurate phase tracing.
 torch.set_default_dtype(torch.float64)
@@ -51,3 +57,19 @@ print(f"Saved lens layout to {save_name}_layout.png")
 # all diffraction orders at once. Coherent ray tracing needs >= 1e6 samples.
 psf = lens.psf(points=[0.0, 0.0, -10000.0], ks=64, spp=1_000_000)
 print(f"On-axis PSF: shape {tuple(psf.shape)}, sum {psf.sum():.3f}")
+
+# =====================================================================
+# Image simulation (PSF convolution)
+# =====================================================================
+# Build an RGB PSF (one per wavelength) and convolve a test chart to simulate
+# how the hybrid lens images a distant scene (on-axis PSF, spatially invariant).
+img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0
+img = F.interpolate(img.unsqueeze(0), size=(512, 512), mode="bilinear", align_corners=False)
+psf_rgb = torch.stack(
+    [lens.psf(points=[0.0, 0.0, -10000.0], ks=64, wvln=w, spp=1_000_000) for w in WAVE_RGB],
+    dim=0,
+)  # [3, ks, ks]
+img = img.to(psf_rgb)  # match PSF dtype and device
+img_render = conv_psf(img, psf_rgb)
+save_image(img_render.clamp(0, 1), f"{save_name}_render.png")
+print(f"Saved simulated image to {save_name}_render.png")
