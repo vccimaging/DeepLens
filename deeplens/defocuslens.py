@@ -28,7 +28,7 @@ import numpy as np
 import torch
 
 from .lens import Lens
-from .config import DEFAULT_WAVE, DEPTH, EPSILON, PSF_KS, WAVE_RGB
+from .config import EPSILON, PSF_KS
 from .imgsim import conv_psf_depth_interp, conv_psf_occlusion
 
 
@@ -56,34 +56,27 @@ class DefocusLens(Lens):
         fnum,
         sensor_size=(8.0, 8.0),
         sensor_res=(2000, 2000),
-        device="cpu",
-        primary_wvln=DEFAULT_WAVE,
-        wvln_rgb=WAVE_RGB,
-        obj_depth=DEPTH,
+        device=None,
+        dtype=torch.float32,
     ):
         """Initialize a defocus lens.
+
+        A defocus lens models geometric defocus via the circle of confusion,
+        which is wavelength-independent, so it takes no wavelength or default
+        object-depth arguments (unlike the other lens classes).
 
         Args:
             foclen (float): Focal length in [mm].
             fnum (float): F-number.
             sensor_size (tuple, optional): Physical sensor size as (W, H) in [mm]. Defaults to (8.0, 8.0).
             sensor_res (tuple, optional): Sensor resolution as (W, H) in pixels. Defaults to (2000, 2000).
-            device (str, optional): Computation device. Defaults to "cpu".
-            primary_wvln (float, optional): Primary design wavelength [µm].
-                Used as fallback when a method is called without an explicit
-                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
-            wvln_rgb (sequence of float, optional): Three wavelengths used
-                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
-                to ``WAVE_RGB``.
-            obj_depth (float, optional): Default object depth [mm], used
-                when a method is called without an explicit ``depth``.
-                Defaults to ``DEPTH``.
+            device (str, optional): Computation device. Defaults to None
+                (auto-select GPU if available, else CPU).
+            dtype (torch.dtype, optional): Data type for computations. Defaults to torch.float32.
         """
         super(DefocusLens, self).__init__(
             device=device,
-            primary_wvln=primary_wvln,
-            wvln_rgb=wvln_rgb,
-            obj_depth=obj_depth,
+            dtype=dtype,
         )
 
         # Lens parameters
@@ -92,6 +85,7 @@ class DefocusLens(Lens):
 
         # Configure sensor (sets sensor_size, sensor_res, pixel_size, r_sensor).
         self.set_sensor(sensor_size, sensor_res)
+        self.astype(self.dtype)
 
         self.d_far = -20000.0
         self.d_close = -200.0
