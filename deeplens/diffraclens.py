@@ -402,39 +402,52 @@ class DiffractiveLens(Lens):
     # Visualization
     # =============================================
     def draw_layout(self, save_name="./doelens.png"):
-        """Draw the lens layout diagram.
+        """Draw a 2D layout diagram of the diffractive lens.
 
-        Visualizes the DOE and sensor positions in a 2D layout.
+        Each diffractive surface is drawn as a vertical dashed line at its axial
+        position ``z = surface.d``, and the sensor as a solid rectangle at
+        ``z = d_sensor``.
 
         Args:
             save_name (str, optional): Path to save the figure. Defaults to './doelens.png'.
         """
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(12, 4))
 
-        # Draw DOE
-        d = self.doe.d.item()
-        doe_l = self.doe.l
-        ax.plot(
-            [d, d], [-doe_l / 2, doe_l / 2], "orange", linestyle="--", dashes=[1, 1]
-        )
+        default_l = float(max(self.sensor_size))
 
-        # Draw sensor
-        d = self.sensor.d.item()
-        sensor_l = self.sensor.l
-        width = 0.2  # Width of the rectangle
+        # Draw each diffractive surface as a vertical dashed line.
+        for i, surf in enumerate(self.surfaces):
+            d = float(surf.d)
+            surf_l = float(getattr(surf, "w", default_l))
+            ax.plot(
+                [d, d], [-surf_l / 2, surf_l / 2], "orange", linestyle="--", dashes=[1, 1]
+            )
+            ax.text(
+                d, surf_l / 2 * 1.08, f"{type(surf).__name__}\n(z={d:.1f} mm)",
+                ha="center", va="bottom", fontsize=8,
+            )
+
+        # Draw the sensor plane as a thin rectangle.
+        d_sensor = float(self.d_sensor)
+        sensor_l = float(self.sensor_size[1])
+        width = max(0.01 * d_sensor, 0.2)
         rect = plt.Rectangle(
-            (d - width / 2, -sensor_l / 2),
-            width,
-            sensor_l,
-            facecolor="none",
-            edgecolor="black",
-            linewidth=1,
+            (d_sensor - width / 2, -sensor_l / 2), width, sensor_l,
+            facecolor="none", edgecolor="black", linewidth=1,
         )
         ax.add_patch(rect)
+        ax.text(
+            d_sensor, sensor_l / 2 * 1.08, f"Sensor\n(z={d_sensor:.1f} mm)",
+            ha="center", va="bottom", fontsize=8,
+        )
 
-        ax.set_aspect("equal")
-        ax.axis("off")
-        fig.savefig(save_name, dpi=600, bbox_inches="tight")
+        # Optical axis.
+        ax.plot([0, d_sensor], [0, 0], "k-", linewidth=0.5, alpha=0.3)
+
+        ax.set_xlabel("z [mm]")
+        ax.set_yticks([])
+        ax.margins(x=0.05, y=0.25)
+        fig.savefig(save_name, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
     def draw_psf(
