@@ -48,8 +48,8 @@ class DiffractiveLens(Lens):
             plane [mm].
 
     Notes:
-        Operates in ``torch.float64`` by default for numerical stability of
-        the wave-propagation step.
+        Lens parameters default to ``torch.float32``; pass
+        ``dtype=torch.float64`` for higher-precision wave propagation.
     """
 
     def __init__(
@@ -66,8 +66,9 @@ class DiffractiveLens(Lens):
         Args:
             filename (str, optional): Path to the lens configuration JSON file. If provided, loads the lens configuration from file. Defaults to None.
             device (str, optional): Computation device ('cpu' or 'cuda'). Defaults to 'cpu'.
-            dtype (torch.dtype, optional): Data type for computations. Defaults
-                to torch.float64 (needed for numerically stable wave propagation).
+            dtype (torch.dtype, optional): Data type for the lens parameters.
+                Defaults to torch.float32; pass torch.float64 for
+                higher-precision wave propagation.
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
                 ``wvln``.  Defaults to ``DEFAULT_WAVE``.
