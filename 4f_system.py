@@ -52,7 +52,7 @@ ZOOM = 64  # half-size [px] of the centred zoom shown for each PSF
 # Load the 4F system
 # =====================================================================
 lens = DiffractiveLens(
-    filename="./datasets/lenses/diffraclens/fourf.json", device=device
+    filename="./datasets/lenses/diffraclens/4f_doe.json", device=device
 )
 print(
     f"4F system: {len(lens.surfaces)} surfaces, sensor {lens.sensor_size} mm @ "
