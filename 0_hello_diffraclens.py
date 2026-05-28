@@ -27,7 +27,7 @@ from deeplens import DiffractiveLens
 # =====================================================================
 # Load a minimal diffractive lens (a single Fresnel DOE focusing at f0 = 50 mm,
 # one focal length in front of the sensor) from a JSON configuration file.
-lens = DiffractiveLens(filename="./datasets/lenses/diffraclens/hello_doelens.json")
+lens = DiffractiveLens(filename="./datasets/lenses/diffraclens/fresnel.json")
 
 print(f"DiffractiveLens with {len(lens.surfaces)} surface(s), "
       f"sensor {lens.sensor_size} mm @ {lens.sensor_res} px.")
