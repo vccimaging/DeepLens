@@ -285,16 +285,16 @@ class ComplexWave(DeepObj):
                 "The propagation distance in sub-wavelength range is not implemented yet. Have to use full wave method (e.g., FDTD)."
             )
 
-        elif prop_dist < self._asm_zmax:
-            # Angular Spectrum Method (ASM)
-            self.u = AngularSpectrumMethod(self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n)
-
-        elif prop_dist > self._fresnel_zmin:
-            # Fresnel diffraction
-            self.u = FresnelDiffraction(self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n)
+        elif prop_dist <= self._fresnel_zmin:
+            # Band-limited ASM (Matsushima & Shimobaba 2009): rigorous angular
+            # spectrum with a band-limit that suppresses aliasing. Valid across
+            # the near and intermediate fields, so it covers the former gap
+            # between the Nyquist-ASM and Fresnel regimes.
+            self.u = BandLimitedASM(self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n)
 
         else:
-            raise Exception(f"Propagation method not implemented for distance {prop_dist} mm.")
+            # Fresnel diffraction (far field)
+            self.u = FresnelDiffraction(self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n)
         
         # Update z grid
         self.z += prop_dist
@@ -539,6 +539,86 @@ def AngularSpectrumMethod(u, z, wvln, ps, n=1.0, padding=True):
     H = torch.exp(1j * k * z * square_root)
 
     # https://pytorch.org/docs/stable/generated/torch.fft.fftshift.html#torch.fft.fftshift
+    u = ifft2(fft2(u) * H)
+
+    # Remove padding
+    if padding:
+        u = u[..., Hpad:-Hpad, Wpad:-Wpad]
+
+    return u
+
+
+def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
+    """Band-limited angular spectrum method.
+
+    Standard ASM aliases when the propagation distance is large enough that the
+    transfer function oscillates faster in frequency than the grid can sample,
+    producing ghost-lattice replicas. This variant applies the Matsushima &
+    Shimobaba band-limit: frequencies whose transfer-function fringe would be
+    undersampled on the current grid are zeroed. The near-field (well-sampled)
+    regime is left unchanged, so this is a drop-in replacement for
+    :func:`AngularSpectrumMethod` that additionally stays valid across the
+    intermediate field.
+
+    Args:
+        u (tensor): complex field, shape [H, W] or [B, 1, H, W]
+        z (float): propagation distance in [mm]
+        wvln (float): wavelength in [um]
+        ps (float): pixel size in [mm]
+        n (float): refractive index
+        padding (bool): padding or not
+
+    Returns:
+        u: complex field, same shape as input.
+
+    Reference:
+        [1] K. Matsushima and T. Shimobaba, "Band-Limited Angular Spectrum
+            Method for Numerical Simulation of Free-Space Propagation in Far
+            and Near Fields," Optics Express 17(22), 19662-19673, 2009.
+    """
+    assert wvln > 0.1 and wvln < 10.0, "wvln unit should be [um]."
+    wvln_mm = wvln * 1e-3 / n  # [um] to [mm]
+    k = 2 * torch.pi / wvln_mm  # [mm]-1
+
+    # Shape
+    if len(u.shape) == 2:
+        Horg, Worg = u.shape
+    elif len(u.shape) == 4:
+        B, C, Horg, Worg = u.shape
+        if isinstance(z, torch.Tensor):
+            z = z.unsqueeze(0).unsqueeze(0)
+
+    # Padding
+    if padding:
+        Wpad, Hpad = Worg // 2, Horg // 2
+        Wimg, Himg = Worg + 2 * Wpad, Horg + 2 * Hpad
+        u = F.pad(u, (Wpad, Wpad, Hpad, Hpad), mode="constant", value=0)
+    else:
+        Wimg, Himg = Worg, Horg
+
+    # Angular-spectrum transfer function on the unshifted frequency grid.
+    real_dtype = u.real.dtype
+    fx_1d = torch.fft.fftfreq(Wimg, d=ps, device=u.device, dtype=real_dtype)
+    fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=real_dtype)
+    f2 = fx_1d.unsqueeze(0) ** 2 + fy_1d.unsqueeze(1) ** 2
+    radicand = 1 - wvln_mm**2 * f2
+    complex_dtype = torch.complex128 if radicand.dtype == torch.float64 else torch.complex64
+    square_root = torch.sqrt(radicand.to(complex_dtype))
+    H = torch.exp(1j * k * z * square_root)
+
+    # Band-limit (Matsushima & Shimobaba 2009): zero the frequencies whose
+    # transfer-function fringe would be undersampled. The limiting frequency is
+    # f_limit = 1 / (lambda * sqrt((2 * df * z)^2 + 1)), with df = 1 / (N * ps)
+    # the frequency sampling interval. Below this limit the window is all-ones,
+    # so short-distance propagation matches the standard ASM exactly.
+    z_abs = abs(float(z)) if not torch.is_tensor(z) else float(torch.as_tensor(z).abs().max())
+    dfx = 1.0 / (Wimg * ps)
+    dfy = 1.0 / (Himg * ps)
+    fx_limit = 1.0 / (wvln_mm * math.sqrt((2.0 * dfx * z_abs) ** 2 + 1.0))
+    fy_limit = 1.0 / (wvln_mm * math.sqrt((2.0 * dfy * z_abs) ** 2 + 1.0))
+    window = (fx_1d.abs().unsqueeze(0) < fx_limit) & (fy_1d.abs().unsqueeze(1) < fy_limit)
+    H = H * window.to(real_dtype)
+
     u = ifft2(fft2(u) * H)
 
     # Remove padding

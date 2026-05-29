@@ -1,6 +1,7 @@
 from .ray import Ray
 from .wave import (
     AngularSpectrumMethod,
+    BandLimitedASM,
     ComplexWave,
     FresnelDiffraction,
     Fresnel_zmin,
@@ -15,6 +16,7 @@ __all__ = [
     "Ray",
     "ComplexWave",
     "AngularSpectrumMethod",
+    "BandLimitedASM",
     "ScalableASM",
     "FresnelDiffraction",
     "FraunhoferDiffraction",
