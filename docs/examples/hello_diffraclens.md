@@ -43,10 +43,10 @@ img_render = lens.render(img, depth=-200.0)
 ![Render](../assets/hello_diffraclens/render.png)
 
 !!! note
-    A single-element Fresnel plate at a coarse pixel pitch is undersampled at the
-    focal plane, so the PSF shows a residual diffraction "ghost" background. See
-    [DiffractiveLens design](design_diffraclens.md) for the sampling rule that
-    governs a clean focus.
+    The Fresnel plate is sampled at 2 µm so the quadratic phase is well-sampled
+    (`ps < λ·f/D`) and forms a clean, diffraction-limited focus. Coarser pixel
+    pitches undersample the phase and produce ghost-lattice PSFs; see
+    [DiffractiveLens design](design_diffraclens.md) for the sampling rule.
 
 ## See also
 
