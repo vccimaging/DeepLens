@@ -43,15 +43,15 @@ save_name = "./hello_diffraclens"
 # half-width/height), z = depth in mm (-inf for an object at infinity).
 
 # On-axis PSF for an object at infinity (plane wave input).
-psf_inf = lens.psf(points=[0.0, 0.0, float("-inf")], wvln=0.55)
+psf_inf = lens.psf(points=[0.0, 0.0, float("-inf")], wvln=0.55, ks=128)
 save_image(psf_inf[None].clamp(min=0), f"{save_name}_psf_inf.png", normalize=True)
 
 # On-axis PSF for a finite object depth (point-source / spherical wave input).
-psf_near = lens.psf(points=[0.0, 0.0, -500.0], wvln=0.55)
+psf_near = lens.psf(points=[0.0, 0.0, -500.0], wvln=0.55, ks=128)
 save_image(psf_near[None].clamp(min=0), f"{save_name}_psf_near.png", normalize=True)
 
 # Off-axis PSF: a collimated source at normalised field x = 0.7.
-psf_off = lens.psf(points=[0.7, 0.0, float("-inf")], wvln=0.55)
+psf_off = lens.psf(points=[0.7, 0.0, float("-inf")], wvln=0.55, ks=128)
 save_image(psf_off[None].clamp(min=0), f"{save_name}_psf_offaxis.png", normalize=True)
 
 # =====================================================================
