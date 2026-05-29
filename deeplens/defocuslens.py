@@ -184,6 +184,7 @@ class DefocusLens(Lens):
         Reference:
             [1] https://en.wikipedia.org/wiki/Circle_of_confusion
         """
+        depth = torch.as_tensor(depth, device=self.device)
         foc_dist = torch.tensor(
             self.foc_dist, device=self.device, dtype=depth.dtype
         ).abs()
@@ -212,6 +213,7 @@ class DefocusLens(Lens):
         Reference:
             [1] https://en.wikipedia.org/wiki/Depth_of_field
         """
+        depth = torch.as_tensor(depth, device=self.device)
         depth = torch.clamp(depth, self.d_far, self.d_close)
         depth_abs = torch.abs(depth)
 
