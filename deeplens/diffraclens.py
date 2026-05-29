@@ -282,7 +282,7 @@ class DiffractiveLens(Lens):
         img_render = conv_psf(img, psf)
         return img_render
 
-    def psf(self, points, wvln=None, ks=None, recenter=True, upsample_factor=1):
+    def psf(self, points, wvln=None, ks=None, recenter=False, upsample_factor=1):
         """Calculate the monochromatic PSF for one or more point sources.
 
         Off-axis point sources are supported. The signature follows
@@ -298,11 +298,11 @@ class DiffractiveLens(Lens):
             ks (int, optional): PSF kernel size in pixels. When ``None``
                 (default), the full sensor resolution
                 (``max(self.sensor_res)``) is used.
-            recenter (bool, optional): If True (default), crop the PSF around
-                its measured peak (argmax of the sensor-plane intensity) so
+            recenter (bool, optional): If True, crop the PSF around its
+                measured peak (argmax of the sensor-plane intensity) so
                 off-axis PSFs stay centered in the kernel. A diffractive lens
                 has no chief ray, so the peak location is measured rather than
-                predicted. If False, crop around the sensor center.
+                predicted. If False (default), crop around the sensor center.
             upsample_factor (int, optional): Field upsampling factor to meet the
                 Nyquist sampling constraint. Defaults to 1.
 
@@ -317,10 +317,7 @@ class DiffractiveLens(Lens):
             spectrum method".
         """
         wvln = self.primary_wvln if wvln is None else wvln
-        # Default the kernel size to the full sensor resolution so the PSF
-        # spans the whole sensor (sensor_res is (W, H); use the larger side).
         ks = max(int(self.sensor_res[0]), int(self.sensor_res[1])) if ks is None else ks
-
         if not torch.is_tensor(points):
             points = torch.tensor(points, dtype=torch.float64)
         single_point = points.dim() == 1
