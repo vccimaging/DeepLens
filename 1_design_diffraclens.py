@@ -2,16 +2,9 @@
 
 A single Pixel2D DOE -- each pixel an independent, randomly initialized phase
 value -- is placed one focal length (50 mm) in front of the sensor. Starting from
-random phase, we minimize the on-axis PSF spatial variance (``PSFLoss``) so the
-collimated on-axis beam converges to a tight spot on the sensor plane. In other
-words, the DOE learns a lens-like (Fresnel) phase profile from scratch.
-
-The wavefront is propagated with the Angular Spectrum Method (ASM) in float64 for
-numerical stability. The DOE is 1000 x 1000 at an 8 um pitch (8 mm aperture,
-f/6.25), which keeps the 50 mm sensor distance well inside the ASM Nyquist range
-(z_max = res*ps^2/wvln ~= 116 mm). Resolution is bounded by this constraint: at a
-fixed aperture a finer pitch shrinks z_max below 50 mm, so increasing resolution
-means enlarging the aperture at the 8 um pitch floor.
+random phase, we maximize the on-axis PSF peak (Strehl) intensity (``PSFStrehlLoss``)
+so the collimated on-axis beam converges to a tight spot on the sensor plane. In
+other words, the DOE learns a lens-like (Fresnel) phase profile from scratch.
 
 Technical Paper:
     [1] Vincent Sitzmann et al., "End-to-end optimization of optics and image
@@ -30,7 +23,7 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 
 from deeplens import DiffractiveLens
-from deeplens.loss import PSFLoss
+from deeplens.loss import PSFStrehlLoss
 from deeplens.utils import set_logger, set_seed
 
 
@@ -67,28 +60,32 @@ def main() -> None:
     # Initial (random-phase) state.
     with torch.no_grad():
         doe.draw_phase_map(save_name=f"{result_dir}/phase_init.png")
-        psf_init = lens.psf(points=on_axis_inf, ks=128)
+        psf_init = lens.psf(points=on_axis_inf)
         save_image(
             psf_init[None].clamp(min=0), f"{result_dir}/psf_init.png", normalize=True
         )
     lens.draw_layout(save_name=f"{result_dir}/layout.png")
 
-    # Optimize the on-axis PSF to focus (PSFLoss minimizes the PSF spatial variance).
+    # Optimize the on-axis PSF to focus (PSFStrehlLoss maximizes the center-pixel
+    # intensity, i.e. the Strehl ratio).
     optimizer = lens.get_optimizer(lr=0.1)
-    loss_fn = PSFLoss()
+    loss_fn = PSFStrehlLoss()
 
     pbar = tqdm(range(1000 + 1), desc="Designing DOE")
     for i in pbar:
-        psf = lens.psf(points=on_axis_inf, ks=128)
-        loss = loss_fn(psf)
+        psf = lens.psf(points=on_axis_inf)
+        # PSFStrehlLoss expects an RGB [3, ks, ks] PSF and returns a score to
+        # maximize; replicate the mono PSF and minimize its negative.
+        strehl = loss_fn(psf.unsqueeze(0).repeat(3, 1, 1))
+        loss = -strehl
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        pbar.set_postfix({"loss": f"{loss.item():.4e}"})
+        pbar.set_postfix({"strehl": f"{strehl.item():.4e}"})
         if i % 100 == 0:
-            logging.info(f"[iter {i:5d}] focus loss = {loss.item():.6e}")
+            logging.info(f"[iter {i:5d}] strehl = {strehl.item():.6e}")
             with torch.no_grad():
                 save_image(
                     psf.detach()[None].clamp(min=0),
@@ -99,7 +96,7 @@ def main() -> None:
     # Final result.
     with torch.no_grad():
         doe.draw_phase_map(save_name=f"{result_dir}/phase_final.png")
-        psf_final = lens.psf(points=on_axis_inf, ks=128)
+        psf_final = lens.psf(points=on_axis_inf)
         save_image(
             psf_final[None].clamp(min=0), f"{result_dir}/psf_final.png", normalize=True
         )
