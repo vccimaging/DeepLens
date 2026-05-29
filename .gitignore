@@ -13,6 +13,7 @@ deeplens/do_code/
 !images/*.png
 !assets/*.png
 !docs/assets/*.png
+!docs/assets/**/*.png
 debug.py
 *.log
 temp/*

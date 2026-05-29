@@ -70,5 +70,22 @@ nav:
   - API Reference:
       - Optics: api/optics.md
       - Surrogate Networks: api/network.md
-  - Examples: examples.md
+  - Examples:
+      - Overview: examples/index.md
+      - Getting Started:
+          - GeoLens: examples/hello_geolens.md
+          - DefocusLens: examples/hello_defocuslens.md
+          - DiffractiveLens: examples/hello_diffraclens.md
+          - HybridLens: examples/hello_hybridlens.md
+      - Lens Design:
+          - GeoLens: examples/design_geolens.md
+          - DiffractiveLens: examples/design_diffraclens.md
+          - HybridLens: examples/design_hybridlens.md
+      - Advanced:
+          - Automated Lens Design: examples/autolens_rms.md
+          - PSF Network: examples/psf_net.md
+          - 4f System: examples/4f_system.md
+          - Pupil Field: examples/pupil_field.md
+          - Multi-order Diffraction: examples/multi_order.md
+          - Diffractive Surfaces: examples/diffractive_surfaces.md
   - Contributing: contributing.md
