@@ -32,9 +32,7 @@ from .geolens_pkg.eval import GeoLensEval
 from .geolens_pkg.io import GeoLensIO
 from .geolens_pkg.optim import GeoLensOptim
 from .geolens_pkg.psf_compute import GeoLensPSF
-from .geolens_pkg.eval_seidel import GeoLensSeidel
 from .geolens_pkg.optim_ops import GeoLensSurfOps
-from .geolens_pkg.eval_tolerance import GeoLensTolerance
 from .geolens_pkg.vis3d import GeoLensVis3D
 from .geolens_pkg.vis import GeoLensVis
 from .imgsim import backward_integral
@@ -46,12 +44,10 @@ from .light import Ray
 class GeoLens(
     GeoLensPSF,
     GeoLensEval,
-    GeoLensSeidel,
     GeoLensOptim,
     GeoLensSurfOps,
     GeoLensVis,
     GeoLensIO,
-    GeoLensTolerance,
     GeoLensVis3D,
     Lens,
 ):
@@ -61,7 +57,7 @@ class GeoLens(
     (and partially reflective) systems loaded from JSON, Zemax ``.zmx``, or
     Code V ``.seq`` files.  Accuracy is aligned with Zemax OpticStudio.
 
-    Uses a **mixin architecture** – eight specialised mixin classes are
+    Uses a **mixin architecture** – seven specialised mixin classes are
     composed at class definition time to keep each concern isolated:
 
     * :class:`~deeplens.geolens_pkg.psf_compute.GeoLensPSF` – PSF
@@ -77,8 +73,6 @@ class GeoLens(
       and ray visualisation.
     * :class:`~deeplens.geolens_pkg.io.GeoLensIO` – read/write
       JSON, Zemax ``.zmx``.
-    * :class:`~deeplens.geolens_pkg.eval_tolerance.GeoLensTolerance` –
-      manufacturing tolerance analysis.
     * :class:`~deeplens.geolens_pkg.vis3d.GeoLensVis3D` – 3-D
       mesh visualisation.
 

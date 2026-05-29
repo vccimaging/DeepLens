@@ -70,6 +70,7 @@ class Fresnel(DiffractiveSurface):
         """Get the phase map at design wavelength."""
         wvln0_mm = self.wvln0 * 1e-3
         phase = -2 * torch.pi * self.r2 / (2 * self.f0 * wvln0_mm)
+        self._warn_if_undersampled(phase, self.f0, self.wvln0)
         return phase
 
     # =======================================

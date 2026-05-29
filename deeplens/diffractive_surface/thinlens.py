@@ -63,6 +63,7 @@ class ThinLens(DiffractiveSurface):
         # Same focal length for all wavelengths
         wvln_mm = wvln * 1e-3
         phase_map = -2 * torch.pi * (self.x**2 + self.y**2) / (2 * self.f0 * wvln_mm)
+        self._warn_if_undersampled(phase_map, self.f0, wvln)
         phase_map = torch.remainder(phase_map, 2 * torch.pi)
 
         # Interpolate to the desired resolution

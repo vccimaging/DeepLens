@@ -37,8 +37,6 @@ class Surface(DeepObj):
         r (float): Aperture radius [mm].
         mat2 (Material): Optical material on the transmission side.
         is_square (bool): If ``True`` the aperture is square; otherwise circular.
-        tolerancing (bool): When ``True``, manufacturing error offsets are
-            applied during ray tracing.
     """
 
     def __init__(
@@ -96,9 +94,6 @@ class Surface(DeepObj):
         self.newton_convergence = 50.0 * 1e-6  # [mm], Newton method convergence threshold
         self.newton_step_bound = 5.0  # [mm], maximum step size in each iteration
 
-        self.tolerancing = False
-        self._R_tilt = None
-        self._R_tilt_inv = None
         self.device = device if device is not None else torch.device("cpu")
         self.to(self.device)
 
@@ -142,9 +137,6 @@ class Surface(DeepObj):
         via Newton's method, applies vector Snell's law (or specular reflection),
         then transforms back to global coordinates.
 
-        When tolerancing is active, ``mat2_n_error`` is added to ``n2`` to
-        simulate refractive-index manufacturing error.
-
         Args:
             ray (Ray): Incident ray bundle.
             n1 (float): Refractive index of the incident medium.
@@ -162,9 +154,6 @@ class Surface(DeepObj):
         ray = self.intersect(ray, n1)
 
         if refraction:
-            # Apply refractive index tolerance error
-            if self.tolerancing:
-                n2 = n2 + self.mat2_n_error
             old_d = ray.d.clone()
             ray = self.refract(ray, n1 / n2)
             ray = self.bend_penalty(ray, old_d)
@@ -370,10 +359,6 @@ class Surface(DeepObj):
     def to_local_coord(self, ray):
         """Transform ray to local coordinate system.
 
-        When tolerancing is active, applies manufacturing error perturbations:
-        d_error (axial shift), decenter_x/y_error (lateral shift), and
-        tilt_error (rotation about the x-axis).
-
         Args:
             ray (Ray): input ray in global coordinate system.
 
@@ -381,23 +366,8 @@ class Surface(DeepObj):
             ray (Ray): transformed ray in local coordinate system.
         """
         # Shift ray origin to surface origin
-        if self.tolerancing:
-            offset = torch.stack(
-                [
-                    self.pos_x + self.decenter_x_error,
-                    self.pos_y + self.decenter_y_error,
-                    self.d + self.d_error,
-                ]
-            ).expand_as(ray.o)
-        else:
-            offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
         ray.o = ray.o - offset
-
-        # Apply tilt rotation (tolerance-induced, using cached matrix)
-        if self._R_tilt is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_tilt)
-            ray.d = self._apply_rotation(ray.d, self._R_tilt)
-            ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         # Rotate ray origin and direction
         if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
@@ -410,9 +380,6 @@ class Surface(DeepObj):
 
     def to_global_coord(self, ray):
         """Transform ray to global coordinate system.
-
-        When tolerancing is active, reverses the manufacturing error
-        perturbations applied in :meth:`to_local_coord`.
 
         Args:
             ray (Ray): input ray in local coordinate system.
@@ -427,23 +394,8 @@ class Surface(DeepObj):
             ray.d = self._apply_rotation(ray.d, R)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
-        # Reverse tilt rotation (tolerance-induced, using cached inverse matrix)
-        if self._R_tilt_inv is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_tilt_inv)
-            ray.d = self._apply_rotation(ray.d, self._R_tilt_inv)
-            ray.d = F.normalize(ray.d, p=2, dim=-1)
-
         # Shift ray origin back to global coordinates
-        if self.tolerancing:
-            offset = torch.stack(
-                [
-                    self.pos_x + self.decenter_x_error,
-                    self.pos_y + self.decenter_y_error,
-                    self.d + self.d_error,
-                ]
-            ).expand_as(ray.o)
-        else:
-            offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
         ray.o = ray.o + offset
 
         return ray
@@ -524,25 +476,6 @@ class Surface(DeepObj):
         rotated_flat = torch.mm(vectors_flat, R.t())
         # Reshape back to original shape
         return rotated_flat.view(original_shape)
-
-    @staticmethod
-    def _tilt_rotation_matrix(angle, device="cpu"):
-        """Rotation matrix for surface tilt about the x-axis.
-
-        Args:
-            angle (float): Tilt angle in radians.
-            device: Torch device.
-
-        Returns:
-            torch.Tensor: 3x3 rotation matrix.
-        """
-        cos_a = math.cos(angle)
-        sin_a = math.sin(angle)
-        return torch.tensor(
-            [[1, 0, 0], [0, cos_a, sin_a], [0, -sin_a, cos_a]],
-            dtype=torch.get_default_dtype(),
-            device=device,
-        )
 
     # =====================================================================
     # Computation functions
@@ -661,10 +594,7 @@ class Surface(DeepObj):
                 torch.abs(y) <= (self.h / 2 + EPSILON)
             )
         else:
-            if self.tolerancing:
-                r = self.r + self.r_error
-            else:
-                r = self.r
+            r = self.r
             valid = (x**2 + y**2) <= (r**2 + EPSILON)
 
         return valid
@@ -724,117 +654,6 @@ class Surface(DeepObj):
         """Update surface radius."""
         r_max = self.max_height()
         self.r = min(r, r_max)
-
-    # =====================================================================
-    # Tolerancing
-    # =====================================================================
-    def init_tolerance(self, tolerance_params=None):
-        """Initialize tolerance parameters for the surface.
-
-        Args:
-            tolerance_params (dict or None): Tolerance for surface parameters.
-                Supported keys (all optional, default values shown):
-
-                .. code-block:: python
-
-                    {
-                        "r_tole": 0.05,          # aperture radius [mm]
-                        "d_tole": 0.05,          # axial position [mm]
-                        "decenter_tole": 0.1,    # lateral decentre x & y [mm]
-                        "tilt_tole": 0.1,        # tilt [arcmin]
-                        "mat2_n_tole": 0.001,    # refractive index
-                    }
-
-        References:
-            [1] https://www.edmundoptics.com/knowledge-center/application-notes/optics/understanding-optical-specifications/
-            [2] https://wp.optics.arizona.edu/optomech/wp-content/uploads/sites/53/2016/08/8-Tolerancing-1.pdf
-            [3] https://wp.optics.arizona.edu/jsasian/wp-content/uploads/sites/33/2016/03/L17_OPTI517_Lens-_Tolerancing.pdf
-        """
-        if tolerance_params is None:
-            tolerance_params = {}
-
-        # Tolerance ranges
-        self.r_tole = tolerance_params.get("r_tole", 0.05)
-        self.d_tole = tolerance_params.get("d_tole", 0.05)
-        self.decenter_tole = tolerance_params.get("decenter_tole", 0.1)
-        self.tilt_tole = tolerance_params.get("tilt_tole", 0.1)
-        self.mat2_n_tole = tolerance_params.get("mat2_n_tole", 0.001)
-
-        # Initialize error values to zero (set to random values by sample_tolerance)
-        self.r_error = 0.0
-        self.d_error = 0.0
-        self.decenter_x_error = 0.0
-        self.decenter_y_error = 0.0
-        self.tilt_error = 0.0
-        self.mat2_n_error = 0.0
-        # Cached tilt rotation matrices (populated by sample_tolerance)
-        self._R_tilt = None
-        self._R_tilt_inv = None
-
-    @torch.no_grad()
-    def sample_tolerance(self):
-        """Sample one set of random manufacturing errors for the surface.
-
-        Error distributions:
-            - r_error: Uniform[-r_tole, 0] (aperture only shrinks).
-            - d_error: Normal(0, d_tole) axial position shift [mm].
-            - decenter_x/y_error: Normal(0, decenter_tole) lateral shift [mm].
-            - tilt_error: Normal(0, tilt_tole) tilt about x-axis [arcmin → rad].
-            - mat2_n_error: Normal(0, mat2_n_tole) refractive index offset.
-        """
-        self.r_error = float(np.random.uniform(-self.r_tole, 0))  # [mm]
-        self.d_error = float(np.random.randn() * self.d_tole)  # [mm]
-        self.decenter_x_error = float(np.random.randn() * self.decenter_tole)  # [mm]
-        self.decenter_y_error = float(np.random.randn() * self.decenter_tole)  # [mm]
-        tilt_arcmin = float(np.random.randn() * self.tilt_tole)  # [arcmin]
-        self.tilt_error = tilt_arcmin / 60.0 * np.pi / 180.0  # [rad]
-        self.mat2_n_error = float(np.random.randn() * self.mat2_n_tole)
-
-        # Cache tilt rotation matrices to avoid per-call tensor allocation
-        if abs(self.tilt_error) > 1e-12:
-            self._R_tilt = self._tilt_rotation_matrix(self.tilt_error, self.device)
-            self._R_tilt_inv = self._tilt_rotation_matrix(-self.tilt_error, self.device)
-        else:
-            self._R_tilt = None
-            self._R_tilt_inv = None
-
-        self.tolerancing = True
-
-    def zero_tolerance(self):
-        """Reset all manufacturing errors to zero (nominal state)."""
-        self.r_error = 0.0
-        self.d_error = 0.0
-        self.decenter_x_error = 0.0
-        self.decenter_y_error = 0.0
-        self.tilt_error = 0.0
-        self.mat2_n_error = 0.0
-        self._R_tilt = None
-        self._R_tilt_inv = None
-        self.tolerancing = False
-
-    def sensitivity_score(self):
-        """Compute first-order tolerance sensitivity scores via RSS formula.
-
-        For each parameter with a gradient, the score is:
-        ``tolerance_range² × gradient²``, which approximates the variance of
-        the loss contribution from that parameter's manufacturing error.
-
-        Returns:
-            dict: Sensitivity gradients and RSS scores keyed by surface index.
-
-        Reference:
-            [1] Page 10 from: https://wp.optics.arizona.edu/optomech/wp-content/uploads/sites/53/2016/08/8-Tolerancing-1.pdf
-        """
-        score_dict = {}
-        idx = getattr(self, "surf_idx", id(self))
-
-        if self.d.grad is not None:
-            score_dict[f"surf{idx}_d_grad"] = round(self.d.grad.item(), 6)
-            score_dict[f"surf{idx}_d_score"] = round(
-                (self.d_tole**2 * self.d.grad**2).item(), 6
-            )
-
-        return score_dict
 
     # =====================================================================
     # Visualization

@@ -29,7 +29,6 @@ lens.analysis_spot()
 lens.draw_spot_radial(save_name=f"{save_name}_spot.png")
 lens.draw_mtf(depth_list=[lens.obj_depth], save_name=f"{save_name}_mtf.png")
 lens.draw_distortion_radial(save_name=f"{save_name}_distortion.png")
-lens.draw_field_curvature(save_name=f"{save_name}_field_curvature.png")
 lens.draw_vignetting(filename=f"{save_name}_vignetting.png", depth=lens.obj_depth)
 
 lens.write_lens_zmx()

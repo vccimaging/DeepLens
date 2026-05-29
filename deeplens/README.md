@@ -22,7 +22,7 @@ This document outlines the file structure of the `deeplens` package.
 -   **`geolens.py`**: `GeoLens` — refractive lens systems (differentiable ray tracing).
 -   **`diffraclens.py`**: `DiffractiveLens` — paraxial diffractive lens systems.
 -   **`hybridlens.py`**: `HybridLens` — hybrid refractive-diffractive systems.
--   **`paraxiallens.py`**: `ParaxialLens` — paraxial (thin lens) model for defocus.
+-   **`defocuslens.py`**: `DefocusLens` — defocus (circle-of-confusion) model.
 -   **`psfnetlens.py`**: `PSFNetLens` — neural surrogate for PSF prediction.
 
 ## Subpackages
@@ -43,6 +43,6 @@ This document outlines the file structure of the `deeplens` package.
     -   `monte_carlo.py`: `forward_integral()` for differentiable PSF accumulation.
     -   `psf.py`: PSF convolution variants (single, spatially-varying, depth-varying, per-pixel).
 
--   **`geolens_pkg/`**: `GeoLens` mixins (PSF compute, evaluation, Seidel/tolerance analysis, optimization, I/O, 2D/3D visualization).
+-   **`geolens_pkg/`**: `GeoLens` mixins (PSF compute, evaluation, optimization, I/O, 2D/3D visualization).
 
 -   **`surrogate/`**: Neural surrogate networks (MLP, MLPConv, Siren, ModulateSiren, PSFNetMLPConv).

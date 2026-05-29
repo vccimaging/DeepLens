@@ -1,0 +1,26 @@
+{
+    "info": "Fresnel focusing lens + Rank-1 encoding DOE (Sun et al., CVPR 2020) demo.",
+    "d_sensor": 50.0,
+    "sensor_size": [4.0, 4.0],
+    "sensor_res": [500, 500],
+    "surfaces": [
+        {
+            "idx": 1,
+            "type": "Fresnel",
+            "f0": 50.0,
+            "res": [500, 500],
+            "fab_ps": 0.008,
+            "wvln0": 0.55,
+            "d_next": 0.0
+        },
+        {
+            "idx": 2,
+            "type": "Rank1",
+            "rank": 1,
+            "res": [500, 500],
+            "fab_ps": 0.008,
+            "wvln0": 0.55,
+            "d_next": 50.0
+        }
+    ]
+}

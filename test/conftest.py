@@ -220,6 +220,7 @@ def sample_diffraclens():
     lens = DiffractiveLens()
     lens.surfaces = [Fresnel(f0=50, d=0, res=500, fab_ps=0.008)]
     lens.d_sensor = torch.tensor(50.0, dtype=torch.float64)
+    lens.foclen = float(lens.d_sensor)
     lens.sensor_size = (4.0, 4.0)
     lens.sensor_res = (500, 500)
     lens.pixel_size = lens.sensor_size[0] / lens.sensor_res[0]

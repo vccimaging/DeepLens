@@ -1,0 +1,16 @@
+{
+    "info": "Single Pixel2D phase plate (each pixel an independent, randomly initialized phase), sensor one focal length (50 mm) behind. Used by 1_design_diffraclens.py to optimize the on-axis PSF to focus on the sensor. 2500x2500 at 2 um pitch (5 mm aperture, f/10). The binding sampling constraint is lateral: the marginal-ray spatial frequency (D/2)/(lambda*f) ~= 91 cyc/mm stays well below the grid Nyquist 1/(2*ps) = 250 cyc/mm, so the full aperture can focus to a diffraction-limited spot (lambda*f/D ~= 5.5 um).",
+    "d_sensor": 50.0,
+    "sensor_size": [5.0, 5.0],
+    "sensor_res": [2000, 2000],
+    "surfaces": [
+        {
+            "idx": 1,
+            "type": "Pixel2D",
+            "res": [2500, 2500],
+            "fab_ps": 0.002,
+            "wvln0": 0.55,
+            "d_next": 50.0
+        }
+    ]
+}

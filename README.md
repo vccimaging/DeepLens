@@ -2,6 +2,8 @@
 
 **DeepLens** is a differentiable optical lens simulator that supports multiple optical models (eg., geometric, diffractive, hybrid, neural, and interpolation). It can be used for (1) image simulation, (2) optical design, and (3) end-to-end optics-algorithm co-design ([End2end-Imaging](https://github.com/vccimaging/End2endImaging)). DeepLens enables researchers to rapidly prototype and optimize custom optical systems through differentiable simulation.
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/singer-yang/DeepLens)
+
 <div style="text-align:center;">
     <img src="assets/logo.png"/>
 </div>
@@ -10,7 +12,8 @@
     <a href="https://vccimaging.org/DeepLens/">Docs</a> •
     <a href="https://github.com/singer-yang/DeepLens-tutorials">Tutorials</a> •
     <a href="#community">Community</a> •
-    <a href="https://pypi.org/project/deeplens-core/">PyPI</a>
+    <a href="https://pypi.org/project/deeplens-core/">PyPI</a> •
+    <a href="https://deepwiki.com/singer-yang/DeepLens">DeepWiki</a>
 </p>
 
 
@@ -117,7 +120,7 @@ DeepLens/
 │   ├── geolens.py          (multi-element refractive lens)
 │   ├── hybridlens.py       (refractive + diffractive hybrid lens)
 │   ├── diffraclens.py      (pure diffractive lens)
-│   ├── paraxiallens.py     (thin-lens model)
+│   ├── defocuslens.py     (defocus / circle-of-confusion model)
 │   ├── psfnetlens.py       (neural surrogate lens)
 │   ├── geometric_surface/  (spheric, aspheric, aperture, etc.)
 │   ├── diffractive_surface/(DOE surfaces)

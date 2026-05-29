@@ -51,7 +51,7 @@ from .lens import Lens
 from .geolens import GeoLens
 from .hybridlens import HybridLens
 from .diffraclens import DiffractiveLens
-from .paraxiallens import ParaxialLens
+from .defocuslens import DefocusLens
 from .psfnetlens import PSFNetLens
 
 # geolens extras
@@ -78,6 +78,6 @@ __all__ = [
     "GeoLens",
     "HybridLens",
     "DiffractiveLens",
-    "ParaxialLens",
+    "DefocusLens",
     "PSFNetLens",
 ]

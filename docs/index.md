@@ -7,7 +7,7 @@ DeepLens is a PyTorch-based differentiable simulator for optical systems. It pro
 ## Key Features
 
 - **Differentiable ray tracing** through multi-element lens systems with automatic differentiation
-- **Multiple lens models**: geometric (`GeoLens`), hybrid refractive-diffractive (`HybridLens`), pure diffractive (`DiffractiveLens`), neural surrogate (`PSFNetLens`), and thin-lens (`ParaxialLens`)
+- **Multiple lens models**: geometric (`GeoLens`), hybrid refractive-diffractive (`HybridLens`), pure diffractive (`DiffractiveLens`), neural surrogate (`PSFNetLens`), and defocus (`DefocusLens`)
 - **Accurate image simulation** via direct ray tracing, distortion-aware PSF-map rendering, depth-interpolated PSFs, and per-pixel PSF splatting
 - **Standard lens file I/O**: read/write Zemax `.zmx`, Code V `.seq`, and JSON formats
 - **Hybrid ray-wave simulation** for JSON-defined refractive lenses with DOE/metasurface phase elements

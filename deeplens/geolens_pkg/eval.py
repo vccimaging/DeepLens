@@ -59,23 +59,11 @@ Functions:
         draw_mtf: Grid of tangential MTF curves for multiple depths, FOVs, and
             RGB wavelengths.
 
-    Field Curvature:
-        field_curvature: Placeholder for field-curvature computation.
-        draw_field_curvature: Best-focus defocus vs field angle for RGB, found
-            by a vectorized defocus sweep with parabolic interpolation.
-
     Vignetting:
         vignetting: Fractional ray-throughput map across the field.
         draw_vignetting: Grayscale image of relative illumination.
 
-    Wavefront & Aberration:
-        wavefront_error: OPD at exit pupil for a given field position (RMS, PV, Strehl).
-        rms_wavefront_error: Scalar RMS wavefront error convenience wrapper.
-        draw_wavefront_error: OPD maps at multiple field positions.
-
     Chief Ray & Ray Aiming:
-        calc_chief_ray: Find the chief ray (ray through aperture center) for a
-            given field angle by tracing a fan and picking the closest to axis.
         calc_chief_ray_infinite: Batched chief-ray computation with optional
             iterative ray aiming for accurate distortion measurement.
 
@@ -88,8 +76,6 @@ Functions:
             analysis, and (optionally) full evaluation + rendering.
 """
 
-import math
-
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -100,11 +86,9 @@ from ..config import (
     EPSILON,
     GEO_GRID,
     SPP_CALC,
-    SPP_COHERENT,
     SPP_PSF,
     SPP_RENDER,
 )
-from ..imgsim import assign_points_to_pixels
 from ..light import Ray
 
 # RGB color definitions for wavelength visualization
@@ -1088,181 +1072,6 @@ class GeoLensEval:
         plt.close(fig)
 
     # ================================================================
-    # Field Curvature
-    # ================================================================
-    @torch.no_grad()
-    def draw_field_curvature(
-        self,
-        save_name=None,
-        num_points=64,
-        z_span=1.0,
-        z_steps=201,
-        wvln_list=None,
-        spp=256,
-        show=False,
-    ):
-        """Draw field curvature: best-focus defocus (Δz) vs field angle for RGB.
-
-        *Field curvature* (Petzval curvature) causes off-axis image points to
-        focus on a curved surface rather than the flat sensor.  This method
-        finds the axial position of minimum RMS spot size at each field angle
-        and plots the deviation from the nominal sensor plane.
-
-        Algorithm (fully vectorized per wavelength):
-            1. Construct a meridional ray fan at ``num_points`` field angles,
-               each with ``spp`` rays spanning the entrance pupil.
-            2. Trace all rays through the lens in a single batched call.
-            3. For each of ``z_steps`` defocus planes within ``±z_span`` mm of
-               ``self.d_sensor``, propagate rays analytically (linear
-               extension) and compute the variance of the y-coordinate.
-            4. The defocus with minimum variance is the best-focus plane.
-               Parabolic interpolation on the three-point neighborhood gives
-               sub-grid-step precision.
-            5. Repeat for each wavelength; overlay R/G/B curves on a single plot.
-
-        Args:
-            save_name (str | None): File path for the output PNG.  If ``None``,
-                defaults to ``'./field_curvature.png'``.
-            num_points (int): Number of field-angle samples from 0 to
-                ``self.rfov``. Defaults to 64.
-            z_span (float): Half-range of the defocus sweep in mm.  If the
-                best-focus hits the boundary, a warning is printed.
-                Defaults to 1.0.
-            z_steps (int): Number of uniformly-spaced defocus planes within
-                ``±z_span``. Higher values give finer axial resolution.
-                Defaults to 201.
-            wvln_list (list[float]): Wavelengths in µm.  When ``None``
-                (default), falls back to ``self.wvln_rgb``.
-            spp (int): Rays per field point (sampled uniformly across the
-                entrance pupil in the meridional plane). Defaults to 256.
-            show (bool): If ``True``, display interactively. Defaults to ``False``.
-        """
-        wvln_list = self.wvln_rgb if wvln_list is None else wvln_list
-        device = self.device
-        rfov_deg = self.rfov * 180 / torch.pi
-
-        # Sample field angles [0, rfov_deg], shape [F]
-        rfov_samples = torch.linspace(0.0, rfov_deg, num_points, device=device)
-
-        # Entrance pupil (computed once)
-        pupilz, pupilr = self.get_entrance_pupil()
-
-        # Defocus sweep grid, shape [Z]
-        d_sensor = self.d_sensor
-        z_grid = d_sensor + torch.linspace(-z_span, z_span, z_steps, device=device)
-
-        delta_z_tan = []
-
-        for wvln in wvln_list:
-            # --- Batch ray construction for all field angles ---
-            # Pupil positions: shape [spp]
-            pupil_y = torch.linspace(-pupilr, pupilr, spp, device=device) * 0.99
-
-            # Ray origins: shape [F, spp, 3] (meridional plane: x=0)
-            ray_o = torch.zeros(num_points, spp, 3, device=device)
-            ray_o[..., 1] = pupil_y.unsqueeze(0)  # y = pupil sample
-            ray_o[..., 2] = pupilz  # z = entrance pupil z
-
-            # Ray directions: shape [F, spp, 3] (meridional: dx=0)
-            fov_rad = rfov_samples * (np.pi / 180.0)  # [F]
-            sin_fov = torch.sin(fov_rad)  # [F]
-            cos_fov = torch.cos(fov_rad)  # [F]
-            ray_d = torch.zeros(num_points, spp, 3, device=device)
-            ray_d[..., 1] = sin_fov.unsqueeze(-1)  # [F, 1] -> [F, spp]
-            ray_d[..., 2] = cos_fov.unsqueeze(-1)
-
-            # Create batched ray and trace all field angles at once
-            ray = Ray(ray_o, ray_d, wvln=wvln, device=device)
-            ray, _ = self.trace(ray)
-
-            # --- Vectorized best-focus for all field angles ---
-            # ray.o: [F, spp, 3], ray.d: [F, spp, 3]
-            oz = ray.o[..., 2:3]  # [F, spp, 1]
-            dz = ray.d[..., 2:3]  # [F, spp, 1]
-            t = (z_grid.view(1, 1, -1) - oz) / (dz + EPSILON)  # [F, spp, Z]
-
-            oa = ray.o[..., 1:2]  # y-axis (tangential)
-            da = ray.d[..., 1:2]
-            pos_y = oa + da * t  # [F, spp, Z]
-
-            w = ray.is_valid.unsqueeze(-1).float()  # [F, spp, 1]
-            pos_y = pos_y * w  # mask invalid rays
-            w_sum = w.sum(dim=1)  # [F, 1]
-
-            centroid = pos_y.sum(dim=1) / (w_sum + EPSILON)  # [F, Z]
-            ms = (((pos_y - centroid.unsqueeze(1)) ** 2) * w).sum(dim=1) / (
-                w_sum + EPSILON
-            )  # [F, Z]
-
-            best_idx = torch.argmin(ms, dim=1)  # [F]
-
-            # Warn if best focus hits z_span boundary
-            boundary_hit = (best_idx == 0) | (best_idx == z_steps - 1)
-            if boundary_hit.any():
-                n_boundary = boundary_hit.sum().item()
-                print(
-                    f"Warning: {n_boundary}/{num_points} field angles hit z_span "
-                    f"boundary. Consider increasing z_span (currently {z_span} mm)."
-                )
-
-            # Parabolic interpolation for sub-grid precision
-            idx_c = best_idx.clamp(1, z_steps - 2)  # avoid boundary
-            f_range = torch.arange(num_points, device=device)
-            y_l = ms[f_range, idx_c - 1]
-            y_c = ms[f_range, idx_c]
-            y_r = ms[f_range, idx_c + 1]
-            denom = 2.0 * (y_l - 2.0 * y_c + y_r)
-            shift = (y_l - y_r) / (denom + EPSILON)  # fractional index offset
-            shift = shift.clamp(-0.5, 0.5)  # safety clamp
-
-            z_step_size = (2.0 * z_span) / (z_steps - 1)
-            best_z = z_grid[idx_c] + shift * z_step_size  # [F]
-            dz_tan = (best_z - d_sensor).cpu().numpy()
-
-            # Mark fully-vignetted field angles as NaN (gaps in plot)
-            valid_count = w.sum(dim=1).squeeze(-1)  # [F]
-            fully_vignetted = (valid_count < 2).cpu().numpy()
-            dz_tan[fully_vignetted] = np.nan
-
-            delta_z_tan.append(dz_tan)
-
-        # Plot
-        fov_np = rfov_samples.detach().cpu().numpy()
-        fig, ax = plt.subplots(figsize=(7, 6))
-        ax.set_title("Field Curvature (Δz vs Field Angle)")
-
-        all_vals = np.abs(np.concatenate(delta_z_tan)) if len(delta_z_tan) > 0 else np.array([0.0])
-        x_range = float(max(0.2, all_vals.max() * 1.2)) if all_vals.size > 0 else 0.2
-
-        for w_idx in range(len(wvln_list)):
-            color = RGB_COLORS[w_idx % len(RGB_COLORS)]
-            lbl = RGB_LABELS[w_idx % len(RGB_LABELS)]
-            ax.plot(
-                delta_z_tan[w_idx],
-                fov_np,
-                color=color,
-                linestyle="-",
-                label=f"{lbl}-Tan",
-            )
-
-        ax.axvline(x=0, color="k", linestyle="-", linewidth=0.8)
-        ax.grid(True, color="gray", linestyle="-", linewidth=0.5, alpha=1.0)
-        ax.set_xlabel("Defocus Δz (mm) relative to sensor plane")
-        ax.set_ylabel("Field Angle (deg)")
-        ax.set_xlim(-x_range, x_range)
-        ax.set_ylim(0, rfov_deg)
-        ax.legend(fontsize=8)
-        plt.tight_layout()
-
-        if show:
-            plt.show()
-        else:
-            if save_name is None:
-                save_name = "./field_curvature.png"
-            plt.savefig(save_name, bbox_inches="tight", format="png", dpi=300)
-        plt.close(fig)
-
-    # ================================================================
     # Vignetting
     # ================================================================
     @torch.no_grad()
@@ -1354,371 +1163,8 @@ class GeoLensEval:
         plt.close(fig)
 
     # ================================================================
-    # Wavefront error
-    # ================================================================
-    @torch.no_grad()
-    def wavefront_error(
-        self,
-        relative_fov=0.0,
-        depth=None,
-        wvln=None,
-        num_rays=SPP_COHERENT,
-        ks=256,
-    ):
-        """Compute wavefront error (OPD) at the exit pupil for a given field position.
-
-        The wavefront error is the optical path difference between the actual
-        wavefront and the ideal spherical reference wavefront. The reference sphere
-        is centered at the ideal image point (chief ray intersection with the sensor)
-        and passes through the exit pupil center.
-
-        By Fermat's principle, a perfect lens has equal total optical path (object →
-        lens → image) for all rays. The deviation from this equal-path condition is
-        the wavefront error:
-
-            ``OPD(x,y) = [OPL(x,y) + r(x,y)] - mean_over_pupil``
-
-        where ``OPL(x,y)`` is the accumulated optical path from the object through
-        the lens to the exit pupil, and ``r(x,y)`` is the geometric distance from
-        the exit pupil point to the ideal image point. Piston (mean) is removed.
-
-        Uses the same coherent ray-tracing infrastructure as :meth:`pupil_field`.
-
-        Args:
-            relative_fov (float): Relative field of view in ``[-1, 1]`` along the
-                meridional (y) direction. ``0`` = on-axis, ``1`` = full field.
-            depth (float): Object distance [mm]. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            wvln (float): Wavelength in µm. When ``None`` (default), falls
-                back to ``self.primary_wvln``.
-            num_rays (int): Number of rays to sample through the pupil.
-            ks (int): Grid resolution for the OPD map at the exit pupil.
-
-        Returns:
-            dict:
-                - ``opd_map`` (Tensor): OPD map on exit pupil grid, shape ``[ks, ks]``,
-                  in waves. Invalid (vignetted) regions are zero.
-                - ``rms`` (float): RMS wavefront error in waves (piston removed).
-                - ``pv`` (float): Peak-to-valley wavefront error in waves.
-                - ``valid_mask`` (Tensor): Boolean mask of valid pupil pixels ``[ks, ks]``.
-                - ``strehl`` (float): Maréchal approximation Strehl ratio.
-
-        Note:
-            This function sets the default dtype to ``torch.float64`` for phase
-            accuracy (consistent with :meth:`pupil_field`).
-
-        References:
-            [1] V. N. Mahajan, "Optical Imaging and Aberrations, Part II", Ch. 1.
-            [2] Zemax OpticStudio, "Wavefront Error Analysis".
-        """
-        wvln = self.primary_wvln if wvln is None else wvln
-        depth = self.obj_depth if depth is None else depth
-        # Float64 required for accurate OPL accumulation
-        self.astype(torch.float64)
-        device = self.device
-        sensor_w, sensor_h = self.sensor_size
-        wvln_mm = wvln * 1e-3
-
-        # Build normalized point: positive relative_fov -> negative y (convention)
-        point_norm = torch.tensor(
-            [0.0, -relative_fov, depth], dtype=torch.float64, device=device
-        )
-        points = point_norm.unsqueeze(0)  # [1, 3]
-
-        # Convert to physical object coordinates
-        scale = self.calc_scale(points[:, 2].item())
-        point_obj_x = points[:, 0] * scale * sensor_w / 2
-        point_obj_y = points[:, 1] * scale * sensor_h / 2
-        point_obj = torch.stack([point_obj_x, point_obj_y, points[:, 2]], dim=-1)
-
-        # Find ideal image point via chief ray
-        # psf_center returns negated centroid, so negate back to get actual image position
-        chief_pointc = self.psf_center(point_obj, method="chief_ray")  # [1, 2]
-        img_x = -chief_pointc[0, 0]
-        img_y = -chief_pointc[0, 1]
-        img_z = float(self.d_sensor)
-
-        # Sample rays and trace coherently to exit pupil
-        ray = self.sample_from_points(
-            points=point_obj, num_rays=num_rays, wvln=wvln
-        )
-        ray.is_coherent = True
-        ray = self.trace2exit_pupil(ray)
-
-        # Get exit pupil parameters
-        pupilz, pupilr = self.get_exit_pupil()
-        pupilr = float(pupilr)
-        pupilz = float(pupilz)
-
-        # Extract valid rays (squeeze batch dim since single point)
-        valid = ray.is_valid.squeeze(0) > 0  # [num_rays]
-        ray_x = ray.o[0, :, 0]  # [num_rays]
-        ray_y = ray.o[0, :, 1]
-        opl = ray.opl[0, :, 0]  # [num_rays]
-
-        if valid.sum() == 0:
-            raise RuntimeError(
-                f"No valid rays at relative_fov={relative_fov}. "
-                "The field may be fully vignetted."
-            )
-
-        # Distance from each ray's exit pupil position to ideal image point
-        dist_to_img = torch.sqrt(
-            (ray_x - img_x) ** 2
-            + (ray_y - img_y) ** 2
-            + (pupilz - img_z) ** 2
-        )
-
-        # Total optical path = OPL through lens to exit pupil + free-space to image
-        total_path = opl + dist_to_img  # [num_rays]
-
-        # Remove piston (mean over valid rays) to get wavefront error
-        total_path_valid = total_path[valid]
-        mean_path = total_path_valid.mean()
-        opd_mm = total_path - mean_path  # OPD in [mm]
-        opd_waves = opd_mm / wvln_mm  # OPD in [waves]
-
-        # Compute RMS and PV from per-ray values (more accurate than from grid)
-        opd_valid = opd_waves[valid]
-        rms_waves = torch.sqrt(torch.mean(opd_valid**2)).item()
-        pv_waves = (opd_valid.max() - opd_valid.min()).item()
-
-        # Maréchal approximation: Strehl ≈ exp(-(2π·σ)²)
-        strehl = math.exp(-(2 * math.pi * rms_waves) ** 2)
-
-        # Bin OPD values onto exit pupil grid using assign_points_to_pixels
-        # Grid covers [-pupilr, pupilr] x [-pupilr, pupilr]
-        pupil_range = [-pupilr, pupilr]
-        pupil_points = torch.stack([ray_x[valid], ray_y[valid]], dim=-1)  # [N, 2]
-        pupil_mask = torch.ones(pupil_points.shape[0], device=device)
-
-        # Sum of weighted OPD values
-        opd_sum = assign_points_to_pixels(
-            points=pupil_points,
-            mask=pupil_mask,
-            ks=ks,
-            x_range=pupil_range,
-            y_range=pupil_range,
-            value=opd_valid,
-        )
-        # Sum of weights (count)
-        count = assign_points_to_pixels(
-            points=pupil_points,
-            mask=pupil_mask,
-            ks=ks,
-            x_range=pupil_range,
-            y_range=pupil_range,
-            value=torch.ones_like(opd_valid),
-        )
-        valid_mask = count > 0
-        opd_map = torch.where(valid_mask, opd_sum / count, torch.zeros_like(opd_sum))
-
-        return {
-            "opd_map": opd_map,
-            "rms": rms_waves,
-            "pv": pv_waves,
-            "valid_mask": valid_mask,
-            "strehl": strehl,
-        }
-
-    @torch.no_grad()
-    def rms_wavefront_error(
-        self,
-        relative_fov=0.0,
-        depth=None,
-        wvln=None,
-        num_rays=SPP_COHERENT,
-    ):
-        """Compute scalar RMS wavefront error at a given field position.
-
-        Convenience wrapper around :meth:`wavefront_error`.
-
-        Args:
-            relative_fov (float): Relative field of view in ``[-1, 1]``.
-            depth (float): Object distance [mm]. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            wvln (float): Wavelength in µm. When ``None`` (default), falls
-                back to ``self.primary_wvln``.
-            num_rays (int): Number of rays to sample.
-
-        Returns:
-            float: RMS wavefront error in waves.
-        """
-        result = self.wavefront_error(
-            relative_fov=relative_fov,
-            depth=depth,
-            wvln=wvln,
-            num_rays=num_rays,
-        )
-        return result["rms"]
-
-    @torch.no_grad()
-    def draw_wavefront_error(
-        self,
-        save_name="./wavefront_error.png",
-        num_fov=5,
-        depth=None,
-        wvln=None,
-        num_rays=SPP_COHERENT,
-        ks=256,
-        show=False,
-    ):
-        """Draw wavefront error (OPD) maps at multiple field positions.
-
-        Evaluates the wavefront error along the meridional (y) direction from
-        on-axis to full field, and displays each OPD map with RMS and PV
-        annotations.
-
-        Args:
-            save_name (str): Filename to save the figure.
-            num_fov (int): Number of field positions to evaluate.
-            depth (float): Object distance [mm]. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            wvln (float): Wavelength in µm. When ``None`` (default), falls
-                back to ``self.primary_wvln``.
-            num_rays (int): Number of rays to sample per field position.
-            ks (int): Grid resolution for each OPD map.
-            show (bool): If True, display the figure interactively.
-        """
-        wvln = self.primary_wvln if wvln is None else wvln
-        depth = self.obj_depth if depth is None else depth
-        fov_list = torch.linspace(0, 1, num_fov).tolist()
-
-        fig, axs = plt.subplots(1, num_fov, figsize=(num_fov * 3.5, 3.5))
-        axs = np.atleast_1d(axs)
-
-        # Collect all OPD ranges to use a shared color scale
-        results = []
-        vmax = 0.0
-        for fov in fov_list:
-            try:
-                result = self.wavefront_error(
-                    relative_fov=fov,
-                    depth=depth,
-                    wvln=wvln,
-                    num_rays=num_rays,
-                    ks=ks,
-                )
-                results.append(result)
-                opd_valid = result["opd_map"][result["valid_mask"]]
-                if len(opd_valid) > 0:
-                    vmax = max(vmax, opd_valid.abs().max().item())
-            except RuntimeError:
-                results.append(None)
-
-        if vmax == 0:
-            vmax = 1.0  # fallback
-
-        for i, (fov, result) in enumerate(zip(fov_list, results)):
-            if result is None:
-                axs[i].set_title(f"FoV={fov:.2f}\n(vignetted)", fontsize=8)
-                axs[i].axis("off")
-                continue
-
-            opd = result["opd_map"].cpu().numpy()
-            mask = result["valid_mask"].cpu().numpy()
-            rms = result["rms"]
-            pv = result["pv"]
-
-            # Mask invalid regions with NaN for visualization
-            opd_vis = np.where(mask, opd, np.nan)
-
-            im = axs[i].imshow(
-                opd_vis,
-                cmap="RdBu_r",
-                vmin=-vmax,
-                vmax=vmax,
-                interpolation="bilinear",
-            )
-            axs[i].set_title(
-                f"FoV={fov:.2f}\nRMS={rms:.4f}λ  PV={pv:.3f}λ",
-                fontsize=8,
-            )
-            axs[i].axis("off")
-            fig.colorbar(
-                im,
-                ax=axs[i],
-                fraction=0.046,
-                pad=0.04,
-                label="OPD [waves]",
-            )
-
-        fig.suptitle(
-            f"Wavefront Error (λ={wvln}µm, depth={depth}mm)", fontsize=10
-        )
-        plt.tight_layout()
-
-        if show:
-            plt.show()
-        else:
-            assert save_name.endswith(".png"), "save_name must end with .png"
-            plt.savefig(save_name, bbox_inches="tight", format="png", dpi=300)
-        plt.close(fig)
-
-    def field_curvature(self):
-        """Compute field curvature data (best-focus defocus vs field angle).
-
-        Field curvature is the axial shift of the best-focus surface away from
-        the flat sensor plane as a function of field angle.  It is caused by
-        the Petzval sum of lens surface curvatures and refractive indices.
-
-        Not yet implemented.  See ``draw_field_curvature()`` for a plotting
-        version that already performs the underlying computation.
-        """
-        pass
-
-    # ================================================================
     # Chief ray calculation and ray aiming
     # ================================================================
-    @torch.no_grad()
-    def calc_chief_ray(self, fov, plane="sagittal"):
-        """Find the chief ray for a given field angle using 2-D ray tracing.
-
-        The *chief ray* (also called the *principal ray*) is the ray from an
-        off-axis object point that passes through the center of the aperture
-        stop.  It defines the image height for distortion calculations and sets
-        the reference axis for coma and lateral color analysis.
-
-        Algorithm:
-            1. Sample a fan of parallel rays at the specified ``fov`` in the
-               chosen plane, entering through the entrance pupil.
-            2. Trace the fan up to (but not through) the aperture stop.
-            3. Select the ray whose transverse position at the stop is closest
-               to the optical axis — this is the chief ray.
-            4. Return its *incident* (object-space) origin and direction.
-
-        Args:
-            fov (float): Incident half-angle in **degrees**.
-            plane (str): ``'sagittal'`` (x-axis) or ``'meridional'`` (y-axis).
-                Defaults to ``'sagittal'``.
-
-        Returns:
-            tuple[torch.Tensor, torch.Tensor]:
-                - **chief_ray_o**: Origin of the chief ray in object space,
-                  shape ``[3]``.
-                - **chief_ray_d**: Unit direction of the chief ray, shape ``[3]``.
-
-        Note:
-            This is a 2-D (meridional or sagittal plane) search.  For a full
-            3-D chief ray, one would shrink the pupil and trace the centroid ray.
-        """
-        # Sample parallel rays from object space
-        ray = self.sample_parallel_2D(
-            fov=fov, num_rays=SPP_CALC, entrance_pupil=True, plane=plane
-        )
-        inc_ray = ray.clone()
-
-        # Trace to the aperture
-        surf_range = range(0, self.aper_idx)
-        ray, _ = self.trace(ray, surf_range=surf_range)
-
-        # Look for the ray that is closest to the optical axis
-        center_x = torch.min(torch.abs(ray.o[:, 0]))
-        center_idx = torch.where(torch.abs(ray.o[:, 0]) == center_x)[0][0].item()
-        chief_ray_o, chief_ray_d = inc_ray.o[center_idx, :], inc_ray.d[center_idx, :]
-
-        return chief_ray_o, chief_ray_d
-
     @torch.no_grad()
     def calc_chief_ray_infinite(
         self,
@@ -1731,8 +1177,8 @@ class GeoLensEval:
     ):
         """Compute chief rays for one or more field angles with optional ray aiming.
 
-        This is the batched, production version of ``calc_chief_ray``.  It
-        supports vectorized evaluation over multiple field angles and implements
+        This computes chief rays with vectorized evaluation over multiple
+        field angles and implements
         *ray aiming* — an iterative procedure that launches a fan of rays
         toward the entrance pupil and selects the one that passes closest to
         the aperture-stop center.  Ray aiming is essential for accurate
@@ -2137,7 +1583,6 @@ class GeoLensEval:
                - Spot diagram (``draw_spot_radial``).
                - MTF grid (``draw_mtf``).
                - Distortion curve (``draw_distortion_radial``).
-               - Field curvature plot (``draw_field_curvature``).
                - Vignetting map (``draw_vignetting``).
             3. **If** ``render=True``: render a test chart image through the
                lens and report PSNR/SSIM (``analysis_rendering``).
@@ -2197,12 +1642,6 @@ class GeoLensEval:
             # Draw distortion
             self.draw_distortion_radial(
                 save_name=f"{save_name}_distortion.png",
-                show=show,
-            )
-
-            # Draw field curvature
-            self.draw_field_curvature(
-                save_name=f"{save_name}_field_curvature.png",
                 show=show,
             )
 

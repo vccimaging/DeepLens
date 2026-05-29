@@ -4,27 +4,43 @@
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
-"""Paraxial geometric/ABCD matrix lens model. The paraxial lens model can simulate defocus (Circle of Confusion) but not optical aberrations. This model is commonly used in software such as Blender.
+"""Defocus lens model based on the circle-of-confusion (CoC) PSF.
+
+This lens simulates defocus blur (depth of field) by pre-computing the
+circle-of-confusion PSF and applying it directly, instead of tracing rays. The
+CoC PSF is derived from paraxial optics: given the focal length, F-number and
+focus distance, the circle-of-confusion diameter at each object depth follows
+the paraxial defocus relation, and the resulting blur disk is used as the PSF.
+This CoC formulation is the standard approach for defocus simulation, both in
+the literature and in software such as Blender. It captures defocus but not
+higher-order optical aberrations.
+
+Unique to this model, DefocusLens can also generate dual-pixel (DP) PSFs -- the
+left/right sub-aperture views recorded by dual-pixel sensors -- via ``psf_dp``,
+``psf_rgb_dp``, ``psf_map_dp`` and ``render_rgbd_dp``, which are useful for
+defocus- and depth-estimation research.
 
 Reference:
     [1] https://en.wikipedia.org/wiki/Circle_of_confusion
-    [2] https://en.wikipedia.org/wiki/Ray_transfer_matrix_analysis
 """
 
 import numpy as np
 import torch
 
 from .lens import Lens
-from .config import DEFAULT_WAVE, DEPTH, EPSILON, PSF_KS, WAVE_RGB
+from .config import EPSILON, PSF_KS
 from .imgsim import conv_psf_depth_interp, conv_psf_occlusion
 
 
-class ParaxialLens(Lens):
-    """Thin-lens / ABCD-matrix model for fast defocus simulation.
+class DefocusLens(Lens):
+    """Defocus lens that pre-computes the circle-of-confusion (CoC) PSF.
 
-    Models the circle of confusion (CoC) caused by defocus but not
-    higher-order optical aberrations.  Useful as a fast baseline renderer for
-    depth-of-field effects, as commonly used in Blender and similar tools.
+    Rather than ray transfer (ABCD) matrices or thin-lens ray tracing, this
+    model derives the circle of confusion from the focal length, F-number and
+    focus distance, builds the corresponding PSF, and applies it directly. It
+    simulates defocus blur (depth of field) but not higher-order optical
+    aberrations. Useful as a fast baseline renderer, as commonly used in
+    Blender and similar tools.
 
     Attributes:
         foclen (float): Focal length [mm].
@@ -38,59 +54,38 @@ class ParaxialLens(Lens):
         self,
         foclen,
         fnum,
-        sensor_size=None,
-        sensor_res=None,
-        device="cpu",
-        primary_wvln=DEFAULT_WAVE,
-        wvln_rgb=WAVE_RGB,
-        obj_depth=DEPTH,
+        sensor_size=(8.0, 8.0),
+        sensor_res=(2000, 2000),
+        device=None,
+        dtype=torch.float32,
     ):
-        """Initialize a paraxial lens.
+        """Initialize a defocus lens.
+
+        A defocus lens models geometric defocus via the circle of confusion,
+        which is wavelength-independent, so it takes no wavelength or default
+        object-depth arguments (unlike the other lens classes).
 
         Args:
             foclen (float): Focal length in [mm].
             fnum (float): F-number.
             sensor_size (tuple, optional): Physical sensor size as (W, H) in [mm]. Defaults to (8.0, 8.0).
             sensor_res (tuple, optional): Sensor resolution as (W, H) in pixels. Defaults to (2000, 2000).
-            device (str, optional): Computation device. Defaults to "cpu".
-            primary_wvln (float, optional): Primary design wavelength [µm].
-                Used as fallback when a method is called without an explicit
-                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
-            wvln_rgb (sequence of float, optional): Three wavelengths used
-                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
-                to ``WAVE_RGB``.
-            obj_depth (float, optional): Default object depth [mm], used
-                when a method is called without an explicit ``depth``.
-                Defaults to ``DEPTH``.
+            device (str, optional): Computation device. Defaults to None
+                (auto-select GPU if available, else CPU).
+            dtype (torch.dtype, optional): Data type for computations. Defaults to torch.float32.
         """
-        super(ParaxialLens, self).__init__(
+        super(DefocusLens, self).__init__(
             device=device,
-            primary_wvln=primary_wvln,
-            wvln_rgb=wvln_rgb,
-            obj_depth=obj_depth,
+            dtype=dtype,
         )
 
         # Lens parameters
         self.foclen = foclen  # Focal length [mm]
         self.fnum = fnum
 
-        # Sensor size and resolution with defaults
-        if sensor_size is None:
-            sensor_size = (8.0, 8.0)
-            print(
-                f"Sensor_size not provided. Using default: {sensor_size} mm. "
-                "Use set_sensor() to change."
-            )
-        if sensor_res is None:
-            sensor_res = (2000, 2000)
-            print(
-                f"Sensor_res not provided. Using default: {sensor_res} pixels. "
-                "Use set_sensor() to change."
-            )
-
-        self.sensor_size = sensor_size
-        self.sensor_res = sensor_res
-        self.pixel_size = self.sensor_size[0] / self.sensor_res[0]  # Pixel size [mm]
+        # Configure sensor (sets sensor_size, sensor_res, pixel_size, r_sensor).
+        self.set_sensor(sensor_size, sensor_res)
+        self.astype(self.dtype)
 
         self.d_far = -20000.0
         self.d_close = -200.0
@@ -178,17 +173,18 @@ class ParaxialLens(Lens):
         return psf
 
     def coc(self, depth):
-        """Calculate circle of confusion (CoC) [mm].
+        """Calculate circle of confusion (CoC) diameter [mm].
 
         Args:
             depth (torch.Tensor): Depth of the object. Shape [B].
 
         Returns:
-            coc (torch.Tensor): Circle of confusion. Shape [B].
+            coc (torch.Tensor): Circle of confusion diameter [mm]. Shape [B].
 
         Reference:
             [1] https://en.wikipedia.org/wiki/Circle_of_confusion
         """
+        depth = torch.as_tensor(depth, device=self.device)
         foc_dist = torch.tensor(
             self.foc_dist, device=self.device, dtype=depth.dtype
         ).abs()
@@ -217,6 +213,7 @@ class ParaxialLens(Lens):
         Reference:
             [1] https://en.wikipedia.org/wiki/Depth_of_field
         """
+        depth = torch.as_tensor(depth, device=self.device)
         depth = torch.clamp(depth, self.d_far, self.d_close)
         depth_abs = torch.abs(depth)
 
@@ -239,7 +236,7 @@ class ParaxialLens(Lens):
     def psf_rgb(self, points, ks=PSF_KS, **kwargs):
         """Compute RGB PSF by replicating the monochrome PSF across three channels.
 
-        The paraxial model is achromatic, so all channels share the same PSF.
+        The defocus model is achromatic, so all channels share the same PSF.
 
         Args:
             points (torch.Tensor): Point source positions, shape ``[N, 3]``.
@@ -255,7 +252,7 @@ class ParaxialLens(Lens):
     def psf_map(self, grid=(5, 5), ks=PSF_KS, depth=None, **kwargs):
         """Compute a spatially-uniform monochrome PSF map.
 
-        Because the paraxial model has no spatially-varying aberrations, every
+        Because the defocus model has no spatially-varying aberrations, every
         grid position receives the same on-axis PSF.
 
         Args:
@@ -291,7 +288,6 @@ class ParaxialLens(Lens):
         Returns:
             tuple: (left_psf, right_psf) where each PSF tensor has shape [N, ks, ks].
         """
-        N = points.shape[0]
         depth = points[:, 2]
 
         # Get the base PSF
@@ -369,24 +365,25 @@ class ParaxialLens(Lens):
     # =============================================
     # RGBD rendering (occlusion-aware)
     # =============================================
-    def render_rgbd(self, img_obj, depth_map, method="psf_patch", **kwargs):
-        """Occlusion-aware RGBD rendering for paraxial lens.
+    def render_rgbd(
+        self,
+        img_obj,
+        depth_map,
+        psf_ks=PSF_KS,
+        num_layers=16,
+    ):
+        """Occlusion-aware RGBD rendering for defocus lens.
 
         Uses back-to-front layered compositing to prevent color bleeding at depth
-        discontinuities. Since paraxial lenses have no spatially varying
-        aberrations, all methods (psf_patch, psf_map, psf_pixel) produce
-        identical results; the `method` parameter is accepted for API
-        compatibility but ignored.
+        discontinuities. Since defocus lenses have no spatially varying
+        aberrations, rendering uses a spatially invariant PSF sampled across
+        depth layers.
 
         Args:
             img_obj (tensor): Object image. Shape [B, C, H, W].
             depth_map (tensor): Depth map [mm]. Shape [B, 1, H, W]. Values should be positive.
-            method (str, optional): Ignored (no spatial variation). Defaults to "psf_patch".
-            **kwargs: Additional keyword arguments:
-                - psf_ks (int): PSF kernel size. Defaults to PSF_KS.
-                - num_layers (int): Number of depth layers. Defaults to 16.
-                - depth_min (float): Minimum depth. Defaults to depth_map.min().
-                - depth_max (float): Maximum depth. Defaults to depth_map.max().
+            psf_ks (int, optional): PSF kernel size. Defaults to PSF_KS.
+            num_layers (int, optional): Number of depth layers. Defaults to 16.
 
         Returns:
             img_render (tensor): Rendered image. Shape [B, C, H, W].
@@ -400,10 +397,8 @@ class ParaxialLens(Lens):
         if len(depth_map.shape) == 3:
             depth_map = depth_map.unsqueeze(1)  # [B, H, W] -> [B, 1, H, W]
 
-        psf_ks = kwargs.get("psf_ks", PSF_KS)
-        num_layers = kwargs.get("num_layers", 16)
-        depth_min = kwargs.get("depth_min", depth_map.min())
-        depth_max = kwargs.get("depth_max", depth_map.max())
+        depth_min = depth_map.min()
+        depth_max = depth_map.max()
 
         # Sample depth layers
         disp_ref, depths_ref = self._sample_depth_layers(depth_min, depth_max, num_layers)
@@ -423,12 +418,20 @@ class ParaxialLens(Lens):
         img_render = conv_psf_occlusion(img_obj, -depth_map, psfs, depths_ref)
         return img_render
 
-    def render_rgbd_dp(self, rgb_img, depth):
+    def render_rgbd_dp(
+        self,
+        rgb_img,
+        depth,
+        psf_ks=PSF_KS,
+        num_layers=16,
+    ):
         """Render RGBD image with dual-pixel PSF.
 
         Args:
             rgb_img (tensor): [B, 3, H, W]
             depth (tensor): [B, 1, H, W]
+            psf_ks (int, optional): PSF kernel size. Defaults to PSF_KS.
+            num_layers (int, optional): Number of depth layers. Defaults to 16.
 
         Returns:
             img_left (tensor): [B, 3, H, W]
@@ -440,12 +443,10 @@ class ParaxialLens(Lens):
 
         depth_min = depth.min()
         depth_max = depth.max()
-        num_depth = 10
         patch_center = (0.0, 0.0)
-        psf_ks = PSF_KS
 
         # Calculate dual-pixel PSF at reference depths
-        depths_ref = torch.linspace(depth_min, depth_max, num_depth, device=self.device)
+        depths_ref = torch.linspace(depth_min, depth_max, num_layers, device=self.device)
         points = torch.stack(
             [
                 torch.full_like(depths_ref, patch_center[0]),
@@ -456,7 +457,7 @@ class ParaxialLens(Lens):
         )
         psfs_left, psfs_right = self.psf_rgb_dp(
             points=points, ks=psf_ks
-        )  # shape [num_depth, 3, ks, ks]
+        )  # shape [num_layers, 3, ks, ks]
 
         # Render dual-pixel image with PSF convolution and depth interpolation
         img_left = conv_psf_depth_interp(rgb_img, depth, psfs_left, depths_ref)
@@ -467,12 +468,12 @@ class ParaxialLens(Lens):
 if __name__ == "__main__":
     from torchvision.utils import make_grid, save_image
 
-    lens = ParaxialLens(
+    lens = DefocusLens(
         foclen=50, fnum=1.8, sensor_size=(20.0, 20.0), sensor_res=(2000, 2000)
     )
     lens.refocus(-1000)
     lens.draw_psf_map(
-        save_name="./psf_map_paraxial_depth1500_focus1000.png",
+        save_name="./psf_map_defocus_depth1500_focus1000.png",
         grid=(11, 11),
         ks=PSF_KS,
         depth=-1500,

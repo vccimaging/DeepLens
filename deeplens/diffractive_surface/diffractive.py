@@ -6,6 +6,8 @@
 
 """Base class for diffractive surfaces (DOE)."""
 
+import logging
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -16,6 +18,8 @@ from ..config import EPSILON
 from ..base import DeepObj
 from ..material import Material
 from ..ops import diff_quantize
+
+logger = logging.getLogger(__name__)
 
 
 class DiffractiveSurface(DeepObj):
@@ -135,6 +139,47 @@ class DiffractiveSurface(DeepObj):
             )
 
         return phase_map
+
+    def _warn_if_undersampled(self, phase, f0, wvln):
+        """Warn once if a pointwise quadratic phase aliases on the current grid.
+
+        A lens phase applied as a pointwise multiply is band-limited only while
+        the phase step between adjacent pixels stays below pi; beyond that it
+        aliases and PSFs degrade into ghost-lattice artifacts. The check runs on
+        the raw (unwrapped) phase -- the wrapped [0, 2pi] phase used in
+        ``forward`` cannot reveal aliasing. Warning only; numerics are unchanged.
+
+        Args:
+            phase (Tensor): Raw, unwrapped phase. [..., H, W]. [rad]
+            f0 (float | Tensor): Focal length. [mm]
+            wvln (float): Wavelength of this phase map. [um]
+        """
+        if getattr(self, "_undersample_warned", False):
+            return
+
+        with torch.no_grad():
+            max_step = torch.maximum(
+                torch.diff(phase, dim=-1).abs().max(),
+                torch.diff(phase, dim=-2).abs().max(),
+            )
+        if max_step <= torch.pi:
+            return
+
+        self._undersample_warned = True
+        f0 = abs(float(f0))
+        wvln_mm = wvln * 1e-3
+        fnum = f0 / self.w
+        fnum_floor = self.ps / wvln_mm
+        aperture_max = wvln_mm * f0 / self.ps
+        logger.warning(
+            f"{self.__class__.__name__}: quadratic phase undersampled at "
+            f"wvln={wvln:.3f}um on {self.ps:.4f}mm grid "
+            f"(max phase step {float(max_step):.2f} rad/pixel > pi). "
+            f"f0={f0:.1f}mm, aperture {self.w:.2f}mm -> f/{fnum:.1f}; "
+            f"well-sampled needs f/# > {fnum_floor:.0f} "
+            f"(aperture <= {aperture_max:.3f}mm = wvln*f0/ps). "
+            f"PSFs may show ghost-lattice aliasing."
+        )
 
     def forward(self, wave):
         """Propagate wave field to the DOE and apply phase modulation. Input wave field can have different pixel size and physical size with the DOE.

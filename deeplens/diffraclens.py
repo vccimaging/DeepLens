@@ -12,18 +12,22 @@ Reference papers:
 """
 
 import json
+import math
 
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
+from .config import DEFAULT_WAVE, DEPTH, WAVE_RGB
 from .lens import Lens
 from .diffractive_surface import (
     Binary2,
+    DiffractedRotation,
     Fresnel,
     Pixel2D,
+    Rank1,
+    RotationallySymmetric,
     ThinLens,
     Zernike,
 )
@@ -47,14 +51,15 @@ class DiffractiveLens(Lens):
             plane [mm].
 
     Notes:
-        Operates in ``torch.float64`` by default for numerical stability of
-        the wave-propagation step.
+        Lens parameters default to ``torch.float32``; pass
+        ``dtype=torch.float64`` for higher-precision wave propagation.
     """
 
     def __init__(
         self,
         filename=None,
         device=None,
+        dtype=torch.float32,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
         obj_depth=DEPTH,
@@ -64,6 +69,9 @@ class DiffractiveLens(Lens):
         Args:
             filename (str, optional): Path to the lens configuration JSON file. If provided, loads the lens configuration from file. Defaults to None.
             device (str, optional): Computation device ('cpu' or 'cuda'). Defaults to 'cpu'.
+            dtype (torch.dtype, optional): Data type for the lens parameters.
+                Defaults to torch.float32; pass torch.float64 for
+                higher-precision wave propagation.
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
                 ``wvln``.  Defaults to ``DEFAULT_WAVE``.
@@ -76,6 +84,7 @@ class DiffractiveLens(Lens):
         """
         super().__init__(
             device=device,
+            dtype=dtype,
             primary_wvln=primary_wvln,
             wvln_rgb=wvln_rgb,
             obj_depth=obj_depth,
@@ -90,59 +99,15 @@ class DiffractiveLens(Lens):
             self.sensor_size = (8.0, 8.0)
             self.sensor_res = (2000, 2000)
 
-        self.astype(torch.float64)
+        self.astype(self.dtype)
 
         # Use total track length (first element to sensor) as focal length
         if hasattr(self, "d_sensor"):
             self.foclen = float(self.d_sensor)
             self.calc_fov()
 
-    @classmethod
-    def load_example1(cls):
-        """Create an example diffractive lens with a single Fresnel DOE.
-
-        Returns:
-            DiffractiveLens: A configured diffractive lens with a Fresnel surface
-                at f=50mm, 4mm size, and 4000 resolution.
-        """
-        self = cls(sensor_size=(4.0, 4.0), sensor_res=(2000, 2000))
-
-        # Diffractive Fresnel DOE
-        self.surfaces = [Fresnel(f0=50, d=0, size=4, res=4000)]
-
-        # Sensor
-        self.d_sensor = torch.tensor(50)
-        self.foclen = float(self.d_sensor)
-        self.calc_fov()
-
+        # Move all tensors (surfaces, sensor params) to the target device.
         self.to(self.device)
-        return self
-
-    @classmethod
-    def load_example2(cls):
-        """Create an example diffractive lens with a thin lens and binary DOE combination.
-
-        Returns:
-            DiffractiveLens: A configured diffractive lens with a ThinLens (f=50mm)
-                and a Binary2 DOE, both at 4mm size and 4000 resolution.
-        """
-        self = cls(sensor_size=(8.0, 8.0), sensor_res=(2000, 2000))
-
-        # Diffractive Fresnel DOE
-        self.surfaces = [
-            ThinLens(f0=50, d=0, size=4, res=4000),
-            Binary2(d=0, size=4, res=4000),
-        ]
-
-        # Sensor
-        self.d_sensor = torch.tensor(50)
-        self.sensor_size = (8.0, 8.0)
-        self.sensor_res = (2000, 2000)
-        self.foclen = float(self.d_sensor)
-        self.calc_fov()
-
-        self.to(self.device)
-        return self
 
     def read_lens_json(self, filename):
         """Load the lens configuration from a JSON file.
@@ -164,23 +129,26 @@ class DiffractiveLens(Lens):
 
             # Read sensor_size with default
             if "sensor_size" in data:
-                self.sensor_size = tuple(data["sensor_size"])
+                sensor_size = tuple(data["sensor_size"])
             else:
-                self.sensor_size = (8.0, 8.0)
+                sensor_size = (8.0, 8.0)
                 print(
-                    f"Sensor_size not found in lens file. Using default: {self.sensor_size} mm. "
+                    f"Sensor_size not found in lens file. Using default: {sensor_size} mm. "
                     "Consider specifying sensor_size in the lens file or using set_sensor()."
                 )
 
             # Read sensor_res with default
             if "sensor_res" in data:
-                self.sensor_res = tuple(data["sensor_res"])
+                sensor_res = tuple(data["sensor_res"])
             else:
-                self.sensor_res = (2000, 2000)
+                sensor_res = (2000, 2000)
                 print(
-                    f"Sensor_res not found in lens file. Using default: {self.sensor_res} pixels. "
+                    f"Sensor_res not found in lens file. Using default: {sensor_res} pixels. "
                     "Consider specifying sensor_res in the lens file or using set_sensor()."
                 )
+
+            # Configure sensor (also sets pixel_size and r_sensor).
+            self.set_sensor(sensor_size, sensor_res)
 
             # Load diffractive surfaces/elements
             d = 0.0
@@ -198,6 +166,12 @@ class DiffractiveLens(Lens):
                     s = ThinLens.init_from_dict(surf_dict)
                 elif surf_dict["type"].lower() == "zernike":
                     s = Zernike.init_from_dict(surf_dict)
+                elif surf_dict["type"].lower() == "rank1":
+                    s = Rank1.init_from_dict(surf_dict)
+                elif surf_dict["type"].lower() == "diffractedrotation":
+                    s = DiffractedRotation.init_from_dict(surf_dict)
+                elif surf_dict["type"].lower() == "rotationallysymmetric":
+                    s = RotationallySymmetric.init_from_dict(surf_dict)
                 else:
                     raise ValueError(
                         f"Diffractive surface type {surf_dict['type']} not implemented."
@@ -223,7 +197,10 @@ class DiffractiveLens(Lens):
         data["info"] = self.lens_info if hasattr(self, "lens_info") else "None"
         data["surfaces"] = []
         data["d_sensor"] = round(self.d_sensor.item(), 3)
-        data["l_sensor"] = round(self.l_sensor, 3)
+        data["sensor_size"] = [
+            round(float(self.sensor_size[0]), 3),
+            round(float(self.sensor_size[1]), 3),
+        ]
         data["sensor_res"] = self.sensor_res
 
         # Save diffractive surfaces
@@ -232,6 +209,8 @@ class DiffractiveLens(Lens):
 
             if isinstance(s, Pixel2D):
                 surf_data = s.surf_dict(filename.replace(".json", "_pixel2d.pth"))
+            elif isinstance(s, (Rank1, RotationallySymmetric)):
+                surf_data = s.surf_dict(filename.replace(".json", f"_surf{i + 1}.pth"))
             else:
                 surf_data = s.surf_dict()
 
@@ -240,6 +219,12 @@ class DiffractiveLens(Lens):
             if i < len(self.surfaces) - 1:
                 surf_dict["d_next"] = (
                     self.surfaces[i + 1].d.item() - self.surfaces[i].d.item()
+                )
+            else:
+                # Last surface: distance to the sensor. read_lens_json requires
+                # d_next on every surface, so the file must always include it.
+                surf_dict["d_next"] = round(
+                    float(self.d_sensor) - self.surfaces[i].d.item(), 3
                 )
 
             data["surfaces"].append(surf_dict)
@@ -279,14 +264,15 @@ class DiffractiveLens(Lens):
     # =============================================
     # Image simulation
     # =============================================
-    def render_mono(self, img, wvln=None, ks=PSF_KS):
+    def render_mono(self, img, wvln=None, ks=None):
         """Simulate monochromatic lens blur by convolving an image with the point spread function.
 
         Args:
             img (torch.Tensor): Input image. Shape: (B, 1, H, W)
             wvln (float, optional): Wavelength in µm. When ``None`` (default),
                 falls back to ``self.primary_wvln``.
-            ks (int, optional): PSF kernel size. Defaults to PSF_KS.
+            ks (int, optional): PSF kernel size. When ``None`` (default), the
+                full sensor resolution (``max(self.sensor_res)``) is used.
 
         Returns:
             torch.Tensor: Rendered image after applying lens blur with shape (B, 1, H, W).
@@ -296,24 +282,50 @@ class DiffractiveLens(Lens):
         img_render = conv_psf(img, psf)
         return img_render
 
-    def psf(self, depth=float("inf"), wvln=None, ks=PSF_KS, upsample_factor=1):
-        """Calculate monochromatic point PSF by wave propagation approach.
+    def psf(self, points, wvln=None, ks=None, recenter=False, upsample_factor=1):
+        """Calculate the monochromatic PSF for one or more point sources.
+
+        Off-axis point sources are supported. The signature follows
+        :meth:`deeplens.lens.Lens.psf` and :meth:`deeplens.geolens.GeoLens.psf`.
 
         Args:
-            depth (float, optional): Depth of the point source. Defaults to float('inf').
+            points (torch.Tensor or list): Point source coordinates, shape
+                ``[N, 3]`` or ``[3]``. ``x, y`` are normalised to ``[-1, 1]``
+                (relative to the sensor half-width/height); ``z`` is the depth
+                in mm (negative; ``-inf`` for an object at infinity).
             wvln (float, optional): Wavelength in µm. When ``None`` (default),
                 falls back to ``self.primary_wvln``.
-            ks (int, optional): PSF kernel size. Defaults to PSF_KS.
-            upsample_factor (int, optional): Upsampling factor to meet Nyquist sampling constraint. Defaults to 1.
+            ks (int, optional): PSF kernel size in pixels. When ``None``
+                (default), the full sensor resolution
+                (``max(self.sensor_res)``) is used.
+            recenter (bool, optional): How the ks x ks kernel is centered (both
+                options keep off-axis PSFs centered in the kernel). If True,
+                crop around the measured peak (argmax of the sensor-plane
+                intensity). If False (default), crop around the perspective
+                (pinhole) image of the field point. The lens forms a physically
+                inverted image, but the result is flipped so the PSF is reported
+                in the sensor/source-sign convention (a +x source -> +x).
+            upsample_factor (int, optional): Field upsampling factor to meet the
+                Nyquist sampling constraint. Defaults to 1.
 
         Returns:
-            psf_out (tensor): PSF. shape [ks, ks]
+            torch.Tensor: PSF intensity map, shape ``[ks, ks]`` for a single
+            point or ``[N, ks, ks]`` for a batch.
 
         Note:
-            [1] Usually we only consider the on-axis PSF because paraxial approximation is implicitly applied for wave optical model. For the shifted phase issue, refer to "Modeling off-axis diffraction with the least-sampling angular spectrum method".
+            A single Angular Spectrum Method (ASM) window is used, so very large
+            off-axis fields can suffer from the shifted-phase/aliasing issue;
+            see "Modeling off-axis diffraction with the least-sampling angular
+            spectrum method".
         """
         wvln = self.primary_wvln if wvln is None else wvln
-        # Sample input wave field (We have to sample high resolution to meet Nyquist sampling constraint)
+        ks = max(int(self.sensor_res[0]), int(self.sensor_res[1])) if ks is None else ks
+        if not torch.is_tensor(points):
+            points = torch.tensor(points, dtype=torch.float64)
+        single_point = points.dim() == 1
+        points = points.reshape(-1, 3)
+
+        # Field-plane sampling (high resolution to satisfy Nyquist).
         field_res = [
             self.surfaces[0].res[0] * upsample_factor,
             self.surfaces[0].res[1] * upsample_factor,
@@ -322,118 +334,167 @@ class DiffractiveLens(Lens):
             self.surfaces[0].res[0] * self.surfaces[0].ps,
             self.surfaces[0].res[1] * self.surfaces[0].ps,
         ]
-        if depth == float("inf"):
-            inp_wave = ComplexWave.plane_wave(
-                phy_size=field_size,
-                res=field_res,
-                wvln=wvln,
-                z=0.0,
-            ).to(self.device)
-        else:
-            inp_wave = ComplexWave.point_wave(
-                point=[0.0, 0.0, depth],
-                phy_size=field_size,
-                res=field_res,
-                wvln=wvln,
-                z=0.0,
-            ).to(self.device)
+        sensor_w, sensor_h = self.sensor_size
 
-        # Calculate intensity on the sensor. Shape [H_sensor, W_sensor]
-        output_wave = self.forward(inp_wave)
-        intensity = output_wave.u.abs() ** 2
+        psfs = []
+        for pt in points:
+            x_norm, y_norm, depth = float(pt[0]), float(pt[1]), float(pt[2])
 
-        # Interpolate wave to have the same pixel size as the sensor
-        factor = output_wave.ps / self.pixel_size
-        intensity = F.interpolate(
-            intensity,
-            scale_factor=(factor, factor),
-            mode="bilinear",
-            align_corners=False,
-        )[0, 0, :, :]
+            # Build the incident field for this (possibly off-axis) source.
+            if math.isinf(depth):
+                # Collimated source: tilted plane wave. The tilt sign is negated
+                # so the source physically images to the inverted side (an object
+                # at +x focuses to -x), consistent with the finite-depth point
+                # source below; the inversion is undone by the flip further down.
+                theta_x = math.atan(-x_norm * sensor_w / 2 / self.foclen)
+                theta_y = math.atan(-y_norm * sensor_h / 2 / self.foclen)
+                inp_wave = ComplexWave.plane_wave(
+                    wvln=wvln,
+                    z=0.0,
+                    phy_size=field_size,
+                    res=field_res,
+                    theta_x=theta_x,
+                    theta_y=theta_y,
+                ).to(self.device)
+            else:
+                # Finite-depth source: spherical wave from the object point.
+                scale = -depth / self.foclen  # object height / image height
+                obj_x = x_norm * scale * sensor_w / 2
+                obj_y = y_norm * scale * sensor_h / 2
+                inp_wave = ComplexWave.point_wave(
+                    point=[obj_x, obj_y, depth],
+                    phy_size=field_size,
+                    res=field_res,
+                    wvln=wvln,
+                    z=0.0,
+                ).to(self.device)
 
-        # Crop or pad wave to the sensor resolution
-        intensity_h, intensity_w = intensity.shape[-2:]
-        sensor_h, sensor_w = self.sensor_res
-        if sensor_h < intensity_h or sensor_w < intensity_w:
-            # crop
-            start_h = (intensity_h - sensor_h) // 2
-            start_w = (intensity_w - sensor_w) // 2
+            # Propagate to the sensor and compute intensity. Shape [H, W].
+            output_wave = self.forward(inp_wave)
+            intensity = output_wave.u.abs() ** 2
+
+            # Resample to the sensor pixel pitch.
+            factor = output_wave.ps / self.pixel_size
+            intensity = F.interpolate(
+                intensity,
+                scale_factor=(factor, factor),
+                mode="bilinear",
+                align_corners=False,
+            )[0, 0, :, :]
+
+            # Center crop / pad to the sensor resolution. ``sensor_res`` is
+            # (W, H) while the intensity tensor is indexed [H, W]; handle each
+            # dimension independently so non-square sensors work correctly.
+            target_h, target_w = int(self.sensor_res[1]), int(self.sensor_res[0])
+            intensity_h, intensity_w = intensity.shape[-2:]
+            pad_h = max(target_h - intensity_h, 0)
+            pad_w = max(target_w - intensity_w, 0)
+            if pad_h > 0 or pad_w > 0:
+                intensity = F.pad(
+                    intensity,
+                    (pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2),
+                    mode="constant",
+                    value=0,
+                )
+            intensity_h, intensity_w = intensity.shape[-2:]
+            start_h = (intensity_h - target_h) // 2
+            start_w = (intensity_w - target_w) // 2
             intensity = intensity[
-                start_h : start_h + sensor_h, start_w : start_w + sensor_w
+                start_h : start_h + target_h, start_w : start_w + target_w
             ]
-        elif sensor_h > intensity_h or sensor_w > intensity_w:
-            # pad
-            pad_top = (sensor_h - intensity_h) // 2
-            pad_bottom = sensor_h - intensity_h - pad_top
-            pad_left = (sensor_w - intensity_w) // 2
-            pad_right = sensor_w - intensity_w - pad_left
+
+            # The lens forms a physically inverted image (an object at +x focuses
+            # to -x). Flip both axes to report the PSF in the sensor / source-sign
+            # convention (+x source -> +x sensor position), consistent across the
+            # collimated and finite-depth paths.
+            intensity = torch.flip(intensity, [0, 1])
+
+            # Crop the ks x ks patch around the PSF location. A diffractive lens
+            # has no chief ray to trace, so when ``recenter`` is True the crop
+            # center is the measured PSF peak (argmax of the simulated
+            # sensor-plane intensity); otherwise the crop center is the
+            # perspective (pinhole) image of the source field point.
+            if recenter:
+                peak = torch.argmax(intensity)
+                coord_c_i = int(peak // target_w)
+                coord_c_j = int(peak % target_w)
+            else:
+                # Perspective center: paraxial image of (x_norm, y_norm).
+                # +x maps to larger columns and +y to smaller rows, matching the
+                # un-inverted sensor-plane intensity.
+                coord_c_j = int(round(target_w * (1.0 + x_norm) / 2.0))
+                coord_c_i = int(round(target_h * (1.0 - y_norm) / 2.0))
+            coord_c_i = min(max(coord_c_i, 0), target_h - 1)
+            coord_c_j = min(max(coord_c_j, 0), target_w - 1)
             intensity = F.pad(
                 intensity,
-                (pad_left, pad_right, pad_top, pad_bottom),
+                [ks // 2, ks // 2, ks // 2, ks // 2],
                 mode="constant",
                 value=0,
             )
+            psf = intensity[coord_c_i : coord_c_i + ks, coord_c_j : coord_c_j + ks]
+            psf = psf / psf.sum()
+            psfs.append(diff_float(psf))
 
-        # Crop the valid patch from the full-resolution intensity map as the PSF
-        coord_c_i = int(self.sensor_res[1] / 2)
-        coord_c_j = int(self.sensor_res[0] / 2)
-        intensity = F.pad(
-            intensity,
-            [ks // 2, ks // 2, ks // 2, ks // 2],
-            mode="constant",
-            value=0,
-        )
-        psf = intensity[coord_c_i : coord_c_i + ks, coord_c_j : coord_c_j + ks]
-
-        # Normalize PSF
-        psf /= psf.sum()
-        psf = torch.flip(psf, [0, 1])
-
-        return diff_float(psf)
+        psf_out = torch.stack(psfs, dim=0)
+        return psf_out[0] if single_point else psf_out
 
     # =============================================
     # Visualization
     # =============================================
     def draw_layout(self, save_name="./doelens.png"):
-        """Draw the lens layout diagram.
+        """Draw a 2D layout diagram of the diffractive lens.
 
-        Visualizes the DOE and sensor positions in a 2D layout.
+        Each diffractive surface is drawn as a vertical dashed line at its axial
+        position ``z = surface.d``, and the sensor as a solid rectangle at
+        ``z = d_sensor``.
 
         Args:
             save_name (str, optional): Path to save the figure. Defaults to './doelens.png'.
         """
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(12, 4))
 
-        # Draw DOE
-        d = self.doe.d.item()
-        doe_l = self.doe.l
-        ax.plot(
-            [d, d], [-doe_l / 2, doe_l / 2], "orange", linestyle="--", dashes=[1, 1]
-        )
+        default_l = float(max(self.sensor_size))
 
-        # Draw sensor
-        d = self.sensor.d.item()
-        sensor_l = self.sensor.l
-        width = 0.2  # Width of the rectangle
+        # Draw each diffractive surface as a vertical dashed line.
+        for i, surf in enumerate(self.surfaces):
+            d = float(surf.d)
+            surf_l = float(getattr(surf, "w", default_l))
+            ax.plot(
+                [d, d], [-surf_l / 2, surf_l / 2], "orange", linestyle="--", dashes=[1, 1]
+            )
+            ax.text(
+                d, surf_l / 2 * 1.08, f"{type(surf).__name__}\n(z={d:.1f} mm)",
+                ha="center", va="bottom", fontsize=8,
+            )
+
+        # Draw the sensor plane as a thin rectangle.
+        d_sensor = float(self.d_sensor)
+        sensor_l = float(self.sensor_size[1])
+        width = max(0.01 * d_sensor, 0.2)
         rect = plt.Rectangle(
-            (d - width / 2, -sensor_l / 2),
-            width,
-            sensor_l,
-            facecolor="none",
-            edgecolor="black",
-            linewidth=1,
+            (d_sensor - width / 2, -sensor_l / 2), width, sensor_l,
+            facecolor="none", edgecolor="black", linewidth=1,
         )
         ax.add_patch(rect)
+        ax.text(
+            d_sensor, sensor_l / 2 * 1.08, f"Sensor\n(z={d_sensor:.1f} mm)",
+            ha="center", va="bottom", fontsize=8,
+        )
 
-        ax.set_aspect("equal")
-        ax.axis("off")
-        fig.savefig(save_name, dpi=600, bbox_inches="tight")
+        # Optical axis.
+        ax.plot([0, d_sensor], [0, 0], "k-", linewidth=0.5, alpha=0.3)
+
+        ax.set_xlabel("z [mm]")
+        ax.set_yticks([])
+        ax.margins(x=0.05, y=0.25)
+        fig.savefig(save_name, dpi=300, bbox_inches="tight")
         plt.close(fig)
 
     def draw_psf(
         self,
         depth=None,
-        ks=PSF_KS,
+        ks=None,
         save_name="./psf_doelens.png",
         log_scale=True,
         eps=1e-4,
@@ -445,13 +506,15 @@ class DiffractiveLens(Lens):
         Args:
             depth (float, optional): Depth of the point source. When ``None``
                 (default), falls back to ``self.obj_depth``.
-            ks (int, optional): Size of the PSF kernel in pixels. Defaults to PSF_KS.
+            ks (int, optional): Size of the PSF kernel in pixels. When ``None``
+                (default), the full sensor resolution
+                (``max(self.sensor_res)``) is used.
             save_name (str, optional): Path to save the PSF image. Defaults to './psf_doelens.png'.
             log_scale (bool, optional): If True, display PSF in log scale. Defaults to True.
             eps (float, optional): Small value for log scale to avoid log(0). Defaults to 1e-4.
         """
         depth = self.obj_depth if depth is None else depth
-        psf_rgb = self.psf_rgb(point=[0, 0, depth], ks=ks)
+        psf_rgb = self.psf_rgb(points=[0.0, 0.0, depth], ks=ks)
 
         if log_scale:
             psf_rgb = torch.log10(psf_rgb + eps)
@@ -463,13 +526,23 @@ class DiffractiveLens(Lens):
     # =============================================
     # Optimization
     # =============================================
-    def get_optimizer(self, lr):
-        """Get optimizer for the lens parameters.
+    def get_optimizer(self, lr, optim_surf_ls=None):
+        """Build an Adam optimizer over the trainable diffractive surfaces.
 
         Args:
             lr (float): Learning rate.
+            optim_surf_ls (list[int], optional): Indices of the surfaces to
+                optimize. If None, all diffractive surfaces are optimized.
 
         Returns:
-            Optimizer: Optimizer object for lens parameters.
+            torch.optim.Optimizer: Adam optimizer over the selected surfaces'
+            phase parameters.
         """
-        return self.doe.get_optimizer(lr=lr)
+        if optim_surf_ls is None:
+            optim_surf_ls = list(range(len(self.surfaces)))
+
+        params = []
+        for idx in optim_surf_ls:
+            params += self.surfaces[idx].get_optimizer_params(lr=lr)
+
+        return torch.optim.Adam(params)

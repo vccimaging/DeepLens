@@ -13,6 +13,7 @@ deeplens/do_code/
 !images/*.png
 !assets/*.png
 !docs/assets/*.png
+!docs/assets/**/*.png
 debug.py
 *.log
 temp/*
@@ -33,3 +34,4 @@ site/
 test/test_outputs
 visualization/
 research/
+docs/superpowers/

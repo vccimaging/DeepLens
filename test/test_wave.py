@@ -235,6 +235,68 @@ class TestAngularSpectrumMethod:
         assert u_prop.shape == u.shape
 
 
+class TestBandLimitedASM:
+    """Test band-limited Angular Spectrum Method (Matsushima & Shimobaba 2009)."""
+
+    def test_bandlimited_reduces_to_asm_at_short_range(self, device_auto):
+        """At short distances the band-limit window covers the whole spectrum,
+        so band-limited ASM must match the standard ASM exactly."""
+        from deeplens.light import BandLimitedASM
+
+        u = torch.rand(256, 256, dtype=torch.complex64, device=device_auto)
+        kwargs = dict(z=1.0, wvln=0.55, ps=0.01)
+
+        u_bl = BandLimitedASM(u=u, **kwargs)
+        u_asm = AngularSpectrumMethod(u=u, **kwargs)
+
+        assert torch.allclose(u_bl, u_asm, atol=1e-5)
+
+    def test_bandlimited_asm_runs_at_long_range(self, device_auto):
+        """Band-limited ASM should run at large distances (where standard ASM
+        aliases) and return a finite field of the same shape."""
+        from deeplens.light import BandLimitedASM
+
+        u = torch.ones(256, 256, dtype=torch.complex64, device=device_auto)
+
+        u_prop = BandLimitedASM(u=u, z=200.0, wvln=0.55, ps=0.01)
+
+        assert u_prop.shape == u.shape
+        assert torch.isfinite(u_prop.real).all()
+        assert torch.isfinite(u_prop.imag).all()
+
+    def test_bandlimited_asm_suppresses_aliasing_at_long_range(self, device_auto):
+        """At a distance where standard ASM is undersampled, the band-limit must
+        drop the aliasing-prone high frequencies, so band-limited ASM carries no
+        more energy than standard ASM (strictly less for a sharp aperture)."""
+        from deeplens.light import BandLimitedASM
+
+        # Sharp centered aperture -> broad spectrum that aliases at long range.
+        u = torch.zeros(256, 256, dtype=torch.complex64, device=device_auto)
+        u[120:136, 120:136] = 1.0
+        kwargs = dict(z=200.0, wvln=0.55, ps=0.01, padding=False)
+
+        e_bl = (BandLimitedASM(u=u, **kwargs).abs() ** 2).sum()
+        e_asm = (AngularSpectrumMethod(u=u, **kwargs).abs() ** 2).sum()
+
+        assert e_bl > 0
+        assert e_bl < e_asm
+
+    def test_prop_handles_intermediate_distance(self, device_auto):
+        """prop() should handle distances between the ASM and Fresnel regimes
+        (previously unsupported and raised) via band-limited ASM."""
+        wave = ComplexWave.plane_wave(
+            wvln=0.55,
+            z=0.0,
+            phy_size=(2.56, 2.56),  # ps=0.01 -> asm_zmax~46mm, fresnel_zmin~4654mm
+            res=(256, 256),
+        )
+
+        wave.prop(prop_dist=200.0)  # 200 mm lies in the former gap
+
+        assert (wave.z == 200.0).all().item()
+        assert torch.isfinite(wave.u.real).all()
+
+
 class TestComplexWaveGrids:
     """Test grid generation."""
 

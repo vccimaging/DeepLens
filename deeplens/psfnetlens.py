@@ -52,6 +52,7 @@ class PSFNetLens(Lens):
         psf_chan=3,
         model_name="mlp_conv",
         kernel_size=64,
+        dtype=torch.float32,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
         obj_depth=DEPTH,
@@ -66,6 +67,7 @@ class PSFNetLens(Lens):
             psf_chan (int): Number of output channels.
             model_name (str): Name of the model.
             kernel_size (int): Kernel size.
+            dtype (torch.dtype, optional): Data type for computations. Defaults to torch.float32.
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
                 ``wvln``.  Defaults to ``DEFAULT_WAVE``.
@@ -77,7 +79,10 @@ class PSFNetLens(Lens):
                 Defaults to ``DEPTH``.
         """
         super().__init__(
-            primary_wvln=primary_wvln, wvln_rgb=wvln_rgb, obj_depth=obj_depth
+            dtype=dtype,
+            primary_wvln=primary_wvln,
+            wvln_rgb=wvln_rgb,
+            obj_depth=obj_depth,
         )
 
         # Load lens (sensor_size and sensor_res are read from the lens file)
@@ -85,6 +90,7 @@ class PSFNetLens(Lens):
         self.lens = GeoLens(
             filename=lens_path,
             device=self.device,
+            dtype=dtype,
             primary_wvln=primary_wvln,
             wvln_rgb=wvln_rgb,
             obj_depth=obj_depth,

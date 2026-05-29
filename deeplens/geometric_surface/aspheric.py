@@ -16,7 +16,6 @@ Reference:
     [1] https://en.wikipedia.org/wiki/Aspheric_lens.
 """
 
-import numpy as np
 import torch
 
 from .base import EPSILON, Surface
@@ -113,7 +112,6 @@ class Aspheric(Surface):
             self.ai = None
             self.ai_degree = 0
 
-        self.tolerancing = False
         self.to(device)
 
     @classmethod
@@ -151,9 +149,7 @@ class Aspheric(Surface):
         )
 
     def _get_curvature_params(self):
-        """Get curvature parameters, accounting for tolerancing."""
-        if self.tolerancing:
-            return self.c + self.c_error, self.k + self.k_error
+        """Get base curvature ``c`` and conic constant ``k``."""
         return self.c, self.k
 
     def _sag(self, x, y):
@@ -289,59 +285,6 @@ class Aspheric(Surface):
             params += self.mat2.get_optimizer_params()
 
         return params
-
-    # =======================================
-    # Tolerancing
-    # =======================================
-
-    @torch.no_grad()
-    def init_tolerance(self, tolerance_params=None):
-        """Perturb the surface with some tolerance.
-
-        Args:
-            tolerance_params (dict): Tolerance for surface parameters.
-
-        References:
-            [1] https://www.edmundoptics.com/capabilities/precision-optics/capabilities/aspheric-lenses/
-            [2] https://www.edmundoptics.com/knowledge-center/application-notes/optics/all-about-aspheric-lenses/?srsltid=AfmBOoon8AUXVALojol2s5K20gQk7W1qUisc6cE4WzZp3ATFY5T1pK8q
-        """
-        super().init_tolerance(tolerance_params)
-        if tolerance_params is None:
-            tolerance_params = {}
-        self.c_tole = tolerance_params.get("c_tole", 0.001)
-        self.k_tole = tolerance_params.get("k_tole", 0.001)
-        self.c_error = 0.0
-        self.k_error = 0.0
-
-    def sample_tolerance(self):
-        """Randomly perturb surface parameters to simulate manufacturing errors."""
-        super().sample_tolerance()
-        self.c_error = float(np.random.randn() * self.c_tole)
-        self.k_error = float(np.random.randn() * self.k_tole)
-
-    def zero_tolerance(self):
-        """Zero tolerance."""
-        super().zero_tolerance()
-        self.c_error = 0.0
-        self.k_error = 0.0
-
-    def sensitivity_score(self):
-        """Tolerance squared sum."""
-        score_dict = super().sensitivity_score()
-        idx = getattr(self, "surf_idx", id(self))
-
-        if self.c.grad is not None:
-            score_dict[f"surf{idx}_c_grad"] = round(self.c.grad.item(), 6)
-            score_dict[f"surf{idx}_c_score"] = round(
-                (self.c_tole**2 * self.c.grad**2).item(), 6
-            )
-
-        if self.k.grad is not None:
-            score_dict[f"surf{idx}_k_grad"] = round(self.k.grad.item(), 6)
-            score_dict[f"surf{idx}_k_score"] = round(
-                (self.k_tole**2 * self.k.grad**2).item(), 6
-            )
-        return score_dict
 
     # =======================================
     # IO

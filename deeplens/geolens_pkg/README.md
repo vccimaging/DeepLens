@@ -12,7 +12,6 @@ This package offers a wide range of optical performance evaluation capabilities:
 -   **Modulation Transfer Function (MTF):** Evaluate the spatial frequency response of the lens system to determine its resolution and contrast performance.
 -   **Vignetting Analysis:** Calculate and visualize the reduction in image brightness at the periphery of the field.
 -   **3D Visualization:** Render 3D views of the lens system for better understanding of its physical layout.
--   **Tolerance Analysis:** Tools for assessing the impact of manufacturing and assembly errors on lens performance.
 -   **Optimization:** Utilities for optimizing lens designs based on various performance metrics.
 
 ## Modules
@@ -23,6 +22,5 @@ The package is organized into the following modules:
 -   `optim.py`: Contains tools and functions for optimizing `GeoLens` systems.
 -   `vis.py`: Provides utilities for plotting and visualizing the results of various optical analyses.
 -   `vis3d.py`: Includes functionalities for creating and displaying 3D renderings of lens systems.
--   `eval_tolerance.py`: Implements functions for performing tolerance analysis on lens parameters.
 -   `io.py`: A set of helper functions for input/output operations, such as loading and saving lens data.
 -   `utils.py`: Contains various utility functions used across the package.

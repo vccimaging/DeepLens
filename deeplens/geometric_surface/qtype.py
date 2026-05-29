@@ -183,7 +183,6 @@ class QTypeFreeform(Surface):
             self.qm = None
             self.n_qterms = 0
 
-        self.tolerancing = False
         self.to(device)
 
     @classmethod
@@ -218,13 +217,8 @@ class QTypeFreeform(Surface):
         Returns:
             tensor: Surface sag values
         """
-        # Tolerance handling
-        if self.tolerancing:
-            c = self.c + self.c_error
-            k = self.k + self.k_error
-        else:
-            c = self.c
-            k = self.k
+        c = self.c
+        k = self.k
 
         # Radial distance squared
         r2 = x**2 + y**2
@@ -272,13 +266,8 @@ class QTypeFreeform(Surface):
         Returns:
             tuple: (dz/dx, dz/dy)
         """
-        # Tolerance handling
-        if self.tolerancing:
-            c = self.c + self.c_error
-            k = self.k + self.k_error
-        else:
-            c = self.c
-            k = self.k
+        c = self.c
+        k = self.k
 
         r2 = x**2 + y**2
 
@@ -349,12 +338,8 @@ class QTypeFreeform(Surface):
         Returns:
             tensor: Boolean mask of valid points
         """
-        if self.tolerancing:
-            c = self.c + self.c_error
-            k = self.k + self.k_error
-        else:
-            c = self.c
-            k = self.k
+        c = self.c
+        k = self.k
 
         r2 = x**2 + y**2
 
@@ -372,12 +357,8 @@ class QTypeFreeform(Surface):
 
     def max_height(self):
         """Maximum valid height (radial distance)."""
-        if self.tolerancing:
-            c = self.c + self.c_error
-            k = self.k + self.k_error
-        else:
-            c = self.c
-            k = self.k
+        c = self.c
+        k = self.k
 
         # Conic limit
         if k > -1 and abs(c) > EPSILON:
@@ -436,33 +417,6 @@ class QTypeFreeform(Surface):
             params += self.mat2.get_optimizer_params()
 
         return params
-
-    # =======================================
-    # Tolerancing
-    # =======================================
-
-    @torch.no_grad()
-    def init_tolerance(self, tolerance_params=None):
-        """Initialize tolerance parameters for manufacturing error simulation."""
-        super().init_tolerance(tolerance_params)
-        if tolerance_params is None:
-            tolerance_params = {}
-        self.c_tole = tolerance_params.get("c_tole", 0.001)
-        self.k_tole = tolerance_params.get("k_tole", 0.001)
-        self.c_error = 0.0
-        self.k_error = 0.0
-
-    def sample_tolerance(self):
-        """Sample random manufacturing errors."""
-        super().sample_tolerance()
-        self.c_error = float(np.random.randn() * self.c_tole)
-        self.k_error = float(np.random.randn() * self.k_tole)
-
-    def zero_tolerance(self):
-        """Reset all tolerances to zero."""
-        super().zero_tolerance()
-        self.c_error = 0.0
-        self.k_error = 0.0
 
     # =======================================
     # IO
