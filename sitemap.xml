@@ -2,34 +2,86 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://vccimaging.github.io/DeepLens/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-29</lastmod>
     </url>
     <url>
          <loc>https://vccimaging.github.io/DeepLens/architecture/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-29</lastmod>
     </url>
     <url>
          <loc>https://vccimaging.github.io/DeepLens/contributing/</loc>
-         <lastmod>2026-05-14</lastmod>
-    </url>
-    <url>
-         <loc>https://vccimaging.github.io/DeepLens/examples/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-29</lastmod>
     </url>
     <url>
          <loc>https://vccimaging.github.io/DeepLens/installation/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-29</lastmod>
     </url>
     <url>
          <loc>https://vccimaging.github.io/DeepLens/quickstart/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-29</lastmod>
     </url>
     <url>
          <loc>https://vccimaging.github.io/DeepLens/api/network/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-29</lastmod>
     </url>
     <url>
          <loc>https://vccimaging.github.io/DeepLens/api/optics/</loc>
-         <lastmod>2026-05-14</lastmod>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/4f_system/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/autolens_rms/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/design_diffraclens/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/design_geolens/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/design_hybridlens/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/diffractive_surfaces/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/hello_defocuslens/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/hello_diffraclens/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/hello_geolens/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/hello_hybridlens/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/multi_order/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/psf_net/</loc>
+         <lastmod>2026-05-29</lastmod>
+    </url>
+    <url>
+         <loc>https://vccimaging.github.io/DeepLens/examples/pupil_field/</loc>
+         <lastmod>2026-05-29</lastmod>
     </url>
 </urlset>
