@@ -23,4 +23,4 @@ pip install deeplens-core
 - [Installation](installation.md) — detailed setup instructions
 - [Quickstart](quickstart.md) — load a lens, compute a PSF, render an image
 - [API Reference](api/optics.md) — full class and function documentation
-- [Examples](examples.md) — lens design, end-to-end optimization, image simulation
+- [Examples](examples/index.md) — lens design, end-to-end optimization, image simulation

@@ -95,4 +95,4 @@ DeepLens provides several lens models for different use cases:
 ## Next Steps
 
 - [API Reference](api/optics.md) — full documentation for all classes
-- [Examples](examples.md) — lens design, end-to-end optimization, and more
+- [Examples](examples/index.md) — lens design, end-to-end optimization, and more
