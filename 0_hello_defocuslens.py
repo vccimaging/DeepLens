@@ -42,6 +42,8 @@ print(f"DefocusLens: f={lens.foclen} mm, f/{lens.fnum}, focused at {lens.foc_dis
 # =====================================================================
 # Defocus analysis: circle of confusion (CoC) and depth of field (DoF)
 # =====================================================================
+save_name = "./hello_defocuslens"
+
 depths = torch.tensor([-500.0, -1000.0, -2000.0])  # near / in-focus / far
 coc = lens.coc(depths)
 dof = lens.dof(depths)
@@ -49,17 +51,15 @@ for d, c, f in zip(depths.tolist(), coc.tolist(), dof.tolist()):
     print(f"  depth {d:8.1f} mm -> CoC {c:7.4f} mm, DoF {f:8.2f} mm")
 # CoC is ~0 at the focus distance and grows for out-of-focus depths.
 
-# =====================================================================
-# PSF and image simulation
-# =====================================================================
-save_name = "./hello_defocuslens"
-
 # A defocused on-axis point source produces a blur disk (pillbox) PSF.
 point = torch.tensor([[0.0, 0.0, -500.0]])
 psf = lens.psf(point, ks=31, psf_type="pillbox")
 print(f"Defocus PSF: shape {tuple(psf.shape[-2:])}, sum {psf.sum():.3f}")
 save_image(psf.clamp(min=0), f"{save_name}_psf.png", normalize=True)
 
+# =====================================================================
+# Image simulation
+# =====================================================================
 # Render a test chart through the lens at a uniform out-of-focus depth. Match the
 # sensor to the input image instead of resizing the image.
 img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0

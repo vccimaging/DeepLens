@@ -1,7 +1,22 @@
-"""Jointly optimize refractive-diffractive lens with a differentiable ray-wave model. This code can be extended to end-to-end refractive-diffractive lens and network design. 
+"""HybridLens design example: optimize a refractive-diffractive camera lens.
+
+This experiment demonstrates how DeepLens jointly optimizes refractive and
+diffractive optics with a differentiable ray-wave model. We start from a
+hybrid lens, where the green wavelength is well focused after refocusing
+the system at 1 m, but the blue wavelength is still defocused because of
+chromatic aberration.
+
+The goal is to bring the blue light back into focus. At each iteration, the
+HybridLens model computes the blue PSF at 489 nm, PSFLoss encourages the PSF
+energy to concentrate near the ideal focus, and the optimizer back-propagates
+through both the refractive lens parameters and the Binary2 diffractive surface.
+Every 100 iterations, the script saves the current lens JSON, layout/analysis
+figure, and PSF image under a timestamped result folder.
 
 Technical Paper:
-    Xinge Yang, Matheus Souza, Kunyi Wang, Praneeth Chakravarthula, Qiang Fu and Wolfgang Heidrich, "End-to-End Hybrid Refractive-Diffractive Lens Design with Differentiable Ray-Wave Model," Siggraph Asia 2024.
+    Xinge Yang, Matheus Souza, Kunyi Wang, Praneeth Chakravarthula, Qiang Fu and
+    Wolfgang Heidrich, "End-to-End Hybrid Refractive-Diffractive Lens Design with
+    Differentiable Ray-Wave Model," Siggraph Asia 2024.
 """
 
 import logging
@@ -61,8 +76,8 @@ def config():
     with open(f"{result_dir}/config.yml", "w") as f:
         yaml.dump(args, f)
 
-    with open(f"{result_dir}/6_hybridlens_design.py", "w") as f:
-        with open("6_hybridlens_design.py", "r") as code:
+    with open(f"{result_dir}/1_design_hybridlens.py", "w") as f:
+        with open("1_design_hybridlens.py", "r") as code:
             f.write(code.read())
 
     return args
@@ -70,10 +85,12 @@ def config():
 
 def main(args):
     # Create a hybrid refractive-diffractive lens
-    lens = HybridLens(filename="./datasets/lenses/hybridlens/a489_doe.json", dtype=torch.float64)
+    lens = HybridLens(
+        filename="./datasets/lenses/hybridlens/a489_doe.json", dtype=torch.float64
+    )
     lens.refocus(foc_dist=-1000.0)
 
-    # PSF optimization loop to focus blue light
+    # PSF optimization loop to bring the defocused blue light back into focus.
     optimizer = lens.get_optimizer(doe_lr=0.1, lens_lr=[1e-4, 1e-4, 1e-1, 1e-5])
     loss_fn = PSFLoss()
     iterations = 1000
@@ -97,6 +114,7 @@ def main(args):
 
         pbar.set_postfix({"loss": loss.item()})
         pbar.update(1)
+
 
 if __name__ == "__main__":
     args = config()
