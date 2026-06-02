@@ -1,35 +1,33 @@
 # DeepLens
 
-**DeepLens** is a differentiable optical lens simulator that supports multiple optical models (eg., geometric, diffractive, hybrid, neural, and interpolation). It can be used for (1) image simulation, (2) optical design, and (3) end-to-end optics-algorithm co-design ([End2end-Imaging](https://github.com/vccimaging/End2endImaging)). DeepLens enables researchers to rapidly prototype and optimize custom optical systems through differentiable simulation.
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/singer-yang/DeepLens)
+**DeepLens** is a differentiable optical lens simulator with the support of multiple optical models (eg., geometric, diffractive, hybrid, neural PSF, and interpolation PSF). It can be used for (1) end-to-end optics-algorithm co-design ([End2end-Imaging](https://github.com/vccimaging/End2endImaging) for sensor and ISP simulation), (2) gradient-based optical design, and (3) synthetic dataset generation via image simulation. DeepLens enables researchers to rapidly prototype and optimize custom optical systems.
 
 <div style="text-align:center;">
     <img src="assets/logo.png"/>
 </div>
 
 <p align="center">
-    <a href="https://vccimaging.org/DeepLens/">Docs</a> •
-    <a href="https://github.com/singer-yang/DeepLens-tutorials">Tutorials</a> •
-    <a href="#community">Community</a> •
-    <a href="https://pypi.org/project/deeplens-core/">PyPI</a> •
-    <a href="https://deepwiki.com/singer-yang/DeepLens">DeepWiki</a>
+    <a href="https://vccimaging.org/DeepLens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
+    <a href="https://github.com/singer-yang/DeepLens-tutorials"><img src="https://img.shields.io/badge/Tutorials-black?style=flat&logo=github&logoColor=white" alt="Tutorials"/></a>
+    <a href="#community"><img src="https://img.shields.io/badge/Community-Slack-4A154B?style=flat&logo=slack&logoColor=white" alt="Community"/></a>
+    <a href="https://pypi.org/project/deeplens-core/"><img src="https://img.shields.io/pypi/v/deeplens-core?label=PyPI&color=orange&logo=pypi&logoColor=white" alt="PyPI"/></a>
+    <a href="https://deepwiki.com/singer-yang/DeepLens"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
 </p>
 
 
 ## Features
 
-1. **Differentiable Simulation.** DeepLens builds on differentiable physical simulation and enables accurate, efficient gradient calculation for lens optimization.
-2. **Automated Design.** DeepLens demonstrates outstanding optimization power compared with classical optimization, especially for complex optical systems (e.g., mobile lenses, metasurfaces, and AR/VR displays). Automated lens design is demonstrated with curriculum learning and optical regularization losses.
-3. **Multiple Optical Models.** DeepLens supports not only geometric ray tracing, but also various other optical models, including hybrid ray-wave models, neural lens representations, and reference-data interpolation.
-4. **Image Simulation.** DeepLens delivers photorealistic image simulations with spatially varying and depth-dependent aberration simulation, bridging sim-to-real gaps when combined with [End2end-Imaging](https://github.com/vccimaging/End2endImaging).
+1. **Differentiable Optics.** DeepLens leverages differentiable optical simulation to enable accurate, efficient gradient calculation for lens inverse design.
+2. **Automated Design.** DeepLens enables fully automated optical design via gradient-based and advanced optimization algorithms, shortening the development cycle for a wide range of optical systems (e.g., highly aspherical lenses, metasurfaces, and AR/VR displays).
+3. **Multiple Optical Models.** DeepLens supports geometric ray tracing alongside hybrid ray-wave models, neural lens representations, and interpolation-based models.
+4. **Image Simulation.** DeepLens delivers photorealistic image rendering with spatially varying, depth-dependent aberrations, closing the sim-to-real gap when combined with [End2end-Imaging](https://github.com/vccimaging/End2endImaging).
 
-Additional features (available via collaboration):
+Additional features (customizable upon request):
 
-1. **Kernel Acceleration.** Achieves >10x speedup and >90% GPU memory reduction with custom GPU kernels across NVIDIA and AMD platforms.
-2. **Polarization Ray Tracing.** Simulates polarization ray tracing and differentiable optimization of coating films.
-3. **Non-Sequential Ray Tracing.** Simulates differentiable non-sequential ray tracing model for stray light analysis and optimization.
-4. **Distributed Optimization.** Supports distributed simulation and optimization for billion-level of ray tracing and high-resolution (>100k x 100k) diffractive propagation.
+1. **GPU Kernel Acceleration.** Achieves >10x speedup and >90% GPU memory reduction with custom GPU kernels across NVIDIA and AMD platforms, making deployment on local laptops practical.
+2. **Polarization Ray Tracing.** Supports polarization ray tracing and inverse design of thin films via [DiffTMM](https://github.com/AI4Optics/DiffTMM).
+3. **Non-Sequential Ray Tracing.** Supports a differentiable non-sequential ray tracing model for stray light analysis and optimization.
+4. **Distributed Optimization.** Supports distributed simulation and optimization for billion-scale ray tracing and high-resolution (>100k x 100k) diffractive propagation.
 
 ## Applications
 
@@ -43,9 +41,9 @@ DeepLens supports comprehensive lens analysis (spot diagram, PSF, MTF, distortio
 
 #### 2. Automated geometric lens design
 
-Fully automated lens design from scratch with differentiable optimization. Try it with [AutoLens](https://github.com/vccimaging/AutoLens)!
+Fully automated lens design from scratch with gradient-based optimization and advanced optimization algorithms. Actively developed at [AutoLens](https://github.com/AI4Optics/AutoLens).
 
-[![paper](https://img.shields.io/badge/NatComm-2024-orange)](https://www.nature.com/articles/s41467-024-50835-7) [![quickstart](https://img.shields.io/badge/Project-green)](https://github.com/vccimaging/AutoLens)
+[![paper](https://img.shields.io/badge/NatComm-2024-orange)](https://www.nature.com/articles/s41467-024-50835-7) [![quickstart](https://img.shields.io/badge/Project-green)](https://github.com/AI4Optics/AutoLens)
 
 <div align="center">
     <img src="assets/autolens1.gif" alt="AutoLens" height="270px"/>
@@ -54,7 +52,7 @@ Fully automated lens design from scratch with differentiable optimization. Try i
 
 #### 3. Neural Lens PSF Representation
 
-A surrogate network for efficient lens PSF representation ang image simulation (spatially-varying aberration + defocus).
+A surrogate network for efficient lens PSF representation, supporting fast and accurate image simulation with spatially-varying aberrations and defocus.
 
 [![paper](https://img.shields.io/badge/TPAMI-2023-orange)](https://ieeexplore.ieee.org/document/10209238) [![link](https://img.shields.io/badge/Project-green)](https://github.com/vccimaging/Aberration-Aware-Depth-from-Focus)
 
@@ -64,17 +62,25 @@ A surrogate network for efficient lens PSF representation ang image simulation (
 
 #### 4. Hybrid Ray-Wave Optical Model
 
-Design hybrid refractive-diffractive lenses with differentiable ray-wave model.
+Differentiable ray-wave optical model for accraute lens aberration and diffraction element simulation, supporting end-to-end refractive-diffractive lens design.
 
-[![report](https://img.shields.io/badge/SiggraphAsia-2024-orange)](https://arxiv.org/abs/2406.00834)
+[![paper](https://img.shields.io/badge/SiggraphAsia-2024-orange)](https://dl.acm.org/doi/10.1145/3680528.3687640)
 
 <div align="center">
     <img src="assets/hybridlens.png" alt="Implicit" height="200px"/>
 </div>
 
-#### 5. End-to-End Computational Imaging
+#### 5. Non-sequential Model and Polarization Tracing
 
-DeepLens serves as the differentiable optics engine in [**End2endImaging**](https://github.com/vccimaging/End2endImaging), an end-to-end differentiable computational imaging framework. End2endImaging integrates optics (DeepLens), sensor/ISP simulation, and neural reconstruction networks into a single PyTorch computation graph, enabling joint optimization of the entire camera pipeline.
+Non-sequential polarization tracing to accurately simulate the polarization state of light passing through a geometric waveguide AR display. End-to-end optimization for coating film inverse design targeting the out-coupling eyebox response. 
+
+<div align="center">
+    <img src="assets/diffgwg.jpg" alt="Implicit" height="200px"/>
+</div>
+
+#### 6. End-to-End Computational Imaging
+
+DeepLens serves as the differentiable optics engine in [**End2endImaging**](https://github.com/vccimaging/End2endImaging), an end-to-end differentiable computational imaging framework. End2endImaging integrates optics, sensor/ISP simulation, and neural reconstruction networks into a single PyTorch computation graph, enabling joint optimization of the entire camera pipeline.
 
 <div align="center">
     <img src="assets/end2end.png" alt="End2endImaging" height="200px"/>
@@ -117,17 +123,19 @@ DeepLens repo structure:
 DeepLens/
 │
 ├── deeplens/
-│   ├── geolens.py          (multi-element refractive lens)
+│   ├── lens.py             (base lens class)
+│   ├── geolens.py          (refractive lens)
 │   ├── hybridlens.py       (refractive + diffractive hybrid lens)
-│   ├── diffraclens.py      (pure diffractive lens)
-│   ├── defocuslens.py     (defocus / circle-of-confusion model)
-│   ├── psfnetlens.py       (neural surrogate lens)
-│   ├── geometric_surface/  (spheric, aspheric, aperture, etc.)
-│   ├── diffractive_surface/(DOE surfaces)
-│   ├── phase_surface/      (phase-only surfaces)
-│   ├── light/              (Ray, ComplexWave)
-│   ├── material/           (glass catalogs)
-│   ├── imgsim/             (PSF convolution, monte carlo)
+│   ├── diffraclens.py      (diffractive lens)
+│   ├── defocuslens.py      (circle-of-confusion model)
+│   ├── psfnetlens.py       (surrogate lens PSF model)
+│   ├── ...
+│   ├── geometric_surface/  (refractive and reflective surfaces)
+│   ├── diffractive_surface/(diffractive surfaces)
+│   ├── phase_surface/      (phase surfaces)
+│   ├── light/              (Ray, Wave)
+│   ├── material/           (material catalogs)
+│   ├── imgsim/             (PSF convolution, monte carlo image simulation)
 │   ├── geolens_pkg/        (eval, optim, vis, io mixins)
 │   └── surrogate/          (MLP, Siren neural surrogates)
 │
