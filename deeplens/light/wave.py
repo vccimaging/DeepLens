@@ -560,7 +560,7 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     Shimobaba band-limit: frequencies whose transfer-function fringe would be
     undersampled on the current grid are zeroed. The near-field (well-sampled)
     regime is left unchanged, so this is a drop-in replacement for
-    :func:`AngularSpectrumMethod` that additionally stays valid across the
+    `AngularSpectrumMethod` that additionally stays valid across the
     intermediate field.
 
     Args:

@@ -606,7 +606,7 @@ class GeoLensSurfOps:
 
         Args:
             mounting_margin (float, optional): Absolute mounting margin [mm] for
-                surface pruning.  Passed through to :meth:`prune_surf`.
+                surface pruning.  Passed through to `prune_surf`.
         """
         # Rule 1: Move the first surface to z = 0.0
         move_dist = self.surfaces[0].d.item()

@@ -608,11 +608,11 @@ class GeoLensVis3D:
 
     Creates lens surface, aperture, barrier, sensor, and ray-path meshes as
     polygon data and optionally renders them with PyVista.  All geometry is
-    expressed in millimetres and stored as :class:`CrossPoly` (vertex/face)
+    expressed in millimetres and stored as `CrossPoly` (vertex/face)
     objects that can be saved to ``.obj`` files for external renderers.
 
     This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.geolens.GeoLens`.
+    `GeoLens`.
     """
 
     # # Attribute stubs to satisfy type checkers when mixed into GeoLens

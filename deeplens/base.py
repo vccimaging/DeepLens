@@ -16,7 +16,7 @@ class DeepObj:
 
     Attributes:
         dtype (torch.dtype): Current floating-point dtype of all owned tensors.
-        device: Current compute device (set by :meth:`to`).
+        device: Current compute device (set by `to`).
     """
 
     def __init__(self, dtype=None):

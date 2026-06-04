@@ -28,7 +28,7 @@ from .imgsim import rotate_psf, splat_psf_per_pixel
 class PSFNetLens(Lens):
     """Neural surrogate lens that predicts PSFs via a small MLP/MLPConv network.
 
-    Wraps a :class:`~deeplens.geolens.GeoLens` with a neural network
+    Wraps a `GeoLens` with a neural network
     trained to predict RGB PSFs from ``(fov, depth, focus_distance)`` inputs.
     After training, PSF prediction is ~100× faster than ray tracing, making
     it suitable for real-time applications and large-scale optimisation.
@@ -41,8 +41,8 @@ class PSFNetLens(Lens):
         rfov (float): Half-diagonal field of view [radians].
 
     Notes:
-        Use :meth:`train_psfnet` to train the surrogate from ray-traced PSF
-        samples.  Use :meth:`load_net` to load pre-trained weights.
+        Use `train_psfnet` to train the surrogate from ray-traced PSF
+        samples.  Use `load_net` to load pre-trained weights.
     """
 
     def __init__(
@@ -372,7 +372,7 @@ class PSFNetLens(Lens):
     def refocus(self, foc_dist):
         """Refocus the lens to a given object distance.
 
-        Delegates to the embedded :class:`GeoLens` and stores the focus
+        Delegates to the embedded `GeoLens` and stores the focus
         distance for subsequent PSF predictions.
 
         Args:

@@ -44,7 +44,7 @@ from .light import AngularSpectrumMethod
 class HybridLens(Lens):
     """Hybrid refractive-diffractive lens using a differentiable ray–wave model.
 
-    Combines a :class:`~deeplens.geolens.GeoLens` (refractive module)
+    Combines a `GeoLens` (refractive module)
     with a diffractive optical element (DOE) placed behind it.  The pipeline
     is:
 
@@ -123,7 +123,7 @@ class HybridLens(Lens):
     def read_lens_json(self, filename):
         """Read the lens configuration from a JSON file.
 
-        Loads a :class:`GeoLens` and associated DOE from the specified file.
+        Loads a `GeoLens` and associated DOE from the specified file.
         A ``Plane`` surface is appended to the GeoLens surface list as a
         placeholder for the DOE plane.
 
@@ -180,7 +180,7 @@ class HybridLens(Lens):
 
         Serialises the ``GeoLens`` surfaces (excluding the DOE placeholder)
         and the ``DOE`` configuration into a single JSON file that can be
-        reloaded with :meth:`read_lens_json`.
+        reloaded with `read_lens_json`.
 
         Args:
             lens_path (str): Output file path.
@@ -240,7 +240,7 @@ class HybridLens(Lens):
 
         Double precision is required for numerically stable phase
         accumulation during coherent ray tracing and ASM propagation.
-        Called automatically by :meth:`__init__`.
+        Called automatically by `__init__`.
         """
         self.geolens.astype(torch.float64)
         self.doe.astype(torch.float64)
@@ -261,7 +261,7 @@ class HybridLens(Lens):
     def calc_scale(self, depth):
         """Calculate the object-to-image magnification scale factor.
 
-        Delegates to the embedded :class:`GeoLens`.
+        Delegates to the embedded `GeoLens`.
 
         Args:
             depth (float): Object distance in [mm] (negative, towards the
@@ -390,7 +390,7 @@ class HybridLens(Lens):
 
         Raises:
             ValueError: If the default dtype is not ``float64`` (call
-                :meth:`double` first).
+                `double` first).
         """
         wvln = self.primary_wvln if wvln is None else wvln
         # Check double precision

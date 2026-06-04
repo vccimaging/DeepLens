@@ -286,7 +286,7 @@ class DiffractiveLens(Lens):
         """Calculate the monochromatic PSF for one or more point sources.
 
         Off-axis point sources are supported. The signature follows
-        :meth:`deeplens.lens.Lens.psf` and :meth:`deeplens.geolens.GeoLens.psf`.
+        `psf` and `psf`.
 
         Args:
             points (torch.Tensor or list): Point source coordinates, shape

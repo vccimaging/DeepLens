@@ -19,18 +19,18 @@ class Surface(DeepObj):
 
     A surface sits at axial position ``d`` (mm) in the global coordinate
     system, has an aperture radius ``r`` (mm), and separates two optical
-    media.  Subclasses override :meth:`_sag` and :meth:`_dfdxy` to define
+    media.  Subclasses override `_sag` and `_dfdxy` to define
     their shape.
 
     Ray–surface interaction is handled by three stages, implemented in
-    :meth:`ray_reaction`:
+    `ray_reaction`:
 
     1. **Coordinate transform** – ray is brought into the local surface frame.
-    2. **Intersection** – solved via Newton's method (:meth:`newtons_method`),
+    2. **Intersection** – solved via Newton's method (`newtons_method`),
        using a non-differentiable iteration loop followed by a single
        differentiable Newton step to enable gradient flow.
-    3. **Refraction / reflection** – vector Snell's law (:meth:`refract`) or
-       specular reflection (:meth:`reflect`).
+    3. **Refraction / reflection** – vector Snell's law (`refract`) or
+       specular reflection (`reflect`).
 
     Attributes:
         d (torch.Tensor): Axial position of the surface vertex [mm].

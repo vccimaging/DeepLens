@@ -75,7 +75,7 @@ class GeoLensOptim:
     * **High-level ``optimize()``** – curriculum-learning training loop.
 
     This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.geolens.GeoLens`.
+    `GeoLens`.
 
     References:
         Xinge Yang et al., "Curriculum learning for ab initio deep learned

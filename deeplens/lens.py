@@ -192,14 +192,14 @@ class Lens(DeepObj):
     def psf_rgb(self, points, ks=PSF_KS, **kwargs):
         """Compute the RGB (tri-chromatic) PSF by stacking three wavelength calls.
 
-        Calls :meth:`psf` three times for the RGB primary wavelengths stored
+        Calls `psf` three times for the RGB primary wavelengths stored
         in ``self.wvln_rgb`` and stacks the results along the channel axis.
 
         Args:
             points (torch.Tensor): Point source coordinates, shape ``[N, 3]``
-                or ``[3]``.  Same convention as :meth:`psf`.
+                or ``[3]``.  Same convention as `psf`.
             ks (int, optional): PSF kernel size. Defaults to ``PSF_KS``.
-            **kwargs: Forwarded to :meth:`psf` (e.g. ``spp``, ``model``).
+            **kwargs: Forwarded to `psf` (e.g. ``spp``, ``model``).
 
         Returns:
             torch.Tensor: RGB PSF, shape ``[3, ks, ks]`` for a single point

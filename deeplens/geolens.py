@@ -60,24 +60,24 @@ class GeoLens(
     Uses a **mixin architecture** – seven specialised mixin classes are
     composed at class definition time to keep each concern isolated:
 
-    * :class:`~deeplens.geolens_pkg.psf_compute.GeoLensPSF` – PSF
+    * `GeoLensPSF` – PSF
       computation (geometric, coherent, Huygens models).
-    * :class:`~deeplens.geolens_pkg.eval.GeoLensEval` – optical
+    * `GeoLensEval` – optical
       performance evaluation (spot, MTF, distortion, vignetting).
-    * :class:`~deeplens.geolens_pkg.optim.GeoLensOptim` – loss
+    * `GeoLensOptim` – loss
       functions and gradient-based optimisation.
-    * :class:`~deeplens.geolens_pkg.optim_ops.GeoLensSurfOps` –
+    * `GeoLensSurfOps` –
       surface geometry operations (aspheric conversion, pruning, shape
       correction, material matching).
-    * :class:`~deeplens.geolens_pkg.vis.GeoLensVis` – 2-D layout
+    * `GeoLensVis` – 2-D layout
       and ray visualisation.
-    * :class:`~deeplens.geolens_pkg.io.GeoLensIO` – read/write
+    * `GeoLensIO` – read/write
       JSON, Zemax ``.zmx``.
-    * :class:`~deeplens.geolens_pkg.vis3d.GeoLensVis3D` – 3-D
+    * `GeoLensVis3D` – 3-D
       mesh visualisation.
 
     **Key differentiability trick**: Ray-surface intersection
-    (:meth:`~deeplens.geometric_surface.base.Surface.newtons_method`)
+    (`newtons_method`)
     uses a non-differentiable Newton loop followed by one differentiable
     Newton step to enable gradient flow.
 

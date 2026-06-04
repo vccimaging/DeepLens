@@ -42,11 +42,11 @@ from ..ops import diff_float
 class GeoLensPSF:
     """Mixin providing PSF computation for ``GeoLens``.
 
-    All three PSF models are exposed through a single :meth:`psf` dispatcher.
+    All three PSF models are exposed through a single `psf` dispatcher.
     The geometric and coherent models are differentiable; Huygens is not.
 
     This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.geolens.GeoLens`.
+    `GeoLens`.
     """
 
     # ====================================================================================

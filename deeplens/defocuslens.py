@@ -241,7 +241,7 @@ class DefocusLens(Lens):
         Args:
             points (torch.Tensor): Point source positions, shape ``[N, 3]``.
             ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
-            **kwargs: Forwarded to :meth:`psf`.
+            **kwargs: Forwarded to `psf`.
 
         Returns:
             torch.Tensor: RGB PSFs, shape ``[N, 3, ks, ks]``.
@@ -261,7 +261,7 @@ class DefocusLens(Lens):
             ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
             depth (float, optional): Object depth [mm]. When ``None`` (default),
                 falls back to ``self.obj_depth``.
-            **kwargs: Forwarded to :meth:`psf`.
+            **kwargs: Forwarded to `psf`.
 
         Returns:
             torch.Tensor: PSF map, shape ``[rows, cols, 1, ks, ks]``.
@@ -349,7 +349,7 @@ class DefocusLens(Lens):
             ks (int, optional): Kernel size. Defaults to ``PSF_KS``.
             depth (float, optional): Object depth [mm]. When ``None`` (default),
                 falls back to ``self.obj_depth``.
-            **kwargs: Forwarded to :meth:`psf_dp`.
+            **kwargs: Forwarded to `psf_dp`.
 
         Returns:
             tuple: ``(psf_map_left, psf_map_right)`` each of shape
