@@ -1,10 +1,12 @@
+<div style="text-align:center;">
+    <img src="assets/logo.png" alt="DeepLens logo" width="400"/>
+</div>
+
 # DeepLens
 
-**DeepLens** is a differentiable optical lens simulator with the support of multiple optical models (eg., geometric, diffractive, hybrid, neural PSF, and interpolation PSF). It can be used for (1) end-to-end optics-algorithm co-design ([End2end-Imaging](https://github.com/vccimaging/End2endImaging) for sensor and ISP simulation), (2) gradient-based optical design, and (3) synthetic dataset generation via image simulation. DeepLens enables researchers to rapidly prototype and optimize custom optical systems.
+DeepLens is a differentiable optical lens simulator for end-to-end computational imaging, supporting multiple optical models (eg., geometric ray tracing, diffractive wave propagation, hybrid ray-wave model, surrogate PSF network).
 
-<div style="text-align:center;">
-    <img src="assets/logo.png"/>
-</div>
+DeepLens can be used for (1) end-to-end optics-algorithm co-design, (2) gradient-based automated optical design, and (3) synthetic dataset generation via image simulation. DeepLens enables researchers to rapidly prototype and optimize custom optical systems.
 
 <p align="center">
     <a href="https://vccimaging.org/DeepLens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
@@ -13,7 +15,6 @@
     <a href="https://pypi.org/project/deeplens-core/"><img src="https://img.shields.io/pypi/v/deeplens-core?label=PyPI&color=orange&logo=pypi&logoColor=white" alt="PyPI"/></a>
     <a href="https://deepwiki.com/singer-yang/DeepLens"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
 </p>
-
 
 ## Features
 
@@ -57,25 +58,25 @@ A surrogate network for efficient lens PSF representation, supporting fast and a
 [![paper](https://img.shields.io/badge/TPAMI-2023-orange)](https://ieeexplore.ieee.org/document/10209238) [![link](https://img.shields.io/badge/Project-green)](https://github.com/vccimaging/Aberration-Aware-Depth-from-Focus)
 
 <div align="center">
-    <img src="assets/implicit_net.png" alt="Implicit" height="150px"/>
+    <img src="assets/implicit_net.png" alt="Neural lens PSF representation" height="150px"/>
 </div>
 
 #### 4. Hybrid Ray-Wave Optical Model
 
-Differentiable ray-wave optical model for accraute lens aberration and diffraction element simulation, supporting end-to-end refractive-diffractive lens design.
+Differentiable ray-wave optical model for accurate lens aberration and diffraction element simulation, supporting end-to-end refractive-diffractive lens design.
 
 [![paper](https://img.shields.io/badge/SiggraphAsia-2024-orange)](https://dl.acm.org/doi/10.1145/3680528.3687640)
 
 <div align="center">
-    <img src="assets/hybridlens.png" alt="Implicit" height="200px"/>
+    <img src="assets/hybridlens.png" alt="Hybrid ray-wave optical model" height="200px"/>
 </div>
 
 #### 5. Non-sequential Model and Polarization Tracing
 
-Non-sequential polarization tracing to accurately simulate the polarization state of light passing through a geometric waveguide AR display. End-to-end optimization for coating film inverse design targeting the out-coupling eyebox response. 
+Non-sequential polarization tracing to accurately simulate the polarization state of light passing through a geometric waveguide AR display. End-to-end optimization for coating film inverse design targeting the out-coupling eyebox response.
 
 <div align="center">
-    <img src="assets/diffgwg.jpg" alt="Implicit" height="200px"/>
+    <img src="assets/diffgwg.jpg" alt="Non-sequential polarization ray tracing for AR waveguide display" height="200px"/>
 </div>
 
 #### 6. End-to-End Computational Imaging
@@ -96,6 +97,7 @@ cd DeepLens
 ```
 
 Create a conda environment:
+
 ```
 conda create -n deeplens_env python=3.12
 conda activate deeplens_env
@@ -107,12 +109,15 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
 pip install -r requirements.txt
 ```
+
 or
+
 ```
 conda env create -f environment.yml -n deeplens_env
 ```
 
 Run the demo code:
+
 ```
 python 0_hello_geolens.py
 ```
