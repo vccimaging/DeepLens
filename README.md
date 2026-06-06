@@ -42,9 +42,11 @@ DeepLens supports comprehensive lens analysis (spot diagram, PSF, MTF, distortio
 
 #### 2. Automated geometric lens design
 
-Fully automated lens design from scratch with gradient-based optimization and advanced optimization algorithms. Actively developed at [AutoLens](https://github.com/AI4Optics/AutoLens).
+Fully automated lens design from scratch with gradient-based optimization and advanced optimization algorithms.
 
-[![paper](https://img.shields.io/badge/NatComm-2024-orange)](https://www.nature.com/articles/s41467-024-50835-7) [![quickstart](https://img.shields.io/badge/Project-green)](https://github.com/AI4Optics/AutoLens)
+> **Note:** Automated lens design is now actively maintained in the [**AutoLens**](https://github.com/AI4Optics/AutoLens) project. If your focus is automated lens design, we recommend using the AutoLens repo instead, as it receives dedicated updates and improvements for this use case.
+
+[![paper](https://img.shields.io/badge/NatComm-2024-orange)](https://www.nature.com/articles/s41467-024-50835-7) [![quickstart](https://img.shields.io/badge/AutoLens-green)](https://github.com/AI4Optics/AutoLens)
 
 <div align="center">
     <img src="assets/autolens1.gif" alt="AutoLens" height="270px"/>
