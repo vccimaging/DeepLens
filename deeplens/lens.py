@@ -29,6 +29,15 @@ from .imgsim import (
 
 
 class Lens(DeepObj):
+    """Abstract base class for all lens models in DeepLens.
+
+    `Lens` defines the shared interface — PSF computation (`psf`, `psf_rgb`),
+    image rendering (`render`), sensor configuration, and JSON file I/O — that
+    `GeoLens`, `HybridLens`, `DiffractiveLens`, `PSFNetLens`, and `DefocusLens`
+    all inherit. Subclasses override the core optical methods (e.g. `psf`) with
+    their own differentiable implementations.
+    """
+
     def __init__(
         self,
         dtype=torch.float32,
@@ -172,8 +181,8 @@ class Lens(DeepObj):
                 PSF computation (e.g. ``spp``, ``model``, ``recenter``).
 
         Returns:
-            torch.Tensor: PSF intensity map, shape ``[ks, ks]`` for a single
-            point or ``[N, ks, ks]`` for a batch.
+            psf (torch.Tensor): PSF intensity map, shape ``[ks, ks]`` for a single
+                point or ``[N, ks, ks]`` for a batch.
 
         Raises:
             NotImplementedError: This base implementation must be overridden.
@@ -183,27 +192,29 @@ class Lens(DeepObj):
             parameters so it can be used directly inside a training loop.
 
         Example:
-            >>> point = torch.tensor([0.0, 0.0, -10000.0])
-            >>> psf = lens.psf(points=point, ks=64, model="geometric")
-            >>> print(psf.shape)  # torch.Size([64, 64])
+            ```python
+            point = torch.tensor([0.0, 0.0, -10000.0])
+            psf = lens.psf(points=point, ks=64, model="geometric")
+            print(psf.shape)  # torch.Size([64, 64])
+            ```
         """
         raise NotImplementedError
 
     def psf_rgb(self, points, ks=PSF_KS, **kwargs):
         """Compute the RGB (tri-chromatic) PSF by stacking three wavelength calls.
 
-        Calls :meth:`psf` three times for the RGB primary wavelengths stored
+        Calls `psf` three times for the RGB primary wavelengths stored
         in ``self.wvln_rgb`` and stacks the results along the channel axis.
 
         Args:
             points (torch.Tensor): Point source coordinates, shape ``[N, 3]``
-                or ``[3]``.  Same convention as :meth:`psf`.
+                or ``[3]``.  Same convention as `psf`.
             ks (int, optional): PSF kernel size. Defaults to ``PSF_KS``.
-            **kwargs: Forwarded to :meth:`psf` (e.g. ``spp``, ``model``).
+            **kwargs: Forwarded to `psf` (e.g. ``spp``, ``model``).
 
         Returns:
-            torch.Tensor: RGB PSF, shape ``[3, ks, ks]`` for a single point
-            or ``[N, 3, ks, ks]`` for a batch.
+            psf_rgb (torch.Tensor): RGB PSF, shape ``[3, ks, ks]`` for a single point
+                or ``[N, 3, ks, ks]`` for a batch.
         """
         psfs = []
         for wvln in self.wvln_rgb:
@@ -224,7 +235,7 @@ class Lens(DeepObj):
             center (bool): Use center of each patch. Defaults to True.
 
         Returns:
-            point_source: Normalized object source coordinates. Shape of [grid_h, grid_w, 3], [-1, 1], [-1, 1], [-Inf, 0].
+            point_source (torch.Tensor): Normalized object source coordinates. Shape of [grid_h, grid_w, 3], [-1, 1], [-1, 1], [-Inf, 0].
         """
         # Compute point source grid
         if grid[0] == 1:
@@ -276,7 +287,7 @@ class Lens(DeepObj):
             ks (int): Kernel size. Defaults to PSF_KS.
 
         Returns:
-            psf_map: Shape of [grid_h, grid_w, 3, ks, ks].
+            psf_map (torch.Tensor): Shape of [grid_h, grid_w, 3, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -308,7 +319,7 @@ class Lens(DeepObj):
             **kwargs: Additional arguments for psf_map().
 
         Returns:
-            psf_map: Shape of [grid_h, grid_w, 3, ks, ks].
+            psf_map (torch.Tensor): Shape of [grid_h, grid_w, 3, ks, ks].
         """
         depth = self.obj_depth if depth is None else depth
         psfs = []
@@ -424,7 +435,7 @@ class Lens(DeepObj):
                 Defaults to ``True``.
 
         Returns:
-            torch.Tensor: Point source positions, shape ``[grid, 3]``.
+            point_source (torch.Tensor): Point source positions, shape ``[grid, 3]``.
         """
         if grid == 1:
             r = torch.tensor([0.0], device=self.device)
@@ -519,7 +530,7 @@ class Lens(DeepObj):
                   default ``(0.0, 0.0)``), ``psf_ks`` (int).
 
         Returns:
-            torch.Tensor: Rendered image, shape ``[B, C, H, W]``.
+            img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
 
         Raises:
             AssertionError: If *method* is ``"psf_map"`` and the image
@@ -531,8 +542,12 @@ class Lens(DeepObj):
             [2] "Efficient depth- and spatially-varying image simulation for defocus deblur", ICCVW 2025.
 
         Example:
-            >>> img_rendered = lens.render(img, depth=-10000.0, method="psf_patch",
-            ...                            patch_center=(0.3, 0.0), psf_ks=64)
+            ```python
+            img_rendered = lens.render(
+                img, depth=-10000.0, method="psf_patch",
+                patch_center=(0.3, 0.0), psf_ks=64,
+            )
+            ```
         """
         depth = self.obj_depth if depth is None else depth
         # Check sensor resolution
@@ -592,7 +607,7 @@ class Lens(DeepObj):
             psf_ks (int): PSF kernel size. Defaults to PSF_KS.
 
         Returns:
-            img_render: Rendered image. Shape of [B, C, H, W].
+            img_render (torch.Tensor): Rendered image. Shape of [B, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         # Convert patch_center to tensor
@@ -635,7 +650,7 @@ class Lens(DeepObj):
             psf_ks (int): PSF kernel size. Defaults to PSF_KS.
 
         Returns:
-            img_render: Rendered image. Shape of [B, C, H, W].
+            img_render (torch.Tensor): Rendered image. Shape of [B, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         psf_map = self.psf_map_rgb(grid=psf_grid, ks=psf_ks, depth=depth, spp=psf_spp)
@@ -710,7 +725,7 @@ class Lens(DeepObj):
                 - interp_mode (str): "depth" or "disparity". Defaults to "depth".
 
         Returns:
-            img_render: Rendered image. Shape of [B, C, H, W].
+            img_render (torch.Tensor): Rendered image. Shape of [B, C, H, W].
 
         Reference:
             [1] "Aberration-Aware Depth-from-Focus", TPAMI 2023.

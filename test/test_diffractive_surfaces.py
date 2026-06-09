@@ -188,6 +188,21 @@ class TestDiffractiveSurfaceBase:
         assert loss.dim() == 0
         assert loss.item() >= 0
 
+    def test_surf_dict_preserves_fab_ps_geometry(self):
+        """surf_dict round-trip preserves physical aperture for non-default fab_ps.
+
+        Geometry is derived as ``w = res * fab_ps``, so ``surf_dict()`` must
+        emit ``fab_ps``; otherwise ``init_from_dict()`` defaults it to 0.001
+        and the aperture silently collapses on reload (4.096mm -> 1.024mm).
+        """
+        doe = Fresnel(d=0.0, f0=50.0, res=1024, fab_ps=0.004)
+        assert doe.w == pytest.approx(4.096)
+
+        reloaded = Fresnel.init_from_dict(doe.surf_dict())
+        assert reloaded.fab_ps == pytest.approx(doe.fab_ps)
+        assert reloaded.w == pytest.approx(doe.w)
+        assert reloaded.h == pytest.approx(doe.h)
+
 
 class TestRank1:
     """Tests for Rank1 DOE."""

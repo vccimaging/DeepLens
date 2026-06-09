@@ -272,7 +272,7 @@ class ComplexWave(DeepObj):
             n (float): refractive index.
 
         Returns:
-            self: propagated complex wave field.
+            self (ComplexWave): propagated complex wave field.
         """
         # Determine propagation method using cached boundaries
         wvln_mm = self.wvln * 1e-3  # [um] to [mm]
@@ -465,7 +465,7 @@ class ComplexWave(DeepObj):
             Wpad (int): Number of pixels to pad on the left and right.
 
         Returns:
-            self: Padded complex wave field.
+            self (ComplexWave): Padded complex wave field.
         """
         self.u = F.pad(self.u, (Hpad, Hpad, Wpad, Wpad), mode="constant", value=0)
 
@@ -560,7 +560,7 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     Shimobaba band-limit: frequencies whose transfer-function fringe would be
     undersampled on the current grid are zeroed. The near-field (well-sampled)
     regime is left unchanged, so this is a drop-in replacement for
-    :func:`AngularSpectrumMethod` that additionally stays valid across the
+    `AngularSpectrumMethod` that additionally stays valid across the
     intermediate field.
 
     Args:

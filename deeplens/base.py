@@ -16,7 +16,7 @@ class DeepObj:
 
     Attributes:
         dtype (torch.dtype): Current floating-point dtype of all owned tensors.
-        device: Current compute device (set by :meth:`to`).
+        device: Current compute device (set by `to`).
     """
 
     def __init__(self, dtype=None):
@@ -52,15 +52,17 @@ class DeepObj:
         requested device.
 
         Args:
-            device: Target device, e.g. ``"cuda"``, ``"cpu"``, or a
+            device (str or torch.device): Target device, e.g. ``"cuda"``, ``"cpu"``, or a
                 ``torch.device`` instance.
 
         Returns:
-            DeepObj: ``self`` (for chaining).
+            self (DeepObj): ``self`` (for chaining).
 
         Example:
-            >>> lens = GeoLens(filename="lens.json")
-            >>> lens.to("cuda")  # move all tensors to GPU
+            ```python
+            lens = GeoLens(filename="lens.json")
+            lens.to("cuda")  # move all tensors to GPU
+            ```
         """
         self.device = device
 
@@ -91,14 +93,16 @@ class DeepObj:
                 Pass ``None`` to be a no-op.
 
         Returns:
-            DeepObj: ``self`` (for chaining).
+            self (DeepObj): ``self`` (for chaining).
 
         Raises:
             AssertionError: If *dtype* is not a recognised floating-point dtype.
 
         Example:
-            >>> lens = GeoLens(filename="lens.json")
-            >>> lens.astype(torch.float64)  # switch to double precision
+            ```python
+            lens = GeoLens(filename="lens.json")
+            lens.astype(torch.float64)  # switch to double precision
+            ```
         """
         if dtype is None:
             return self

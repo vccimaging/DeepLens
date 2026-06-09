@@ -144,8 +144,8 @@ class Phase(DeepObj):
            ``Δl = m · λ / (2π · n₂) · dφ/dx``
 
         Args:
-            ray: Ray object with position, direction, and wavelength.
-            n2: Refractive index of the medium after the surface. Required for
+            ray (Ray): Ray object with position, direction, and wavelength.
+            n2 (float): Refractive index of the medium after the surface. Required for
                 correct generalized Snell's law: deflection scales as 1/n₂.
 
         Note:
@@ -354,13 +354,13 @@ class Phase(DeepObj):
             φ = 2π/λ · (n−1) · h  →  h = φ · λ / (2π · (n−1))
 
         Args:
-            design_wvln: Design wavelength [um].
-            refractive_idx: Refractive index of the DOE material at ``design_wvln``.
-            res: Pixel resolution of the returned height map (square grid).
+            design_wvln (float): Design wavelength [um].
+            refractive_idx (float, optional): Refractive index of the DOE material at ``design_wvln``.
+            res (int, optional): Pixel resolution of the returned height map (square grid).
 
         Returns:
-            Tensor of shape ``[res, res]`` with height values in the same units
-            as ``design_wvln`` (um).
+            height_map (torch.Tensor): Tensor of shape ``[res, res]`` with height values in the same units
+                as ``design_wvln`` (um).
         """
         x, y = torch.meshgrid(
             torch.linspace(-self.w / 2, self.w / 2, res),

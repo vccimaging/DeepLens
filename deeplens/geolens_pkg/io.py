@@ -40,7 +40,7 @@ class GeoLensIO:
     * **Code V .seq**: Code V sequential format (read-only).
 
     This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.geolens.GeoLens`.
+    `GeoLens`.
     """
 
     def read_lens_zmx(self, filename="./test.zmx"):
@@ -54,7 +54,7 @@ class GeoLensIO:
                 UTF-8 and UTF-16 encoded files. Defaults to './test.zmx'.
 
         Returns:
-            GeoLens: ``self``, for method chaining.
+            self (GeoLens): ``self``, for method chaining.
         """
         # Read .zmx file
         try:
@@ -281,7 +281,7 @@ class GeoLensIO:
                 UTF-8 and Latin-1 encoded files. Defaults to './test.seq'.
 
         Returns:
-            GeoLens: ``self``, for method chaining.
+            self (GeoLens): ``self``, for method chaining.
         """
         print(f"\n{'=' * 60}")
         print(f"Start reading CODE V file: {filename}")
@@ -635,7 +635,7 @@ class GeoLensIO:
             filename (str, optional): Output file path. Defaults to './test.seq'.
 
         Returns:
-            GeoLens: ``self``, for method chaining.
+            self (GeoLens): ``self``, for method chaining.
         """
 
         import datetime

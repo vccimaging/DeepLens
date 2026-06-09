@@ -178,4 +178,3 @@ dependencies:
       - webencodings==0.5.1
       - websocket-client==1.9.0
       - widgetsnbextension==4.0.14
-prefix: /home/yangx0i/anaconda3/envs/deeplens_env

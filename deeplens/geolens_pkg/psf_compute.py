@@ -42,11 +42,11 @@ from ..ops import diff_float
 class GeoLensPSF:
     """Mixin providing PSF computation for ``GeoLens``.
 
-    All three PSF models are exposed through a single :meth:`psf` dispatcher.
+    All three PSF models are exposed through a single `psf` dispatcher.
     The geometric and coherent models are differentiable; Huygens is not.
 
     This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.geolens.GeoLens`.
+    `GeoLens`.
     """
 
     # ====================================================================================
@@ -84,7 +84,7 @@ class GeoLensPSF:
                 Defaults to 'geometric'.
 
         Returns:
-            Tensor: PSF normalized to sum to 1. Shape [ks, ks] or [N, ks, ks].
+            psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks] or [N, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
         if model == "geometric":
@@ -113,7 +113,7 @@ class GeoLensPSF:
             recenter (bool, optional): Recenter PSF using chief ray.
 
         Returns:
-            psf: Shape of [ks, ks] or [N, ks, ks].
+            psf (torch.Tensor): Shape of [ks, ks] or [N, ks, ks].
 
         References:
             [1] https://optics.ansys.com/hc/en-us/articles/42661723066515-What-is-a-Point-Spread-Function
@@ -267,8 +267,8 @@ class GeoLensPSF:
             recenter (bool, optional): If True, center using chief ray. Defaults to True.
 
         Returns:
-            tuple: (wavefront, psf_center) where:
-                - wavefront (Tensor): Complex wavefront at exit pupil. Shape [H, H].
+            result (tuple): (wavefront, psf_center) where:
+                - wavefront (torch.Tensor): Complex wavefront at exit pupil. Shape [H, H].
                 - psf_center (list): Normalized PSF center coordinates [x, y] in [-1, 1].
 
         Note:
@@ -358,7 +358,7 @@ class GeoLensPSF:
             recenter (bool, optional): Recenter PSF using chief ray.
 
         Returns:
-            psf: Shape of [ks, ks] or [N, ks, ks].
+            psf (torch.Tensor): Shape of [ks, ks] or [N, ks, ks].
 
         References:
             [1] "Optical Aberrations Correction in Postprocessing Using Imaging Simulation", TOG 2021
@@ -515,7 +515,7 @@ class GeoLensPSF:
             recenter (bool, optional): Recenter PSF using chief ray. Defaults to True.
 
         Returns:
-            psf_map: PSF map. Shape of [grid_h, grid_w, 1, ks, ks].
+            psf_map (torch.Tensor): PSF map. Shape of [grid_h, grid_w, 1, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -535,11 +535,11 @@ class GeoLensPSF:
         """Compute reference PSF center (flipped to match the original point) for given point source.
 
         Args:
-            points_obj: [..., 3] un-normalized point in object plane. [-Inf, Inf] * [-Inf, Inf] * [-Inf, 0]
-            method: "chief_ray" or "pinhole". Defaults to "chief_ray".
+            points_obj (torch.Tensor): [..., 3] un-normalized point in object plane. [-Inf, Inf] * [-Inf, Inf] * [-Inf, 0]
+            method (str, optional): "chief_ray" or "pinhole". Defaults to "chief_ray".
 
         Returns:
-            psf_center: [..., 2] un-normalized psf center in sensor plane.
+            psf_center (torch.Tensor): [..., 2] un-normalized psf center in sensor plane.
         """
         if method == "chief_ray":
             # Shrink the pupil and calculate centroid ray as the chief ray

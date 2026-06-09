@@ -37,15 +37,15 @@ class ZernikePhase(Phase):
         """Initialize Zernike phase surface.
 
         Args:
-            r: Radius of the surface
-            d: Distance to next surface
-            zernike_order: Number of Zernike terms (default: 37)
-            norm_radii: Normalization radius (default: r)
-            mat2: Material on the right side (default: "air")
-            pos_xy: Position in xy plane
-            vec_local: Local coordinate system vector
-            is_square: Whether the aperture is square
-            device: Computation device
+            r (float): Radius of the surface
+            d (float): Distance to next surface
+            zernike_order (int, optional): Number of Zernike terms (default: 37)
+            norm_radii (float or None, optional): Normalization radius (default: r)
+            mat2 (str, optional): Material on the right side (default: "air")
+            pos_xy (tuple, optional): Position in xy plane
+            vec_local (tuple, optional): Local coordinate system vector
+            is_square (bool, optional): Whether the aperture is square
+            device (str, optional): Computation device
         """
         super().__init__(
             r=r,
@@ -126,11 +126,11 @@ class ZernikePhase(Phase):
         """Calculate phase map using Zernike polynomials.
 
         Args:
-            x_norm: Normalized x coordinates (range -1 to 1)
-            y_norm: Normalized y coordinates (range -1 to 1)
+            x_norm (torch.Tensor): Normalized x coordinates (range -1 to 1)
+            y_norm (torch.Tensor): Normalized y coordinates (range -1 to 1)
 
         Returns:
-            Phase map in radians
+            phi (torch.Tensor): Phase map in radians
         """
         # Pre-compute radial powers (each computed once)
         r2 = x_norm * x_norm + y_norm * y_norm + EPSILON
@@ -228,11 +228,12 @@ class ZernikePhase(Phase):
         """Calculate derivatives of Zernike phase with respect to x and y.
 
         Args:
-            x_norm: Normalized x coordinates (range -1 to 1)
-            y_norm: Normalized y coordinates (range -1 to 1)
+            x_norm (torch.Tensor): Normalized x coordinates (range -1 to 1)
+            y_norm (torch.Tensor): Normalized y coordinates (range -1 to 1)
 
         Returns:
-            dphidx, dphidy: Phase derivatives in x and y directions
+            dphidx (torch.Tensor): Phase derivative in x direction.
+            dphidy (torch.Tensor): Phase derivative in y direction.
         """
         # Pre-compute radial powers (each computed once)
         r2 = x_norm * x_norm + y_norm * y_norm + EPSILON

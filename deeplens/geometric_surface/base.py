@@ -19,18 +19,18 @@ class Surface(DeepObj):
 
     A surface sits at axial position ``d`` (mm) in the global coordinate
     system, has an aperture radius ``r`` (mm), and separates two optical
-    media.  Subclasses override :meth:`_sag` and :meth:`_dfdxy` to define
+    media.  Subclasses override `_sag` and `_dfdxy` to define
     their shape.
 
     Ray–surface interaction is handled by three stages, implemented in
-    :meth:`ray_reaction`:
+    `ray_reaction`:
 
     1. **Coordinate transform** – ray is brought into the local surface frame.
-    2. **Intersection** – solved via Newton's method (:meth:`newtons_method`),
+    2. **Intersection** – solved via Newton's method (`newtons_method`),
        using a non-differentiable iteration loop followed by a single
        differentiable Newton step to enable gradient flow.
-    3. **Refraction / reflection** – vector Snell's law (:meth:`refract`) or
-       specular reflection (:meth:`reflect`).
+    3. **Refraction / reflection** – vector Snell's law (`refract`) or
+       specular reflection (`reflect`).
 
     Attributes:
         d (torch.Tensor): Axial position of the surface vertex [mm].
@@ -145,7 +145,7 @@ class Surface(DeepObj):
                 if ``False`` reflect it.
 
         Returns:
-            Ray: Updated ray bundle after the surface interaction.
+            ray (Ray): Updated ray bundle after the surface interaction.
         """
         # Transform ray to local coordinate system
         ray = self.to_local_coord(ray)
@@ -288,21 +288,19 @@ class Surface(DeepObj):
 
         Penalty rises smoothly once the bend angle between ``old_d`` and the
         refracted ``ray.d`` exceeds ``bend_angle_max`` and stays near zero for
-        mild refractions.  Normalization by ``bend_scale = 1 - cos_bend_min`` keeps
-        the gradient magnitude consistent with the CRA loss in optim.py.
+        mild refractions.
 
         Args:
             ray (Ray): ray after refraction (ray.d is the new direction).
             old_d (Tensor): pre-refraction ray directions, same shape as ray.d.
 
         Returns:
-            Ray: ray with updated bend_penalty.
+            ray (Ray): ray with updated bend_penalty.
         """
         bend_angle_max = getattr(self, "bend_angle_max", 30.0)
         cos_bend_min = math.cos(math.radians(bend_angle_max))
-        bend_scale = 1.0 - cos_bend_min
         cos_bend = torch.sum(ray.d * old_d, dim=-1).unsqueeze(-1)
-        per_surf_penalty = F.relu((cos_bend_min - cos_bend) / bend_scale)
+        per_surf_penalty = F.relu(cos_bend_min - cos_bend)
         valid = ray.is_valid > 0
         ray.bend_penalty = ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
         return ray
@@ -501,7 +499,7 @@ class Surface(DeepObj):
             y (tensor): y coordinate
             valid (tensor): valid mask
 
-        Return:
+        Returns:
             z (tensor): z = sag(x, y)
         """
         raise NotImplementedError(
@@ -530,7 +528,7 @@ class Surface(DeepObj):
             x (tensor): x coordinate
             y (tensor): y coordinate
 
-        Return:
+        Returns:
             dfdx (tensor): df / dx
             dfdy (tensor): df / dy
         """
@@ -565,7 +563,7 @@ class Surface(DeepObj):
             x (tensor): x coordinate
             y (tensor): y coordinate
 
-        Return:
+        Returns:
             d2fdx2 (tensor): d2f / dx2
             d2fdxdy (tensor): d2f / dxdy
             d2fdy2 (tensor): d2f / dy2
@@ -686,7 +684,7 @@ class Surface(DeepObj):
             color (List[float]): The color of the mesh.
 
         Returns:
-            self: The surface with mesh data.
+            self (Surface): The surface with mesh data.
         """
         self.vertices = self._create_vertices(n_rings, n_arms)
         self.faces = self._create_faces(n_rings, n_arms)

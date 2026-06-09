@@ -59,11 +59,13 @@ def conv_psf(img, psf):
             odd or even.
 
     Returns:
-        torch.Tensor: Rendered image, shape ``[B, C, H, W]``.
+        img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
 
     Example:
-        >>> psf = lens.psf_rgb(points=torch.tensor([0.0, 0.0, -10000.0]))
-        >>> img_blur = conv_psf(img, psf)
+        ```python
+        psf = lens.psf_rgb(points=torch.tensor([0.0, 0.0, -10000.0]))
+        img_blur = conv_psf(img, psf)
+        ```
     """
     B, C, H, W = img.shape
     C_psf, ks, _ = psf.shape
@@ -97,7 +99,7 @@ def conv_psf_map(img, psf_map):
         psf_map (torch.Tensor): PSF map, shape ``[grid_h, grid_w, C, ks, ks]``.
 
     Returns:
-        torch.Tensor: Rendered image, shape ``[B, C, H, W]``.
+        img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
     """
     B, C, H, W = img.shape
     grid_h, grid_w, C_psf, ks, _ = psf_map.shape
@@ -248,7 +250,7 @@ def conv_psf_depth_interp(
             padded and applies no additional padding.
 
     Returns:
-        torch.Tensor: Blurred image, shape ``[B, C, H, W]``.
+        img_render (torch.Tensor): Blurred image, shape ``[B, C, H, W]``.
 
     Raises:
         AssertionError: If *depth* or *psf_depths* contain non-negative values,
@@ -362,9 +364,9 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
             values in ``(-inf, 0)``. Used to interpolate ``psf_map``.
         interp_mode (str): ``"depth"`` for linear depth interpolation or
             ``"disparity"`` for linear interpolation in ``1 / depth``.
-    
+
     Returns:
-        torch.Tensor: Rendered image, shape ``[B, C, H, W]``.
+        img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
     """
     _, _, H, W = img.shape
     grid_h, grid_w, _, _, ks, _ = psf_map.shape
@@ -506,7 +508,7 @@ def interp_psf_map(psf_map, grid_old, grid_new):
         grid_new (int): Output grid size.
 
     Returns:
-        torch.Tensor: Interpolated packed PSF map, shape
+        psf_map_interp (torch.Tensor): Interpolated packed PSF map, shape
             ``[C, grid_new*ks, grid_new*ks]``.
     """
     if len(psf_map.shape) == 3:
@@ -566,7 +568,7 @@ def rotate_psf(psf, theta):
         theta (torch.Tensor): Rotation angles in radians, shape ``[N]``.
 
     Returns:
-        torch.Tensor: Rotated PSFs, shape ``[N, 3, ks, ks]``.
+        rotated_psf (torch.Tensor): Rotated PSFs, shape ``[N, 3, ks, ks]``.
     """
     assert len(psf.shape) == 4, "PSF should be [N, 3, ks, ks]"
 

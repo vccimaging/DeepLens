@@ -26,11 +26,11 @@ class Aspheric(Surface):
 
     The sag function is:
 
-    .. math::
-
-        z(\\rho) = \\frac{c\\,\\rho^2}{1 + \\sqrt{1-(1+k)c^2\\rho^2}}
-                 + \\sum_{i=2}^{n} a_{2i}\\,\\rho^{2i},
-        \\quad \\rho^2 = x^2 + y^2
+    $$
+    z(\\rho) = \\frac{c\\,\\rho^2}{1 + \\sqrt{1-(1+k)c^2\\rho^2}}
+    + \\sum_{i=2}^{n} a_{2i}\\,\\rho^{2i},
+    \\quad \\rho^2 = x^2 + y^2
+    $$
 
     The polynomial starts at the 4th-order term (a4) because the 2nd-order
     term competes with the base curvature ``c``.

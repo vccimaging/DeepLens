@@ -608,11 +608,11 @@ class GeoLensVis3D:
 
     Creates lens surface, aperture, barrier, sensor, and ray-path meshes as
     polygon data and optionally renders them with PyVista.  All geometry is
-    expressed in millimetres and stored as :class:`CrossPoly` (vertex/face)
+    expressed in millimetres and stored as `CrossPoly` (vertex/face)
     objects that can be saved to ``.obj`` files for external renderers.
 
     This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.geolens.GeoLens`.
+    `GeoLens`.
     """
 
     # # Attribute stubs to satisfy type checkers when mixed into GeoLens
@@ -629,7 +629,6 @@ class GeoLensVis3D:
         """Create all lens/bridge/sensor/aperture meshes.
 
         Args:
-            lens (GeoLens): The lens object.
             mesh_rings (int): The number of rings in the mesh.
             mesh_arms (int): The number of arms in the mesh.
             is_wrap (bool): Whether to wrap the lens bridge around the lens as cylinder.
@@ -775,7 +774,7 @@ class GeoLensVis3D:
         Note: PyVista is imported lazily only when this method is called.
 
         Args:
-            plotter: pv.Plotter. Optional pyvista Plotter instance. If None, a new one is created.
+            plotter (pv.Plotter, optional): Optional pyvista Plotter instance. If None, a new one is created.
             save_dir (str): The directory to save the image.
             mesh_rings (int): The number of rings in the mesh.
             mesh_arms (int): The number of arms in the mesh.
@@ -788,7 +787,7 @@ class GeoLensVis3D:
             is_wrap (bool): Whether to wrap the lens bridge around the lens as cylinder.
 
         Returns:
-            plotter: pv.Plotter. The pyvista Plotter instance.
+            plotter (pv.Plotter): The pyvista Plotter instance.
         """
         # Lazy import of pyvista
         try:
@@ -864,7 +863,6 @@ class GeoLensVis3D:
         Note: use #F2F7FFFF as the color for lens when rendering in Blender.
 
         Args:
-            lens (GeoLens): The lens object.
             save_dir (str): The directory to save the image.
             mesh_rings (int): The number of rings in the mesh. (default: 128)
             mesh_arms (int): The number of arms in the mesh. (default: 256)

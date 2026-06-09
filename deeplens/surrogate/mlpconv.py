@@ -16,10 +16,10 @@ class MLPConv(nn.Module):
     for End-To-end Camera Design".
 
     Args:
-        in_features: Number of input features (e.g., field angle + wavelength).
-        ks: Spatial size of the output PSF. Must be a multiple of 32 if > 32.
-        channels: Number of output channels. Defaults to 3.
-        activation: Activation function, ``"relu"`` or ``"sigmoid"``. Defaults to ``"relu"``.
+        in_features (int): Number of input features (e.g., field angle + wavelength).
+        ks (int): Spatial size of the output PSF. Must be a multiple of 32 if > 32.
+        channels (int): Number of output channels. Defaults to 3.
+        activation (str): Activation function, ``"relu"`` or ``"sigmoid"``. Defaults to ``"relu"``.
     """
 
     def __init__(self, in_features, ks, channels=3, activation="relu"):
@@ -76,10 +76,11 @@ class MLPConv(nn.Module):
         """Forward pass.
 
         Args:
-            x: Input tensor of shape ``(batch_size, in_features)``.
+            x (torch.Tensor): Input tensor of shape ``(batch_size, in_features)``.
 
         Returns:
-            Normalized PSF tensor of shape ``(batch_size, channels, ks, ks)``.
+            decoded (torch.Tensor): Normalized PSF tensor of shape
+                ``(batch_size, channels, ks, ks)``.
         """
         # Encode the input using the MLP
         encoded = self.encoder(x)

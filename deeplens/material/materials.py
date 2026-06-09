@@ -120,8 +120,10 @@ class Material(DeepObj):
             NotImplementedError: If *name* is not found in any catalog.
 
         Example:
-            >>> mat = Material("N-BK7")
-            >>> n_green = mat.get_ri(0.587)  # refractive index at 587 nm
+            ```python
+            mat = Material("N-BK7")
+            n_green = mat.get_ri(0.587)  # refractive index at 587 nm
+            ```
         """
         raw = "air" if name is None else name.lower()
         # Normalise legacy aliases to "air"

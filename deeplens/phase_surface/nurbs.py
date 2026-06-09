@@ -41,23 +41,23 @@ class NURBSPhase(Phase):
         """Initialize NURBS phase surface.
 
         Args:
-            r: Radius of the surface
-            d: Distance to next surface
-            control_points_u: Number of control points in u direction (default: 8)
-            control_points_v: Number of control points in v direction (default: 8)
-            degree_u: Degree of B-spline in u direction (default: 3)
-            degree_v: Degree of B-spline in v direction (default: 3)
-            control_points: Optional 3D tensor of shape (control_points_u, control_points_v, 3)
-                           containing control point coordinates (x, y, z) where z is phase.
-                           If None, initialized with small random values.
-            weights: Optional 2D tensor of shape (control_points_u, control_points_v)
-                    containing weights for rational B-splines. If None, all weights = 1.
-            norm_radii: Normalization radius (default: r)
-            mat2: Material on the right side (default: "air")
-            pos_xy: Position in xy plane
-            vec_local: Local coordinate system vector
-            is_square: Whether the aperture is square
-            device: Computation device
+            r (float): Radius of the surface
+            d (float): Distance to next surface
+            control_points_u (int, optional): Number of control points in u direction (default: 8)
+            control_points_v (int, optional): Number of control points in v direction (default: 8)
+            degree_u (int, optional): Degree of B-spline in u direction (default: 3)
+            degree_v (int, optional): Degree of B-spline in v direction (default: 3)
+            control_points (torch.Tensor or None, optional): Optional 3D tensor of shape (control_points_u, control_points_v, 3)
+                containing control point coordinates (x, y, z) where z is phase.
+                If None, initialized with small random values.
+            weights (torch.Tensor or None, optional): Optional 2D tensor of shape (control_points_u, control_points_v)
+                containing weights for rational B-splines. If None, all weights = 1.
+            norm_radii (float or None, optional): Normalization radius (default: r)
+            mat2 (str, optional): Material on the right side (default: "air")
+            pos_xy (tuple, optional): Position in xy plane
+            vec_local (tuple, optional): Local coordinate system vector
+            is_square (bool, optional): Whether the aperture is square
+            device (str, optional): Computation device
         """
         super().__init__(
             r=r,
@@ -112,11 +112,11 @@ class NURBSPhase(Phase):
         """Generate clamped knot vector for B-spline.
 
         Args:
-            n_control_points: Number of control points
-            degree: B-spline degree
+            n_control_points (int): Number of control points
+            degree (int): B-spline degree
 
         Returns:
-            Knot vector tensor
+            knots (torch.Tensor): Knot vector tensor
         """
         n_knots = n_control_points + degree + 1
         knots = torch.zeros(n_knots)
@@ -137,12 +137,12 @@ class NURBSPhase(Phase):
         """Find the knot span for parameter u.
 
         Args:
-            knots: Knot vector
-            degree: B-spline degree
-            u: Parameter value
+            knots (torch.Tensor): Knot vector
+            degree (int): B-spline degree
+            u (torch.Tensor): Parameter value
 
         Returns:
-            Knot span index
+            span (int): Knot span index
         """
         n = len(knots) - degree - 2  # number of control points - 1
 
@@ -172,13 +172,13 @@ class NURBSPhase(Phase):
         This implements the standard Piegl-Tiller algorithm from "The NURBS Book".
 
         Args:
-            knots: Knot vector
-            degree: B-spline degree
-            u: Parameter value
-            span: Knot span index
+            knots (torch.Tensor): Knot vector
+            degree (int): B-spline degree
+            u (torch.Tensor): Parameter value
+            span (int): Knot span index
 
         Returns:
-            Array of basis function values
+            N (torch.Tensor): Array of basis function values
         """
         N = torch.zeros(degree + 1, dtype=torch.float32, device=knots.device)
         left = torch.zeros(degree + 1, dtype=torch.float32, device=knots.device)
@@ -210,10 +210,11 @@ class NURBSPhase(Phase):
         """Evaluate NURBS surface at parameter values (u, v).
 
         Args:
-            u, v: Parameter values (should be in [0, 1] range)
+            u (torch.Tensor): u parameter value (should be in [0, 1] range).
+            v (torch.Tensor): v parameter value (should be in [0, 1] range).
 
         Returns:
-            Surface point (x, y, z) where z is phase value
+            point (torch.Tensor): Surface point (x, y, z) where z is phase value
         """
         # Clamp parameters to valid range
         u = torch.clamp(u, 0.0, 1.0)
@@ -294,10 +295,11 @@ class NURBSPhase(Phase):
         """Reference phase map at design wavelength using NURBS surface evaluation.
 
         Args:
-            x, y: Coordinate tensors
+            x (torch.Tensor): x coordinate tensor.
+            y (torch.Tensor): y coordinate tensor.
 
         Returns:
-            Phase values in radians at the specified coordinates
+            phi (torch.Tensor): Phase values in radians at the specified coordinates
         """
         # Normalize coordinates to [0, 1] range for NURBS parameter space
         x_norm = (x / self.norm_radii + 1.0) / 2.0  # Map [-1, 1] to [0, 1]
@@ -330,10 +332,12 @@ class NURBSPhase(Phase):
         """Calculate phase derivatives (dphi/dx, dphi/dy) using NURBS surface.
 
         Args:
-            x, y: Coordinate tensors
+            x (torch.Tensor): x coordinate tensor.
+            y (torch.Tensor): y coordinate tensor.
 
         Returns:
-            dphidx, dphidy: Phase derivatives in x and y directions
+            dphidx (torch.Tensor): Phase derivative in x direction.
+            dphidy (torch.Tensor): Phase derivative in y direction.
         """
         # For numerical differentiation, compute phi at slightly offset positions
         eps = 1e-6

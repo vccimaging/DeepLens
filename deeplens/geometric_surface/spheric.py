@@ -16,10 +16,10 @@ class Spheric(Surface):
 
     The sag function is:
 
-    .. math::
-
-        z(x, y) = \\frac{c \\rho^2}{1 + \\sqrt{1 - c^2 \\rho^2}}, \\quad
-        \\rho^2 = x^2 + y^2
+    $$
+    z(x, y) = \\frac{c \\rho^2}{1 + \\sqrt{1 - c^2 \\rho^2}}, \\quad
+    \\rho^2 = x^2 + y^2
+    $$
 
     Attributes:
         c (torch.Tensor): Surface curvature ``1/R`` [1/mm].  Differentiable

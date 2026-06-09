@@ -75,7 +75,7 @@ class GeoLensOptim:
     * **High-level ``optimize()``** – curriculum-learning training loop.
 
     This class is not instantiated directly; it is mixed into
-    :class:`~deeplens.geolens.GeoLens`.
+    `GeoLens`.
 
     References:
         Xinge Yang et al., "Curriculum learning for ab initio deep learned
@@ -189,9 +189,8 @@ class GeoLensOptim:
                 feasibility (sag, slope). Defaults to 1.0.
 
         Returns:
-            tuple: (loss_reg, loss_dict) where:
-                - loss_reg (Tensor): Scalar combined regularization loss.
-                - loss_dict (dict): Per-component loss values for logging.
+            loss_reg (torch.Tensor): Scalar combined regularization loss.
+            loss_dict (dict): Per-component loss values for logging.
         """
         # Loss functions for regularization
         # loss_focus = self.loss_infocus()
@@ -253,7 +252,7 @@ class GeoLensOptim:
             2. Maximum surface slope angle exceeding ``surf_angle_max`` (deg).
 
         Returns:
-            Tensor: Scalar profile feasibility penalty.
+            loss (torch.Tensor): Scalar profile feasibility penalty.
         """
         sag2diam_max = self.sag2diam_max
         grad_max = math.tan(math.radians(self.surf_angle_max))
@@ -306,10 +305,11 @@ class GeoLensOptim:
         glass thickness, BFL, and TTL.
 
         Returns:
-            tuple: ``(loss_clearance, loss_envelope)`` scalar tensors, so
-                callers can weight them independently. Clearance penalizes
-                parts that are too close / too thin, envelope penalizes the
-                overall assembly growing beyond its spatial budget.
+            loss_clearance (torch.Tensor): Scalar clearance penalty for parts
+                that are too close / too thin.
+            loss_envelope (torch.Tensor): Scalar envelope penalty for the
+                overall assembly growing beyond its spatial budget.  Returned
+                separately so callers can weight the two independently.
         """
         # Min bounds (clearance)
         air_center_min = self.air_center_min
@@ -391,21 +391,18 @@ class GeoLensOptim:
         """Penalize chief ray angle at sensor exceeding chief_ray_angle_max.
 
         Uses a near-paraxial pupil sample (scale_pupil=0.2) over the full FoV.
-        Penalty is ``relu((cos_ref - cos(CRA)) / cra_scale)`` where
-        ``cra_scale = 1 - cos_ref`` normalizes the argument to fractional units
-        of the allowed-to-backward range.
+        Penalty is ``relu(cos_ref - cos(CRA))``.
 
         Returns:
-            Tensor: Scalar CRA penalty (always >= 0).
+            loss (torch.Tensor): Scalar CRA penalty (always >= 0).
         """
         cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
-        cra_scale = 1.0 - cos_cra_ref
 
         ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=0.2)
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
         valid = ray.is_valid > 0
-        penalty_cra = relu((cos_cra_ref - cos_cra) / cra_scale)
+        penalty_cra = relu(cos_cra_ref - cos_cra)
         return (penalty_cra * valid).sum() / (valid.sum() + EPSILON)
 
     def loss_ray_bend(self):
@@ -417,7 +414,7 @@ class GeoLensOptim:
         by small bends at another.  Uses a full-pupil sample (scale_pupil=1.0).
 
         Returns:
-            Tensor: Scalar bend penalty (always >= 0).
+            loss (torch.Tensor): Scalar bend penalty (always >= 0).
         """
         ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=1.0)
         ray = self.trace2sensor(ray)
@@ -432,7 +429,7 @@ class GeoLensOptim:
         [30, 70] for each non-air surface material.
 
         Returns:
-            Tensor: Scalar material penalty loss.
+            loss_mat (torch.Tensor): Scalar material penalty loss.
         """
         n_max = 1.9
         n_min = 1.5
@@ -555,7 +552,7 @@ class GeoLensOptim:
             scale_pupil (float): Scale factor for the pupil size.
 
         Returns:
-            Ray: A Ray object containing the sampled rays.
+            rays (Ray): A Ray object containing the sampled rays.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -787,7 +784,8 @@ class GeoLensOptim:
         Excludes the aperture surface from optimization.
 
         Returns:
-            list or range: Surface indices excluding the aperture.
+            diff_surf_range (list or range): Surface indices excluding the
+                aperture.
         """
         if self.aper_idx is None:
             diff_surf_range = range(len(self.surfaces))
@@ -815,7 +813,7 @@ class GeoLensOptim:
             optim_surf_range (list): surface indices to be optimized. Defaults to None.
 
         Returns:
-            list: optimizer parameters
+            params (list): optimizer parameters
         """
         # Find surfaces to be optimized
         if optim_surf_range is None:
@@ -892,7 +890,7 @@ class GeoLensOptim:
                 Defaults to False.
 
         Returns:
-            torch.optim.Adam: configured optimizer.
+            optimizer (torch.optim.Adam): configured optimizer.
         """
         # Get optimizer
         params = self.get_optimizer_params(

@@ -28,7 +28,7 @@ from .imgsim import rotate_psf, splat_psf_per_pixel
 class PSFNetLens(Lens):
     """Neural surrogate lens that predicts PSFs via a small MLP/MLPConv network.
 
-    Wraps a :class:`~deeplens.geolens.GeoLens` with a neural network
+    Wraps a `GeoLens` with a neural network
     trained to predict RGB PSFs from ``(fov, depth, focus_distance)`` inputs.
     After training, PSF prediction is ~100× faster than ray tracing, making
     it suitable for real-time applications and large-scale optimisation.
@@ -41,8 +41,8 @@ class PSFNetLens(Lens):
         rfov (float): Half-diagonal field of view [radians].
 
     Notes:
-        Use :meth:`train_psfnet` to train the surrogate from ray-traced PSF
-        samples.  Use :meth:`load_net` to load pre-trained weights.
+        Use `train_psfnet` to train the surrogate from ray-traced PSF
+        samples.  Use `load_net` to load pre-trained weights.
     """
 
     def __init__(
@@ -372,7 +372,7 @@ class PSFNetLens(Lens):
     def refocus(self, foc_dist):
         """Refocus the lens to a given object distance.
 
-        Delegates to the embedded :class:`GeoLens` and stores the focus
+        Delegates to the embedded `GeoLens` and stores the focus
         distance for subsequent PSF predictions.
 
         Args:
@@ -386,11 +386,10 @@ class PSFNetLens(Lens):
         """Calculate RGB PSF using the PSF network.
 
         Args:
-            points (tensor): [N, 3] tensor, [-1, 1] * [-1, 1] * [depth_min, depth_max]
-            foc_dist (float): focus distance
+            points (torch.Tensor): [N, 3] tensor, [-1, 1] * [-1, 1] * [depth_min, depth_max]
 
         Returns:
-            psf (tensor): [N, 3, ks, ks] tensor
+            psf (torch.Tensor): [N, 3, ks, ks] tensor
         """
         # Calculate network input
         network_inp = self.points2input(points)
@@ -420,13 +419,12 @@ class PSFNetLens(Lens):
 
         Args:
             grid (tuple, optional): Grid size. Defaults to (11, 11), meaning 11x11 grid.
-            wvln (float, optional): Wavelength. Defaults to DEFAULT_WAVE.
             depth (float, optional): Depth of the object. When ``None`` (default),
                 falls back to ``self.obj_depth``.
             ks (int, optional): Kernel size. Defaults to PSF_KS, meaning PSF_KS x PSF_KS kernel size.
 
         Returns:
-            psf_map: Shape of [grid, grid, 3, ks, ks].
+            psf_map (torch.Tensor): Shape of [grid, grid, 3, ks, ks].
         """
         depth = self.obj_depth if depth is None else depth
         # PSF map grid

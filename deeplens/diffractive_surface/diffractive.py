@@ -422,6 +422,7 @@ class DiffractiveSurface(DeepObj):
             "d": round(self.d.item(), 4),
             "wvln0": round(self.wvln0, 4),
             "res": self.res,
+            "fab_ps": self.fab_ps,
             "is_square": True,
         }
 
