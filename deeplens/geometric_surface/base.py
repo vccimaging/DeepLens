@@ -288,8 +288,7 @@ class Surface(DeepObj):
 
         Penalty rises smoothly once the bend angle between ``old_d`` and the
         refracted ``ray.d`` exceeds ``bend_angle_max`` and stays near zero for
-        mild refractions.  Normalization by ``bend_scale = 1 - cos_bend_min`` keeps
-        the gradient magnitude consistent with the CRA loss in optim.py.
+        mild refractions.
 
         Args:
             ray (Ray): ray after refraction (ray.d is the new direction).
@@ -300,9 +299,8 @@ class Surface(DeepObj):
         """
         bend_angle_max = getattr(self, "bend_angle_max", 30.0)
         cos_bend_min = math.cos(math.radians(bend_angle_max))
-        bend_scale = 1.0 - cos_bend_min
         cos_bend = torch.sum(ray.d * old_d, dim=-1).unsqueeze(-1)
-        per_surf_penalty = F.relu((cos_bend_min - cos_bend) / bend_scale)
+        per_surf_penalty = F.relu(cos_bend_min - cos_bend)
         valid = ray.is_valid > 0
         ray.bend_penalty = ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
         return ray

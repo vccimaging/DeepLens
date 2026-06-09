@@ -391,21 +391,18 @@ class GeoLensOptim:
         """Penalize chief ray angle at sensor exceeding chief_ray_angle_max.
 
         Uses a near-paraxial pupil sample (scale_pupil=0.2) over the full FoV.
-        Penalty is ``relu((cos_ref - cos(CRA)) / cra_scale)`` where
-        ``cra_scale = 1 - cos_ref`` normalizes the argument to fractional units
-        of the allowed-to-backward range.
+        Penalty is ``relu(cos_ref - cos(CRA))``.
 
         Returns:
             Tensor: Scalar CRA penalty (always >= 0).
         """
         cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
-        cra_scale = 1.0 - cos_cra_ref
 
         ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=0.2)
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
         valid = ray.is_valid > 0
-        penalty_cra = relu((cos_cra_ref - cos_cra) / cra_scale)
+        penalty_cra = relu(cos_cra_ref - cos_cra)
         return (penalty_cra * valid).sum() / (valid.sum() + EPSILON)
 
     def loss_ray_bend(self):
