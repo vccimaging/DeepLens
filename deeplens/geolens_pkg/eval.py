@@ -193,12 +193,16 @@ class GeoLensEval:
         It reveals the combined effect of all aberrations (spherical, coma,
         astigmatism, field curvature, chromatic, …).
 
+        Field positions are sampled by **field angle** uniformly from on-axis
+        (0) to full-field (``self.rfov``), so the ``FoV 1.0`` subplot reaches
+        the full image height — consistent with ``analysis_spot()``.
+
         Algorithm:
             For each wavelength in ``wvln_list``:
-                1. ``self.point_source_radial(direction, normalized=False)``
-                   generates physical object-space points along the chosen
-                   direction.
-                2. ``self.spot_points()`` samples rays and traces to sensor.
+                1. ``self.sample_radial_rays(direction)`` samples rays at
+                   ``num_fov`` field angles in ``[0, self.rfov]`` along the
+                   chosen direction.
+                2. ``self.trace2sensor()`` traces them to the sensor.
                 3. Valid ray (x, y) positions are scatter-plotted per subplot.
             All wavelengths are overlaid in a single figure with RGB coloring.
 
@@ -224,10 +228,8 @@ class GeoLensEval:
         if depth is None or depth == float("inf"):
             depth = self.obj_depth
 
-        # Generate physical object-space points along the chosen direction
-        points = self.point_source_radial(
-            depth=depth, grid=num_fov, direction=direction, normalized=False
-        )
+        # Field fractions for subplot titles (0 -> on-axis, 1 -> full field)
+        fov_fracs = torch.linspace(0, 1, num_fov)
 
         # Prepare figure
         fig, axs = plt.subplots(1, num_fov, figsize=(num_fov * 3.5, 3))
@@ -235,7 +237,16 @@ class GeoLensEval:
 
         # Trace and draw each wavelength separately, overlaying results
         for wvln_idx, wvln in enumerate(wvln_list):
-            ray = self.spot_points(points, num_rays=num_rays, wvln=wvln)
+            # Sample rays by field angle (0 .. self.rfov) so FoV 1.0 reaches the
+            # full image height, matching analysis_spot().
+            ray = self.sample_radial_rays(
+                num_field=num_fov,
+                depth=depth,
+                num_rays=num_rays,
+                wvln=wvln,
+                direction=direction,
+            )
+            ray = self.trace2sensor(ray)
             ray_o = ray.o[..., :2].cpu().numpy()
             ray_valid_np = ray.is_valid.cpu().numpy()
 
@@ -254,6 +265,8 @@ class GeoLensEval:
                 axs[i].scatter(x_valid, y_valid, 2, color=color, alpha=0.5)
                 axs[i].set_aspect("equal", adjustable="datalim")
                 axs[i].tick_params(axis="both", which="major", labelsize=6)
+                if wvln_idx == 0:
+                    axs[i].set_title(f"FoV {fov_fracs[i].item():.2f}", fontsize=8)
 
         if show:
             plt.show()
@@ -279,11 +292,16 @@ class GeoLensEval:
         covering both the x (sagittal) and y (meridional) axes, revealing
         off-axis aberrations that are invisible in a 1-D radial scan.
 
+        Grid field positions are sampled by **field angle**, spanning the full
+        field on both axes so the corner cells reach the full image height —
+        consistent with ``draw_spot_radial`` / ``analysis_spot``.
+
         Algorithm:
             For each wavelength in ``wvln_list``:
-                1. ``self.point_source_grid(normalized=False)`` creates physical
-                   object-space grid points, shape ``[grid_h, grid_w, 3]``.
-                2. ``self.spot_points()`` samples rays and traces to sensor.
+                1. ``self.sample_grid_rays()`` samples a ``grid_h × grid_w``
+                   field-angle grid spanning ``[-vfov/2, vfov/2]`` ×
+                   ``[-hfov/2, hfov/2]``.
+                2. ``self.trace2sensor()`` traces them to the sensor.
                 3. Valid (x, y) positions are scatter-plotted in the
                    corresponding subplot of the ``num_grid × num_grid`` figure.
             All wavelengths are overlaid with RGB coloring.
@@ -307,9 +325,6 @@ class GeoLensEval:
         if isinstance(num_grid, int):
             num_grid = (num_grid, num_grid)
 
-        # Generate physical object-space grid points, shape [grid_h, grid_w, 3]
-        points = self.point_source_grid(depth=depth, grid=num_grid, normalized=False)
-
         grid_w, grid_h = num_grid
         fig, axs = plt.subplots(
             grid_h, grid_w, figsize=(grid_w * 3, grid_h * 3)
@@ -318,10 +333,15 @@ class GeoLensEval:
 
         # Loop wavelengths and overlay scatters
         for wvln_idx, wvln in enumerate(wvln_list):
-            ray = self.spot_points(points, num_rays=num_rays, wvln=wvln)
+            # Sample a field-angle grid spanning the full field so the corner
+            # cells reach full image height. Shape [grid_h, grid_w, num_rays, 3].
+            ray = self.sample_grid_rays(
+                depth=depth, num_grid=num_grid, num_rays=num_rays, wvln=wvln
+            )
+            ray = self.trace2sensor(ray)
 
             # Convert to numpy, shape [grid_h, grid_w, num_rays, 2]
-            ray_o = -ray.o[..., :2].cpu().numpy()
+            ray_o = ray.o[..., :2].cpu().numpy()
             ray_valid_np = ray.is_valid.cpu().numpy()
 
             color = RGB_COLORS[wvln_idx % len(RGB_COLORS)]
