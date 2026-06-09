@@ -996,19 +996,19 @@ class GeoLensEval:
         psf_ks=128,
         show=False,
     ):
-        """Draw a grid of tangential MTF curves for multiple depths and field positions.
+        """Draw a grid of MTF curves for multiple depths and field positions.
 
         Produces a ``len(depth_list) × len(relative_fov_list)`` subplot grid.
-        Each subplot shows the tangential MTF for R, G, B wavelengths plus a
-        vertical line at the sensor Nyquist frequency
-        (``0.5 / pixel_size`` cycles/mm).
+        Each subplot shows the tangential (T, solid) and sagittal (S, dashed)
+        MTF for R, G, B wavelengths plus a vertical line at the sensor Nyquist
+        frequency (``0.5 / pixel_size`` cycles/mm).
 
         Algorithm per subplot:
             1. Compute the RGB PSF via ``self.psf_rgb()`` at the specified
                ``(depth, relative_fov)`` with kernel size ``psf_ks``.
             2. For each wavelength channel, call ``psf2mtf()`` to obtain the
-               tangential MTF curve.
-            3. Plot frequency vs MTF with RGB coloring.
+               tangential and sagittal MTF curves.
+            3. Plot frequency vs MTF with RGB coloring (T solid, S dashed).
 
         Args:
             save_name (str): File path for the output PNG.
@@ -1047,11 +1047,11 @@ class GeoLensEval:
 
                 # Calculate MTF curves for rgb wavelengths
                 for wvln_idx, wvln in enumerate(self.wvln_rgb):
-                    # Calculate MTF curves from PSF
+                    # Calculate tangential + sagittal MTF curves from PSF
                     psf = psf_rgb[wvln_idx]
-                    freq, mtf_tan, _ = self.psf2mtf(psf, pixel_size)
+                    freq, mtf_tan, mtf_sag = self.psf2mtf(psf, pixel_size)
 
-                    # Plot MTF curves
+                    # Plot MTF curves (tangential solid, sagittal dashed)
                     ax = axs[depth_idx, fov_idx]
                     color = RGB_COLORS[wvln_idx % len(RGB_COLORS)]
                     wvln_label = RGB_LABELS[wvln_idx % len(RGB_LABELS)]
@@ -1060,7 +1060,15 @@ class GeoLensEval:
                         freq,
                         mtf_tan,
                         color=color,
-                        label=f"{wvln_label}({wvln_nm}nm)-Tan",
+                        linestyle="-",
+                        label=f"{wvln_label}({wvln_nm}nm)-T",
+                    )
+                    ax.plot(
+                        freq,
+                        mtf_sag,
+                        color=color,
+                        linestyle="--",
+                        label=f"{wvln_label}({wvln_nm}nm)-S",
                     )
 
                 # Draw Nyquist frequency
