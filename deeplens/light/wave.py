@@ -272,7 +272,7 @@ class ComplexWave(DeepObj):
             n (float): refractive index.
 
         Returns:
-            self: propagated complex wave field.
+            self (ComplexWave): propagated complex wave field.
         """
         # Determine propagation method using cached boundaries
         wvln_mm = self.wvln * 1e-3  # [um] to [mm]
@@ -465,7 +465,7 @@ class ComplexWave(DeepObj):
             Wpad (int): Number of pixels to pad on the left and right.
 
         Returns:
-            self: Padded complex wave field.
+            self (ComplexWave): Padded complex wave field.
         """
         self.u = F.pad(self.u, (Hpad, Hpad, Wpad, Wpad), mode="constant", value=0)
 

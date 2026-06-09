@@ -268,7 +268,7 @@ class HybridLens(Lens):
                 object).
 
         Returns:
-            float: Scale factor mapping normalised sensor coordinates
+            scale (float): Scale factor mapping normalised sensor coordinates
                 ``[-1, 1]`` to physical object-space coordinates [mm].
         """
         return self.geolens.calc_scale(depth)
@@ -295,7 +295,7 @@ class HybridLens(Lens):
                 ``SPP_COHERENT``.
 
         Returns:
-            tuple:
+            result (tuple):
                 - **wavefront** (*torch.Tensor*) -- Complex wavefront at the
                   DOE plane, shape ``[H, W]``.
                 - **psf_center** (*list[float]*) -- Estimated PSF centre on
@@ -385,7 +385,7 @@ class HybridLens(Lens):
                 to ``SPP_COHERENT``.
 
         Returns:
-            torch.Tensor: Normalised PSF patch (sums to 1), shape
+            psf (torch.Tensor): Normalised PSF patch (sums to 1), shape
                 ``[ks, ks]``.  Returned in ``float32`` precision.
 
         Raises:
@@ -504,7 +504,7 @@ class HybridLens(Lens):
                 Defaults to 600.
 
         Returns:
-            tuple or None: ``(ax, fig)`` when *ax* was provided; otherwise
+            result (tuple or None): ``(ax, fig)`` when *ax* was provided; otherwise
                 the figure is saved to *save_name* and nothing is returned.
         """
         geolens = self.geolens
@@ -613,7 +613,7 @@ class HybridLens(Lens):
                 Defaults to ``[1e-4, 1e-4, 1e-2, 1e-5]``.
 
         Returns:
-            torch.optim.Adam: Configured optimiser over all trainable
+            optimizer (torch.optim.Adam): Configured optimiser over all trainable
                 parameters.
         """
         params = []

@@ -313,7 +313,7 @@ class GeoLens(
                 ``"diagonal"`` (45°, x = y).
 
         Returns:
-            Ray: Ray object with shape ``[num_field, num_rays, 3]``.
+            ray (Ray): Ray object with shape ``[num_field, num_rays, 3]``.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         device = self.device
@@ -364,7 +364,7 @@ class GeoLens(
             scale_pupil (float): Scale factor for pupil radius.
 
         Returns:
-            Ray: Sampled rays with shape ``(\\*points.shape[:-1], num_rays, 3)``.
+            rays (Ray): Sampled rays with shape ``(\\*points.shape[:-1], num_rays, 3)``.
         """
         wvln = self.primary_wvln if wvln is None else wvln
 
@@ -440,7 +440,7 @@ class GeoLens(
             scale_pupil (float): Scale factor for pupil radius.
 
         Returns:
-            Ray: Rays with shape ``[..., num_rays, 3]``, where leading dims
+            rays (Ray): Rays with shape ``[..., num_rays, 3]``, where leading dims
                 are squeezed when the corresponding fov input is scalar.
         """
         wvln = self.primary_wvln if wvln is None else wvln
@@ -508,13 +508,12 @@ class GeoLens(
 
         Args:
             spp (int, optional): sample per pixel. Defaults to 64.
-            pupil (bool, optional): whether to use pupil. Defaults to True.
             wvln (float, optional): ray wvln in µm. When ``None`` (default),
                 falls back to ``self.primary_wvln``.
             sub_pixel (bool, optional): whether to sample multiple points inside the pixel. Defaults to False.
 
         Returns:
-            ray (Ray object): Ray object. Shape [H, W, spp, 3]
+            ray (Ray): Ray object. Shape [H, W, spp, 3]
         """
         wvln = self.primary_wvln if wvln is None else wvln
         w, h = self.sensor_size
@@ -567,7 +566,7 @@ class GeoLens(
             shape (list): Shape of the output tensor.
 
         Returns:
-            torch.Tensor: Sampled points, shape ``(\\*shape, 3)``.
+            points (torch.Tensor): Sampled points, shape ``(\\*shape, 3)``.
         """
         device = self.device
 
@@ -622,7 +621,7 @@ class GeoLens(
             ray (Ray): Ray object to trace backwards.
 
         Returns:
-            Ray: Ray object after backward propagation through the lens.
+            ray (Ray): Ray object after backward propagation through the lens.
         """
         ray, _ = self.trace(ray)
         return ray
@@ -662,7 +661,7 @@ class GeoLens(
             ray (Ray): Ray object to trace.
 
         Returns:
-            Ray: Ray object propagated to the exit pupil plane.
+            ray (Ray): Ray object propagated to the exit pupil plane.
         """
         ray = self.trace2sensor(ray)
         pupil_z, _ = self.get_exit_pupil()
@@ -678,7 +677,7 @@ class GeoLens(
             record (bool): If True, record ray positions at each surface.
 
         Returns:
-            tuple: (ray_out, ray_o_record) where:
+            result (tuple): (ray_out, ray_o_record) where:
                 - ray_out (Ray): Ray after propagation through all surfaces.
                 - ray_o_record (list or None): List of ray positions at each surface,
                     or None if record is False.
@@ -712,7 +711,7 @@ class GeoLens(
             record (bool): If True, record ray positions at each surface.
 
         Returns:
-            tuple: (ray_out, ray_o_record) where:
+            result (tuple): (ray_out, ray_o_record) where:
                 - ray_out (Ray): Ray after backward propagation through all surfaces.
                 - ray_o_record (list or None): List of ray positions at each surface,
                     or None if record is False.
@@ -763,7 +762,7 @@ class GeoLens(
                 - spp (int): Samples per pixel for ray tracing. Defaults to SPP_RENDER.
 
         Returns:
-            Tensor: Rendered image tensor. Shape of [N, C, H, W].
+            img_render (torch.Tensor): Rendered image tensor. Shape of [N, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         B, C, Himg, Wimg = img_obj.shape
@@ -915,7 +914,7 @@ class GeoLens(
             num_grid (int or tuple): Resolution of the inverse distortion grid.
 
         Returns:
-            tensor: Distorted image tensor, shape ``[B, C, H, W]``.
+            img_warped (torch.Tensor): Distorted image tensor, shape ``[B, C, H, W]``.
         """
         depth = self.obj_depth if depth is None else depth
         inv_distortion_map = self.calc_inv_distortion_map(
@@ -938,11 +937,11 @@ class GeoLens(
             img (tensor): Rendered image tensor. Shape of [N, C, H, W].
             depth (float, optional): Depth of the object. When ``None`` (default),
                 falls back to ``self.obj_depth``.
-            grid_size (int, optional): Grid size. Defaults to 256.
+            num_grid (int, optional): Grid size. Defaults to 128.
             crop (bool, optional): Whether to crop the image. Defaults to True.
 
         Returns:
-            img_unwarpped (tensor): Unwarped image tensor. Shape of [N, C, H, W].
+            img_unwarpped (torch.Tensor): Unwarped image tensor. Shape of [N, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         # Calculate distortion map, shape (num_grid, num_grid, 2)
@@ -1193,7 +1192,7 @@ class GeoLens(
             depth (float): Object distance from the lens (negative z direction).
 
         Returns:
-            float: Scale factor relating object height to image height.
+            scale (float): Scale factor relating object height to image height.
         """
         return -depth / self.foclen
 
@@ -1252,7 +1251,7 @@ class GeoLens(
                 If False, return real ray-traced values. Defaults to False.
 
         Returns:
-            tuple: (z_position, radius) of the entrance pupil in [mm].
+            result (tuple): (z_position, radius) of the entrance pupil in [mm].
         """
         if paraxial:
             return self.entr_pupilz_parax, self.entr_pupilr_parax
@@ -1267,7 +1266,7 @@ class GeoLens(
                 If False, return real ray-traced values. Defaults to False.
 
         Returns:
-            tuple: (z_position, radius) of the exit pupil in [mm].
+            result (tuple): (z_position, radius) of the exit pupil in [mm].
         """
         if paraxial:
             return self.exit_pupilz_parax, self.exit_pupilr_parax
@@ -1371,7 +1370,7 @@ class GeoLens(
                 Defaults to ``False``.
 
         Returns:
-            tuple: (z_position, radius) of entrance pupil.
+            result (tuple): (z_position, radius) of entrance pupil.
 
         Note:
             [1] Use paraxial mode unless precise ray aiming is required.
@@ -1453,7 +1452,7 @@ class GeoLens(
             directions (torch.Tensor): Directions of the lines. Shape: [N, 2]
 
         Returns:
-            torch.Tensor: Intersection points. Shape: [N*(N-1)/2, 2]
+            points (torch.Tensor): Intersection points. Shape: [N*(N-1)/2, 2]
         """
         N = origins.shape[0]
 

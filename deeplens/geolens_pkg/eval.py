@@ -165,7 +165,7 @@ class GeoLensEval:
                 back to ``self.primary_wvln``.
 
         Returns:
-            Ray: Traced ray on the sensor plane, with shape
+            ray (Ray): Traced ray on the sensor plane, with shape
                 ``[..., num_rays, 3]`` for positions and ``[..., num_rays]``
                 for validity mask. Use ``ray.o[..., :2]`` for transverse
                 positions and ``ray.is_valid`` for the validity mask.
@@ -402,12 +402,11 @@ class GeoLensEval:
                 centroid is used. Defaults to ``None``.
 
         Returns:
-            tuple[torch.Tensor, torch.Tensor]:
-                - **rms**: RMS spot error map, shape ``[grid_h, grid_w]``,
-                  in mm.
-                - **centroid**: Per-cell centroid used as reference, shape
-                  ``[grid_h, grid_w, 2]``.  Useful for passing as
-                  ``center`` to subsequent calls (e.g. in ``rms_map_rgb``).
+            rms (torch.Tensor): RMS spot error map, shape ``[grid_h, grid_w]``,
+                in mm.
+            centroid (torch.Tensor): Per-cell centroid used as reference, shape
+                ``[grid_h, grid_w, 2]``.  Useful for passing as
+                ``center`` to subsequent calls (e.g. in ``rms_map_rgb``).
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -463,9 +462,9 @@ class GeoLensEval:
                 falls back to ``self.obj_depth``.
 
         Returns:
-            torch.Tensor: RMS spot error map with shape ``[3, num_grid, num_grid]``
-                (channels ordered R, G, B). Units are mm (same as sensor
-                coordinates).
+            rms_rgb (torch.Tensor): RMS spot error map with shape
+                ``[3, num_grid, num_grid]`` (channels ordered R, G, B). Units
+                are mm (same as sensor coordinates).
         """
         depth = self.obj_depth if depth is None else depth
         # Green first to obtain the shared reference centroid
@@ -531,11 +530,11 @@ class GeoLensEval:
                 wide-angle lenses). Defaults to ``True``.
 
         Returns:
-            tuple[np.ndarray, np.ndarray]:
-                - **rfov_samples**: Field angles in degrees, shape ``[num_points]``.
-                - **distortions**: Fractional distortion at each angle, shape
-                  ``[num_points]``.  Dimensionless (multiply by 100 for
-                  percent).
+            rfov_samples (np.ndarray): Field angles in degrees, shape
+                ``[num_points]``.
+            distortions (np.ndarray): Fractional distortion at each angle, shape
+                ``[num_points]``.  Dimensionless (multiply by 100 for
+                percent).
         """
         wvln = self.primary_wvln if wvln is None else wvln
         rfov_deg = self.rfov * 180 / torch.pi
@@ -693,10 +692,11 @@ class GeoLensEval:
                 back to ``self.primary_wvln``.
 
         Returns:
-            torch.Tensor: Distortion grid with shape ``[num_grid, num_grid, 2]``.
-                Each entry ``(dx, dy)`` is in normalized sensor coordinates
-                ``[-1, 1]``, representing the actual centroid position for the
-                corresponding ideal grid position.
+            distortion_grid (torch.Tensor): Distortion grid with shape
+                ``[num_grid, num_grid, 2]``. Each entry ``(dx, dy)`` is in
+                normalized sensor coordinates ``[-1, 1]``, representing the
+                actual centroid position for the corresponding ideal grid
+                position.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -735,8 +735,8 @@ class GeoLensEval:
                 back to ``self.primary_wvln``.
 
         Returns:
-            torch.Tensor: Inverse distortion grid with shape
-            ``[grid_h, grid_w, 2]`` in ``grid_sample`` coordinates.
+            inv_distortion_grid (torch.Tensor): Inverse distortion grid with
+                shape ``[grid_h, grid_w, 2]`` in ``grid_sample`` coordinates.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -793,8 +793,9 @@ class GeoLensEval:
                 field position; ``z`` ∈ (-∞, 0] is the object depth in mm.
 
         Returns:
-            torch.Tensor: Normalized distortion centroid positions with shape
-                ``[N, 2]`` or ``[..., 2]``.  ``x, y`` ∈ [-1, 1].
+            distortion_center (torch.Tensor): Normalized distortion centroid
+                positions with shape ``[N, 2]`` or ``[..., 2]``.
+                ``x, y`` ∈ [-1, 1].
         """
         sensor_w, sensor_h = self.sensor_size
 
@@ -903,12 +904,11 @@ class GeoLensEval:
                 back to ``self.primary_wvln``.
 
         Returns:
-            tuple[np.ndarray, np.ndarray, np.ndarray]:
-                - **freq**: Spatial frequency axis in cycles/mm (positive
-                  frequencies only, excluding DC).
-                - **mtf_tan**: Tangential (meridional) MTF values, normalized
-                  so that MTF → 1 at low frequency.
-                - **mtf_sag**: Sagittal MTF values, same normalization.
+            freq (np.ndarray): Spatial frequency axis in cycles/mm (positive
+                frequencies only, excluding DC).
+            mtf_tan (np.ndarray): Tangential (meridional) MTF values, normalized
+                so that MTF → 1 at low frequency.
+            mtf_sag (np.ndarray): Sagittal MTF values, same normalization.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         point = [0, -fov / self.rfov, self.obj_depth]
@@ -940,11 +940,10 @@ class GeoLensEval:
                 axis scaling: ``Nyquist = 0.5 / pixel_size`` cycles/mm.
 
         Returns:
-            tuple[np.ndarray, np.ndarray, np.ndarray]:
-                - **freq**: Spatial frequency in cycles/mm (positive, excluding
-                  DC).  Length is roughly ``H // 2``.
-                - **mtf_tan**: Tangential MTF, normalized to 1 at DC.
-                - **mtf_sag**: Sagittal MTF, normalized to 1 at DC.
+            freq (np.ndarray): Spatial frequency in cycles/mm (positive,
+                excluding DC).  Length is roughly ``H // 2``.
+            mtf_tan (np.ndarray): Tangential MTF, normalized to 1 at DC.
+            mtf_sag (np.ndarray): Sagittal MTF, normalized to 1 at DC.
 
         References:
             - https://en.wikipedia.org/wiki/Optical_transfer_function
@@ -1131,8 +1130,8 @@ class GeoLensEval:
                 Monte-Carlo noise. Defaults to 512.
 
         Returns:
-            torch.Tensor: Vignetting map with shape ``[num_grid, num_grid]``,
-                values in ``[0, 1]``.
+            vignetting (torch.Tensor): Vignetting map with shape
+                ``[num_grid, num_grid]``, values in ``[0, 1]``.
         """
         depth = self.obj_depth if depth is None else depth
         # Sample rays in uniform image space (not FOV angles) for correct sensor mapping
@@ -1243,9 +1242,8 @@ class GeoLensEval:
                 accurate chief-ray identification. Defaults to ``True``.
 
         Returns:
-            tuple[torch.Tensor, torch.Tensor]:
-                - **chief_ray_o**: Origins, shape ``[N, 3]``.
-                - **chief_ray_d**: Unit directions, shape ``[N, 3]``.
+            chief_ray_o (torch.Tensor): Origins, shape ``[N, 3]``.
+            chief_ray_d (torch.Tensor): Unit directions, shape ``[N, 3]``.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         if isinstance(rfov, (int, float)):
@@ -1433,8 +1431,8 @@ class GeoLensEval:
                 Defaults to ``False``.
 
         Returns:
-            torch.Tensor: Rendered (and optionally unwarped) image with shape
-                ``[1, 3, H, W]``, float values in ``[0, 1]``.
+            img_render (torch.Tensor): Rendered (and optionally unwarped) image
+                with shape ``[1, 3, H, W]``, float values in ``[0, 1]``.
         """
         from skimage.metrics import peak_signal_noise_ratio, structural_similarity
         from torchvision.utils import save_image
@@ -1521,9 +1519,9 @@ class GeoLensEval:
                 collimated light. Defaults to ``float('inf')``.
 
         Returns:
-            dict[str, dict[str, float]]: Spot analysis results keyed by field
-                position string (e.g., ``'fov0.0'``, ``'fov0.5'``, ``'fov1.0'``).
-                Each value is a dict with:
+            rms_results (dict[str, dict[str, float]]): Spot analysis results
+                keyed by field position string (e.g., ``'fov0.0'``,
+                ``'fov0.5'``, ``'fov1.0'``). Each value is a dict with:
                     - ``'rms'``: Polychromatic RMS spot radius in μm.
                     - ``'radius'``: Polychromatic geometric spot radius in μm.
         """

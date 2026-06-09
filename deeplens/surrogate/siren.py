@@ -12,13 +12,13 @@ class Siren(nn.Module):
     scheme from "Implicit Neural Representations with Periodic Activation Functions".
 
     Args:
-        dim_in: Input dimension.
-        dim_out: Output dimension.
-        w0: Frequency multiplier for the sine activation. Defaults to 1.0.
-        c: Constant for weight initialization. Defaults to 6.0.
-        is_first: Whether this is the first layer (uses different init). Defaults to False.
-        use_bias: Whether to include a bias term. Defaults to True.
-        activation: Custom activation module. If None, uses ``Sine(w0)``.
+        dim_in (int): Input dimension.
+        dim_out (int): Output dimension.
+        w0 (float): Frequency multiplier for the sine activation. Defaults to 1.0.
+        c (float): Constant for weight initialization. Defaults to 6.0.
+        is_first (bool): Whether this is the first layer (uses different init). Defaults to False.
+        use_bias (bool): Whether to include a bias term. Defaults to True.
+        activation (nn.Module or None): Custom activation module. If None, uses ``Sine(w0)``.
     """
 
     def __init__(
@@ -53,10 +53,10 @@ class Siren(nn.Module):
         """Forward pass.
 
         Args:
-            x: Input tensor of shape ``(..., dim_in)``.
+            x (torch.Tensor): Input tensor of shape ``(..., dim_in)``.
 
         Returns:
-            Output tensor of shape ``(..., dim_out)``.
+            out (torch.Tensor): Output tensor of shape ``(..., dim_out)``.
         """
         out = F.linear(x, self.weight, self.bias)
         out = self.activation(out)

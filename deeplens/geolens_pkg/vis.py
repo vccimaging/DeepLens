@@ -191,14 +191,14 @@ class GeoLensVis:
         with per-FoV RMS spot radii from ``analysis_spot()``.
 
         Args:
-            filename: Output filename.
-            depth: Object distance for ray tracing [mm]. Use ``float('inf')``
+            filename (str): Output filename.
+            depth (float, optional): Object distance for ray tracing [mm]. Use ``float('inf')``
                 for collimated input. Defaults to ``float('inf')``.
-            zmx_format: If True, draw surfaces in Zemax style. Defaults to True.
-            multi_plot: If True, create one sub-plot per wavelength.
+            zmx_format (bool, optional): If True, draw surfaces in Zemax style. Defaults to True.
+            multi_plot (bool, optional): If True, create one sub-plot per wavelength.
                 Defaults to False.
-            lens_title: Title string. If None, auto-generated. Defaults to None.
-            show: If True, display the figure interactively. Defaults to False.
+            lens_title (str or None, optional): Title string. If None, auto-generated. Defaults to None.
+            show (bool, optional): If True, display the figure interactively. Defaults to False.
         """
         num_rays = 11
         num_views = 3
@@ -327,7 +327,7 @@ class GeoLensVis:
                 Defaults to False.
 
         Returns:
-            tuple: (ax, fig) matplotlib axes and figure objects.
+            result (tuple): (ax, fig) matplotlib axes and figure objects.
         """
         # If no ax is given, generate a new one.
         if ax is None and fig is None:
@@ -432,10 +432,10 @@ class GeoLensVis:
         """Create a 3D barrier for the lens system.
 
         Args:
-            filename: Path to save the figure
-            barrier_thickness: Thickness of the barrier
-            ring_height: Height of the annular ring
-            ring_size: Size of the annular ring
+            filename (str): Path to save the figure
+            barrier_thickness (float): Thickness of the barrier
+            ring_height (float): Height of the annular ring
+            ring_size (float): Size of the annular ring
         """
         barriers = []
         rings = []

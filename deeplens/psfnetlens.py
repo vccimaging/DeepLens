@@ -386,11 +386,10 @@ class PSFNetLens(Lens):
         """Calculate RGB PSF using the PSF network.
 
         Args:
-            points (tensor): [N, 3] tensor, [-1, 1] * [-1, 1] * [depth_min, depth_max]
-            foc_dist (float): focus distance
+            points (torch.Tensor): [N, 3] tensor, [-1, 1] * [-1, 1] * [depth_min, depth_max]
 
         Returns:
-            psf (tensor): [N, 3, ks, ks] tensor
+            psf (torch.Tensor): [N, 3, ks, ks] tensor
         """
         # Calculate network input
         network_inp = self.points2input(points)
@@ -420,13 +419,12 @@ class PSFNetLens(Lens):
 
         Args:
             grid (tuple, optional): Grid size. Defaults to (11, 11), meaning 11x11 grid.
-            wvln (float, optional): Wavelength. Defaults to DEFAULT_WAVE.
             depth (float, optional): Depth of the object. When ``None`` (default),
                 falls back to ``self.obj_depth``.
             ks (int, optional): Kernel size. Defaults to PSF_KS, meaning PSF_KS x PSF_KS kernel size.
 
         Returns:
-            psf_map: Shape of [grid, grid, 3, ks, ks].
+            psf_map (torch.Tensor): Shape of [grid, grid, 3, ks, ks].
         """
         depth = self.obj_depth if depth is None else depth
         # PSF map grid

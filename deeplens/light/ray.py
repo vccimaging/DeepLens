@@ -91,7 +91,7 @@ class Ray(DeepObj):
         """Calculate the centroid of the ray, shape (..., num_rays, 3)
 
         Returns:
-            torch.Tensor: Centroid of the ray, shape (..., 3)
+            centroid (torch.Tensor): Centroid of the ray, shape (..., 3)
         """
         return (self.o * self.is_valid.unsqueeze(-1)).sum(-2) / self.is_valid.sum(
             -1
@@ -104,7 +104,7 @@ class Ray(DeepObj):
             center_ref (torch.Tensor): Reference center of the ray, shape (..., 3). If None, use the centroid of the ray as reference.
 
         Returns:
-            torch.Tensor: average RMS error of the ray
+            rms_error (torch.Tensor): average RMS error of the ray
         """
         # Calculate the centroid of the ray as reference
         if center_ref is None:

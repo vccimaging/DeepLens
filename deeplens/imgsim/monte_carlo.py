@@ -39,9 +39,9 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
             pixel (faster, no gradient w.r.t. in-pixel position).
 
     Returns:
-        torch.Tensor: Accumulated field, shape ``[N, ks, ks]`` (or
-        ``[ks, ks]`` for a single input point). Dtype is complex when
-        ``ray.is_coherent`` is ``True``, otherwise float.
+        field (torch.Tensor): Accumulated field, shape ``[N, ks, ks]`` (or
+            ``[ks, ks]`` for a single input point). Dtype is complex when
+            ``ray.is_coherent`` is ``True``, otherwise float.
     """
     if ray.o.ndim == 2:
         single_point = True
@@ -132,24 +132,24 @@ def backward_integral(
     sampled without silently truncating.
 
     Args:
-        ray: Ray object. Shape of ``ray.o`` is ``[h, w, spp, 3]``.
-        img_obj: [B, C, H, W]. Spatial size ``H, W`` is read from this tensor.
-        ps: pixel size
-        interpolate: whether to interpolate
-        energy_correction: Optional per-ray weight tensor of shape
+        ray (Ray): Ray object. Shape of ``ray.o`` is ``[h, w, spp, 3]``.
+        img_obj (torch.Tensor): [B, C, H, W]. Spatial size ``H, W`` is read from this tensor.
+        ps (float): pixel size
+        interpolate (bool): whether to interpolate
+        energy_correction (torch.Tensor or None, optional): Optional per-ray weight tensor of shape
             ``[h, w, spp, 1]`` (e.g. ``ray.en``). When supplied, it is used as
             an importance weight; under the default (non-vignetting) mode it
             enters both numerator and denominator, yielding a proper weighted
             Monte Carlo mean. Under ``vignetting=True`` the denominator is
             fixed, so the weight only scales the numerator. ``None``
             (default) gives uniform per-ray weights.
-        vignetting: If True, divide by a fixed denominator
+        vignetting (bool): If True, divide by a fixed denominator
             (``torch.numel(ray.is_valid)``) instead of the sum of weights;
             pixels hit by few / attenuated rays therefore appear dimmer
             (mechanical vignetting). Defaults to False.
 
     Returns:
-        output: shape [B, C, h, w]
+        output (torch.Tensor): shape [B, C, h, w]
     """
     assert len(img_obj.shape) == 4
     H, W = img_obj.shape[-2:]
@@ -210,17 +210,17 @@ def assign_points_to_pixels(
     This function can only compute single point source, constrained by advanced indexing operation.
 
     Args:
-        points: shape [spp, 2]
-        mask: shape [spp]
-        ks: kernel size
-        x_range: x range
-        y_range: y range
-        value: shape [spp], values we want to assign to each pixel (intensity or complex amplitude)
-        interpolate: whether to interpolate
+        points (torch.Tensor): shape [spp, 2]
+        mask (torch.Tensor): shape [spp]
+        ks (int): kernel size
+        x_range (tuple): x range
+        y_range (tuple): y range
+        value (torch.Tensor): shape [spp], values we want to assign to each pixel (intensity or complex amplitude)
+        interpolate (bool): whether to interpolate
 
 
     Returns:
-        field: intensity or complex amplitude, shape [ks, ks]
+        field (torch.Tensor): intensity or complex amplitude, shape [ks, ks]
     """
     # Parameters
     device = points.device

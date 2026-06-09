@@ -63,7 +63,7 @@ class GeoLensSurfOps:
                 ``[a2, a4, a6, ...]``. Defaults to 4.
 
         Returns:
-            int: Index of the converted surface.
+            surf_idx (int): Index of the converted surface.
 
         Raises:
             IndexError: If ``surf_idx`` is out of range.
@@ -115,7 +115,7 @@ class GeoLensSurfOps:
         * Only air-glass interfaces are considered (cemented surfaces excluded).
 
         Returns:
-            int: Surface index of the best candidate.
+            best_idx (int): Surface index of the best candidate.
 
         Raises:
             ValueError: If no eligible Spheric surfaces exist.
@@ -205,7 +205,8 @@ class GeoLensSurfOps:
             surf_idx (int): Surface index.
 
         Returns:
-            bool: ``True`` if exactly one side is air and the other is glass.
+            is_interface (bool): ``True`` if exactly one side is air and the
+                other is glass.
         """
         # Material before: walk backwards past aperture surfaces
         mat_before = "air"
@@ -276,7 +277,7 @@ class GeoLensSurfOps:
                 Defaults to 1.
 
         Returns:
-            int: Index of the surface whose order was increased.
+            surf_idx (int): Index of the surface whose order was increased.
 
         Raises:
             IndexError: If ``surf_idx`` is out of range.
@@ -322,7 +323,7 @@ class GeoLensSurfOps:
            the interface amplifies the aspheric correction (Principle 2).
 
         Returns:
-            int: Surface index of the best candidate.
+            best_idx (int): Surface index of the best candidate.
 
         Raises:
             ValueError: If no Aspheric surfaces exist.

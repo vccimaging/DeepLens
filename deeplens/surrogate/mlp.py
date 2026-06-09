@@ -11,10 +11,10 @@ class MLP(nn.Module):
     (valid as a PSF energy distribution).
 
     Args:
-        in_features: Number of input features (e.g., field angle + wavelength).
-        out_features: Number of output features (flattened PSF size).
-        hidden_features: Width of hidden layers. Defaults to 64.
-        hidden_layers: Number of hidden layers. Defaults to 3.
+        in_features (int): Number of input features (e.g., field angle + wavelength).
+        out_features (int): Number of output features (flattened PSF size).
+        hidden_features (int): Width of hidden layers. Defaults to 64.
+        hidden_layers (int): Number of hidden layers. Defaults to 3.
     """
 
     def __init__(self, in_features, out_features, hidden_features=64, hidden_layers=3):
@@ -45,10 +45,11 @@ class MLP(nn.Module):
         """Forward pass.
 
         Args:
-            x: Input tensor of shape ``(batch_size, in_features)``.
+            x (torch.Tensor): Input tensor of shape ``(batch_size, in_features)``.
 
         Returns:
-            L1-normalized output tensor of shape ``(batch_size, out_features)``.
+            x (torch.Tensor): L1-normalized output tensor of shape
+                ``(batch_size, out_features)``.
         """
         x = self.net(x)
         x = F.normalize(x, p=1, dim=-1)

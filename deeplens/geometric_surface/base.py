@@ -145,7 +145,7 @@ class Surface(DeepObj):
                 if ``False`` reflect it.
 
         Returns:
-            Ray: Updated ray bundle after the surface interaction.
+            ray (Ray): Updated ray bundle after the surface interaction.
         """
         # Transform ray to local coordinate system
         ray = self.to_local_coord(ray)
@@ -295,7 +295,7 @@ class Surface(DeepObj):
             old_d (Tensor): pre-refraction ray directions, same shape as ray.d.
 
         Returns:
-            Ray: ray with updated bend_penalty.
+            ray (Ray): ray with updated bend_penalty.
         """
         bend_angle_max = getattr(self, "bend_angle_max", 30.0)
         cos_bend_min = math.cos(math.radians(bend_angle_max))
@@ -684,7 +684,7 @@ class Surface(DeepObj):
             color (List[float]): The color of the mesh.
 
         Returns:
-            self: The surface with mesh data.
+            self (Surface): The surface with mesh data.
         """
         self.vertices = self._create_vertices(n_rings, n_arms)
         self.faces = self._create_faces(n_rings, n_arms)

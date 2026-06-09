@@ -16,18 +16,18 @@ class ModulateSiren(nn.Module):
     Used to predict spatially-varying PSFs conditioned on lens parameters.
 
     Args:
-        dim_in: Input coordinate dimension (typically 2 for x, y).
-        dim_hidden: Hidden layer width for both synthesizer and modulator.
-        dim_out: Output dimension per pixel (e.g., 1 for grayscale PSF).
-        dim_latent: Dimension of the conditioning latent vector.
-        num_layers: Number of SIREN + modulator layers.
-        image_width: Output image width in pixels.
-        image_height: Output image height in pixels.
-        w0: Frequency multiplier for hidden sine layers. Defaults to 1.0.
-        w0_initial: Frequency multiplier for the first sine layer. Defaults to 30.0.
-        use_bias: Whether to use bias in sine layers. Defaults to True.
-        final_activation: Activation for the last layer. Defaults to None (linear).
-        outermost_linear: If True, the last layer is a plain linear layer. Defaults to True.
+        dim_in (int): Input coordinate dimension (typically 2 for x, y).
+        dim_hidden (int): Hidden layer width for both synthesizer and modulator.
+        dim_out (int): Output dimension per pixel (e.g., 1 for grayscale PSF).
+        dim_latent (int): Dimension of the conditioning latent vector.
+        num_layers (int): Number of SIREN + modulator layers.
+        image_width (int): Output image width in pixels.
+        image_height (int): Output image height in pixels.
+        w0 (float): Frequency multiplier for hidden sine layers. Defaults to 1.0.
+        w0_initial (float): Frequency multiplier for the first sine layer. Defaults to 30.0.
+        use_bias (bool): Whether to use bias in sine layers. Defaults to True.
+        final_activation (nn.Module or None): Activation for the last layer. Defaults to None (linear).
+        outermost_linear (bool): If True, the last layer is a plain linear layer. Defaults to True.
     """
 
     def __init__(
@@ -127,10 +127,12 @@ class ModulateSiren(nn.Module):
         """Forward pass.
 
         Args:
-            latent: Conditioning latent vector of shape ``(batch_size, dim_latent)``.
+            latent (torch.Tensor): Conditioning latent vector of shape
+                ``(batch_size, dim_latent)``.
 
         Returns:
-            Output image tensor of shape ``(batch_size, dim_out, image_height, image_width)``.
+            x (torch.Tensor): Output image tensor of shape
+                ``(batch_size, dim_out, image_height, image_width)``.
         """
         x = self.grid.clone().detach().requires_grad_()
 

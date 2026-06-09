@@ -38,19 +38,19 @@ class VortexPhase(Phase):
     ):
         """
         Args:
-            r: Aperture radius [mm].
-            d: Axial position [mm].
-            charge: Topological charge (integer). Positive for left-handed, negative
+            r (float): Aperture radius [mm].
+            d (float): Axial position [mm].
+            charge (int, optional): Topological charge (integer). Positive for left-handed, negative
                 for right-handed helix.
-            f0: Phase curvature parameter [mm²] of the co-centered Fresnel term.
+            f0 (float or None, optional): Phase curvature parameter [mm²] of the co-centered Fresnel term.
                 Physically equivalent to λ·f for a thin lens at wavelength λ and
                 focal length f. ``None`` disables the Fresnel term.
-            norm_radii: Normalisation radius for phase map display. Defaults to ``r``.
-            mat2: Material name after the surface.
-            pos_xy: (x, y) position offset in the global frame [mm].
-            vec_local: Local surface normal direction.
-            is_square: If True, use a square aperture; else circular.
-            device: Torch device.
+            norm_radii (float or None, optional): Normalisation radius for phase map display. Defaults to ``r``.
+            mat2 (str, optional): Material name after the surface.
+            pos_xy (tuple, optional): (x, y) position offset in the global frame [mm].
+            vec_local (tuple, optional): Local surface normal direction.
+            is_square (bool, optional): If True, use a square aperture; else circular.
+            device (str, optional): Torch device.
         """
         super().__init__(
             r=r,

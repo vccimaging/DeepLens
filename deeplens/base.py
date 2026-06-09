@@ -52,11 +52,11 @@ class DeepObj:
         requested device.
 
         Args:
-            device: Target device, e.g. ``"cuda"``, ``"cpu"``, or a
+            device (str or torch.device): Target device, e.g. ``"cuda"``, ``"cpu"``, or a
                 ``torch.device`` instance.
 
         Returns:
-            DeepObj: ``self`` (for chaining).
+            self (DeepObj): ``self`` (for chaining).
 
         Example:
             ```python
@@ -93,7 +93,7 @@ class DeepObj:
                 Pass ``None`` to be a no-op.
 
         Returns:
-            DeepObj: ``self`` (for chaining).
+            self (DeepObj): ``self`` (for chaining).
 
         Raises:
             AssertionError: If *dtype* is not a recognised floating-point dtype.

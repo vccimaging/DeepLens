@@ -250,7 +250,7 @@ class DiffractiveLens(Lens):
             wave (ComplexWave): Input wave field entering the lens system.
 
         Returns:
-            ComplexWave: Output wave field at the sensor plane.
+            wave (ComplexWave): Output wave field at the sensor plane.
         """
         # Propagate to DOE
         for surf in self.surfaces:
@@ -275,7 +275,7 @@ class DiffractiveLens(Lens):
                 full sensor resolution (``max(self.sensor_res)``) is used.
 
         Returns:
-            torch.Tensor: Rendered image after applying lens blur with shape (B, 1, H, W).
+            img_render (torch.Tensor): Rendered image after applying lens blur with shape (B, 1, H, W).
         """
         wvln = self.primary_wvln if wvln is None else wvln
         psf = self.psf_infinite(wvln=wvln, ks=ks).unsqueeze(0)  # (1, ks, ks)
@@ -309,8 +309,8 @@ class DiffractiveLens(Lens):
                 Nyquist sampling constraint. Defaults to 1.
 
         Returns:
-            torch.Tensor: PSF intensity map, shape ``[ks, ks]`` for a single
-            point or ``[N, ks, ks]`` for a batch.
+            psf (torch.Tensor): PSF intensity map, shape ``[ks, ks]`` for a single
+                point or ``[N, ks, ks]`` for a batch.
 
         Note:
             A single Angular Spectrum Method (ASM) window is used, so very large
@@ -535,8 +535,8 @@ class DiffractiveLens(Lens):
                 optimize. If None, all diffractive surfaces are optimized.
 
         Returns:
-            torch.optim.Optimizer: Adam optimizer over the selected surfaces'
-            phase parameters.
+            optimizer (torch.optim.Optimizer): Adam optimizer over the selected surfaces'
+                phase parameters.
         """
         if optim_surf_ls is None:
             optim_surf_ls = list(range(len(self.surfaces)))
