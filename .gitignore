@@ -12,8 +12,6 @@ deeplens/do_code/
 !lenses/**/*.png
 !images/*.png
 !assets/*.png
-!docs/assets/*.png
-!docs/assets/**/*.png
 debug.py
 *.log
 temp/*
@@ -28,11 +26,11 @@ lenses/pancake/
 datasets/BSDS300/
 *.out
 
-# MkDocs build artifacts
+# Docs moved to separate repo
+docs/
 site/
 
 # add my own files
 test/test_outputs
 visualization/
 research/
-docs/superpowers/
