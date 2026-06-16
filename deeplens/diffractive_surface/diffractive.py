@@ -423,7 +423,7 @@ class DiffractiveSurface(DeepObj):
             "wvln0": round(self.wvln0, 4),
             "res": self.res,
             "fab_ps": self.fab_ps,
-            "is_square": True,
+            "is_square": self.is_square,
         }
 
         return surf_dict

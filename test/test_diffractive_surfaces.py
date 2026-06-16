@@ -62,6 +62,14 @@ class TestBinary2:
         assert doe.alpha2.requires_grad
         assert doe.alpha10.requires_grad
 
+    def test_surf_dict_preserves_is_square(self):
+        """surf_dict round-trip preserves the DOE aperture shape flag."""
+        doe = Binary2(d=0.0, res=100, is_square=False)
+
+        reloaded = Binary2.init_from_dict(doe.surf_dict())
+
+        assert reloaded.is_square is False
+
 
 class TestPixel2D:
     """Tests for Pixel2D DOE."""

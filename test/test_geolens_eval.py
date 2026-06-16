@@ -5,6 +5,7 @@ All methods are tested via GeoLens instances (mixin architecture).
 
 import os
 
+import numpy as np
 import pytest
 import torch
 
@@ -72,6 +73,74 @@ class TestMTF:
         psf /= psf.sum()
         freq, mtf_tan, mtf_sag = lens.psf2mtf(psf, pixel_size=lens.pixel_size)
         assert len(freq) > 0
+
+    def test_draw_mtf_plots_tangential_and_sagittal_curves(
+        self, sample_singlet_lens, test_output_dir, monkeypatch
+    ):
+        """draw_mtf plots both T and S curves for every RGB wavelength."""
+        from matplotlib.axes import Axes
+
+        lens = sample_singlet_lens
+        path = os.path.join(test_output_dir, "test_mtf_ts_curves.png")
+
+        def fake_psf_rgb(points, ks, recenter=True):
+            return torch.ones(3, 8, 8, device=lens.device)
+
+        def fake_psf2mtf(psf, pixel_size):
+            freq = np.array([10.0, 20.0])
+            mtf_tan = np.array([0.8, 0.5])
+            mtf_sag = np.array([0.7, 0.4])
+            return freq, mtf_tan, mtf_sag
+
+        labels_and_styles = []
+        original_plot = Axes.plot
+
+        def spy_plot(ax, *args, **kwargs):
+            label = kwargs.get("label")
+            linestyle = kwargs.get("linestyle")
+            if label and label.endswith(("-T", "-S")):
+                labels_and_styles.append((label, linestyle))
+            return original_plot(ax, *args, **kwargs)
+
+        monkeypatch.setattr(lens, "psf_rgb", fake_psf_rgb)
+        monkeypatch.setattr(lens, "psf2mtf", fake_psf2mtf)
+        monkeypatch.setattr(Axes, "plot", spy_plot)
+
+        lens.draw_mtf(
+            save_name=path,
+            relative_fov_list=[0.0],
+            depth_list=[lens.obj_depth],
+            psf_ks=8,
+        )
+
+        assert os.path.exists(path)
+        assert sum(label.endswith("-T") for label, _ in labels_and_styles) == 3
+        assert sum(label.endswith("-S") for label, _ in labels_and_styles) == 3
+        assert {style for _, style in labels_and_styles} == {"-", "--"}
+
+
+class TestSpotSampling:
+    """Regression tests for field-angle spot diagram sampling."""
+
+    def test_radial_sampling_reaches_full_rfov(self, sample_singlet_lens):
+        """The final radial sample reaches the lens half-diagonal FoV."""
+        lens = sample_singlet_lens
+        ray = lens.sample_radial_rays(
+            num_field=3,
+            depth=float("inf"),
+            num_rays=8,
+            direction="y",
+        )
+
+        field_angles = torch.atan2(ray.d[..., 1], ray.d[..., 2])
+        full_fov = torch.as_tensor(lens.rfov, device=field_angles.device)
+
+        assert torch.allclose(field_angles[0], torch.zeros_like(field_angles[0]), atol=1e-6)
+        assert torch.allclose(
+            field_angles[-1],
+            torch.full_like(field_angles[-1], full_fov),
+            atol=1e-5,
+        )
 
 
 class TestVignetting:
