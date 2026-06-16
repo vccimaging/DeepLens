@@ -207,38 +207,41 @@ class GeoLensIO:
             enpd_str = "FLOA"
         else:
             enpd_str = f"ENPD {self.enpd}"
-        # Head string
+        # Head string. Top-level directives are written at column 0 (not
+        # indented to the surrounding Python block) so the emitted Zemax header
+        # has no leading whitespace; the SURF 0 sub-keywords are indented to
+        # match the per-surface blocks emitted by ``zmx_str``.
         head_str = f"""VERS 190513 80 123457 L123457
-    MODE SEQ
-    NAME 
-    PFIL 0 0 0
-    LANG 0
-    UNIT MM X W X CM MR CPMM
-    {enpd_str}
-    ENVD 2.0E+1 1 0
-    GFAC 0 0
-    GCAT OSAKAGASCHEMICAL MISC
-    XFLN 0. 0. 0.
-    YFLN 0.0 {0.707 * self.rfov_eff * 57.3} {0.99 * self.rfov_eff * 57.3}
-    WAVL {self.wvln_rgb[2]:.7f} {self.wvln_rgb[1]:.7f} {self.wvln_rgb[0]:.7f}
-    RAIM 0 0 1 1 0 0 0 0 0
-    PUSH 0 0 0 0 0 0
-    SDMA 0 1 0
-    FTYP 0 0 3 3 0 0 0
-    ROPD 2
-    PICB 1
-    PWAV 2
-    POLS 1 0 1 0 0 1 0
-    GLRS 1 0
-    GSTD 0 100.000 100.000 100.000 100.000 100.000 100.000 0 1 1 0 0 1 1 1 1 1 1
-    NSCD 100 500 0 1.0E-3 5 1.0E-6 0 0 0 0 0 0 1000000 0 2
-    COFN QF "COATING.DAT" "SCATTER_PROFILE.DAT" "ABG_DATA.DAT" "PROFILE.GRD"
-    COFN COATING.DAT SCATTER_PROFILE.DAT ABG_DATA.DAT PROFILE.GRD
-    SURF 0
+MODE SEQ
+NAME
+PFIL 0 0 0
+LANG 0
+UNIT MM X W X CM MR CPMM
+{enpd_str}
+ENVD 2.0E+1 1 0
+GFAC 0 0
+GCAT OSAKAGASCHEMICAL MISC
+XFLN 0. 0. 0.
+YFLN 0.0 {0.707 * self.rfov_eff * 57.3} {0.99 * self.rfov_eff * 57.3}
+WAVL {self.wvln_rgb[2]:.7f} {self.wvln_rgb[1]:.7f} {self.wvln_rgb[0]:.7f}
+RAIM 0 0 1 1 0 0 0 0 0
+PUSH 0 0 0 0 0 0
+SDMA 0 1 0
+FTYP 0 0 3 3 0 0 0
+ROPD 2
+PICB 1
+PWAV 2
+POLS 1 0 1 0 0 1 0
+GLRS 1 0
+GSTD 0 100.000 100.000 100.000 100.000 100.000 100.000 0 1 1 0 0 1 1 1 1 1 1
+NSCD 100 500 0 1.0E-3 5 1.0E-6 0 0 0 0 0 0 1000000 0 2
+COFN QF "COATING.DAT" "SCATTER_PROFILE.DAT" "ABG_DATA.DAT" "PROFILE.GRD"
+COFN COATING.DAT SCATTER_PROFILE.DAT ABG_DATA.DAT PROFILE.GRD
+SURF 0
     TYPE STANDARD
     CURV 0.0
     DISZ INFINITY
-    """
+"""
         lens_zmx_str += head_str
 
         # Surface string
@@ -251,13 +254,14 @@ class GeoLensIO:
             surf_str = s.zmx_str(surf_idx=i + 1, d_next=d_next)
             lens_zmx_str += surf_str
 
-        # Sensor string
+        # Sensor (image) surface, formatted like the per-surface zmx_str blocks:
+        # the SURF line at column 0 with its sub-keywords indented.
         sensor_str = f"""SURF {i + 2}
     TYPE STANDARD
     CURV 0.
     DISZ 0.0
     DIAM {self.r_sensor}
-    """
+"""
         lens_zmx_str += sensor_str
 
         # Write lens zmx string into file
