@@ -193,5 +193,6 @@ class Aperture(Plane):
     TYPE STANDARD
     CURV 0.0
     DISZ {d_next.item()}
+    DIAM {self.r} 1 0 0 1 ""
 """
         return zmx_str
