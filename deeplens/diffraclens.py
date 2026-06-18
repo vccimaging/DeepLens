@@ -67,7 +67,8 @@ class DiffractiveLens(Lens):
         """Initialize a diffractive lens.
 
         Args:
-            filename (str, optional): Path to the lens configuration JSON file. If provided, loads the lens configuration from file. Defaults to None.
+            filename (str, optional): Path to the lens configuration JSON file. If provided, 
+                loads the lens configuration from file. Defaults to None.
             device (str, optional): Computation device ('cpu' or 'cuda'). Defaults to 'cpu'.
             dtype (torch.dtype, optional): Data type for the lens parameters.
                 Defaults to torch.float32; pass torch.float64 for
@@ -286,7 +287,7 @@ class DiffractiveLens(Lens):
         img_render = conv_psf(img, psf)
         return img_render
 
-    def psf(self, points, wvln=None, ks=None, recenter=False, upsample_factor=1):
+    def psf(self, points, wvln=None, ks=None, recenter=False, upsample_factor=None):
         """Calculate the monochromatic PSF for one or more point sources.
 
         Off-axis point sources are supported. The signature follows
@@ -310,7 +311,8 @@ class DiffractiveLens(Lens):
                 inverted image, but the result is flipped so the PSF is reported
                 in the sensor/source-sign convention (a +x source -> +x).
             upsample_factor (int, optional): Field upsampling factor to meet the
-                Nyquist sampling constraint. Defaults to 1.
+                Nyquist sampling constraint. When ``None`` (default), a factor is
+                chosen so the field resolution is close to 4000 x 4000.
 
         Returns:
             psf (torch.Tensor): PSF intensity map, shape ``[ks, ks]`` for a single
@@ -329,10 +331,14 @@ class DiffractiveLens(Lens):
         single_point = points.dim() == 1
         points = points.reshape(-1, 3)
 
-        # Field-plane sampling (high resolution to satisfy Nyquist).
+        # Field-plane sampling (high resolution to satisfy Nyquist)
+        base_res = self.surfaces[0].res
+        if upsample_factor is None:
+            upsample_factor = max(1, round(4000 / self.surfaces[0].res[0]))
+
         field_res = [
-            self.surfaces[0].res[0] * upsample_factor,
-            self.surfaces[0].res[1] * upsample_factor,
+            base_res[0] * upsample_factor,
+            base_res[1] * upsample_factor,
         ]
         field_size = [
             self.surfaces[0].res[0] * self.surfaces[0].ps,

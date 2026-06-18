@@ -72,7 +72,8 @@ class ComplexWave(DeepObj):
         if u is not None:
             if not u.dtype == torch.complex128:
                 print(
-                    "A complex wave field is created with single precision. In the future, we want to always use double precision."
+                    "A complex wave field is created with single precision. " \
+                    "In the future, we want to always use double precision."
                 )
 
             self.u = u if torch.is_tensor(u) else torch.from_numpy(u)
@@ -98,9 +99,9 @@ class ComplexWave(DeepObj):
         assert wvln > 0.1 and wvln < 10.0, "Wavelength should be in [um]."
         self.wvln = wvln  # [um], wavelength
         self.k = 2 * torch.pi / (self.wvln * 1e-3)  # [mm^-1], wave number
+
+        # Physical size and pixel size
         self.phy_size = phy_size  # [mm], physical size
-        # Compare pixel sizes with a relative tolerance; exact float == can
-        # spuriously fail for equivalent but differently-computed ratios.
         px = phy_size[0] / self.res[0]
         py = phy_size[1] / self.res[1]
         assert abs(px - py) <= 1e-9 * max(abs(px), abs(py)) + 1e-12, (
@@ -122,7 +123,7 @@ class ComplexWave(DeepObj):
     @classmethod
     def point_wave(
         cls,
-        point=(0, 0, -1000.0),
+        point=(0.0, 0.0, -1000.0),
         wvln=0.55,
         z=0.0,
         phy_size=(4.0, 4.0),
@@ -132,11 +133,11 @@ class ComplexWave(DeepObj):
         """Create a spherical wave field on x0y plane originating from a point source.
 
         Args:
-            point (tuple): Point source position in object space. [mm]. Defaults to (0, 0, -1000.0).
+            point (tuple): Point source position in object space. [mm]. Defaults to (0.0, 0.0, -1000.0).
             wvln (float): Wavelength. [um]. Defaults to 0.55.
             z (float): Field z position. [mm]. Defaults to 0.0.
-            phy_size (tuple): Valid plane on x0y plane. [mm]. Defaults to (2, 2).
-            res (tuple): Valid plane resoltution. Defaults to (1000, 1000).
+            phy_size (tuple): Valid plane on x0y plane. [mm]. Defaults to (4.0, 4.0).
+            res (tuple): Valid plane resoltution. Defaults to (2000, 2000).
             valid_r (float): Valid circle radius. [mm]. Defaults to None.
 
         Returns:
@@ -293,7 +294,8 @@ class ComplexWave(DeepObj):
         elif prop_dist < wvln_mm:
             # Sub-wavelength distance: full wave method (e.g., FDTD)
             raise Exception(
-                "The propagation distance in sub-wavelength range is not implemented yet. Have to use full wave method (e.g., FDTD)."
+                "The propagation distance in sub-wavelength range is not implemented yet. " \
+                "Have to use full wave method (e.g., FDTD)."
             )
 
         elif prop_dist <= self.fresnel_dist_min:
@@ -326,7 +328,6 @@ class ComplexWave(DeepObj):
     # =============================================
     # Helper functions
     # =============================================
-
     def gen_xy_grid(self):
         """Generate the x and y grid, shape ``[H, W]`` (matching the field ``u``).
 
@@ -352,7 +353,6 @@ class ComplexWave(DeepObj):
     # =============================================
     # Wave field I/O
     # =============================================
-
     def load(self, filepath):
         if filepath.endswith(".npz"):
             self.load_npz(filepath)
@@ -577,6 +577,12 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     `AngularSpectrumMethod` that additionally stays valid across the
     intermediate field.
 
+    The band-limit only suppresses aliasing of the propagation kernel `H`. It
+    assumes the input field `u` is already Nyquist-sampled: if `u`'s local
+    fringe rate exceeds `1 / (2 * ps)` (steep spherical phase, large tilt, or a
+    high-NA lens/DOE phase), it is aliased before propagation and the output is
+    silently wrong.
+
     Args:
         u (tensor): complex field, shape [H, W] or [B, 1, H, W]
         z (float): propagation distance in [mm]
@@ -648,7 +654,8 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
 def ScalableASM(u, z, wvln, ps, n=1.0, padding=True):
     """Scalable angular spectrum method.
 
-    "ScalableASM allows for propagation models where the destination pixel pitch is larger than the source pixel pitch." Optica 2023.
+    "ScalableASM allows for propagation models where the destination pixel pitch is 
+    larger than the source pixel pitch." Optica 2023.
 
     Reference:
         [1] Scalable angular spectrum propagation. Optica 2023.

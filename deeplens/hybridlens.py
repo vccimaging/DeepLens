@@ -277,7 +277,7 @@ class HybridLens(Lens):
     # =====================================================================
     # PSF-related functions
     # =====================================================================
-    def doe_field(self, point, wvln=None, spp=SPP_COHERENT):
+    def doe_field(self, point, wvln=None, spp=SPP_COHERENT, upsample_factor=None):
         """Compute the complex wave field at the DOE plane via coherent ray tracing.
 
         Similar to ``GeoLens.pupil_field()``, but evaluates the field at the
@@ -294,6 +294,12 @@ class HybridLens(Lens):
             spp (int, optional): Number of rays to sample.  Must be at least
                 1,000,000 for accurate coherent simulation.  Defaults to
                 ``SPP_COHERENT``.
+            upsample_factor (int, optional): Field upsampling factor to meet the
+                Nyquist sampling constraint. The field is sampled on a
+                ``doe.res * upsample_factor`` grid with a ``doe.ps /
+                upsample_factor`` pitch (same physical aperture, finer
+                sampling). When ``None`` (default), a factor is chosen so the
+                field resolution is close to 4000 x 4000.
 
         Returns:
             result (tuple):
@@ -316,6 +322,10 @@ class HybridLens(Lens):
         )
 
         geolens, doe = self.geolens, self.doe
+
+        # Field-plane upsampling to satisfy the ASM Nyquist constraint
+        if upsample_factor is None:
+            upsample_factor = max(1, round(4000 / doe.res[0]))
 
         if point.dim() == 1:
             point = point.unsqueeze(0)
@@ -343,8 +353,8 @@ class HybridLens(Lens):
         # Calculate full-resolution complex field for exit-pupil diffraction
         wavefront = forward_integral(
             ray.flip_xy(),
-            ps=doe.ps,
-            ks=doe.res[0],
+            ps=doe.ps / upsample_factor,
+            ks=doe.res[0] * upsample_factor,
             pointc=torch.zeros_like(point[:, :2]),
         ).squeeze(0)  # shape [H, W]
 
@@ -362,6 +372,7 @@ class HybridLens(Lens):
         ks=PSF_KS,
         wvln=None,
         spp=SPP_COHERENT,
+        upsample_factor=None,
     ):
         """Compute a single-point monochromatic PSF using the ray-wave model.
 
@@ -386,6 +397,9 @@ class HybridLens(Lens):
                 falls back to ``self.primary_wvln``.
             spp (int, optional): Number of coherent rays to sample.  Defaults
                 to ``SPP_COHERENT``.
+            upsample_factor (int, optional): Field upsampling factor to meet the
+                Nyquist sampling constraint. When ``None`` (default), a factor
+                is chosen so the field resolution is close to 4000 x 4000.
 
         Returns:
             psf (torch.Tensor): Normalised PSF patch (sums to 1), shape
@@ -416,11 +430,23 @@ class HybridLens(Lens):
         else:
             raise ValueError("point should be a list or a torch.Tensor.")
 
-        wavefront, psfc = self.doe_field(point=point0, wvln=wvln, spp=spp)
+        # Field-plane upsampling to satisfy the ASM Nyquist constraint
+        if upsample_factor is None:
+            upsample_factor = max(1, round(4000 / doe.res[0]))
+
+        wavefront, psfc = self.doe_field(
+            point=point0, wvln=wvln, spp=spp, upsample_factor=upsample_factor
+        )
         wavefront = wavefront.squeeze(0)  # shape of [H, W]
 
-        # DOE phase modulation. We have to flip the phase map because the wavefront has been flipped
+        # DOE phase modulation. We have to flip the phase map because the
+        # wavefront has been flipped. The phase map is upsampled (nearest, so
+        # each flat DOE pixel is preserved) to the field resolution.
         phase_map = torch.flip(doe.get_phase_map(wvln), [-1, -2])
+        if phase_map.shape != wavefront.shape:
+            phase_map = F.interpolate(
+                phase_map[None, None], size=wavefront.shape, mode="nearest"
+            )[0, 0]
         wavefront = wavefront * torch.exp(1j * phase_map)
 
         # Propagate wave field to sensor plane
@@ -432,7 +458,11 @@ class HybridLens(Lens):
             value=0,
         )
         sensor_field = AngularSpectrumMethod(
-            wavefront, z=geolens.d_sensor - doe.d, wvln=wvln, ps=doe.ps, padding=False
+            wavefront,
+            z=geolens.d_sensor - doe.d,
+            wvln=wvln,
+            ps=doe.ps / upsample_factor,
+            padding=False,
         )
 
         # Compute PSF (intensity distribution)
