@@ -57,9 +57,8 @@ def interp1d(query, key, value, mode="linear"):
         result = value_left.clone()  # [N, D]
         mask = key_left != key_right  # [N]
         if mask.any():
-            # Compute interpolation weights
-            weight = (query_flat - key_left) / (key_right - key_left)  # [N]
-            weight = weight.unsqueeze(-1)  # [N, 1] for broadcasting
+            denom = torch.where(mask, key_right - key_left, torch.ones_like(key_left))
+            weight = ((query_flat - key_left) / denom).unsqueeze(-1)  # [N, 1]
 
             # Apply interpolation only where mask is True
             interpolated = value_left + weight * (value_right - value_left)  # [N, D]

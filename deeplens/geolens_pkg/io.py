@@ -267,8 +267,7 @@ SURF 0
         # Write lens zmx string into file
         with open(filename, "w") as f:
             f.writelines(lens_zmx_str)
-            f.close()
-            print(f"Lens written to {filename}")
+        print(f"Lens written to {filename}")
 
     # ====================================================================================
     # CODE V Format (.seq)

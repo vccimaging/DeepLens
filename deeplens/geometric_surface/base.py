@@ -182,7 +182,9 @@ class Surface(DeepObj):
         ray.is_valid = ray.is_valid * valid
 
         if ray.is_coherent:
-            if t.abs().max() > 100 and torch.get_default_dtype() == torch.float32:
+            # Check the actual tensor dtype (mirrors ray.py) rather than the
+            # global default, which may not reflect this ray's precision.
+            if t.abs().max() > 100 and t.dtype != torch.float64:
                 raise Exception(
                     "Using float32 may cause precision problem for OPL calculation."
                 )
@@ -367,11 +369,12 @@ class Surface(DeepObj):
         offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
         ray.o = ray.o - offset
 
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_local, self.vec_global)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate using the matrix cached at init (vec_local/vec_global are static),
+        # instead of rebuilding it on every ray-surface interaction. None means no
+        # rotation is needed (surface is on-axis).
+        if self._R_to_local is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_local)
+            ray.d = self._apply_rotation(ray.d, self._R_to_local)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         return ray
@@ -385,11 +388,10 @@ class Surface(DeepObj):
         Returns:
             ray (Ray): transformed ray in global coordinate system.
         """
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_global, self.vec_local)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate using the cached inverse matrix (see to_local_coord).
+        if self._R_to_global is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_global)
+            ray.d = self._apply_rotation(ray.d, self._R_to_global)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         # Shift ray origin back to global coordinates
@@ -441,13 +443,15 @@ class Surface(DeepObj):
         cos_angle = dot_product
 
         # Skew-symmetric matrix for cross product v × u (not normalized axis!)
-        K = torch.tensor(
+        # Build via torch.stack to avoid copy-constructing a tensor from tensor
+        # scalars (which emits a warning and forces a host sync).
+        zero = torch.zeros((), device=self.device, dtype=v_cross_u.dtype)
+        K = torch.stack(
             [
-                [0, -v_cross_u[2], v_cross_u[1]],
-                [v_cross_u[2], 0, -v_cross_u[0]],
-                [-v_cross_u[1], v_cross_u[0], 0],
-            ],
-            device=self.device,
+                torch.stack([zero, -v_cross_u[2], v_cross_u[1]]),
+                torch.stack([v_cross_u[2], zero, -v_cross_u[0]]),
+                torch.stack([-v_cross_u[1], v_cross_u[0], zero]),
+            ]
         )
 
         # Rodrigues' formula: R = I + K + K²/(1 + cos(θ))

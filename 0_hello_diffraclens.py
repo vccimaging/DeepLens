@@ -21,6 +21,7 @@ Technical Paper:
         High Dynamic Range Imaging," CVPR 2020.
 """
 
+import torch
 from torchvision.io import read_image
 from torchvision.utils import save_image
 
@@ -32,7 +33,11 @@ from deeplens.imgsim import conv_psf
 # =====================================================================
 # Load a minimal diffractive lens (a single Fresnel DOE focusing at f0 = 50 mm,
 # one focal length in front of the sensor) from a JSON configuration file.
-lens = DiffractiveLens(filename="./datasets/lenses/diffraclens/fresnel.json")
+# Run in float64 to match the docstring's numerical-stability claim for the
+# wave-propagation step (DiffractiveLens defaults to float32 otherwise).
+lens = DiffractiveLens(
+    filename="./datasets/lenses/diffraclens/fresnel.json", dtype=torch.float64
+)
 
 # =====================================================================
 # PSF analysis

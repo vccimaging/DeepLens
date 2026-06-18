@@ -1,32 +1,32 @@
 """DeepLens - differentiable optical lens simulator."""
 
-import warnings
-
 import torch
 
 
-def _cuda_is_available():
-    """Return CUDA availability without surfacing benign NVML probe warnings."""
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Can't initialize NVML", category=UserWarning)
-        warnings.filterwarnings("ignore", message="Can't get nvml device count", category=UserWarning)
-        return torch.cuda.is_available()
-
-
 def init_device():
-    """Initialize and return the default compute device (CUDA, MPS, or CPU)."""
-    if _cuda_is_available():
+    """Initialize and return the default compute device (CUDA or CPU).
+
+    MPS (Apple Silicon) is intentionally NOT auto-selected: DeepLens relies on
+    float64 for wave propagation / coherent ray tracing, and the MPS backend
+    does not support float64 (``Cannot convert a MPS Tensor to float64``), so
+    auto-selecting it crashes every double-precision workflow. Apple Silicon
+    therefore falls back to CPU. A user who only needs the float32 geometric
+    path on MPS can still pass ``device="mps"`` explicitly.
+    """
+    if torch.cuda.is_available():
         device = torch.device("cuda")
         device_name = torch.cuda.get_device_name(0)
         print(f"Using CUDA: {device_name} for DeepLens")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-        device_name = "Apple MPS"
-        print("Using MPS (Apple Silicon) for DeepLens")
     else:
         device = torch.device("cpu")
         device_name = "CPU"
-        print("Using CPU for DeepLens")
+        if torch.backends.mps.is_available():
+            print(
+                "Apple MPS detected but not used (no float64 support); "
+                "using CPU for DeepLens. Pass device='mps' to force float32-only MPS."
+            )
+        else:
+            print("Using CPU for DeepLens")
     return device
 
 

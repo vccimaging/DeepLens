@@ -223,8 +223,10 @@ class QTypeFreeform(Surface):
         # Radial distance squared
         r2 = x**2 + y**2
 
-        # Base conic sag
-        sqrt_term = torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON)
+        # Base conic sag. Clamp the radicand (not + EPSILON): beyond the conic
+        # boundary (1+k)c^2 r^2 > 1 the argument goes negative and torch.sqrt
+        # returns NaN (and NaN gradients). Matches Aspheric._sag.
+        sqrt_term = torch.sqrt(torch.clamp(1 - (1 + k) * r2 * c**2, min=EPSILON))
         z_base = r2 * c / (1 + sqrt_term)
 
         # Q-polynomial departure
@@ -271,8 +273,9 @@ class QTypeFreeform(Surface):
 
         r2 = x**2 + y**2
 
-        # Base conic derivative dz_base/dr²
-        sqrt_term = torch.sqrt(1 - (1 + k) * r2 * c**2 + EPSILON)
+        # Base conic derivative dz_base/dr². Clamp the radicand to keep it
+        # non-negative (see _sag); + EPSILON does not prevent a NaN sqrt.
+        sqrt_term = torch.sqrt(torch.clamp(1 - (1 + k) * r2 * c**2, min=EPSILON))
         dz_base_dr2 = (
             c
             * (1 + sqrt_term + (1 + k) * r2 * c**2 / (2 * sqrt_term))
@@ -343,11 +346,21 @@ class QTypeFreeform(Surface):
 
         r2 = x**2 + y**2
 
-        # Check conic validity
-        if k > -1 and abs(c) > EPSILON:
-            valid_conic = r2 < 1 / (c**2 * (1 + k)) - EPSILON
-        else:
-            valid_conic = torch.ones_like(x, dtype=torch.bool)
+        # Check conic validity. Fully tensorized (no Python branch on the
+        # tensor values of k/c) so the function is safe under torch.compile.
+        # A real conic boundary exists only when k > -1 AND c != 0; otherwise
+        # every point is treated as valid (mirrors Aspheric.is_within_data_range).
+        has_boundary = (1 + k > 0) & (c.abs() > EPSILON)
+        one_plus_k = 1 + k
+        c2 = c * c
+        # Avoid div-by-zero / negative when the boundary is absent; the bogus
+        # value is masked out by the where below.
+        denom = torch.where(
+            has_boundary, c2 * one_plus_k, torch.ones_like(c2 * one_plus_k)
+        )
+        limit_sq = 1.0 / denom - EPSILON
+        inside = r2 < limit_sq
+        valid_conic = torch.where(has_boundary, inside, torch.ones_like(inside))
 
         # Check normalized radius (should be <= 1 for Q polynomials)
         u2 = r2 / (self.r_norm**2)

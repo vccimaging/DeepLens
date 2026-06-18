@@ -21,6 +21,7 @@ import torch.nn.functional as F
 from .config import (
     DEFAULT_WAVE,
     DEPTH,
+    EPSILON,
     PSF_KS,
     SPP_COHERENT,
     WAVE_RGB,
@@ -323,8 +324,10 @@ class HybridLens(Lens):
         # Calculate ray origin in the object space
         scale = geolens.calc_scale(point[:, 2].item())
         point_obj = point.clone()
-        point_obj[:, 0] = point[:, 0] * scale * geolens.sensor_size[1] / 2
-        point_obj[:, 1] = point[:, 1] * scale * geolens.sensor_size[0] / 2
+        # sensor_size is (W, H): x scales with width [0], y with height [1].
+        # (Matches the chief-ray center below and base Lens / DiffractiveLens.)
+        point_obj[:, 0] = point[:, 0] * scale * geolens.sensor_size[0] / 2
+        point_obj[:, 1] = point[:, 1] * scale * geolens.sensor_size[1] / 2
 
         # Determine ray center via chief ray
         pointc_chief_ray = geolens.psf_center(point_obj, method="chief_ray")[
@@ -468,8 +471,8 @@ class HybridLens(Lens):
                 int(w / 2 - w / 4) : int(w / 2 + w / 4),
             ]
 
-        # Normalize and convert to float precision
-        psf /= psf.sum()  # shape of [ks, ks] or [h, w]
+        # Normalize and convert to float precision.
+        psf = psf / (psf.sum() + EPSILON)  # shape of [ks, ks] or [h, w]
         return diff_float(psf)
 
     # =====================================================================

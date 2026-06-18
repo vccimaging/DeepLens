@@ -73,11 +73,11 @@ class Prism(Surface):
     def init_from_dict(cls, surf_dict):
         """Initialize prism from dictionary."""
         return cls(
-            surf_dict["r"], 
-            surf_dict["d"], 
-            surf_dict.get("mirror_angle", 45.0),
-            surf_dict.get("prism_height", 10.0),
-            surf_dict.get("mat2", "air")
+            r=surf_dict["r"],
+            d=surf_dict["d"],
+            mirror_angle=surf_dict.get("mirror_angle", 45.0),
+            mat2=surf_dict.get("mat2", "air"),
+            device=surf_dict.get("device", "cpu"),
         )
 
     def ray_reaction(self, ray, n1, n2, refraction=True):

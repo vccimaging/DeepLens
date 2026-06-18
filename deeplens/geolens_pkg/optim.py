@@ -820,12 +820,6 @@ class GeoLensOptim:
             # optim_surf_range = self.find_diff_surf()
             optim_surf_range = range(len(self.surfaces))
 
-        # If lr for each surface is a list is given
-        if isinstance(lrs[0], list):
-            return self.get_optimizer_params_manual(
-                lrs=lrs, optim_mat=optim_mat, optim_surf_range=optim_surf_range
-            )
-
         # Optimize lens surface parameters
         params = []
         for surf_idx in optim_surf_range:
@@ -838,7 +832,11 @@ class GeoLensOptim:
                 params += surf.get_optimizer_params(lrs=lrs[:4], optim_mat=optim_mat)
 
             elif isinstance(surf, Phase):
-                params += surf.get_optimizer_params(lrs=[lrs[0], lrs[4]])
+                # Phase surfaces take [d_lr, coeff_lr]. Use a dedicated 5th lr
+                # when provided, otherwise fall back to the last lr so the
+                # standard 4-element lrs convention does not IndexError.
+                coeff_lr = lrs[4] if len(lrs) > 4 else lrs[-1]
+                params += surf.get_optimizer_params(lrs=[lrs[0], coeff_lr])
 
             # elif isinstance(surf, GaussianRBF):
             #     params += surf.get_optimizer_params(lrs=lr, optim_mat=optim_mat)

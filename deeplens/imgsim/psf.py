@@ -466,8 +466,9 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
         # Create soft mask for this layer: 1 where pixels belong to this layer
         mask = (layer_assignment == i).to(dtype=dtype)  # [B, 1, H, W]
 
-        if mask.sum() == 0:
-            continue
+        # Run unconditionally: an all-zero mask convolves to zero and composites
+        # to a no-op (result = 0 + result * (1 - 0)). Skipping it via
+        # `if mask.sum() == 0` forced a GPU->CPU sync every iteration.
 
         # Layer RGB: pixels in this layer, zero elsewhere
         layer_rgb = img * mask  # [B, C, H, W]

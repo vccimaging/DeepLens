@@ -67,7 +67,9 @@ class DeepObj:
         self.device = device
 
         for key, val in vars(self).items():
-            if torch.is_tensor(val):
+            if isinstance(val, nn.Parameter):
+                val.data = val.data.to(device)
+            elif torch.is_tensor(val):
                 setattr(self, key, val.to(device))
             elif isinstance(val, nn.Module):
                 val.to(device)
@@ -116,7 +118,10 @@ class DeepObj:
 
         self.dtype = dtype
         for key, val in vars(self).items():
-            if torch.is_tensor(val) and val.dtype in dtype_ls:
+            if isinstance(val, nn.Parameter):
+                if val.dtype in dtype_ls:
+                    val.data = val.data.to(dtype)
+            elif torch.is_tensor(val) and val.dtype in dtype_ls:
                 setattr(self, key, val.to(dtype))
             elif issubclass(type(val), DeepObj):
                 val.astype(dtype)

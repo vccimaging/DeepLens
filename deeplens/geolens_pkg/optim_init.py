@@ -38,7 +38,7 @@ def create_lens(
     foclen=None,
     imgh=None,
     thickness=None,
-    surf_list=[["Spheric", "Spheric"], ["Aperture"], ["Spheric", "Aspheric"]],
+    surf_list=None,
     save_dir="./",
 ):
     """Create a lens design starting point with flat surfaces.
@@ -59,6 +59,10 @@ def create_lens(
         save_dir: Directory to save the lens JSON and analysis.
     """
     from ..geolens import GeoLens
+
+    # Avoid mutable default argument.
+    if surf_list is None:
+        surf_list = [["Spheric", "Spheric"], ["Aperture"], ["Spheric", "Aspheric"]]
 
     # Resolve foclen / imgh
     half_fov = np.deg2rad(fov / 2)

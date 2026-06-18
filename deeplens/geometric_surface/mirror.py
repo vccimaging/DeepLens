@@ -47,7 +47,7 @@ class Mirror(Plane):
         surf_dict = {
             "type": self.__class__.__name__,
             "r": self.r,
-            "d": self.d,
+            "d": round(self.d.item(), 4),
             "mat2": self.mat2.get_name(),
         }
         return surf_dict

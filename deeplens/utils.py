@@ -238,7 +238,7 @@ def gpu_init(gpu=0):
     """
     device = torch.device(f"cuda:{gpu}" if torch.cuda.is_available() else "cpu")
     print("Using: {}".format(device))
-    torch.set_default_tensor_type("torch.FloatTensor")
+    torch.set_default_dtype(torch.float32)
     return device
 
 

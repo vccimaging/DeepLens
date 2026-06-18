@@ -67,12 +67,15 @@ class TestInitDevice:
         assert device.type in ["cuda", "mps", "cpu"]
 
     def test_init_device_matches_availability(self):
-        """init_device result should match CUDA/MPS availability."""
+        """init_device should pick CUDA when available, otherwise CPU.
+
+        MPS is intentionally not auto-selected: it cannot hold the float64
+        tensors DeepLens uses for wave optics, so Apple Silicon falls back to
+        CPU.
+        """
         device = init_device()
         if torch.cuda.is_available():
             assert device.type == "cuda"
-        elif torch.backends.mps.is_available():
-            assert device.type == "mps"
         else:
             assert device.type == "cpu"
 

@@ -546,7 +546,13 @@ class GeoLensEval:
         rfov_samples = torch.linspace(0, rfov_deg, num_points)
         rfov_compute = rfov_samples.clone()
         if rfov_compute[0] == 0:
-            rfov_compute[0] = min(0.01, rfov_samples[1].item() * 0.01)
+            # Guard rfov_samples[1] for the single-sample case (num_points == 1).
+            tiny = (
+                rfov_samples[1].item() * 0.01
+                if len(rfov_samples) > 1
+                else min(0.01, float(rfov_deg) * 0.01)
+            )
+            rfov_compute[0] = min(0.01, tiny)
 
         # Ideal image height: h_ideal = f * tan(theta)
         eff_foclen = float(self.foclen)
@@ -1339,7 +1345,8 @@ class GeoLensEval:
             o1_linspace = min_y.unsqueeze(-1) + t * (max_y - min_y).unsqueeze(-1)
 
             o1 = torch.zeros([len(rfovs), num_rays, 3], device=self.device)
-            o1[:, :, 2] = depths[0]
+            # Use each field's own depth, not depths[0] for all fields.
+            o1[:, :, 2] = depths.unsqueeze(-1)
 
             o2_linspace = -delta.unsqueeze(-1) + t * (2 * delta).unsqueeze(-1)
 

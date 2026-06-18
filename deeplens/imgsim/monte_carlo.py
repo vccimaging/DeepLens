@@ -71,7 +71,8 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
 
     # Per-ray intensity (real) or complex amplitude.
     if ray.is_coherent:
-        amp = torch.sqrt(ray.d[..., 2].abs())           # sqrt(|dz|)
+        # Add EPSILON: sqrt'(0) is infinite -> NaN gradient for steep rays (dz~0).
+        amp = torch.sqrt(ray.d[..., 2].abs() + EPSILON)  # sqrt(|dz|)
         opl = ray.opl.squeeze(-1)                       # [N, spp]
         opl_min = opl.min(dim=-1, keepdim=True).values
         wvln_mm = ray.wvln * 1e-3

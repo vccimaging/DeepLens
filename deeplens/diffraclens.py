@@ -19,7 +19,7 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from .config import DEFAULT_WAVE, DEPTH, WAVE_RGB
+from .config import DEFAULT_WAVE, DEPTH, EPSILON, WAVE_RGB
 from .lens import Lens
 from .diffractive_surface import (
     Binary2,
@@ -278,7 +278,11 @@ class DiffractiveLens(Lens):
             img_render (torch.Tensor): Rendered image after applying lens blur with shape (B, 1, H, W).
         """
         wvln = self.primary_wvln if wvln is None else wvln
-        psf = self.psf_infinite(wvln=wvln, ks=ks).unsqueeze(0)  # (1, ks, ks)
+        # On-axis PSF for an object at infinity. psf() returns [ks, ks] for a
+        # single point; add a leading channel dim for conv_psf -> (1, ks, ks).
+        psf = self.psf(
+            points=[0.0, 0.0, float("-inf")], wvln=wvln, ks=ks
+        ).unsqueeze(0)
         img_render = conv_psf(img, psf)
         return img_render
 
@@ -433,7 +437,7 @@ class DiffractiveLens(Lens):
                 value=0,
             )
             psf = intensity[coord_c_i : coord_c_i + ks, coord_c_j : coord_c_j + ks]
-            psf = psf / psf.sum()
+            psf = psf / (psf.sum() + EPSILON)
             psfs.append(diff_float(psf))
 
         psf_out = torch.stack(psfs, dim=0)

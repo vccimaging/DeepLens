@@ -183,6 +183,7 @@ class GeoLensVis:
         multi_plot=False,
         lens_title=None,
         show=False,
+        return_fig=False,
     ):
         """Plot 2D lens layout with ray tracing.
 
@@ -295,11 +296,17 @@ class GeoLensVis:
                     )
                     ax.axis("off")
 
+        # Let an internal caller (e.g. create_barrier) keep drawing on the same
+        # axes instead of saving and closing the figure here.
+        if return_fig:
+            return ax, fig
+
         if show:
             fig.show()
         else:
             fig.savefig(filename, format="png", dpi=300)
-            plt.close()
+            # Close the specific figure to avoid leaking it.
+            plt.close(fig)
 
     def draw_lens_2d(
         self,
@@ -488,8 +495,8 @@ class GeoLensVis:
         #         ring = {
         #             "pos_z": geolens.surfaces[i].d.item(),
 
-        # Plot lens layout
-        ax, fig = self.draw_layout(filename)
+        # Plot lens layout (keep the figure open so we can overlay the barrier)
+        ax, fig = self.draw_layout(filename, return_fig=True)
 
         # Plot barrier
         barrier_z_ls = []

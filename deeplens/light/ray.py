@@ -73,7 +73,11 @@ class Ray(DeepObj):
             z (float): depth.
             n (float, optional): refractive index. Defaults to 1.
         """
-        t = (z - self.o[..., 2]) / self.d[..., 2]
+        # Guard against rays (nearly) parallel to the target plane: d_z ~ 0 would
+        # make t = inf/NaN and contaminate gradients through the torch.where below.
+        dz = self.d[..., 2]
+        dz_safe = torch.where(dz.abs() < EPSILON, torch.full_like(dz, EPSILON), dz)
+        t = (z - self.o[..., 2]) / dz_safe
         new_o = self.o + self.d * t.unsqueeze(-1)
         valid_mask = (self.is_valid > 0).unsqueeze(-1)
         self.o = torch.where(valid_mask, new_o, self.o)

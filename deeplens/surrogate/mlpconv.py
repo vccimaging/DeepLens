@@ -26,6 +26,7 @@ class MLPConv(nn.Module):
         super(MLPConv, self).__init__()
 
         self.ks_mlp = min(ks, 32)
+        upsample_times = 0  # ks <= 32 needs no upsampling (decoder loop runs 0 times)
         if ks > 32:
             assert ks % 32 == 0, "ks must be 32n"
             upsample_times = int(math.log(ks / 32, 2))

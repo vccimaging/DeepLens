@@ -141,7 +141,7 @@ class VortexPhase(Phase):
         """Load VortexPhase parameters."""
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
-        self.charge = int(ckpt["l"])
+        self.charge = int(ckpt["charge"])
         f0 = ckpt.get("f0")
         self.f0 = f0.to(self.device) if f0 is not None else None
 

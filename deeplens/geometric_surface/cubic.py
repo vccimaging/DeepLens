@@ -164,12 +164,25 @@ class Cubic(Surface):
     # IO
     # =========================================
     def surf_dict(self):
-        """Return surface parameters."""
+        """Return surface parameters.
+
+        Emits the ``b`` coefficient list and ``mat2`` that ``init_from_dict``
+        consumes, so the surface round-trips through JSON. The scalar
+        ``b3/b5/b7`` keys are kept for human readability.
+        """
+        b = [self.b3.item()]
+        if self.b_degree >= 2:
+            b.append(self.b5.item())
+        if self.b_degree >= 3:
+            b.append(self.b7.item())
+
         d = {
             "type": "Cubic",
             "b3": self.b3.item(),
             "r": self.r,
             "(d)": round(self.d.item(), 4),
+            "b": b,
+            "mat2": self.mat2.get_name(),
         }
         if self.b_degree >= 2:
             d["b5"] = self.b5.item()

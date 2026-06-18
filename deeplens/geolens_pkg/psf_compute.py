@@ -329,7 +329,7 @@ class GeoLensPSF:
         )
         wavefront = wavefront.squeeze(0)  # [H, H]
 
-        # PSF center (on the sensor plane)
+        # PSF center (on the sensor plane).
         pointc = pointc[0, :]
         psf_center = [
             pointc[0] / sensor_w * 2,

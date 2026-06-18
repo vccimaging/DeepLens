@@ -105,8 +105,11 @@ class Phase(DeepObj):
 
     def intersect(self, ray, n=1.0):
         """Solve ray-plane intersection in local coordinate system and update ray data."""
-        # Solve intersection
-        t = (0.0 - ray.o[..., 2]) / ray.d[..., 2]
+        # Solve intersection. Guard against a near-zero z-direction (rays
+        # parallel to the plane) before dividing, matching ray.py prop_to.
+        dz = ray.d[..., 2]
+        dz = torch.where(dz.abs() < EPSILON, torch.full_like(dz, EPSILON), dz)
+        t = (0.0 - ray.o[..., 2]) / dz
         new_o = ray.o + t.unsqueeze(-1) * ray.d
         if self.is_square:
             valid = (
@@ -243,11 +246,11 @@ class Phase(DeepObj):
         offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
         ray.o = ray.o - offset
 
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_local, self.vec_global)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate using the matrix cached at init instead of rebuilding it every
+        # interaction. None means no rotation is needed (surface is on-axis).
+        if self._R_to_local is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_local)
+            ray.d = self._apply_rotation(ray.d, self._R_to_local)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         return ray
@@ -261,11 +264,10 @@ class Phase(DeepObj):
         Returns:
             ray (Ray): transformed ray in global coordinate system.
         """
-        # Rotate ray origin and direction
-        if torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON:
-            R = self._get_rotation_matrix(self.vec_global, self.vec_local)
-            ray.o = self._apply_rotation(ray.o, R)
-            ray.d = self._apply_rotation(ray.d, R)
+        # Rotate using the cached inverse matrix (see to_local_coord).
+        if self._R_to_global is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_global)
+            ray.d = self._apply_rotation(ray.d, self._R_to_global)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
         # Shift ray origin back to global coordinates
@@ -403,7 +405,11 @@ class Phase(DeepObj):
 
     def draw_widget(self, ax, color="black", linestyle="-"):
         """Draw DOE as a two-side surface."""
-        max_offset = self.d.item() / 100
+        # Use an offset that does not depend on axial position: a DOE at d=0
+        # would otherwise give max_offset=0 (np.fmod -> NaN, blank plot), and a
+        # negative d would give a negative offset. Falling back to r keeps it
+        # strictly positive for any DOE with r>0.
+        max_offset = max(abs(self.d.item()), self.r) / 100
         d = self.d.item()
 
         # Draw DOE

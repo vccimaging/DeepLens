@@ -80,30 +80,34 @@ class NURBSPhase(Phase):
         self.knots_u = self._generate_clamped_knots(control_points_u, degree_u)
         self.knots_v = self._generate_clamped_knots(control_points_v, degree_v)
 
-        # Initialize control points (x, y, z) where z represents phase
+        # Initialize control points (x, y, z) where z represents phase.
+        # Use the default dtype (not a hardcoded float32) so float64 runs stay
+        # double precision.
         if control_points is None:
             # Initialize with small random phase values
-            self.control_points = torch.randn(control_points_u, control_points_v, 3, device=device) * 1e-3
+            cp = torch.randn(control_points_u, control_points_v, 3, device=device) * 1e-3
             # Set x,y coordinates to be evenly spaced in [-1, 1] range
             u_coords = torch.linspace(0, 1, control_points_u, device=device)
             v_coords = torch.linspace(0, 1, control_points_v, device=device)
             u_grid, v_grid = torch.meshgrid(u_coords, v_coords, indexing='ij')
-            self.control_points[..., 0] = u_grid * 2 - 1  # x coordinates
-            self.control_points[..., 1] = v_grid * 2 - 1  # y coordinates
+            cp[..., 0] = u_grid * 2 - 1  # x coordinates
+            cp[..., 1] = v_grid * 2 - 1  # y coordinates
         else:
-            self.control_points = torch.tensor(control_points, dtype=torch.float32, device=device)
-            assert self.control_points.shape == (control_points_u, control_points_v, 3), (
+            cp = torch.as_tensor(control_points, dtype=torch.get_default_dtype(), device=device)
+            assert cp.shape == (control_points_u, control_points_v, 3), (
                 f"control_points must have shape ({control_points_u}, {control_points_v}, 3)"
             )
+        self.control_points = cp
 
         # Initialize weights for rational B-splines
         if weights is None:
-            self.weights = torch.ones(control_points_u, control_points_v, device=device)
+            w = torch.ones(control_points_u, control_points_v, device=device)
         else:
-            self.weights = torch.tensor(weights, dtype=torch.float32, device=device)
-            assert self.weights.shape == (control_points_u, control_points_v), (
+            w = torch.as_tensor(weights, dtype=torch.get_default_dtype(), device=device)
+            assert w.shape == (control_points_u, control_points_v), (
                 f"weights must have shape ({control_points_u}, {control_points_v})"
             )
+        self.weights = w
 
         self.param_model = "nurbs"
         self.to(device)
@@ -258,6 +262,76 @@ class NURBSPhase(Phase):
 
         return point
 
+    # ------------------------------------------------------------------
+    # Vectorized evaluation (used by phi/dphi_dxy). Equivalent to looping the
+    # per-point _evaluate_nurbs_surface above, but without the Python per-point
+    # loop, which is millions of iterations for a phase map / ray bundle.
+    # ------------------------------------------------------------------
+    def _find_knot_span_batch(self, knots, degree, u):
+        """Vectorized Piegl-Tiller FindSpan over a batch of parameters u [N]."""
+        n = len(knots) - degree - 2  # last control-point index
+        span = torch.searchsorted(knots, u.contiguous(), right=True) - 1
+        return torch.clamp(span, degree, n)
+
+    def _basis_functions_batch(self, knots, degree, u, span):
+        """Vectorized Cox-de Boor basis functions. Returns [N, degree + 1].
+
+        Mirrors _basis_functions but batched over points; the Python loops run
+        over the (small) degree, not over the N points.
+        """
+        npts = u.shape[0]
+        dtype, device = u.dtype, u.device
+        Nb = torch.zeros(npts, degree + 1, dtype=dtype, device=device)
+        left = torch.zeros(npts, degree + 1, dtype=dtype, device=device)
+        right = torch.zeros(npts, degree + 1, dtype=dtype, device=device)
+        Nb[:, 0] = 1.0
+        for j in range(1, degree + 1):
+            left[:, j] = u - knots[span + 1 - j]
+            right[:, j] = knots[span + j] - u
+            saved = torch.zeros(npts, dtype=dtype, device=device)
+            for r in range(j):
+                denom = right[:, r + 1] + left[:, j - r]
+                safe = torch.where(denom != 0, denom, torch.ones_like(denom))
+                temp = torch.where(
+                    denom != 0, Nb[:, r] / safe, torch.zeros_like(denom)
+                )
+                Nb[:, r] = saved + right[:, r + 1] * temp
+                saved = left[:, j - r] * temp
+            Nb[:, j] = saved
+        return Nb
+
+    def _evaluate_z_batch(self, u, v):
+        """Vectorized NURBS z-evaluation (phase) over batched (u, v) in [0, 1].
+
+        Equivalent to ``_evaluate_nurbs_surface(u, v)[2]`` per point. Clamped knot
+        vectors keep span in [degree, n_ctrl-1], so every local control-point
+        index is in bounds and no per-point bounds check is needed.
+        """
+        du, dv = self.degree_u, self.degree_v
+        u = torch.clamp(u, 0.0, 1.0)
+        v = torch.clamp(v, 0.0, 1.0)
+
+        span_u = self._find_knot_span_batch(self.knots_u, du, u)  # [N]
+        span_v = self._find_knot_span_batch(self.knots_v, dv, v)  # [N]
+        Nu = self._basis_functions_batch(self.knots_u, du, u, span_u)  # [N, du+1]
+        Nv = self._basis_functions_batch(self.knots_v, dv, v, span_v)  # [N, dv+1]
+
+        npts = u.shape[0]
+        i_off = torch.arange(du + 1, device=u.device)
+        j_off = torch.arange(dv + 1, device=u.device)
+        cp_i = span_u.unsqueeze(1) - du + i_off  # [N, du+1]
+        cp_j = span_v.unsqueeze(1) - dv + j_off  # [N, dv+1]
+        cp_i_e = cp_i.unsqueeze(2).expand(npts, du + 1, dv + 1)
+        cp_j_e = cp_j.unsqueeze(1).expand(npts, du + 1, dv + 1)
+
+        basis = Nu.unsqueeze(2) * Nv.unsqueeze(1)  # [N, du+1, dv+1]
+        w = self.weights[cp_i_e, cp_j_e]  # [N, du+1, dv+1]
+        cz = self.control_points[cp_i_e, cp_j_e, 2]  # phase (z) [N, du+1, dv+1]
+        weight = w * basis
+        numer = (weight * cz).sum(dim=(1, 2))  # [N]
+        denom = weight.sum(dim=(1, 2))  # [N]
+        safe = torch.where(denom > 0, denom, torch.ones_like(denom))
+        return torch.where(denom > 0, numer / safe, numer)
 
     @classmethod
     def init_from_dict(cls, surf_dict):
@@ -283,11 +357,11 @@ class NURBSPhase(Phase):
         # Load control points and weights
         control_points = surf_dict.get("control_points", None)
         if control_points is not None:
-            obj.control_points = torch.tensor(control_points, device=obj.device)
+            obj.control_points = torch.as_tensor(control_points, device=obj.device)
 
         weights = surf_dict.get("weights", None)
         if weights is not None:
-            obj.weights = torch.tensor(weights, device=obj.device)
+            obj.weights = torch.as_tensor(weights, device=obj.device)
 
         return obj
 
@@ -305,18 +379,10 @@ class NURBSPhase(Phase):
         x_norm = (x / self.norm_radii + 1.0) / 2.0  # Map [-1, 1] to [0, 1]
         y_norm = (y / self.norm_radii + 1.0) / 2.0  # Map [-1, 1] to [0, 1]
 
-        # Flatten for batch processing
-        x_flat = x_norm.flatten()
-        y_flat = y_norm.flatten()
-        batch_size = x_flat.shape[0]
-
-        # Evaluate NURBS surface for each point
-        phi_values = []
-        for i in range(batch_size):
-            point = self._evaluate_nurbs_surface(x_flat[i], y_flat[i])
-            phi_values.append(point[2])  # z-coordinate contains phase
-
-        phi = torch.stack(phi_values).reshape(x_norm.shape)
+        # Vectorized NURBS evaluation over all points (z-component is the phase).
+        phi = self._evaluate_z_batch(x_norm.flatten(), y_norm.flatten()).reshape(
+            x_norm.shape
+        )
 
         # Apply circular aperture mask (set phase to 0 outside unit circle)
         r_squared = (x / self.norm_radii)**2 + (y / self.norm_radii)**2
@@ -401,10 +467,10 @@ class NURBSPhase(Phase):
         """Load NURBS DOE parameters."""
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
-        self.control_points = ckpt["control_points"].to(self.device)
-        self.weights = ckpt["weights"].to(self.device)
         self.control_points_u = ckpt["control_points_u"]
         self.control_points_v = ckpt["control_points_v"]
+        self.control_points = ckpt["control_points"].to(self.device)
+        self.weights = ckpt["weights"].to(self.device)
         self.degree_u = ckpt["degree_u"]
         self.degree_v = ckpt["degree_v"]
         self.knots_u = ckpt["knots_u"].to(self.device)

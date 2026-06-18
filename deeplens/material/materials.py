@@ -172,7 +172,9 @@ class Material(DeepObj):
                 )
             self._ref_wvlns_t = torch.tensor(self.ref_wvlns)
             self._ref_n_t = torch.tensor(self.ref_n)
-            nd = float(np.interp(0.5893, self.ref_wvlns, self.ref_n))
+            # Sample n_d at the helium d-line (0.58756 µm) to match the
+            # d-line F/C convention used for the V-number below.
+            nd = float(np.interp(0.58756, self.ref_wvlns, self.ref_n))
             nF = float(np.interp(0.4861, self.ref_wvlns, self.ref_n))
             nC = float(np.interp(0.6563, self.ref_wvlns, self.ref_n))
             self.n = nd
@@ -244,6 +246,8 @@ class Material(DeepObj):
 
         This function is used when we want to manually set the sellmeier parameters for a custom material.
         """
+        # Switch the dispersion model so ior() uses the newly set parameters.
+        self.dispersion = "sellmeier"
         if params is None:
             self.k1, self.l1, self.k2, self.l2, self.k3, self.l3 = (
                 0.0,
@@ -334,8 +338,12 @@ class Material(DeepObj):
             n = n_ref_low * weight_low + n_ref_high * weight_high
 
         elif self.dispersion == "optimizable":
-            # Cauchy's equation, calculate (A, B) on the fly
-            B = (self.n - 1) / self.V / (1 / 0.486**2 - 1 / 0.656**2)
+            # Cauchy's equation, calculate (A, B) on the fly. Clamp the Abbe
+            # number away from zero before dividing: an unconstrained optimizable
+            # V can be driven toward 0, which blows up B and the gradients
+            # (physical Abbe numbers are well above 1).
+            V_safe = torch.clamp(self.V, min=1.0)
+            B = (self.n - 1) / V_safe / (1 / 0.486**2 - 1 / 0.656**2)
             A = self.n - B * 1 / 0.587**2
             n = A + B / wvln**2
 

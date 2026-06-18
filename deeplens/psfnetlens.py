@@ -50,8 +50,8 @@ class PSFNetLens(Lens):
         lens_path,
         in_chan=3,
         psf_chan=3,
-        model_name="mlp_conv",
-        kernel_size=64,
+        model_name="mlpconv",
+        kernel_size=128,
         dtype=torch.float32,
         primary_wvln=DEFAULT_WAVE,
         wvln_rgb=WAVE_RGB,
@@ -159,7 +159,7 @@ class PSFNetLens(Lens):
                 hidden_features=256,
                 hidden_layers=8,
             )
-        elif model_name == "mlpconv":
+        elif model_name in ("mlpconv", "mlp_conv"):
             psfnet = PSFNet_MLPConv(
                 in_chan=in_chan, kernel_size=kernel_size, out_chan=psf_chan
             )
@@ -362,7 +362,8 @@ class PSFNetLens(Lens):
         points_r = torch.sqrt(points_x**2 + points_y**2)
         fov = torch.atan(points_r / foclen)
         depth = points[:, 2]
-        foc_dist = torch.full_like(fov, self.foc_dist)
+        # float() so a [1]-tensor foc_dist does not break torch.full_like.
+        foc_dist = torch.full_like(fov, float(self.foc_dist))
         network_inp = torch.stack((fov, depth / 1000.0, foc_dist / 1000.0), dim=-1)
         return network_inp
 
@@ -457,20 +458,23 @@ class PSFNetLens(Lens):
         B, C, H, W = img.shape
         assert B == 1, "Only support batch size 1"
 
-        # Refocus the lens to the given focus distance
-        self.refocus(foc_dist)
+        # Refocus the lens to the given focus distance (coerce a [1] tensor to a
+        # Python float so refocus/points2input handle it consistently).
+        self.refocus(float(foc_dist))
 
-        # Estimate PSF for each pixel
+        # Per-pixel normalized field coordinates, each of shape [H, W].
         x, y = torch.meshgrid(
             torch.linspace(-1, 1, W, device=self.device),
             torch.linspace(1, -1, H, device=self.device),
             indexing="xy",
         )
-        x, y = x.unsqueeze(0).repeat(B, 1, 1), y.unsqueeze(0).repeat(B, 1, 1)
-        depth = depth.squeeze(1) / 1000.0
+        # Depth in mm per pixel (points2input applies the /1000 scaling itself).
+        depth_hw = depth.reshape(H, W)
 
-        points = torch.stack((x, y, depth), -1).float()
+        # One point source per pixel: [H*W, 3] -> per-pixel PSFs [H*W, 3, ks, ks].
+        points = torch.stack((x, y, depth_hw), dim=-1).reshape(-1, 3).float()
         psf = self.psf_rgb(points=points, ks=ks)
+        psf = psf.reshape(H, W, self.psf_chan, ks, ks)
 
         # Render image with per-pixel PSF splatting
         if high_res:
