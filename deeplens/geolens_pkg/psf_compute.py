@@ -56,15 +56,7 @@ class GeoLensPSF:
     #   2. Exit-pupil PSF (`psf_pupil_prop` / `psf_coherent`): coherent ray tracing to exit pupil, then free-space propagation with ASM
     #   3. Huygens PSF (`psf_huygens`): coherent ray tracing to exit pupil, then Huygens-Fresnel integration
     # ====================================================================================
-    def psf(
-        self,
-        points,
-        ks=PSF_KS,
-        wvln=None,
-        spp=None,
-        recenter=True,
-        model="geometric",
-    ):
+    def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
         """Calculate Point Spread Function (PSF) for given point sources.
 
         Supports multiple PSF calculation models:
@@ -75,18 +67,22 @@ class GeoLensPSF:
         Args:
             points (Tensor): Point source positions. Shape [N, 3] with x, y in [-1, 1]
                 and z in [-Inf, 0]. Normalized coordinates.
-            ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
             wvln (float, optional): Wavelength in µm. When ``None`` (default),
                 falls back to ``self.primary_wvln``.
-            spp (int, optional): Samples per pixel. If None, uses model-specific default.
-            recenter (bool, optional): If True, center PSF using chief ray. Defaults to True.
-            model (str, optional): PSF model type. One of 'geometric', 'coherent', 'huygens'.
-                Defaults to 'geometric'.
+            ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
+            **kwargs: Model-specific options:
+                - spp (int): Samples per pixel. If None, uses model-specific default.
+                - recenter (bool): If True (default), center PSF using chief ray.
+                - model (str): PSF model, one of 'geometric' (default), 'coherent',
+                  'huygens'.
 
         Returns:
             psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks] or [N, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
+        spp = kwargs.get("spp", None)
+        recenter = kwargs.get("recenter", True)
+        model = kwargs.get("model", "geometric")
         if model == "geometric":
             spp = SPP_PSF if spp is None else spp
             return self.psf_geometric(points, ks, wvln, spp, recenter)

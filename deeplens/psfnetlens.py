@@ -383,7 +383,39 @@ class PSFNetLens(Lens):
         self.lens.refocus(foc_dist)
         self.foc_dist = foc_dist
 
-    def psf_rgb(self, points, ks=64):
+    def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
+        """Monochromatic PSF from the RGB surrogate network.
+
+        ``PSFNetLens`` is RGB-native: the network predicts a 3-channel PSF in a
+        single pass, so the monochromatic PSF returns the RGB channel whose
+        design wavelength (``self.wvln_rgb``) is closest to ``wvln``.
+
+        Args:
+            points (torch.Tensor): Point source coordinates, shape [N, 3] or [3].
+            wvln (float, optional): Wavelength in µm. When ``None`` (default),
+                falls back to ``self.primary_wvln``; mapped to the nearest RGB
+                channel.
+            ks (int, optional): Output kernel size. Defaults to ``PSF_KS``.
+            **kwargs: Forwarded to `psf_rgb`.
+
+        Returns:
+            psf (torch.Tensor): PSF, shape [ks, ks] for a single point or
+                [N, ks, ks] for a batch.
+        """
+        wvln = self.primary_wvln if wvln is None else wvln
+        points = torch.as_tensor(points, device=self.device)
+        single_point = points.dim() == 1
+        if single_point:
+            points = points.unsqueeze(0)
+        # RGB-native network: pick the channel whose design wavelength is
+        # closest to the requested wavelength.
+        chan = min(
+            range(len(self.wvln_rgb)), key=lambda i: abs(self.wvln_rgb[i] - wvln)
+        )
+        psf = self.psf_rgb(points=points, ks=ks, **kwargs)[:, chan, :, :]
+        return psf.squeeze(0) if single_point else psf
+
+    def psf_rgb(self, points, ks=PSF_KS, **kwargs):
         """Calculate RGB PSF using the PSF network.
 
         Args:

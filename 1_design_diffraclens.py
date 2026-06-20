@@ -60,7 +60,7 @@ def main() -> None:
     # Initial (random-phase) state.
     with torch.no_grad():
         doe.draw_phase_map(save_name=f"{result_dir}/phase_init.png")
-        psf_init = lens.psf(points=on_axis_inf)
+        psf_init = lens.psf(points=on_axis_inf, ks=None)
         save_image(
             psf_init[None].clamp(min=0), f"{result_dir}/psf_init.png", normalize=True
         )
@@ -73,7 +73,7 @@ def main() -> None:
 
     pbar = tqdm(range(1000 + 1), desc="Designing DOE")
     for i in pbar:
-        psf = lens.psf(points=on_axis_inf)
+        psf = lens.psf(points=on_axis_inf, ks=None)
         # PSFStrehlLoss expects an RGB [3, ks, ks] PSF and returns a score to
         # maximize; replicate the mono PSF and minimize its negative.
         strehl = loss_fn(psf.unsqueeze(0).repeat(3, 1, 1))
@@ -96,7 +96,7 @@ def main() -> None:
     # Final result.
     with torch.no_grad():
         doe.draw_phase_map(save_name=f"{result_dir}/phase_final.png")
-        psf_final = lens.psf(points=on_axis_inf)
+        psf_final = lens.psf(points=on_axis_inf, ks=None)
         save_image(
             psf_final[None].clamp(min=0), f"{result_dir}/psf_final.png", normalize=True
         )

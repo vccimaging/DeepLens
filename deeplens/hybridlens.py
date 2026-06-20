@@ -366,14 +366,7 @@ class HybridLens(Lens):
 
         return wavefront, psf_center
 
-    def psf(
-        self,
-        points=[0.0, 0.0, -10000.0],
-        ks=PSF_KS,
-        wvln=None,
-        spp=SPP_COHERENT,
-        upsample_factor=None,
-    ):
+    def psf(self, points=None, wvln=None, ks=PSF_KS, **kwargs):
         """Compute a single-point monochromatic PSF using the ray-wave model.
 
         The returned PSF includes all diffraction orders with physically
@@ -388,18 +381,17 @@ class HybridLens(Lens):
         Args:
             points (list or torch.Tensor, optional): ``[x, y, z]`` point
                 source coordinates.  *x, y* are in normalised sensor
-                coordinates ``[-1, 1]``; *z* is depth in [mm].  Defaults to
-                ``[0.0, 0.0, -10000.0]``.
-            ks (int or None, optional): Output PSF patch size.  If ``None``,
-                returns the central quarter of the full-sensor intensity.
-                Defaults to ``PSF_KS``.
+                coordinates ``[-1, 1]``; *z* is depth in [mm].  When ``None``
+                (default), uses ``[0.0, 0.0, -10000.0]``.
             wvln (float, optional): Wavelength in µm.  When ``None`` (default),
                 falls back to ``self.primary_wvln``.
-            spp (int, optional): Number of coherent rays to sample.  Defaults
-                to ``SPP_COHERENT``.
-            upsample_factor (int, optional): Field upsampling factor to meet the
-                Nyquist sampling constraint. When ``None`` (default), a factor
-                is chosen so the field resolution is close to 4000 x 4000.
+            ks (int, optional): Output PSF patch size. Defaults to ``PSF_KS``.
+            **kwargs: Model-specific options:
+                - spp (int): Number of coherent rays to sample. Defaults to
+                  ``SPP_COHERENT``.
+                - upsample_factor (int): Field upsampling factor to meet the
+                  Nyquist sampling constraint. When ``None`` (default), a factor
+                  is chosen so the field resolution is close to 4000 x 4000.
 
         Returns:
             psf (torch.Tensor): Normalised PSF patch (sums to 1), shape
@@ -409,6 +401,10 @@ class HybridLens(Lens):
             ValueError: If the default dtype is not ``float64`` (call
                 `double` first).
         """
+        if points is None:
+            points = [0.0, 0.0, -10000.0]
+        spp = kwargs.get("spp", SPP_COHERENT)
+        upsample_factor = kwargs.get("upsample_factor", None)
         wvln = self.primary_wvln if wvln is None else wvln
         # Check double precision
         if not torch.get_default_dtype() == torch.float64:

@@ -38,6 +38,12 @@ class Lens(DeepObj):
     their own differentiable implementations.
     """
 
+    # Default image-simulation method used by `render()` when ``method`` is not
+    # given. Kept as a class attribute (rather than a diverging signature
+    # default) so every lens type shares one uniform `render()` signature;
+    # subclasses override this to change their default (e.g. ``GeoLens``).
+    _default_render_method = "psf_patch"
+
     def __init__(
         self,
         dtype=torch.float32,
@@ -501,7 +507,7 @@ class Lens(DeepObj):
     # -------------------------------------------
     # Simulate 2D scene
     # -------------------------------------------
-    def render(self, img_obj, depth=None, method="psf_patch", **kwargs):
+    def render(self, img_obj, depth=None, method=None, **kwargs):
         """Differentiable image simulation for a 2D (flat) scene.
 
         Performs only the optical component of image simulation and is fully
@@ -516,10 +522,12 @@ class Lens(DeepObj):
                 shape ``[B, C, H, W]``.
             depth (float, optional): Object depth in mm (negative value).
                 When ``None`` (default), falls back to ``self.obj_depth``.
-            method (str, optional): Rendering method.  One of:
+            method (str, optional): Rendering method.  When ``None`` (default),
+                falls back to ``self._default_render_method``
+                (``"psf_patch"`` for the base `Lens`).  One of:
 
                 * ``"psf_patch"`` – convolve a single PSF evaluated at
-                  *patch_center* (default).
+                  *patch_center*.
                 * ``"psf_map"`` – spatially-varying PSF block convolution.
 
             **kwargs: Method-specific keyword arguments:
@@ -549,6 +557,7 @@ class Lens(DeepObj):
             )
             ```
         """
+        method = self._default_render_method if method is None else method
         depth = self.obj_depth if depth is None else depth
         # Check sensor resolution
         B, C, Himg, Wimg = img_obj.shape

@@ -19,7 +19,7 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from .config import DEFAULT_WAVE, DEPTH, EPSILON, WAVE_RGB
+from .config import DEFAULT_WAVE, DEPTH, EPSILON, PSF_KS, WAVE_RGB
 from .lens import Lens
 from .diffractive_surface import (
     Binary2,
@@ -287,7 +287,7 @@ class DiffractiveLens(Lens):
         img_render = conv_psf(img, psf)
         return img_render
 
-    def psf(self, points, wvln=None, ks=None, recenter=False, upsample_factor=None):
+    def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
         """Calculate the monochromatic PSF for one or more point sources.
 
         Off-axis point sources are supported. The signature follows
@@ -300,19 +300,21 @@ class DiffractiveLens(Lens):
                 in mm (negative; ``-inf`` for an object at infinity).
             wvln (float, optional): Wavelength in µm. When ``None`` (default),
                 falls back to ``self.primary_wvln``.
-            ks (int, optional): PSF kernel size in pixels. When ``None``
-                (default), the full sensor resolution
-                (``max(self.sensor_res)``) is used.
-            recenter (bool, optional): How the ks x ks kernel is centered (both
-                options keep off-axis PSFs centered in the kernel). If True,
-                crop around the measured peak (argmax of the sensor-plane
-                intensity). If False (default), crop around the perspective
-                (pinhole) image of the field point. The lens forms a physically
-                inverted image, but the result is flipped so the PSF is reported
-                in the sensor/source-sign convention (a +x source -> +x).
-            upsample_factor (int, optional): Field upsampling factor to meet the
-                Nyquist sampling constraint. When ``None`` (default), a factor is
-                chosen so the field resolution is close to 4000 x 4000.
+            ks (int, optional): PSF kernel size in pixels. Defaults to
+                ``PSF_KS``. Pass ``ks=None`` to use the full sensor resolution
+                (``max(self.sensor_res)``).
+            **kwargs: Model-specific options:
+                - recenter (bool): How the ks x ks kernel is centered (both
+                  options keep off-axis PSFs centered in the kernel). If True,
+                  crop around the measured peak (argmax of the sensor-plane
+                  intensity). If False (default), crop around the perspective
+                  (pinhole) image of the field point. The lens forms a
+                  physically inverted image, but the result is flipped so the
+                  PSF is reported in the sensor/source-sign convention (a +x
+                  source -> +x).
+                - upsample_factor (int): Field upsampling factor to meet the
+                  Nyquist sampling constraint. When ``None`` (default), a factor
+                  is chosen so the field resolution is close to 4000 x 4000.
 
         Returns:
             psf (torch.Tensor): PSF intensity map, shape ``[ks, ks]`` for a single
@@ -324,6 +326,8 @@ class DiffractiveLens(Lens):
             see "Modeling off-axis diffraction with the least-sampling angular
             spectrum method".
         """
+        recenter = kwargs.get("recenter", False)
+        upsample_factor = kwargs.get("upsample_factor", None)
         wvln = self.primary_wvln if wvln is None else wvln
         ks = max(int(self.sensor_res[0]), int(self.sensor_res[1])) if ks is None else ks
         if not torch.is_tensor(points):

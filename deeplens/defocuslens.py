@@ -108,18 +108,24 @@ class DefocusLens(Lens):
     # PSF-related functions
     # ===========================================
 
-    def psf(self, points, ks=PSF_KS, psf_type="gaussian", **kwargs):
+    def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
         """PSF is modeled as a 2D uniform circular disk with diameter CoC.
+
+        The circle-of-confusion model is wavelength-independent, so ``wvln`` is
+        accepted for API uniformity with the other lens types but ignored.
 
         Args:
             points (torch.Tensor): Points of the object. Shape [N, 3] or [3].
-            ks (int): Kernel size.
-            psf_type (str): PSF type. "gaussian" or "pillbox".
-            **kwargs: Additional arguments for psf(). Currently not used.
+            wvln (float, optional): Wavelength in µm. Accepted for a uniform
+                lens API but ignored (the CoC model is wavelength-independent).
+            ks (int): Kernel size. Defaults to ``PSF_KS``.
+            **kwargs: Model-specific options:
+                - psf_type (str): "gaussian" (default) or "pillbox".
 
         Returns:
             psf (torch.Tensor): PSF kernels. Shape [ks, ks] or [N, ks, ks].
         """
+        psf_type = kwargs.get("psf_type", "gaussian")
         points = points.to(self.device)
 
         # Handle single point vs multiple points
