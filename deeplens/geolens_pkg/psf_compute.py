@@ -36,7 +36,7 @@ from ..config import (
 )
 from ..imgsim import forward_integral
 from ..light import AngularSpectrumMethod
-from ..ops import diff_float
+from ..utils import diff_float
 
 
 class GeoLensPSF:

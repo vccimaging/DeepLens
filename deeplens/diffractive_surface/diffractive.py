@@ -17,7 +17,7 @@ from torchvision.utils import save_image
 from ..config import EPSILON
 from ..base import DeepObj
 from ..material import Material
-from ..ops import diff_quantize
+from ..utils import diff_quantize
 
 logger = logging.getLogger(__name__)
 

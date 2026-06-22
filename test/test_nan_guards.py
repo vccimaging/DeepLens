@@ -8,7 +8,7 @@ these previously emitted NaN/inf that silently poisoned gradient-based design.
 
 import torch
 
-from deeplens.ops import interp1d
+from deeplens.utils import interp1d
 from deeplens.light import Ray
 from deeplens.material import Material
 from deeplens.geometric_surface.qtype import QTypeFreeform

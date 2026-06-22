@@ -10,8 +10,6 @@ This document outlines the file structure of the `deeplens` package.
 
 -   **`config.py`**: Optics configuration constants (DEPTH, SPP_*, PSF_KS, WAVE_RGB, EPSILON, etc.).
 
--   **`ops.py`**: Shared tensor operations used across lens models.
-
 -   **`loss.py`**: PSF-related loss functions for optical optimization.
 
 -   **`utils.py`**: General-purpose utilities (image I/O, batch metrics like PSNR/SSIM, normalization, video creation, logging, seeding, and optics helpers such as `interp1d`, `grid_sample_xy`, `foc_dist_balanced`, `wave_rgb`, `diff_float`, `diff_quantize`).
