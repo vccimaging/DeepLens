@@ -14,13 +14,22 @@ import torch.nn.functional as F
 # Image IO
 # ==================================
 def img2batch(img):
-    """Convert image in any type to tensor batch.
+    """Convert an image of any supported type to a normalized tensor batch.
+
+    Accepts a numpy array or torch tensor in (H, W), (H, W, C), or (C, H, W)
+    layout and returns a float32 batch in [0, 1]. uint8 inputs are scaled by
+    1/255; float32 inputs are passed through unchanged.
 
     Args:
-        img: image tensor (H, W, C) or (C, H, W).
+        img (numpy.ndarray or torch.Tensor): Input image of shape (H, W),
+            (H, W, C), or (C, H, W), with 1 or 3 channels.
 
     Returns:
-        batch: batch tensor (1, C, H, W).
+        img (torch.Tensor): Batched float32 image of shape (1, C, H, W).
+
+    Raises:
+        ValueError: If the channel count or dtype is unsupported, or a 2D
+            input is not a numpy array.
     """
     # Tensor shape
     if len(img.shape) == 2:
@@ -62,7 +71,15 @@ def img2batch(img):
 # Image batch quality evaluation
 # ==================================
 def batch_PSNR(img_clean, img):
-    """Compute PSNR for image batch."""
+    """Compute the mean PSNR over an image batch using skimage.
+
+    Args:
+        img_clean (torch.Tensor): Reference images in [0, 1], shape (B, C, H, W).
+        img (torch.Tensor): Test images in [0, 1], shape (B, C, H, W).
+
+    Returns:
+        psnr (float): Mean PSNR [dB] across the batch, rounded to 4 decimals.
+    """
     Img = img.mul(255).add_(0.5).clamp_(0, 255).to("cpu", torch.uint8).numpy()
     Img_clean = (
         img_clean.mul(255).add_(0.5).clamp_(0, 255).to("cpu", torch.uint8).numpy()
@@ -75,18 +92,21 @@ def batch_PSNR(img_clean, img):
 
 
 def batch_psnr(pred, target, max_val=1.0, eps=1e-8):
-    """Calculate PSNR between two image batches.
-
-    Reference: https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
+    """Compute the per-image PSNR between two image batches (differentiable).
 
     Args:
-        pred (torch.Tensor): Predicted images, shape [B, C, H, W]
-        target (torch.Tensor): Target images, shape [B, C, H, W]
-        max_val (float): Maximum value of the images (1.0 for normalized, 255 for uint8)
-        eps (float): Small constant to avoid log(0)
+        pred (torch.Tensor): Predicted images, shape (B, C, H, W).
+        target (torch.Tensor): Target images, shape (B, C, H, W).
+        max_val (float, optional): Maximum pixel value (1.0 for normalized
+            images, 255 for uint8). Defaults to 1.0.
+        eps (float, optional): Small constant added to the MSE to avoid
+            log(0). Defaults to 1e-8.
 
     Returns:
-        torch.Tensor: PSNR value for each image in batch, shape [B]
+        psnr (torch.Tensor): Per-image PSNR [dB], shape (B,).
+
+    Reference:
+        https://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
     """
     assert pred.shape == target.shape, f"Shape mismatch: {pred.shape} vs {target.shape}"
 
@@ -100,19 +120,31 @@ def batch_psnr(pred, target, max_val=1.0, eps=1e-8):
 
 
 def batch_SSIM(img, img_clean):
-    """Compute SSIM for image batch."""
+    """Compute the mean SSIM over an image batch (alias of `batch_ssim`).
+
+    Args:
+        img (torch.Tensor): Test images in [0, 1], shape (B, C, H, W).
+        img_clean (torch.Tensor): Reference images in [0, 1], shape (B, C, H, W).
+
+    Returns:
+        ssim (float): Mean SSIM across the batch, rounded to 4 decimals.
+    """
     return batch_ssim(img, img_clean)
 
 
 def batch_ssim(img, img_clean):
-    """Compute SSIM for image batch.
+    """Compute the mean SSIM over an image batch using skimage.
+
+    Images are converted to uint8 in [0, 255] before scoring. Multi-channel
+    images are scored with `channel_axis=0`; single-channel images are scored
+    per 2D plane.
 
     Args:
-        img (torch.Tensor): Input image batch, shape [B, C, H, W]
-        img_clean (torch.Tensor): Reference image batch, shape [B, C, H, W]
+        img (torch.Tensor): Test images in [0, 1], shape (B, C, H, W).
+        img_clean (torch.Tensor): Reference images in [0, 1], shape (B, C, H, W).
 
     Returns:
-        float: Average SSIM score across batch
+        ssim (float): Mean SSIM across the batch, rounded to 4 decimals.
     """
     # Convert to numpy arrays in range [0, 255]
     Img = img.mul(255).add_(0.5).clamp_(0, 255).to("cpu", torch.uint8).numpy()
@@ -135,7 +167,18 @@ def batch_ssim(img, img_clean):
 
 
 def batch_LPIPS(img, img_clean):
-    """Compute LPIPS loss for image batch."""
+    """Compute the mean LPIPS perceptual distance over an image batch.
+
+    Uses the VGG backbone with spatial maps; the returned value is the mean
+    of the spatial distance map over the whole batch.
+
+    Args:
+        img (torch.Tensor): Test images, shape (B, C, H, W).
+        img_clean (torch.Tensor): Reference images, shape (B, C, H, W).
+
+    Returns:
+        lpips (float): Mean LPIPS distance across the batch (lower is better).
+    """
     device = img.device
     loss_fn = lpips.LPIPS(net="vgg", spatial=True)
     loss_fn.to(device)
@@ -147,7 +190,14 @@ def batch_LPIPS(img, img_clean):
 # Image batch normalization
 # ==================================
 def normalize_ImageNet(batch):
-    """Normalize dataset by ImageNet(real scene images) distribution."""
+    """Normalize an RGB image batch by the ImageNet mean and std.
+
+    Args:
+        batch (torch.Tensor): RGB images in [0, 1], shape (B, 3, H, W).
+
+    Returns:
+        batch_out (torch.Tensor): Normalized images, shape (B, 3, H, W).
+    """
     mean = torch.zeros_like(batch)
     std = torch.zeros_like(batch)
     mean[:, 0, :, :] = 0.485
@@ -162,7 +212,14 @@ def normalize_ImageNet(batch):
 
 
 def denormalize_ImageNet(batch):
-    """Convert normalized images to original images to compute PSNR."""
+    """Invert ImageNet normalization to recover images in [0, 1].
+
+    Args:
+        batch (torch.Tensor): ImageNet-normalized RGB images, shape (B, 3, H, W).
+
+    Returns:
+        batch_out (torch.Tensor): Denormalized images in [0, 1], shape (B, 3, H, W).
+    """
     mean = torch.zeros_like(batch)
     std = torch.zeros_like(batch)
     mean[:, 0, :, :] = 0.485
@@ -180,9 +237,20 @@ def denormalize_ImageNet(batch):
 # EDoF
 # ==================================
 def foc_dist_balanced(d1, d2):
-    """When focus to foc_dist, d1 and d2 will have the same CoC.
+    """Compute the focus distance that balances the circle of confusion (CoC).
 
-    Reference: https://en.wikipedia.org/wiki/Circle_of_confusion
+    Returns the harmonic mean $2 d_1 d_2 / (d_1 + d_2)$, the focus distance at
+    which two object planes at distances `d1` and `d2` produce the same CoC.
+
+    Args:
+        d1 (float or torch.Tensor): Distance to the first object plane [mm].
+        d2 (float or torch.Tensor): Distance to the second object plane [mm].
+
+    Returns:
+        foc_dist (float or torch.Tensor): Balanced focus distance [mm].
+
+    Reference:
+        https://en.wikipedia.org/wiki/Circle_of_confusion
     """
     foc_dist = 2 * d1 * d2 / (d1 + d2)
     return foc_dist
@@ -195,9 +263,10 @@ def create_video_from_images(image_folder, output_video_path, fps=30):
     """Create a video from a folder of images.
 
     Args:
-        image_folder (str): The path to the folder containing the images.
-        output_video_path (str): The path to save the output video.
-        fps (int): The frames per second of the output video.
+        image_folder (str): Path to the folder containing the images;
+            searched recursively for "*.png", ordered by creation time.
+        output_video_path (str): Path to save the output .mp4 video (mp4v codec).
+        fps (int, optional): Frames per second of the output video. Defaults to 30.
     """
     # Get all .png files in the image_folder and its subfolders
     images = glob(os.path.join(image_folder, "**/*.png"), recursive=True)
@@ -231,10 +300,15 @@ def create_video_from_images(image_folder, output_video_path, fps=30):
 # Experimental logging
 # ==================================
 def gpu_init(gpu=0):
-    """Initialize device and data type.
+    """Select a compute device and set the default float dtype to float32.
+
+    Args:
+        gpu (int, optional): CUDA device index to use when available.
+            Defaults to 0.
 
     Returns:
-        device: which device to use.
+        device (torch.device): The selected device (`cuda:{gpu}` if a GPU is
+            available, otherwise `cpu`).
     """
     device = torch.device(f"cuda:{gpu}" if torch.cuda.is_available() else "cpu")
     print("Using: {}".format(device))
@@ -243,6 +317,14 @@ def gpu_init(gpu=0):
 
 
 def set_seed(seed=0):
+    """Seed Python, NumPy, and PyTorch RNGs for reproducible runs.
+
+    Also disables cuDNN benchmarking and non-determinism (sets
+    `deterministic=True`, `benchmark=False`, `enabled=False`).
+
+    Args:
+        seed (int, optional): Random seed. Defaults to 0.
+    """
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
@@ -255,6 +337,15 @@ def set_seed(seed=0):
 
 
 def set_logger(dir="./"):
+    """Configure the root logger to stream to console and write to a file.
+
+    Adds a stdout `StreamHandler` and a `FileHandler` writing to
+    `{dir}/output.log`, both at INFO level, with a timestamped format.
+
+    Args:
+        dir (str, optional): Directory for the `output.log` file.
+            Defaults to "./".
+    """
     logger = logging.getLogger()
     logger.setLevel("DEBUG")
     BASIC_FORMAT = "%(asctime)s:%(levelname)s:%(message)s"
@@ -282,19 +373,29 @@ def set_logger(dir="./"):
 # Differentiable interpolation
 # ==================================
 def interp1d(query, key, value, mode="linear"):
-    """Interpolate 1D query points to the key points.
+    """Differentiably interpolate values defined on 1D key points at query points.
+
+    Only `mode="linear"` is implemented: keys are sorted, query points are
+    located by `searchsorted`, and values are linearly interpolated between
+    the bracketing keys. Queries outside the key range are clamped to the
+    end segments.
 
     Args:
-        query (torch.Tensor): Query points, shape [N, 1]
-        key (torch.Tensor): Key points, shape [M, 1]
-        value (torch.Tensor): Value at key points, shape [M, ...]
-        mode (str): Interpolation mode.
+        query (torch.Tensor): Query points, shape (N, 1) (flattened to (N,)).
+        key (torch.Tensor): Key points, shape (M, 1) (flattened to (M,)).
+        value (torch.Tensor): Values at key points, shape (M, ...).
+        mode (str, optional): Interpolation mode; only "linear" is
+            supported. Defaults to "linear".
 
     Returns:
-        torch.Tensor: Interpolated value, shape [N, ...]
+        query_value (torch.Tensor): Interpolated values, shape (N, ...).
+
+    Raises:
+        NotImplementedError: If `mode="grid_sample"`.
+        ValueError: If `mode` is not a recognized value.
 
     Reference:
-        [1] https://github.com/aliutkus/torchinterp1d
+        https://github.com/aliutkus/torchinterp1d
     """
     if mode == "linear":
         # Flatten query and key tensors for processing
@@ -351,17 +452,26 @@ def interp1d(query, key, value, mode="linear"):
 def grid_sample_xy(
     input, grid_xy, mode="bilinear", padding_mode="zeros", align_corners=False
 ):
-    """This function is slightly modified from torch.nn.functional.grid_sample to use xy-coordinate grid.
+    """Sample an input feature map on an xy-coordinate grid.
+
+    Wraps `torch.nn.functional.grid_sample` but takes a grid in xy convention
+    (y pointing up): top-left is (-1, 1) and bottom-right is (1, -1). The y
+    component is negated internally to match PyTorch's row-down convention.
 
     Args:
-        input (torch.Tensor): Input tensor, shape [B, C, H, W]
-        grid_xy (torch.Tensor): Grid xy coordinates, shape [B, H, W, 2]. Top-left is (-1, 1), bottom-right is (1, -1).
-        mode (str): Interpolation mode, "bilinear" or "nearest"
-        padding_mode (str): Padding mode, "zeros" or "border"
-        align_corners (bool): Whether to align corners
+        input (torch.Tensor): Input feature map, shape (B, C, H, W).
+        grid_xy (torch.Tensor): Sampling grid in normalized xy coordinates,
+            shape (B, H, W, 2).
+        mode (str, optional): Interpolation mode, "bilinear" or "nearest".
+            Defaults to "bilinear".
+        padding_mode (str, optional): Out-of-grid padding, "zeros",
+            "border", or "reflection". Defaults to "zeros".
+        align_corners (bool, optional): Whether to align corner pixels.
+            Defaults to False.
 
     Returns:
-        torch.Tensor: Output tensor, shape [B, C, H, W]
+        output (torch.Tensor): Sampled feature map, shape (B, C, H, W), where
+            H and W are the spatial dimensions of `grid_xy`.
     """
     grid_x = grid_xy[..., 0]
     grid_y = grid_xy[..., 1]
@@ -379,25 +489,52 @@ def grid_sample_xy(
 # Autograd Function diff_float
 # ================================
 class DiffFloat(torch.autograd.Function):
-    """Convert double precision tensor to float precision with gradient calculation.
+    """Cast a tensor to float32 in the forward pass while keeping float64 gradients.
 
-    Args:
-        input (tensor): Double precision tensor.
+    The forward pass returns `x.float()`; the backward pass upcasts the
+    incoming gradient back to double precision, so the upstream graph stays
+    in float64 while downstream ops run in float32.
     """
 
     @staticmethod
     def forward(ctx, x):
+        """Cast the input tensor to float32.
+
+        Args:
+            x (torch.Tensor): Input tensor (typically float64).
+
+        Returns:
+            out (torch.Tensor): The input cast to float32.
+        """
         ctx.save_for_backward(x)
         return x.float()
 
     @staticmethod
     def backward(ctx, grad_output):
+        """Upcast the gradient back to float64.
+
+        Args:
+            grad_output (torch.Tensor): Incoming gradient (float32).
+
+        Returns:
+            grad_input (torch.Tensor): Gradient cast to float64.
+        """
         (x,) = ctx.saved_tensors
         grad_input = grad_output.double()
         return grad_input
 
 
 def diff_float(input):
+    """Cast a tensor to float32 with float64-preserving gradients.
+
+    Convenience wrapper around `DiffFloat`.
+
+    Args:
+        input (torch.Tensor): Input tensor (typically float64).
+
+    Returns:
+        out (torch.Tensor): The input cast to float32, differentiable in float64.
+    """
     return DiffFloat.apply(input)
 
 
@@ -405,24 +542,58 @@ def diff_float(input):
 # Autograd Function diff_quantize
 # ================================
 class DiffQuantize(torch.autograd.Function):
-    """Quantize tensor to n levels with gradient calculation (Straight-Through Estimator).
+    """Quantize a tensor to evenly spaced levels with a straight-through gradient.
 
-    Args:
-        input (tensor): Input tensor.
-        levels (int): Number of quantization levels.
-        interval (float): Total range to quantize over (default: 2*pi).
+    The forward pass rounds each value to the nearest of `levels` steps that
+    span `interval` (step size `interval / levels`). The backward pass passes
+    the gradient through unchanged (straight-through estimator), so the
+    non-differentiable rounding does not block optimization.
     """
 
     @staticmethod
     def forward(ctx, x, levels, interval=2 * torch.pi):
+        """Round the input to the nearest quantization step.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+            levels (int): Number of quantization levels.
+            interval (float, optional): Total range spanned by the levels;
+                the step size is `interval / levels`. Defaults to 2*pi.
+
+        Returns:
+            out (torch.Tensor): Quantized tensor, same shape as `x`.
+        """
         step = interval / levels
         return torch.round(x / step) * step
 
     @staticmethod
     def backward(ctx, grad_output):
+        """Pass the gradient through unchanged (straight-through estimator).
+
+        Args:
+            grad_output (torch.Tensor): Incoming gradient.
+
+        Returns:
+            grad_input (torch.Tensor): Gradient w.r.t. `x` (equal to `grad_output`).
+            grad_levels (None): Always None — `levels` is not differentiable.
+            grad_interval (None): Always None — `interval` is not differentiable.
+        """
         grad_input = grad_output.clone()
         return grad_input, None, None
 
 
 def diff_quantize(input, levels, interval=2 * torch.pi):
+    """Quantize a tensor to evenly spaced levels with a straight-through gradient.
+
+    Convenience wrapper around `DiffQuantize`.
+
+    Args:
+        input (torch.Tensor): Input tensor.
+        levels (int): Number of quantization levels.
+        interval (float, optional): Total range spanned by the levels; the
+            step size is `interval / levels`. Defaults to 2*pi.
+
+    Returns:
+        out (torch.Tensor): Quantized tensor, same shape as `input`.
+    """
     return DiffQuantize.apply(input, levels, interval)

@@ -22,7 +22,24 @@ from .diffractive import DiffractiveSurface
 
 
 class RotationallySymmetric(DiffractiveSurface):
-    """DOE defined by a 1D radial phase profile (rotationally symmetric)."""
+    """Rotationally symmetric DOE defined by a 1D radial phase profile.
+
+    The phase is parameterized by a free-form 1D radial vector `radial_phase`
+    of `n_rings` samples spanning the inscribed radius, and broadcast to the 2D
+    grid via differentiable linear interpolation in $r = \\sqrt{x^2 + y^2}$.
+    Only `radial_phase` is optimized, which enforces rotational symmetry by
+    construction.
+
+    Attributes:
+        n_rings (int): Number of radial samples in `radial_phase`.
+        circular (bool): Whether to zero the phase outside the inscribed circle.
+        r_max (float): Inscribed radius $\\min(w, h) / 2$. [mm]
+        r_grid (torch.Tensor): Radial distance of each grid point. [H, W]. [mm]
+        idx0 (torch.Tensor): Lower ring index for interpolation. [H, W].
+        idx1 (torch.Tensor): Upper ring index for interpolation. [H, W].
+        frac (torch.Tensor): Interpolation weight in $[0, 1]$ toward `idx1`. [H, W].
+        radial_phase (torch.Tensor): 1D radial phase profile. [n_rings]. [rad]
+    """
 
     def __init__(
         self,
@@ -42,19 +59,36 @@ class RotationallySymmetric(DiffractiveSurface):
     ):
         """Initialize a rotationally symmetric DOE.
 
+        The 1D radial profile is set from `radial_phase` if given, otherwise from
+        `init`: "fresnel" builds a Fresnel-lens quadratic profile
+        $\\phi(r) = -\\pi r^2 / (f_0 \\lambda_0)$ (requires `f0`), and "flat"
+        initializes a near-zero constant profile.
+
         Args:
-            d (float): Distance of the DOE surface. [mm]
-            f0 (float, optional): Focal length for ``init="fresnel"``. [mm]
-            n_rings (int, optional): Number of radial samples; defaults to res[0]//2.
-            init (str): "fresnel" (Fresnel radial profile) or "flat".
-            radial_phase (Tensor, optional): Explicit 1D radial phase [n_rings].
-            res (tuple or int): DOE resolution. [pixel]
-            mat (str): DOE material.
-            wvln0 (float): Design wavelength. [um]
-            fab_ps (float): Fabrication pixel size. [mm]
-            fab_step (int): Quantization levels.
-            circular (bool): Zero the phase outside the inscribed circle.
-            device (str): Compute device.
+            d (float): Axial position of the DOE plane. [mm]
+            f0 (float or None, optional): Focal length used by `init="fresnel"`.
+                [mm]. Required when `init="fresnel"` and `radial_phase` is None.
+                Defaults to None.
+            n_rings (int or None, optional): Number of radial samples. Defaults
+                to None, which uses res[0] // 2.
+            init (str, optional): Initialization mode, "fresnel" or "flat".
+                Ignored if `radial_phase` is given. Defaults to "fresnel".
+            radial_phase (torch.Tensor or None, optional): Explicit 1D radial
+                phase profile. [n_rings]. [rad]. Defaults to None.
+            res (tuple or int, optional): DOE resolution as (H, W); an int is
+                expanded to (res, res). [pixel]. Defaults to (1000, 1000).
+            mat (str, optional): DOE material name. Defaults to "fused_silica".
+            wvln0 (float, optional): Design wavelength. [um]. Defaults to 0.55.
+            fab_ps (float, optional): Fabrication pixel size. [mm]. Defaults to 0.001.
+            fab_step (int, optional): Number of fabrication (quantization)
+                levels. Defaults to 16.
+            is_square (bool, optional): Whether the aperture is square. Defaults to True.
+            circular (bool, optional): Whether to zero the phase outside the
+                inscribed circle. Defaults to True.
+            device (str, optional): Device to place the DOE tensors on. Defaults to "cpu".
+
+        Raises:
+            ValueError: If `init` is not "fresnel" or "flat".
         """
         super().__init__(
             d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
@@ -89,7 +123,19 @@ class RotationallySymmetric(DiffractiveSurface):
 
     @classmethod
     def init_from_dict(cls, doe_dict):
-        """Initialize RotationallySymmetric DOE from a dict."""
+        """Initialize a RotationallySymmetric DOE from a dict.
+
+        If `doe_dict` contains a "weight_path", the saved 1D radial phase is
+        loaded and used directly, bypassing the `init` initialization.
+
+        Args:
+            doe_dict (dict): Dictionary of DOE parameters. Must contain "d" and
+                "res"; optionally "weight_path", "f0", "n_rings", "init", "mat",
+                "wvln0", "fab_ps", "fab_step", and "circular".
+
+        Returns:
+            doe (RotationallySymmetric): The constructed DOE instance.
+        """
         radial_phase = None
         weight_path = doe_dict.get("weight_path", None)
         if weight_path is not None:
@@ -109,7 +155,16 @@ class RotationallySymmetric(DiffractiveSurface):
         )
 
     def phase_func(self):
-        """Get the raw phase map at the design wavelength."""
+        """Compute the raw 2D phase map at the design wavelength.
+
+        Broadcasts the 1D `radial_phase` onto the 2D grid by differentiable
+        linear interpolation in $r$. If `circular` is True, the phase is zeroed
+        outside the inscribed circle ($r > $ `r_max`).
+
+        Returns:
+            phase (torch.Tensor): Raw, unwrapped phase map at the design
+                wavelength. [H, W]. [rad]
+        """
         # Differentiable linear interpolation of the 1D profile onto the 2D grid.
         phase = (
             self.radial_phase[self.idx0] * (1 - self.frac)
@@ -125,7 +180,17 @@ class RotationallySymmetric(DiffractiveSurface):
     # Optimization
     # =======================================
     def get_optimizer_params(self, lr=0.01):
-        """Get parameters for optimization (radial profile)."""
+        """Get optimizer parameter groups for the 1D radial phase profile.
+
+        Enables gradients on `radial_phase` and returns it as a single Adam
+        parameter group.
+
+        Args:
+            lr (float, optional): Learning rate for the radial profile. Defaults to 0.01.
+
+        Returns:
+            params (list): List with one parameter group dict for the optimizer.
+        """
         self.radial_phase.requires_grad = True
         return [{"params": [self.radial_phase], "lr": lr}]
 
@@ -133,7 +198,17 @@ class RotationallySymmetric(DiffractiveSurface):
     # IO
     # =======================================
     def surf_dict(self, weight_path):
-        """Return a dict of surface; saves the radial profile to `weight_path`."""
+        """Return a dict describing the surface and save the radial profile.
+
+        Extends the base surface dict with `n_rings` and `weight_path`, and saves
+        the detached 1D `radial_phase` (on CPU) to `weight_path`.
+
+        Args:
+            weight_path (str): Path to save the 1D radial phase tensor to.
+
+        Returns:
+            surf_dict (dict): Dictionary describing the DOE surface.
+        """
         surf_dict = super().surf_dict()
         surf_dict["n_rings"] = self.n_rings
         surf_dict["weight_path"] = weight_path

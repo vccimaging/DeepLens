@@ -16,8 +16,8 @@ Functions:
         - draw_lens_2d(): Draw lens layout in a 2D plot
         - draw_ray_2d(): Plot ray paths
 
-    3D Barrier Generation:
-        - create_barrier(): Create a 3D barrier for the lens system
+    Barrier Overlay:
+        - create_barrier(): Draw a lens barrel overlay on the 2D layout
 """
 
 import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ from ..light import Ray
 
 
 class GeoLensVis:
-    """Mixin providing 2-D lens layout and ray visualisation for ``GeoLens``.
+    """Mixin providing 2D lens layout and ray visualization for `GeoLens`.
 
     Generates publication-quality cross-section plots showing lens surfaces
     and traced ray bundles in either the meridional or sagittal plane.
@@ -55,16 +55,19 @@ class GeoLensVis:
         Used for (1) drawing lens setup, (2) 2D geometric optics calculation, for example, refocusing to infinity
 
         Args:
-            fov (float, optional): incident angle (in degree). Defaults to 0.0.
-            depth (float, optional): sampling depth. Defaults to 0.0.
-            num_rays (int, optional): ray number. Defaults to 7.
-            wvln (float, optional): ray wvln in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            plane (str, optional): sampling plane. Defaults to "meridional" (y-z plane).
-            entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to True.
+            fov (float, optional): Incident angle [degree]. Defaults to 0.0.
+            num_rays (int, optional): Number of rays. Defaults to 7.
+            wvln (float or None, optional): Ray wavelength [µm]. When None,
+                falls back to `self.primary_wvln`. Defaults to None.
+            plane (str, optional): Sampling plane, "meridional" (y-z plane) or
+                "sagittal" (x-z plane). Defaults to "meridional".
+            entrance_pupil (bool, optional): If True, sample on the entrance pupil;
+                otherwise sample on the first surface aperture. Defaults to True.
+            depth (float, optional): Sampling depth [mm] to propagate rays to.
+                Defaults to 0.0.
 
         Returns:
-            ray (Ray object): Ray object. Shape [num_rays, 3]
+            rays (Ray): Sampled rays with origin/direction tensors of shape [num_rays, 3].
         """
         wvln = self.primary_wvln if wvln is None else wvln
         # Sample points on the pupil
@@ -136,16 +139,17 @@ class GeoLensVis:
         Used for (1) drawing lens setup.
 
         Args:
-            fov (float, optional): incident angle (in degree). Defaults to 0.0.
-            depth (float, optional): sampling depth. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            num_rays (int, optional): ray number. Defaults to 7.
-            wvln (float, optional): ray wvln in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to False.
+            fov (float, optional): Incident angle [degree]. Defaults to 0.0.
+            depth (float or None, optional): Object-plane depth [mm]. When None,
+                falls back to `self.obj_depth`. Defaults to None.
+            num_rays (int, optional): Number of rays. Defaults to 7.
+            wvln (float or None, optional): Ray wavelength [µm]. When None,
+                falls back to `self.primary_wvln`. Defaults to None.
+            entrance_pupil (bool, optional): If True, aim rays at the entrance pupil;
+                otherwise aim at the first surface aperture. Defaults to True.
 
         Returns:
-            ray (Ray object): Ray object. Shape [num_rays, 3]
+            ray (Ray): Sampled rays with origin/direction tensors of shape [num_rays, 3].
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -199,7 +203,15 @@ class GeoLensVis:
             multi_plot (bool, optional): If True, create one sub-plot per wavelength.
                 Defaults to False.
             lens_title (str or None, optional): Title string. If None, auto-generated. Defaults to None.
-            show (bool, optional): If True, display the figure interactively. Defaults to False.
+            show (bool, optional): If True, display the figure interactively instead of
+                saving. Defaults to False.
+            return_fig (bool, optional): If True, return the axes and figure without
+                saving or closing them (for overlay drawing by callers such as
+                `create_barrier`). Defaults to False.
+
+        Returns:
+            result (tuple or None): When `return_fig` is True, returns (ax, fig)
+                matplotlib axes and figure objects; otherwise returns None.
         """
         num_rays = 11
         num_views = 3
@@ -334,7 +346,8 @@ class GeoLensVis:
                 Defaults to False.
 
         Returns:
-            result (tuple): (ax, fig) matplotlib axes and figure objects.
+            ax (matplotlib.axes.Axes): The axes with the lens layout drawn.
+            fig (matplotlib.figure.Figure): The figure.
         """
         # If no ax is given, generate a new one.
         if ax is None and fig is None:
@@ -400,12 +413,23 @@ class GeoLensVis:
         return ax, fig
 
     def draw_ray_2d(self, ray_o_record, ax, fig, color="b"):
-        """Plot ray paths.
+        """Plot ray paths onto an existing 2D layout.
+
+        Each recorded ray origin is a [num_rays, 3] (or [num_view, num_rays, 3])
+        tensor; stacking them yields [num_view, num_rays, num_path, 3] where the
+        last axis holds (x, y, z) in [mm]. The z (axial) and x (radial) components
+        are drawn as polylines.
 
         Args:
-            ray_o_record (list): list of intersection points.
-            ax (matplotlib.axes.Axes): matplotlib axes.
-            fig (matplotlib.figure.Figure): matplotlib figure.
+            ray_o_record (list): List of ray-origin tensors, one per traced surface,
+                each of shape [num_rays, 3] or [num_view, num_rays, 3].
+            ax (matplotlib.axes.Axes): Matplotlib axes to draw on.
+            fig (matplotlib.figure.Figure): Matplotlib figure.
+            color (str, optional): Line colour for the ray paths. Defaults to 'b'.
+
+        Returns:
+            ax (matplotlib.axes.Axes): The axes with ray paths drawn.
+            fig (matplotlib.figure.Figure): The figure.
         """
         # shape (num_view, num_rays, num_path, 2)
         ray_o_record = torch.stack(ray_o_record, dim=-2).cpu().numpy()
@@ -436,13 +460,19 @@ class GeoLensVis:
     def create_barrier(
         self, filename, barrier_thickness=1.0, ring_height=0.5, ring_size=1.0
     ):
-        """Create a 3D barrier for the lens system.
+        """Draw a lens barrel (barrier) overlay on the 2D lens layout and save it.
+
+        Computes barrier segments spanning each air gap (extending to the midpoint
+        of the following air space, or to the sensor for the last segment), overlays
+        them in green on the layout from `draw_layout`, and saves the figure as a PNG.
 
         Args:
-            filename (str): Path to save the figure
-            barrier_thickness (float): Thickness of the barrier
-            ring_height (float): Height of the annular ring
-            ring_size (float): Size of the annular ring
+            filename (str): Path to save the output PNG figure.
+            barrier_thickness (float, optional): Barrier thickness [mm]. Defaults to 1.0.
+            ring_height (float, optional): Annular ring height [mm]. Currently unused
+                (ring drawing is not implemented). Defaults to 0.5.
+            ring_size (float, optional): Annular ring size [mm]. Currently unused
+                (ring drawing is not implemented). Defaults to 1.0.
         """
         barriers = []
         rings = []

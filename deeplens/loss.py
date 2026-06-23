@@ -10,12 +10,47 @@ import torch
 import torch.nn as nn
 
 class PSFLoss(nn.Module):
+    """PSF compactness and achromaticity loss.
+
+    Encourages a point spread function to be spatially concentrated and
+    similar across colour channels. The total loss is a weighted sum of a
+    concentration term (spatial variance of the normalized PSF) and an
+    achromatic term (mean squared difference between channel pairs).
+
+    Attributes:
+        w_achromatic (float): Weight on the achromatic (channel-difference) term.
+        w_psf_size (float): Weight on the concentration (spatial-variance) term.
+    """
+
     def __init__(self, w_achromatic=1.0, w_psf_size=1.0):
+        """Initialize the PSF loss.
+
+        Args:
+            w_achromatic (float, optional): Weight on the achromatic term. Defaults to 1.0.
+            w_psf_size (float, optional): Weight on the concentration term. Defaults to 1.0.
+        """
         super(PSFLoss, self).__init__()
         self.w_achromatic = w_achromatic
         self.w_psf_size = w_psf_size
 
     def forward(self, psf):
+        """Compute the combined concentration and achromatic PSF loss.
+
+        The PSF is normalized to unit sum per channel, then a spatial-variance
+        concentration term is computed over a normalized coordinate grid spanning
+        $[-1, 1]$ in each dimension. The achromatic term is the mean squared
+        difference between all distinct channel pairs of the (un-normalized) PSF.
+
+        Args:
+            psf (torch.Tensor): Point spread function. Accepts shape
+                [batch, channels, height, width], [channels, height, width]
+                (a batch dimension is added), or [height, width] (expanded and
+                repeated to [1, 3, height, width]).
+
+        Returns:
+            total_loss (torch.Tensor): Scalar loss equal to
+                `w_psf_size * concentration_loss + w_achromatic * channel_diff`.
+        """
         # Ensure psf has shape [batch, channels, height, width]
         if psf.dim() == 3:
             psf = psf.unsqueeze(0)  # Add batch dimension
@@ -66,15 +101,36 @@ class PSFLoss(nn.Module):
         return total_loss
 
 class PSFStrehlLoss(nn.Module):
+    """Strehl-like PSF sharpness score.
+
+    Computes a proxy for the Strehl ratio: the center-pixel intensity of each
+    PSF after per-channel spatial normalization, averaged over channels and
+    batch. Larger values indicate a sharper, more compact PSF, so this score
+    should be maximized during optimization.
+    """
+
     def __init__(self):
+        """Initialize the Strehl PSF loss."""
         super(PSFStrehlLoss, self).__init__()
 
     def forward(self, psf):
-        """Compute Strehl-like score for PSFs with shape [B, 3, ks, ks].
+        """Compute the Strehl-like center-intensity score.
 
-        The score is the center-pixel intensity after per-channel spatial
-        normalization (sum over HxW equals 1), averaged over channels and batch.
-        This value should be maximized during optimization.
+        The PSF is normalized per sample and per channel so each channel sums to
+        one over its spatial dimensions, then the center-pixel intensity is read
+        off and averaged over channels and batch.
+
+        Args:
+            psf (torch.Tensor): Point spread function of shape [B, 3, ks, ks].
+                A shape [3, ks, ks] input is accepted and a batch dimension is added.
+
+        Returns:
+            strehl (torch.Tensor): Scalar score equal to the mean normalized
+                center-pixel intensity over channels and batch.
+
+        Raises:
+            AssertionError: If `psf` is not 4-dimensional with 3 channels after
+                the optional batch dimension is added.
         """
         # Ensure shape [B, 3, H, W]
         if psf.dim() == 3:

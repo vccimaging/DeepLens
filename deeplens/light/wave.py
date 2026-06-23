@@ -29,17 +29,21 @@ class ComplexWave(DeepObj):
     """Complex scalar wave field for diffraction simulation.
 
     Represents a monochromatic, coherent complex amplitude on a uniform
-    rectangular grid.  Propagation methods (ASM, Fresnel, Fraunhofer) are
-    implemented as member functions and use ``torch.fft`` for efficiency.
+    rectangular grid. Propagation methods (band-limited ASM, Fresnel) are
+    implemented as member functions and use `torch.fft` for efficiency.
 
     Attributes:
-        u (torch.Tensor): Complex amplitude, shape ``[1, 1, H, W]``.
+        u (torch.Tensor): Complex amplitude, shape [1, 1, H, W].
         wvln (float): Wavelength [µm].
-        k (float): Wave number ``2π / (λ × 10⁻³)`` [mm⁻¹].
+        k (float): Wave number $2\\pi / (\\lambda \\times 10^{-3})$ [mm⁻¹].
         phy_size (tuple): Physical aperture size (W, H) [mm].
-        ps (float): Pixel pitch [mm] (must be square).
+        ps (float): Pixel pitch [mm] (square pixels).
         res (tuple): Grid resolution (H, W) in pixels.
-        z (float): Current axial position [mm].
+        x (torch.Tensor): x coordinate grid, shape [H, W] [mm].
+        y (torch.Tensor): y coordinate grid, shape [H, W] [mm].
+        z (torch.Tensor): Axial position grid, shape [H, W] [mm].
+        plain_asm_dist_max (float): Nyquist limit of plain ASM [mm] (reference only).
+        fresnel_dist_min (float): Distance above which single-FFT Fresnel is well-sampled [mm].
     """
 
     def __init__(
@@ -54,20 +58,18 @@ class ComplexWave(DeepObj):
 
         Args:
             u (torch.Tensor or None, optional): Initial complex amplitude.
-                Accepted shapes: ``[H, W]``, ``[1, H, W]``, or
-                ``[1, 1, H, W]``.  If ``None`` a zero field is created with
-                the given *res*.
-            wvln (float, optional): Wavelength [µm].  Defaults to ``0.55``.
-            z (float, optional): Initial axial position [mm].  Defaults to
-                ``0.0``.
+                Accepted shapes: [H, W], [1, H, W], or [1, 1, H, W]. If None,
+                a zero field is created with the given res. Defaults to None.
+            wvln (float, optional): Wavelength [µm]. Defaults to 0.55.
+            z (float, optional): Initial axial position [mm]. Defaults to 0.0.
             phy_size (tuple, optional): Physical aperture (W, H) [mm].
-                Defaults to ``(4.0, 4.0)``.
-            res (tuple, optional): Grid resolution (H, W) [pixels].  Only
-                used when *u* is ``None``.  Defaults to ``(2000, 2000)``.
+                Defaults to (4.0, 4.0).
+            res (tuple, optional): Grid resolution (H, W) [pixels]. Only used
+                when u is None. Defaults to (2000, 2000).
 
         Raises:
-            AssertionError: If the pixel pitch is not square or the
-                wavelength is outside the range ``(0.1, 10)`` µm.
+            AssertionError: If the pixel pitch is not square or the wavelength
+                is outside the range (0.1, 10) µm.
         """
         if u is not None:
             if not u.dtype == torch.complex128:
@@ -130,18 +132,27 @@ class ComplexWave(DeepObj):
         res=(2000, 2000),
         valid_r=None,
     ):
-        """Create a spherical wave field on x0y plane originating from a point source.
+        """Create a spherical wave field on the x0y plane from a point source.
+
+        The phase is $\\pm k r$ where $r$ is the distance from the source to
+        each grid point; the sign is positive for a diverging wave (source
+        behind the plane, $z_{src} < z$) and negative otherwise. The amplitude
+        is normalized to $r_{min} / r$.
 
         Args:
-            point (tuple): Point source position in object space. [mm]. Defaults to (0.0, 0.0, -1000.0).
-            wvln (float): Wavelength. [um]. Defaults to 0.55.
-            z (float): Field z position. [mm]. Defaults to 0.0.
-            phy_size (tuple): Valid plane on x0y plane. [mm]. Defaults to (4.0, 4.0).
-            res (tuple): Valid plane resoltution. Defaults to (2000, 2000).
-            valid_r (float): Valid circle radius. [mm]. Defaults to None.
+            point (tuple, optional): Point source position (x, y, z) in object
+                space [mm]. Defaults to (0.0, 0.0, -1000.0).
+            wvln (float, optional): Wavelength [µm]. Defaults to 0.55.
+            z (float, optional): Field z position [mm]. Defaults to 0.0.
+            phy_size (tuple, optional): Physical size (W, H) of the x0y plane
+                [mm]. Defaults to (4.0, 4.0).
+            res (tuple, optional): Grid resolution (H, W) [pixels]. Defaults to
+                (2000, 2000).
+            valid_r (float or None, optional): If set, zero the field outside a
+                circle of this radius [mm], e.g. a lens aperture. Defaults to None.
 
         Returns:
-            field (ComplexWave): Complex field on x0y plane.
+            field (ComplexWave): Complex field on the x0y plane.
         """
         assert wvln > 0.1 and wvln < 10.0, "Wavelength should be in [um]."
         k = 2 * torch.pi / (wvln * 1e-3)  # [mm^-1], wave number
@@ -188,24 +199,28 @@ class ComplexWave(DeepObj):
         theta_y=0.0,
         valid_r=None,
     ):
-        """Create a planar wave field on x0y plane.
+        """Create a planar wave field on the x0y plane.
 
-        With ``theta_x = theta_y = 0`` the result is a uniform unit-amplitude
-        plane wave travelling along ``+z``. Non-zero angles produce a tilted
-        (obliquely incident / off-axis) plane wave whose wavevector makes the
-        given angles with the optical axis; this adds the linear phase ramp
-        ``exp(i k (x sinθx + y sinθy))`` while the amplitude stays uniform.
+        With theta_x = theta_y = 0 the result is a uniform unit-amplitude plane
+        wave travelling along +z. Non-zero angles produce a tilted (obliquely
+        incident / off-axis) plane wave whose wavevector makes the given angles
+        with the optical axis; this adds the linear phase ramp
+        $\\exp(i k (x \\sin\\theta_x + y \\sin\\theta_y))$ while the amplitude
+        stays uniform.
 
         Args:
-            wvln (float): Wavelength. [um].
-            z (float): Field z position. [mm].
-            phy_size (tuple): Physical size of the field. [mm].
-            res (tuple): Resolution.
-            theta_x (float): Tilt angle of the wavevector in the x-z plane.
-                [rad]. Defaults to 0.0.
-            theta_y (float): Tilt angle of the wavevector in the y-z plane.
-                [rad]. Defaults to 0.0.
-            valid_r (float): Valid circle radius. [mm].
+            wvln (float, optional): Wavelength [µm]. Defaults to 0.55.
+            z (float, optional): Field z position [mm]. Defaults to 0.0.
+            phy_size (tuple, optional): Physical size (W, H) of the field [mm].
+                Defaults to (4.0, 4.0).
+            res (tuple, optional): Grid resolution (H, W) [pixels]. Defaults to
+                (2000, 2000).
+            theta_x (float, optional): Tilt angle of the wavevector in the x-z
+                plane [rad]. Defaults to 0.0.
+            theta_y (float, optional): Tilt angle of the wavevector in the y-z
+                plane [rad]. Defaults to 0.0.
+            valid_r (float or None, optional): If set, zero the field outside a
+                circle of this radius [mm]. Defaults to None.
 
         Returns:
             field (ComplexWave): Complex field.
@@ -247,11 +262,16 @@ class ComplexWave(DeepObj):
     def image_wave(cls, img, wvln=0.55, z=0.0, phy_size=(4.0, 4.0)):
         """Initialize a complex wave field from an image.
 
+        The image is interpreted as intensity in range [0, 1]; the field
+        amplitude is its square root and the phase is zero.
+
         Args:
-            img (torch.Tensor): Input image with shape [H, W] or [B, C, H, W]. Data range is [0, 1].
-            wvln (float): Wavelength. [um].
-            z (float): Field z position. [mm].
-            phy_size (tuple): Physical size of the field. [mm].
+            img (torch.Tensor): Input image, shape [H, W] or [B, C, H, W], data
+                range [0, 1], dtype float32.
+            wvln (float, optional): Wavelength [µm]. Defaults to 0.55.
+            z (float, optional): Field z position [mm]. Defaults to 0.0.
+            phy_size (tuple, optional): Physical size (W, H) of the field [mm].
+                Defaults to (4.0, 4.0).
 
         Returns:
             field (ComplexWave): Complex field.
@@ -268,20 +288,30 @@ class ComplexWave(DeepObj):
     # Wave propagation
     # =============================================
     def prop(self, prop_dist, n=1.0):
-        """Propagate the field by distance z. Can only propagate planar wave.
+        """Propagate the field forward by `prop_dist` and update `self`.
+
+        Selects the diffraction method from the propagation distance: a
+        near-zero distance is a no-op; sub-wavelength distances raise (not
+        implemented); distances up to `fresnel_dist_min` use band-limited ASM;
+        larger distances use single-FFT Fresnel diffraction. The axial grid `z`
+        is advanced by `prop_dist`.
+
+        Args:
+            prop_dist (float): Propagation distance [mm].
+            n (float, optional): Refractive index of the medium. Defaults to 1.0.
+
+        Returns:
+            self (ComplexWave): The propagated wave field (for chaining).
+
+        Raises:
+            Exception: If the propagation distance is in the sub-wavelength
+                range (full-wave methods such as FDTD are not implemented).
 
         Reference:
             [1] Modeling and propagation of near-field diffraction patterns: A more complete approach. Table 1.
             [2] https://github.com/kaanaksit/odak/blob/master/odak/wave/classical.py
             [3] https://spie.org/samples/PM103.pdf
             [4] "Non-approximated Rayleigh Sommerfeld diffraction integral: advantages and disadvantages in the propagation of complex wave fields"
-
-        Args:
-            prop_dist (float): propagation distance, unit [mm].
-            n (float): refractive index.
-
-        Returns:
-            self (ComplexWave): propagated complex wave field.
         """
         # Determine propagation method using cached boundaries
         wvln_mm = self.wvln * 1e-3  # [um] to [mm]
@@ -314,10 +344,17 @@ class ComplexWave(DeepObj):
         return self
 
     def prop_to(self, z, n=1):
-        """Propagate the field to plane z.
+        """Propagate the field to the absolute plane `z` and update `self`.
+
+        Computes the relative distance from the current axial position and
+        delegates to `prop`.
 
         Args:
-            z (float): destination plane z coordinate.
+            z (float): Destination plane z coordinate [mm].
+            n (float, optional): Refractive index of the medium. Defaults to 1.
+
+        Returns:
+            self (ComplexWave): The propagated wave field (for chaining).
         """
         # Use float() instead of .item() to avoid GPU-CPU sync on CUDA tensors
         # (self.z is a full grid but all values are identical; [0,0] is representative)
@@ -329,12 +366,16 @@ class ComplexWave(DeepObj):
     # Helper functions
     # =============================================
     def gen_xy_grid(self):
-        """Generate the x and y grid, shape ``[H, W]`` (matching the field ``u``).
+        """Generate the x and y coordinate grids, shape [H, W].
 
-        x runs along the width (``res[1]`` columns, extent ``phy_size[0]``) and y
-        along the height (``res[0]`` rows, extent ``phy_size[1]``), consistent with
-        ``point_wave``/``plane_wave``. With ``indexing="xy"`` the outputs are
-        ``(len(y_1d), len(x_1d)) = (H, W)``.
+        x runs along the width (res[1] columns, extent phy_size[0]) and y along
+        the height (res[0] rows, extent phy_size[1]), consistent with
+        `point_wave` / `plane_wave`. With indexing="xy" the outputs have shape
+        (len(y_1d), len(x_1d)) = (H, W).
+
+        Returns:
+            x (torch.Tensor): x coordinate grid, shape [H, W] [mm].
+            y (torch.Tensor): y coordinate grid, shape [H, W] [mm].
         """
         x, y = torch.meshgrid(
             torch.linspace(-0.5 * self.phy_size[0], 0.5 * self.phy_size[0], self.res[1]),
@@ -344,7 +385,12 @@ class ComplexWave(DeepObj):
         return x, y
 
     def gen_freq_grid(self):
-        """Generate the frequency grid."""
+        """Generate the spatial-frequency grids, shape [H, W].
+
+        Returns:
+            fx (torch.Tensor): x-frequency grid, shape [H, W] [mm⁻¹].
+            fy (torch.Tensor): y-frequency grid, shape [H, W] [mm⁻¹].
+        """
         x, y = self.gen_xy_grid()
         fx = x / (self.ps * self.phy_size[0])
         fy = y / (self.ps * self.phy_size[1])
@@ -354,13 +400,25 @@ class ComplexWave(DeepObj):
     # Wave field I/O
     # =============================================
     def load(self, filepath):
+        """Load a wave field from file (only `.npz` is supported).
+
+        Args:
+            filepath (str): Path to the file to load.
+
+        Raises:
+            Exception: If the file format is not supported.
+        """
         if filepath.endswith(".npz"):
             self.load_npz(filepath)
         else:
             raise Exception("Unimplemented file format.")
 
     def load_npz(self, filepath):
-        """Load data from npz file."""
+        """Load the complex wave field and grids from a `.npz` file.
+
+        Args:
+            filepath (str): Path to the `.npz` file.
+        """
         data = np.load(filepath)
         self.u = torch.from_numpy(data["u"])
         self.x = torch.from_numpy(data["x"])
@@ -370,14 +428,30 @@ class ComplexWave(DeepObj):
         self.res = self.u.shape[-2:]
 
     def save(self, filepath="./wavefield.npz"):
-        """Save the complex wave field to a npz file."""
+        """Save the complex wave field to file (only `.npz` is supported).
+
+        Args:
+            filepath (str, optional): Output path. Defaults to "./wavefield.npz".
+
+        Raises:
+            Exception: If the file format is not supported.
+        """
         if filepath.endswith(".npz"):
             self.save_npz(filepath)
         else:
             raise Exception("Unimplemented file format.")
 
     def save_npz(self, filepath="./wavefield.npz"):
-        """Save the complex wave field to a npz file."""
+        """Save the field to a `.npz` file plus intensity/amplitude/phase PNGs.
+
+        Writes `u`, `x`, `y`, `wvln`, and `phy_size` to the `.npz` archive, and
+        additionally saves normalized intensity, amplitude, and phase images
+        next to it.
+
+        Args:
+            filepath (str, optional): Output `.npz` path. Defaults to
+                "./wavefield.npz".
+        """
         from torchvision.utils import save_image
         # Save data
         np.savez_compressed(
@@ -396,10 +470,30 @@ class ComplexWave(DeepObj):
         save_image(u.angle(), f"{filepath[:-4]}_phase.png", normalize=True)
 
     def save_image(self, save_name=None, data="irr"):
+        """Render the field to an image (alias of `show`).
+
+        Args:
+            save_name (str or None, optional): Output image path; if None, plot
+                with matplotlib instead. Defaults to None.
+            data (str, optional): Quantity to visualize, one of "irr", "amp",
+                "phi"/"phase", "real", "imag". Defaults to "irr".
+        """
         return self.show(save_name=save_name, data=data)
 
     def show(self, save_name=None, data="irr"):
-        """Save the field as an image."""
+        """Render the field as an image, either saved to disk or plotted.
+
+        Args:
+            save_name (str or None, optional): Output image path; if None, the
+                field is shown with matplotlib. Defaults to None.
+            data (str, optional): Quantity to visualize: "irr" (intensity),
+                "amp" (amplitude), "phi"/"phase", "real", or "imag". Defaults
+                to "irr".
+
+        Raises:
+            Exception: If `data` is unrecognized or the field shape is
+                unsupported.
+        """
         from torchvision.utils import save_image
         cmap = "gray"
         if data == "irr":
@@ -472,14 +566,15 @@ class ComplexWave(DeepObj):
             raise Exception("Unsupported complex field shape.")
 
     def pad(self, Hpad, Wpad):
-        """Pad the input field by (Hpad, Hpad, Wpad, Wpad). This step will also expand physical size of the field.
+        """Zero-pad the field and expand its physical size accordingly.
+
+        Pads `Hpad` pixels on the top and bottom and `Wpad` pixels on the left
+        and right, then updates `res`, `phy_size`, and the coordinate grids so
+        the pixel pitch stays constant. Modifies `self` in place.
 
         Args:
             Hpad (int): Number of pixels to pad on the top and bottom.
             Wpad (int): Number of pixels to pad on the left and right.
-
-        Returns:
-            self (ComplexWave): Padded complex wave field.
         """
         self.u = F.pad(self.u, (Hpad, Hpad, Wpad, Wpad), mode="constant", value=0)
 
@@ -493,7 +588,11 @@ class ComplexWave(DeepObj):
         self.z = torch.full_like(self.x, float(self.z[0, 0]))
 
     def flip(self):
-        """Flip the field horizontally and vertically."""
+        """Flip the field and its grids horizontally and vertically.
+
+        Returns:
+            self (ComplexWave): The flipped wave field (for chaining).
+        """
         self.u = torch.flip(self.u, [-1, -2])
         self.x = torch.flip(self.x, [-1, -2])
         self.y = torch.flip(self.y, [-1, -2])
@@ -505,18 +604,24 @@ class ComplexWave(DeepObj):
 # Diffraction functions
 # ===================================
 def AngularSpectrumMethod(u, z, wvln, ps, n=1.0, padding=True):
-    """Angular spectrum method.
+    """Propagate a field by the (plain) angular spectrum method.
+
+    Multiplies the field spectrum by the transfer function
+    $\\exp(i k z \\sqrt{1 - \\lambda^2 (f_x^2 + f_y^2)})$ and inverse-transforms.
+    Valid only in the near field; it aliases beyond the Nyquist limit (see
+    `BandLimitedASM`).
 
     Args:
-        u (tesor): complex field, shape [H, W] or [B, 1, H, W]
-        z (float): propagation distance in [mm]
-        wvln (float): wavelength in [um]
-        ps (float): pixel size in [mm]
-        n (float): refractive index
-        padding (bool): padding or not
+        u (torch.Tensor): Complex field, shape [H, W] or [B, 1, H, W].
+        z (float): Propagation distance [mm].
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+        padding (bool, optional): Zero-pad to half the size on each side before
+            the FFT. Defaults to True.
 
     Returns:
-        u: complex field, shape [H, W] or [B, 1, H, W]
+        u (torch.Tensor): Propagated complex field, same shape as input.
 
     Reference:
         [1] https://github.com/kaanaksit/odak/blob/master/odak/wave/classical.py#L293
@@ -584,15 +689,16 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     silently wrong.
 
     Args:
-        u (tensor): complex field, shape [H, W] or [B, 1, H, W]
-        z (float): propagation distance in [mm]
-        wvln (float): wavelength in [um]
-        ps (float): pixel size in [mm]
-        n (float): refractive index
-        padding (bool): padding or not
+        u (torch.Tensor): Complex field, shape [H, W] or [B, 1, H, W].
+        z (float): Propagation distance [mm].
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+        padding (bool, optional): Zero-pad to half the size on each side before
+            the FFT. Defaults to True.
 
     Returns:
-        u: complex field, same shape as input.
+        u (torch.Tensor): Propagated complex field, same shape as input.
 
     Reference:
         [1] K. Matsushima and T. Shimobaba, "Band-Limited Angular Spectrum
@@ -652,10 +758,18 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
 
 
 def ScalableASM(u, z, wvln, ps, n=1.0, padding=True):
-    """Scalable angular spectrum method.
+    """Scalable angular spectrum method (not yet implemented).
 
-    "ScalableASM allows for propagation models where the destination pixel pitch is 
-    larger than the source pixel pitch." Optica 2023.
+    Intended to support propagation where the destination pixel pitch differs
+    from the source pixel pitch. Currently a placeholder that returns None.
+
+    Args:
+        u (torch.Tensor): Complex field, shape [H, W] or [B, 1, H, W].
+        z (float): Propagation distance [mm].
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+        padding (bool, optional): Zero-pad before the FFT. Defaults to True.
 
     Reference:
         [1] Scalable angular spectrum propagation. Optica 2023.
@@ -664,16 +778,26 @@ def ScalableASM(u, z, wvln, ps, n=1.0, padding=True):
 
 
 def FresnelDiffraction(u, z, wvln, ps, n=1.0, padding=True, TF=None):
-    """Fresnel propagation with FFT.
+    """Propagate a field by single-FFT Fresnel diffraction.
+
+    Uses either the transfer-function (TF) or impulse-response (IR) form. When
+    `TF` is None the form is chosen automatically: TF for short distances
+    (well-sampled in frequency) and IR otherwise.
 
     Args:
-        u: complex field, shape [H, W] or [B, C, H, W]
-        z (float): propagation distance
-        wvln (float): wavelength in [um]
-        ps (float): pixel size
-        n (float): refractive index
-        padding (bool): padding or not
-        TF (bool): transfer function or impulse response
+        u (torch.Tensor): Complex field, shape [H, W] or [B, C, H, W].
+        z (float): Propagation distance [mm].
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+        padding (bool, optional): Zero-pad to half the size on each side before
+            the FFT. Defaults to True.
+        TF (bool or None, optional): If True use the transfer-function form, if
+            False the impulse-response form; if None choose automatically from
+            the sampling condition. Defaults to None.
+
+    Returns:
+        u (torch.Tensor): Propagated complex field, same shape as input.
 
     Reference:
         [1] Computational fourier optics : a MATLAB tutorial. Chapter 5, section 5.1
@@ -733,18 +857,22 @@ def FresnelDiffraction(u, z, wvln, ps, n=1.0, padding=True, TF=None):
 
 
 def FraunhoferDiffraction(u, z, wvln, ps, n=1.0, padding=True):
-    """Fraunhofer diffraction.
+    """Propagate a field by single-FFT Fraunhofer (far-field) diffraction.
+
+    The output grid has side length $L_2 = \\lambda z / ps$, so the output
+    pixel pitch differs from the input pitch.
 
     Args:
-        u: complex field, shape [H, W] or [B, 1, H, W]
-        z: propagation distance
-        wvln: wavelength in [um]
-        ps: pixel size in [mm]
-        n: refractive index
-        padding: padding or not
+        u (torch.Tensor): Complex field, shape [H, W] or [B, 1, H, W].
+        z (float): Propagation distance [mm].
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+        padding (bool, optional): Zero-pad by a quarter of the size on each side
+            before the FFT. Defaults to True.
 
     Returns:
-        u: complex field, shape [H, W] or [B, 1, H, W]
+        u (torch.Tensor): Propagated complex field, same shape as input.
 
     Reference:
         [1] Computational fourier optics : a MATLAB tutorial. Chapter 5, section 5.5.
@@ -787,20 +915,24 @@ def FraunhoferDiffraction(u, z, wvln, ps, n=1.0, padding=True):
 
 
 def RayleighSommerfeld(u, z, wvln, ps, n=1.0, memory_saving=True):
-    """Rayleigh-Sommerfeld diffraction.
+    """Propagate a field by Rayleigh-Sommerfeld diffraction.
 
-    This function is differentiable but we donot want to use it for optimization, because it is too expensive.
+    Builds the input-plane coordinate grid (cell-centered, x over the W extent,
+    y over the H extent) and integrates over it for every output point. This is
+    differentiable but too expensive to use for optimization; it serves as a
+    ground-truth reference.
 
     Args:
-        u: complex field, shape [H, W] or [B, 1, H, W]
-        z: propagation distance
-        wvln: wavelength in [um]
-        ps: pixel size in [mm]
-        n: refractive index
-        memory_saving: memory saving
+        u (torch.Tensor): Complex field, shape [B, 1, H, W].
+        z (float): Propagation distance [mm].
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+        memory_saving (bool, optional): Integrate in small output patches to
+            reduce peak memory. Defaults to True.
 
     Returns:
-        u: complex field, shape [H, W] or [B, 1, H, W]
+        u2 (torch.Tensor): Propagated complex field, same shape as input.
     """
     _, _, H, W = u.shape
     x, y = torch.meshgrid(
@@ -837,21 +969,32 @@ def RayleighSommerfeld(u, z, wvln, ps, n=1.0, memory_saving=True):
 def RayleighSommerfeldIntegral(
     u1, x1, y1, z, wvln, x2=None, y2=None, n=1.0, memory_saving=False
 ):
-    """Discrete Rayleigh-Sommerfeld diffraction integration. Rayleigh-Sommerfeld diffraction is a brute force integration approach, it doesnot require any approximation. It usually works as the ground truth.
+    """Compute the discrete Rayleigh-Sommerfeld diffraction integral.
+
+    Brute-force integration with no paraxial or far-field approximation, used
+    as a ground-truth reference. If output coordinates are omitted, the output
+    plane uses the same grid as the input plane.
 
     Args:
-        u1: complex amplitude of input field, shape [H1, W1]
-        x1: physical coordinate of input field, unit [mm], shape [H1, W1]
-        y1: physical coordinate of input field, unit [mm], shape [H1, W1]
-        z: propagation distance, unit [mm]
-        wvln: wavelength, unit [um]
-        x2: physical coordinate of output field, unit [mm], shape [H2, W2]
-        y2: physical coordinate of output field, unit [mm], shape [H2, W2]
-        n: refractive index
-        memory_saving: memory saving or not
+        u1 (torch.Tensor): Complex amplitude of the input field, shape [H1, W1].
+        x1 (torch.Tensor): x coordinate of the input field [mm], shape [H1, W1].
+        y1 (torch.Tensor): y coordinate of the input field [mm], shape [H1, W1].
+        z (float): Propagation distance [mm].
+        wvln (float): Wavelength [µm].
+        x2 (torch.Tensor or None, optional): x coordinate of the output field
+            [mm], shape [H2, W2]. Defaults to x1 if None.
+        y2 (torch.Tensor or None, optional): y coordinate of the output field
+            [mm], shape [H2, W2]. Defaults to y1 if None.
+        n (float, optional): Refractive index. Defaults to 1.0.
+        memory_saving (bool, optional): Integrate in small output patches to
+            reduce peak memory. Defaults to False.
 
     Returns:
-        u2: complex amplitude of output field, shape [H2, W2]
+        u2 (torch.Tensor): Complex amplitude of the output field, shape [H2, W2].
+
+    Raises:
+        AssertionError: If the propagation distance is below the Nyquist
+            minimum for the given grid.
 
     Reference:
         [1] Modeling and propagation of near-field diffraction patterns: A more complete approach. Eq (9).
@@ -935,26 +1078,40 @@ def RayleighSommerfeldIntegral(
 # Helper functions
 # ==============================
 def Nyquist_ASM_zmax(wvln, ps, side_length, n=1.0):
-    """Maximum propagation distance for Angular Spectrum Method by Nyquist sampling criterion.
-    
+    """Compute the max ASM propagation distance from the Nyquist criterion.
+
+    Returns $z_{max} = L \\cdot ps \\cdot n / \\lambda$, the largest distance for
+    which the plain angular spectrum transfer function is sampled without
+    aliasing on the current grid.
+
     Args:
-        wvln: wavelength in [um]
-        ps: pixel size in [mm]
-        side_length: side length of the field in [mm]
-        n: refractive index
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm].
+        side_length (float): Side length of the field [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+
+    Returns:
+        zmax (float): Maximum well-sampled ASM propagation distance [mm].
     """
     wvln_mm = wvln * 1e-3
     zmax = side_length * ps * n / wvln_mm
     return zmax
 
 def Fresnel_zmin(wvln, ps, side_length, n=1.0):
-    """Minimum propagation distance for Fresnel diffraction by Nyquist sampling criterion.
-    
+    """Compute the min Fresnel propagation distance from the Nyquist criterion.
+
+    Returns $z_{min} = L \\cdot n / \\lambda$, the shortest distance for which
+    single-FFT Fresnel diffraction is well-sampled on the current grid. The
+    `ps` argument is accepted for interface symmetry but is not used.
+
     Args:
-        wvln: wavelength in [um]
-        ps: pixel size in [mm]
-        side_length: side length of the field in [mm]
-        n: refractive index
+        wvln (float): Wavelength [µm].
+        ps (float): Pixel size [mm] (unused).
+        side_length (float): Side length of the field [mm].
+        n (float, optional): Refractive index. Defaults to 1.0.
+
+    Returns:
+        zmin (float): Minimum well-sampled Fresnel propagation distance [mm].
     """
     wvln_mm = wvln * 1e-3
     zmin = float(np.sqrt(side_length**2) / (wvln_mm / n))

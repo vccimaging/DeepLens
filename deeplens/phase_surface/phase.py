@@ -13,8 +13,29 @@ from ..material import Material
 class Phase(DeepObj):
     """Base phase profile for diffractive surfaces (metasurface or DOE).
 
-    This is the base class that provides common functionality for all phase parameterizations.
-    Specific parameterizations should inherit from this class.
+    Represents a flat (zero-sag) substrate carrying a phase pattern $\\phi(x, y)$,
+    placed at axial position $d$ in the global coordinate system. Provides the
+    common ray-tracing machinery (intersection, refraction, generalized-Snell
+    diffraction, local/global transforms); the phase profile $\\phi$ and its
+    gradient are defined by subclasses.
+
+    Attributes:
+        vec_global (torch.Tensor): Global axis direction $[0, 0, 1]$, shape [3].
+        d (torch.Tensor): Axial position of the surface plane in [mm], scalar.
+        pos_x (torch.Tensor): Surface x-offset in [mm], scalar.
+        pos_y (torch.Tensor): Surface y-offset in [mm], scalar.
+        vec_local (torch.Tensor): Unit surface normal in global coordinates, shape [3].
+        mat2 (Material): Material on the exit side of the surface.
+        r (float): Surface radius / half-aperture in [mm].
+        is_square (bool): If True the aperture is a square of side $r\\sqrt{2}$;
+            otherwise a circle of radius $r$.
+        w (float): Square aperture width $r\\sqrt{2}$ in [mm].
+        h (float): Square aperture height $r\\sqrt{2}$ in [mm].
+        diffraction_order (int): Diffraction order $m$ used in the generalized
+            Snell's law. Defaults to 1.
+        norm_radii (float): Radius in [mm] used to normalize coordinates for the
+            phase polynomial. Defaults to `r`.
+        device (str or torch.device): Device holding the tensor state.
 
     Reference:
         [1] https://support.zemax.com/hc/en-us/articles/1500005489061-How-diffractive-surfaces-are-modeled-in-OpticStudio
@@ -33,6 +54,22 @@ class Phase(DeepObj):
         is_square=True,
         device="cpu",
     ):
+        """Initialize a flat phase substrate.
+
+        Args:
+            r (float): Surface radius / half-aperture in [mm].
+            d (float): Axial position of the surface plane in [mm].
+            norm_radii (float or None, optional): Radius in [mm] used to normalize
+                coordinates for the phase polynomial. Defaults to None, which uses `r`.
+            mat2 (str, optional): Material on the exit side of the surface. Defaults to "air".
+            pos_xy (tuple, optional): Lateral (x, y) offset of the surface center in [mm].
+                Defaults to (0.0, 0.0).
+            vec_local (tuple, optional): Surface normal direction (not necessarily
+                normalized) in global coordinates. Defaults to (0.0, 0.0, 1.0).
+            is_square (bool, optional): If True the aperture is a square of side
+                $r\\sqrt{2}$; otherwise a circle of radius $r$. Defaults to True.
+            device (str, optional): Device for the tensor state. Defaults to "cpu".
+        """
         super().__init__()
 
         # Global direction vector, always pointing to the positive z-axis
@@ -95,7 +132,20 @@ class Phase(DeepObj):
     # Computation (ray tracing)
     # ==============================
     def ray_reaction(self, ray, n1, n2):
-        """Ray reaction on DOE surface."""
+        """Trace a ray through the phase surface.
+
+        Transforms the ray to local coordinates, intersects it with the plane,
+        applies refraction then diffraction, and transforms back to global
+        coordinates.
+
+        Args:
+            ray (Ray): Incident ray in global coordinates.
+            n1 (float): Refractive index of the medium before the surface.
+            n2 (float): Refractive index of the medium after the surface.
+
+        Returns:
+            ray (Ray): Updated ray in global coordinates.
+        """
         ray = self.to_local_coord(ray)
         ray = self.intersect(ray, n1)
         ray = self.refract(ray, n1 / n2)
@@ -104,7 +154,22 @@ class Phase(DeepObj):
         return ray
 
     def intersect(self, ray, n=1.0):
-        """Solve ray-plane intersection in local coordinate system and update ray data."""
+        """Solve ray-plane intersection in local coordinates and update the ray.
+
+        Advances each ray to the $z = 0$ plane, marks rays falling outside the
+        aperture as invalid, and (for coherent rays) accumulates optical path
+        length. Rays nearly parallel to the plane are guarded against division
+        by a near-zero z-direction.
+
+        Args:
+            ray (Ray): Ray in local coordinates.
+            n (float, optional): Refractive index of the medium the ray travels
+                through, used for OPL accumulation. Defaults to 1.0.
+
+        Returns:
+            ray (Ray): Ray advanced to the surface plane with updated `o`,
+                `is_valid`, and `opl`.
+        """
         # Solve intersection. Guard against a near-zero z-direction (rays
         # parallel to the plane) before dividing, matching ray.py prop_to.
         dz = ray.d[..., 2]
@@ -135,28 +200,33 @@ class Phase(DeepObj):
         return ray
 
     def diffract(self, ray, n2=1.0):
-        """Diffraction of a phase surface.
+        """Apply phase-surface diffraction to a ray.
 
-        Step 1. The phase φ in radians adds to the optical path length of the ray.
-        Step 2. The gradient of the phase profile (phase slope) changes the direction
-           of rays via the generalized Snell's law:
-           ``n₂·sin(θ₂) = n₁·sin(θ₁) + m · λ / (2π) · dφ/dx``
+        Two effects are applied:
 
-           After standard refraction has already been applied, the remaining
-           phase deflection on the unit direction vector is:
-           ``Δl = m · λ / (2π · n₂) · dφ/dx``
+        1. The phase $\\phi$ (in radians) adds to the optical path length as
+           $\\phi \\cdot \\lambda / (2\\pi)$, where $\\lambda$ is converted from [µm]
+           to [mm] internally.
+        2. The phase gradient bends the ray via the generalized Snell's law
+           $n_2 \\sin\\theta_2 = n_1 \\sin\\theta_1 + m\\,\\lambda / (2\\pi)\\,\\partial\\phi/\\partial x$.
+           Since standard refraction is already applied, the remaining deflection
+           added to the unit direction is $\\Delta l = m\\,\\lambda / (2\\pi n_2)\\,\\partial\\phi/\\partial x$.
+           The deflection sign is flipped for backward-propagating rays.
 
         Args:
-            ray (Ray): Ray object with position, direction, and wavelength.
-            n2 (float): Refractive index of the medium after the surface. Required for
-                correct generalized Snell's law: deflection scales as 1/n₂.
+            ray (Ray): Ray with position, direction, and wavelength in [µm].
+            n2 (float, optional): Refractive index of the medium after the surface;
+                the deflection scales as $1/n_2$. Defaults to 1.0.
+
+        Returns:
+            ray (Ray): Ray with updated direction `d` and (for coherent rays) `opl`.
 
         Note:
-            Material dispersion is not modelled here. The phase profile ``φ(x,y)``
-            is treated as wavelength-independent; only the λ scaling in the
+            Material dispersion is not modelled here. The phase profile $\\phi(x, y)$
+            is treated as wavelength-independent; only the $\\lambda$ scaling in the
             generalized Snell's law and the OPL accumulation vary with wavelength.
             For a physical DOE whose phase profile itself changes with wavelength
-            (via ``(n(λ)-1)·h``), use ``DiffractiveSurface`` instead.
+            (via $(n(\\lambda) - 1)\\,h$), use `DiffractiveSurface` instead.
 
         Reference:
             [1] https://support.zemax.com/hc/en-us/articles/1500005489061-How-diffractive-surfaces-are-modeled-in-OpticStudio
@@ -223,9 +293,16 @@ class Phase(DeepObj):
         return ray
 
     def normal_vec(self, ray):
-        """Calculate surface normal vector at intersection points.
+        """Calculate the surface normal vector at intersection points.
 
-        Normal vector points from the surface toward the side where the light is coming from.
+        The normal points from the surface toward the side the light comes from
+        (i.e. it is flipped to oppose the ray's z-direction).
+
+        Args:
+            ray (Ray): Ray providing the propagation direction.
+
+        Returns:
+            normal_vec (torch.Tensor): Unit normal vectors, same shape as `ray.d`.
         """
         normal_vec = torch.zeros_like(ray.d)
         normal_vec[..., 2] = -1
@@ -329,10 +406,15 @@ class Phase(DeepObj):
         )
 
     def get_optimizer(self, lrs):
-        """Generate optimizer.
+        """Build an Adam optimizer over the surface's learnable parameters.
 
         Args:
-            lrs (list or float): Learning rates for different parameters.
+            lrs (list or float): Learning rate(s) for the parameter groups. A
+                single float is wrapped into a one-element list.
+
+        Returns:
+            optimizer (torch.optim.Adam): Adam optimizer over the parameters
+                returned by `get_optimizer_params`.
         """
         if isinstance(lrs, float):
             lrs = [lrs]
@@ -341,9 +423,14 @@ class Phase(DeepObj):
         return optimizer
 
     def update_r(self, r):
-        """Update surface radius. A flat phase surface has no geometric
-        height constraint, and because the polynomial is normalized by a
-        fixed ``norm_radii``, phase coefficients do not need rescaling.
+        """Update surface radius / half-aperture and the square aperture extents.
+
+        A flat phase surface has no geometric height constraint, and because the
+        polynomial is normalized by a fixed `norm_radii`, phase coefficients do
+        not need rescaling.
+
+        Args:
+            r (float): New surface radius / half-aperture in [mm].
         """
         self.r = float(r)
         self.w = self.r * float(np.sqrt(2))
@@ -352,17 +439,19 @@ class Phase(DeepObj):
     def phase2height_map(self, design_wvln, refractive_idx=1.5, res=512):
         """Convert the phase map to a physical height map for DOE fabrication.
 
-        Derived from the phase-height relation of a transmissive DOE in air:
-            φ = 2π/λ · (n−1) · h  →  h = φ · λ / (2π · (n−1))
+        Derived from the phase-height relation of a transmissive DOE in air,
+        $\\phi = (2\\pi/\\lambda)(n - 1)h$, giving $h = \\phi\\lambda / (2\\pi(n - 1))$.
 
         Args:
-            design_wvln (float): Design wavelength [um].
-            refractive_idx (float, optional): Refractive index of the DOE material at ``design_wvln``.
-            res (int, optional): Pixel resolution of the returned height map (square grid).
+            design_wvln (float): Design wavelength in [µm].
+            refractive_idx (float, optional): Refractive index of the DOE material
+                at `design_wvln`. Defaults to 1.5.
+            res (int, optional): Pixel resolution of the returned square height map.
+                Defaults to 512.
 
         Returns:
-            height_map (torch.Tensor): Tensor of shape ``[res, res]`` with height values in the same units
-                as ``design_wvln`` (um).
+            height_map (torch.Tensor): Height map of shape [res, res] in the same
+                units as `design_wvln` ([µm]).
         """
         x, y = torch.meshgrid(
             torch.linspace(-self.w / 2, self.w / 2, res),
@@ -382,11 +471,24 @@ class Phase(DeepObj):
         return self.r
 
     def surface_with_offset(self, *args, **kwargs):
-        """Surface sag with offset, only used in layout drawing."""
+        """Return the surface axial position for layout drawing.
+
+        The surface is flat (zero sag), so this returns the plane position `d`
+        regardless of the lateral coordinates. Any positional/keyword arguments
+        are accepted for API compatibility and ignored.
+
+        Returns:
+            d (torch.Tensor): Axial plane position in [mm], scalar.
+        """
         return self.d
 
     def draw_phase_map(self, save_name="./DOE_phase_map.png"):
-        """Draw phase map. Range from [0, 2*pi]."""
+        """Draw the phase map (clipped to $[0, 2\\pi]$) and save it to a file.
+
+        Args:
+            save_name (str, optional): Output image path. Defaults to
+                "./DOE_phase_map.png".
+        """
         x, y = torch.meshgrid(
             torch.linspace(-self.w / 2, self.w / 2, 2000),
             torch.linspace(self.h / 2, -self.h / 2, 2000),
@@ -404,7 +506,15 @@ class Phase(DeepObj):
         plt.close(fig)
 
     def draw_widget(self, ax, color="black", linestyle="-"):
-        """Draw DOE as a two-side surface."""
+        """Draw the DOE as a sawtooth (blazed) profile on a 2D layout axis.
+
+        Args:
+            ax (matplotlib.axes.Axes): Axis to draw on.
+            color (str, optional): Accepted for API consistency but ignored; the
+                profile is always drawn in orange. Defaults to "black".
+            linestyle (str, optional): Matplotlib line style for the profile.
+                Defaults to "-".
+        """
         # Use an offset that does not depend on axial position: a DOE at d=0
         # would otherwise give max_offset=0 (np.fmod -> NaN, blank plot), and a
         # negative d would give a negative offset. Falling back to r keeps it

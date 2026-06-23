@@ -15,6 +15,18 @@ from .diffractive import DiffractiveSurface
 
 
 class Fresnel(DiffractiveSurface):
+    """Phase-Fresnel diffractive lens surface.
+
+    A diffractive Fresnel lens with an ideal quadratic (thin-lens) phase profile.
+    It exhibits inverse dispersion compared to a refractive lens, and its only
+    free parameter is the design-wavelength focal length `f0`.
+
+    Attributes:
+        f0 (torch.Tensor): Design-wavelength focal length, scalar. [mm]
+        r2 (torch.Tensor): Cached squared radial coordinate grid $x^2 + y^2$,
+            shape [H, W]. [mm^2]
+    """
+
     def __init__(
         self,
         d,
@@ -26,17 +38,23 @@ class Fresnel(DiffractiveSurface):
         fab_step=16,
         device="cpu",
     ):
-        """Initialize Fresnel DOE. A diffractive Fresnel lens shows inverse dispersion property compared to refractive lens.
+        """Initialize a phase-Fresnel diffractive lens.
+
+        The lens applies an ideal thin-lens quadratic phase set by `f0`. It shows
+        inverse dispersion compared to a refractive lens.
 
         Args:
-            f0 (float): Initial focal length. [mm]
-            d (float): Distance of the DOE surface. [mm]
-            res (tuple or int): Resolution of the DOE, [w, h]. [pixel]
-            wvln0 (float): Design wavelength. [um]
-            mat (str): Material of the DOE.
-            fab_ps (float): Fabrication pixel size. [mm]
-            fab_step (int): Fabrication step.
-            device (str): Device to run the DOE.
+            d (float): Axial position of the DOE surface. [mm]
+            f0 (float or None, optional): Design-wavelength focal length. [mm]
+                If None, initialized to a random near-infinite value. Defaults to None.
+            wvln0 (float, optional): Design wavelength. [um] Defaults to 0.55.
+            res (tuple or int, optional): Resolution of the DOE, [w, h]. [pixel]
+                Defaults to (2000, 2000).
+            mat (str, optional): Material of the DOE. Defaults to "fused_silica".
+            fab_ps (float, optional): Fabrication pixel size. [mm] Defaults to 0.001.
+            fab_step (int, optional): Number of fabrication quantization steps.
+                Defaults to 16.
+            device (str, optional): Device to run the DOE. Defaults to "cpu".
         """
         super().__init__(
             d=d, res=res, wvln0=wvln0, mat=mat, fab_ps=fab_ps, fab_step=fab_step, device=device
@@ -55,7 +73,15 @@ class Fresnel(DiffractiveSurface):
 
     @classmethod
     def init_from_dict(cls, doe_dict):
-        """Initialize Fresnel DOE from a dict."""
+        """Initialize a Fresnel DOE from a dictionary of surface parameters.
+
+        Args:
+            doe_dict (dict): Surface parameters. Requires "d" and "res"; optionally
+                "f0", "wvln0", "mat", "fab_ps", "fab_step".
+
+        Returns:
+            doe (Fresnel): The constructed Fresnel DOE.
+        """
         return cls(
             d=doe_dict["d"],
             res=doe_dict["res"],
@@ -67,7 +93,18 @@ class Fresnel(DiffractiveSurface):
         )
 
     def phase_func(self):
-        """Get the phase map at design wavelength."""
+        """Compute the raw (unwrapped) quadratic phase at the design wavelength.
+
+        Applies the ideal thin-lens phase
+
+        $$\\phi(x, y) = -\\frac{\\pi (x^2 + y^2)}{f_0 \\lambda_0}$$
+
+        where $\\lambda_0$ is the design wavelength converted to mm. Emits a
+        one-time warning if the phase is undersampled on the current grid.
+
+        Returns:
+            phase (torch.Tensor): Raw unwrapped phase, shape [H, W]. [rad]
+        """
         wvln0_mm = self.wvln0 * 1e-3
         phase = -2 * torch.pi * self.r2 / (2 * self.f0 * wvln0_mm)
         self._warn_if_undersampled(phase, self.f0, self.wvln0)
@@ -77,7 +114,16 @@ class Fresnel(DiffractiveSurface):
     # Optimization
     # =======================================
     def get_optimizer_params(self, lr=0.001):
-        """Get parameters for optimization."""
+        """Build optimizer parameter groups for the focal length `f0`.
+
+        Enables gradients on `f0` and returns it as a single parameter group.
+
+        Args:
+            lr (float, optional): Learning rate for `f0`. Defaults to 0.001.
+
+        Returns:
+            optimizer_params (list): List with one parameter group dict for `f0`.
+        """
         self.f0.requires_grad = True
         optimizer_params = [{"params": [self.f0], "lr": lr}]
         return optimizer_params
@@ -86,7 +132,12 @@ class Fresnel(DiffractiveSurface):
     # IO
     # =======================================
     def surf_dict(self):
-        """Return a dict of surface."""
+        """Serialize the surface to a dictionary, including `f0` and `wvln0`.
+
+        Returns:
+            surf_dict (dict): Base surface parameters plus "f0" [mm], with
+                "wvln0" [um] overwritten by the unrounded value.
+        """
         surf_dict = super().surf_dict()
         surf_dict["f0"] = self.f0.item()
         surf_dict["wvln0"] = self.wvln0

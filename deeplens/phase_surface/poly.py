@@ -7,7 +7,30 @@ from .phase import Phase
 
 
 class PolyPhase(Phase):
-    """Polynomial phase on a plane substrate."""
+    """Polynomial phase profile on a plane substrate.
+
+    Models a diffractive (DOE/metasurface) phase pattern as a 1D radial
+    polynomial with even terms in the normalized radius plus odd terms in the
+    normalized $x$/$y$ coordinates. Coordinates are normalized by `norm_radii`
+    before evaluation. The reference phase is
+
+    $$
+    \\phi(x, y) = \\sum_{k \\in \\{2,4,6\\}} a_k\\, r_n^{k}
+    + \\sum_{k \\in \\{3,5,7\\}} a_k\\, (x_n^{k} + y_n^{k}),
+    $$
+
+    where $r_n = \\sqrt{x_n^2 + y_n^2}$ and $x_n, y_n$ are the normalized
+    coordinates. Phase is in radians and wrapped to $[0, 2\\pi)$.
+
+    Attributes:
+        order2 (torch.Tensor): Coefficient $a_2$ of the $r_n^2$ term (scalar tensor).
+        order3 (torch.Tensor): Coefficient $a_3$ of the $(x_n^3 + y_n^3)$ term (scalar tensor).
+        order4 (torch.Tensor): Coefficient $a_4$ of the $r_n^4$ term (scalar tensor).
+        order5 (torch.Tensor): Coefficient $a_5$ of the $(x_n^5 + y_n^5)$ term (scalar tensor).
+        order6 (torch.Tensor): Coefficient $a_6$ of the $r_n^6$ term (scalar tensor).
+        order7 (torch.Tensor): Coefficient $a_7$ of the $(x_n^7 + y_n^7)$ term (scalar tensor).
+        param_model (str): Parameterization identifier, always "poly1d".
+    """
 
     def __init__(
         self,
@@ -26,6 +49,28 @@ class PolyPhase(Phase):
         is_square=True,
         device="cpu",
     ):
+        """Initialize a polynomial phase surface.
+
+        Args:
+            r (float): Aperture radius of the substrate [mm].
+            d (float): Axial position of the surface along the optical axis [mm].
+            order2 (float, optional): Coefficient of the $r_n^2$ term. Defaults to 0.0.
+            order3 (float, optional): Coefficient of the $(x_n^3 + y_n^3)$ term. Defaults to 0.0.
+            order4 (float, optional): Coefficient of the $r_n^4$ term. Defaults to 0.0.
+            order5 (float, optional): Coefficient of the $(x_n^5 + y_n^5)$ term. Defaults to 0.0.
+            order6 (float, optional): Coefficient of the $r_n^6$ term. Defaults to 0.0.
+            order7 (float, optional): Coefficient of the $(x_n^7 + y_n^7)$ term. Defaults to 0.0.
+            norm_radii (float or None, optional): Normalization radius [mm] for the
+                coordinates. Defaults to the aperture radius `r` when None.
+            mat2 (str, optional): Material after the surface. Defaults to "air".
+            pos_xy (tuple, optional): Lateral $(x, y)$ offset of the surface [mm].
+                Defaults to (0.0, 0.0).
+            vec_local (tuple, optional): Local direction vector (surface normal) in
+                global coordinates; normalized internally. Defaults to (0.0, 0.0, 1.0).
+            is_square (bool, optional): If True, the aperture is square; otherwise circular.
+                Defaults to True.
+            device (str, optional): Torch device. Defaults to "cpu".
+        """
         super().__init__(
             r=r,
             d=d,
@@ -48,7 +93,15 @@ class PolyPhase(Phase):
         self.to(device)
 
     def phi(self, x, y):
-        """Reference phase map at design wavelength."""
+        """Evaluate the reference phase map at design wavelength.
+
+        Args:
+            x (torch.Tensor): $x$ coordinates [mm], any shape.
+            y (torch.Tensor): $y$ coordinates [mm], same shape as `x`.
+
+        Returns:
+            phi (torch.Tensor): Phase in radians wrapped to $[0, 2\\pi)$, same shape as `x`.
+        """
         x_norm = x / self.norm_radii
         y_norm = y / self.norm_radii
         r_norm = torch.sqrt(x_norm**2 + y_norm**2 + EPSILON)
@@ -67,7 +120,19 @@ class PolyPhase(Phase):
         return phi
 
     def dphi_dxy(self, x, y):
-        """Calculate phase derivatives (dphi/dx, dphi/dy) for given points."""
+        """Compute the spatial phase gradient at the given points.
+
+        Returns the partial derivatives of the unwrapped phase polynomial,
+        in units of radians per millimetre [rad/mm].
+
+        Args:
+            x (torch.Tensor): $x$ coordinates [mm], any shape.
+            y (torch.Tensor): $y$ coordinates [mm], same shape as `x`.
+
+        Returns:
+            dphidx (torch.Tensor): $\\partial\\phi/\\partial x$ [rad/mm], same shape as `x`.
+            dphidy (torch.Tensor): $\\partial\\phi/\\partial y$ [rad/mm], same shape as `x`.
+        """
         x_norm = x / self.norm_radii
         y_norm = y / self.norm_radii
         r_norm = torch.sqrt(x_norm**2 + y_norm**2 + EPSILON)
@@ -99,7 +164,24 @@ class PolyPhase(Phase):
     def get_optimizer_params(
         self, lrs=[1e-4, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7], optim_mat=False
     ):
-        """Generate optimizer parameters."""
+        """Build per-parameter optimizer groups for the polynomial coefficients.
+
+        Marks the six polynomial coefficients (`order2` through `order7`) as
+        requiring gradients and assigns each its own learning rate.
+
+        Args:
+            lrs (list, optional): Six learning rates applied to `order2`...`order7`
+                respectively. Defaults to [1e-4, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7].
+            optim_mat (bool, optional): Must be False; material parameters are not
+                optimized for a phase surface. Defaults to False.
+
+        Returns:
+            params (list): List of parameter-group dicts, one per coefficient,
+                each with keys "params" and "lr".
+
+        Raises:
+            AssertionError: If `optim_mat` is True.
+        """
         params = []
 
         # Optimize polynomial coefficients with different learning rates
@@ -125,7 +207,11 @@ class PolyPhase(Phase):
         return params
 
     def save_ckpt(self, save_path="./poly1d_doe.pth"):
-        """Save Poly1D DOE parameters."""
+        """Save the Poly1D DOE parameters to a checkpoint file.
+
+        Args:
+            save_path (str, optional): Output checkpoint path. Defaults to "./poly1d_doe.pth".
+        """
         torch.save(
             {
                 "param_model": self.param_model,
@@ -140,7 +226,11 @@ class PolyPhase(Phase):
         )
 
     def load_ckpt(self, load_path="./poly1d_doe.pth"):
-        """Load Poly1D DOE parameters."""
+        """Load the Poly1D DOE parameters from a checkpoint file.
+
+        Args:
+            load_path (str, optional): Checkpoint path to load. Defaults to "./poly1d_doe.pth".
+        """
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.order2 = ckpt["order2"].to(self.device)
@@ -151,7 +241,14 @@ class PolyPhase(Phase):
         self.order7 = ckpt["order7"].to(self.device)
 
     def surf_dict(self):
-        """Return surface parameters."""
+        """Return a serializable dict of the surface parameters.
+
+        Returns:
+            surf_dict (dict): Surface parameters, including the surface type,
+                aperture radius `r` [mm], `is_square`, `param_model`, the six
+                polynomial coefficients (rounded to 4 decimals), `norm_radii` [mm],
+                axial position `d` [mm], and the material name.
+        """
         surf_dict = {
             "type": self.__class__.__name__,
             "r": self.r,

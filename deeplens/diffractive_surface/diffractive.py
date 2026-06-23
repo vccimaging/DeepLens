@@ -23,6 +23,33 @@ logger = logging.getLogger(__name__)
 
 
 class DiffractiveSurface(DeepObj):
+    """Base class for diffractive optical elements (DOEs).
+
+    A diffractive surface modulates the phase of an incident wave field; its
+    optical behavior is simulated with wave optics. The phase profile is defined
+    by `phase_func` in subclasses and converted into a wrapped, quantized phase
+    map for the design wavelength. By default the DOE is designed for 0.55um,
+    i.e. it has the highest 1st-order diffraction efficiency at 0.55um.
+
+    Attributes:
+        d (torch.Tensor): Axial position of the DOE plane. [mm]
+        res (tuple): DOE resolution as (H, W). [pixel]
+        ps (float): Pixel size of the phase map (design pixel size if given,
+            otherwise the fabrication pixel size). [mm]
+        w (float): Physical width of the DOE. [mm]
+        h (float): Physical height of the DOE. [mm]
+        is_square (bool): Whether the aperture is treated as square.
+        r (float): Aperture radius (half-diagonal / circumscribed-circle
+            radius). [mm]
+        mat (Material): DOE material.
+        wvln0 (float): Design wavelength. [um]
+        n0 (float): Refractive index of the material at `wvln0`.
+        fab_ps (float): Fabrication pixel size. [mm]
+        fab_step (int): Number of fabrication (quantization) levels.
+        x (torch.Tensor): x-coordinates of the grid. [H, W]. [mm]
+        y (torch.Tensor): y-coordinates of the grid. [H, W]. [mm]
+    """
+
     def __init__(
         self,
         d,
@@ -35,19 +62,22 @@ class DiffractiveSurface(DeepObj):
         is_square=True,
         device="cpu",
     ):
-        """Diffractive (multi-layer diffractive) surface class. Optical properties of diffractive surfaces are simulated with wave optics.
-
-        By default the DOE is designed for 0.55um, which means it will have the highest 1st-order diffraction efficiency for 0.55um.
+        """Initialize a diffractive surface.
 
         Args:
-            d (float): Distance of the DOE surface. [mm]
-            res (tuple or int): Resolution of the DOE, [w, h]. [pixel]
-            fab_ps (float): Fabrication pixel size. [mm]
-            fab_step (int): Fabrication step. Default is 16.
-            wvln0 (float): Design wavelength. [um]
-            mat (str): Material of the DOE.
-            design_ps (float): Design pixel size. [mm]
-            device (str): Device to run the DOE.
+            d (float): Axial position of the DOE plane. [mm]
+            res (tuple or int): Resolution of the DOE as (H, W); an int is
+                expanded to (res, res). [pixel]
+            fab_ps (float, optional): Fabrication pixel size. [mm]. Defaults to 0.001.
+            fab_step (int, optional): Number of fabrication (quantization)
+                levels. Defaults to 16.
+            wvln0 (float, optional): Design wavelength. [um]. Defaults to 0.55.
+            mat (str, optional): Material name of the DOE. Defaults to "fused_silica".
+            design_ps (float or None, optional): Design pixel size; if None the
+                fabrication pixel size is used as the phase-map pixel size. [mm].
+                Defaults to None.
+            is_square (bool, optional): Whether the aperture is square. Defaults to True.
+            device (str, optional): Device to place the DOE tensors on. Defaults to "cpu".
         """
         # Geometry
         self.d = torch.tensor(d) if not isinstance(d, torch.Tensor) else d
@@ -82,24 +112,42 @@ class DiffractiveSurface(DeepObj):
 
     @classmethod
     def init_from_dict(cls, doe_dict):
-        """Initialize DOE from a dict."""
+        """Initialize a DOE from a dict.
+
+        Args:
+            doe_dict (dict): Dictionary of DOE parameters.
+
+        Returns:
+            doe (DiffractiveSurface): The constructed DOE instance.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError
 
     def phase_func(self):
-        """Calculate raw phase function (no wrapping, no quantization) at design wavelength.
+        """Compute the raw phase profile (no wrapping, no quantization) at the design wavelength.
 
         Returns:
-            phase (tensor): raw phase function at design wavelength.
+            phase (torch.Tensor): Raw, unwrapped phase profile at the design
+                wavelength. [H, W]. [rad]
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
         """
         raise NotImplementedError
 
     def get_phase_map0(self):
-        """Calculate phase map at design wavelength with phase wrapping and quantization.
+        """Compute the phase map at the design wavelength with wrapping and quantization.
 
-        In this function, we are actually processing height map. The maximum height is 2pi for design wavelength.
+        The raw phase from `phase_func` is wrapped into $[0, 2\\pi)$ and then
+        quantized to `fab_step` levels. The wrapped phase is equivalent to a
+        height map whose maximum height corresponds to $2\\pi$ at the design
+        wavelength.
 
         Returns:
-            phase0 (tensor): phase map at design wavelength, range [0, 2pi].
+            phase0 (torch.Tensor): Wrapped, quantized phase map at the design
+                wavelength. [H, W], range $[0, 2\\pi)$. [rad]
         """
         # Raw phase map at design wavelength
         phase0 = self.phase_func()
@@ -110,16 +158,19 @@ class DiffractiveSurface(DeepObj):
         return phase0
 
     def get_phase_map(self, wvln):
-        """Calculate phase map at the given wavelength.
+        """Compute the phase map at the given wavelength.
+
+        The phase map is first computed at the design wavelength, then scaled to
+        the requested wavelength accounting for the wavelength ratio and the
+        material dispersion $(n - 1) / (n_0 - 1)$, and finally resampled
+        (nearest) to the DOE resolution if needed.
 
         Args:
-            wvln (float): Wavelength. [um].
+            wvln (float): Wavelength. [um]
 
         Returns:
-            phase_map (tensor): Phase map. [1, 1, H, W], range [0, 2pi].
-
-        Note:
-            First we should calculate the phase map at 0.55um, then calculate the phase map for the given other wavelength.
+            phase_map (torch.Tensor): Phase map at the given wavelength.
+                [H, W]. [rad]
         """
         # Phase map at design wavelength
         phase_map0 = self.get_phase_map0()
@@ -150,8 +201,8 @@ class DiffractiveSurface(DeepObj):
         ``forward`` cannot reveal aliasing. Warning only; numerics are unchanged.
 
         Args:
-            phase (Tensor): Raw, unwrapped phase. [..., H, W]. [rad]
-            f0 (float | Tensor): Focal length. [mm]
+            phase (torch.Tensor): Raw, unwrapped phase. [..., H, W]. [rad]
+            f0 (float or torch.Tensor): Focal length. [mm]
             wvln (float): Wavelength of this phase map. [um]
         """
         if getattr(self, "_undersample_warned", False):
@@ -182,13 +233,20 @@ class DiffractiveSurface(DeepObj):
         )
 
     def forward(self, wave):
-        """Propagate wave field to the DOE and apply phase modulation. Input wave field can have different pixel size and physical size with the DOE.
+        """Propagate the wave field to the DOE plane and apply phase modulation.
+
+        The input wave field may have a different pixel size and physical extent
+        than the DOE; the phase map is resampled (nearest) to match the wave
+        pixel size, then center-cropped or zero-padded to match the wave
+        resolution before being applied as $u \\cdot e^{i\\phi}$.
 
         Args:
-            wave (Wave): Input complex wave field. Shape of [B, 1, H, W].
+            wave (ComplexWave): Input complex wave field, with field `u` of
+                shape [B, 1, H, W].
 
         Returns:
-            wave (Wave): Output complex wave field. Shape of [B, 1, H, W].
+            wave (ComplexWave): Output complex wave field after propagation and
+                phase modulation, field `u` of shape [B, 1, H, W].
 
         Reference:
             [1] https://github.com/vsitzmann/deepoptics function phaseshifts_from_height_map
@@ -237,13 +295,13 @@ class DiffractiveSurface(DeepObj):
         return wave
 
     def __call__(self, wave):
-        """Forward function.
+        """Apply the DOE to a wave field (alias for `forward`).
 
         Args:
-            wave (Wave): Input complex wave field.
+            wave (ComplexWave): Input complex wave field.
 
         Returns:
-            wave (Wave): Output complex wave field.
+            wave (ComplexWave): Output complex wave field.
         """
         return self.forward(wave)
 
@@ -251,13 +309,36 @@ class DiffractiveSurface(DeepObj):
     # Fabrication-related functions
     # =======================================
     def pmap_quantize(self, bits=16):
-        """Quantize phase map to bits levels."""
+        """Quantize the design-wavelength phase map to a given number of levels.
+
+        Args:
+            bits (int, optional): Number of quantization levels. Defaults to 16.
+
+        Returns:
+            pmap_q (torch.Tensor): Quantized phase map. [H, W], range
+                $[0, 2\\pi)$. [rad]
+        """
         pmap = self.get_phase_map0()
         pmap_q = torch.round(pmap / (2 * torch.pi / bits)) * (2 * torch.pi / bits)
         return pmap_q
 
     def pmap_fab(self, bits=16, save_path=None):
-        """Convert to fabricate phase map and save it. This function is used to output DOE_fab file, and it will not change the DOE object itself."""
+        """Generate a fabrication-resolution quantized phase map and save a checkpoint.
+
+        The phase map is upsampled from the design pixel size to the fabrication
+        pixel size (bilinear) and quantized to `bits` levels. The DOE checkpoint
+        is saved to `save_path`; the DOE object itself is left unchanged.
+
+        Args:
+            bits (int, optional): Number of quantization levels. Defaults to 16.
+            save_path (str or None, optional): Checkpoint save path; if None a
+                name encoding the fabrication resolution, pixel size, and bit
+                depth is generated. Defaults to None.
+
+        Returns:
+            pmap_q (torch.Tensor): Fabrication-resolution quantized phase map.
+                [H_fab, W_fab], range $[0, 2\\pi)$. [rad]
+        """
         # Fab resolution quantized pmap
         pmap = self.get_phase_map0()
         fab_res = int(self.ps / self.fab_ps * self.res[0])
@@ -284,17 +365,40 @@ class DiffractiveSurface(DeepObj):
     # Optimization
     # =======================================
     def activate_grad(self, activate=True):
-        """Activate gradient for phase map parameters."""
+        """Enable or disable gradients on the phase-map parameters.
+
+        Args:
+            activate (bool, optional): Whether to require gradients. Defaults to True.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError
 
     def get_optimizer_params(self, lr=None):
+        """Build optimizer parameter groups for the phase-map parameters.
+
+        Args:
+            lr (float or None, optional): Learning rate. Defaults to None.
+
+        Returns:
+            params (list): List of parameter group dicts for an optimizer.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError
 
     def get_optimizer(self, lr=None):
-        """Generate optimizer for DOE.
+        """Create an Adam optimizer for the DOE phase-map parameters.
 
         Args:
-            lr (float, optional): Learning rate. Defaults to 1e-3.
+            lr (float or None, optional): Learning rate passed to
+                `get_optimizer_params`. Defaults to None.
+
+        Returns:
+            optimizer (torch.optim.Adam): Optimizer over the DOE phase-map
+                parameters.
         """
         params = self.get_optimizer_params(lr)
         optimizer = torch.optim.Adam(params)
@@ -302,9 +406,20 @@ class DiffractiveSurface(DeepObj):
         return optimizer
 
     def loss_quantization(self, bits=16):
-        """DOE quantization errors.
+        """Compute the mean phase quantization error of the DOE.
 
-        Reference: Quantization-aware Deep Optics for Diffractive Snapshot Hyperspectral Imaging
+        Returns the mean absolute difference between the continuous phase map
+        and its quantization to `bits` levels, used as a quantization-aware
+        regularization loss.
+
+        Args:
+            bits (int, optional): Number of quantization levels. Defaults to 16.
+
+        Returns:
+            loss (torch.Tensor): Scalar mean absolute quantization error. [rad]
+
+        Reference:
+            Quantization-aware Deep Optics for Diffractive Snapshot Hyperspectral Imaging.
         """
         pmap = self.get_phase_map0()
         step = 2 * torch.pi / bits
@@ -316,11 +431,14 @@ class DiffractiveSurface(DeepObj):
     # Visualization
     # =======================================
     def draw_phase_map(self, bits=None, save_name="./DOE_phase_map.png"):
-        """Draw phase map. Range from [0, 2pi].
+        """Save the design-wavelength phase map as a normalized image.
 
         Args:
-            bits (int, optional): Number of quantization bits. If provided, quantizes the phase map.
-            save_name (str): Path to save the image.
+            bits (int or None, optional): Number of quantization levels; if
+                given the phase map is quantized first, otherwise the
+                continuous map is used. Defaults to None.
+            save_name (str, optional): Path to save the image. Defaults to
+                "./DOE_phase_map.png".
         """
         if bits is not None:
             pmap = self.pmap_quantize(bits)
@@ -329,11 +447,14 @@ class DiffractiveSurface(DeepObj):
         save_image(pmap, save_name, normalize=True)
 
     def draw_phase_map3d(self, bits=None, save_name="./DOE_phase_map3d.png"):
-        """Draw 3D phase map.
+        """Save a 3D scatter plot of the design-wavelength phase map.
 
         Args:
-            bits (int, optional): Number of quantization bits. If provided, quantizes the phase map.
-            save_name (str): Path to save the image.
+            bits (int or None, optional): Number of quantization levels; if
+                given the phase map is quantized first, otherwise the
+                continuous map is used. Defaults to None.
+            save_name (str, optional): Path to save the image. Defaults to
+                "./DOE_phase_map3d.png".
         """
         if bits is not None:
             pmap = self.pmap_quantize(bits)
@@ -362,7 +483,12 @@ class DiffractiveSurface(DeepObj):
         plt.close(fig)
 
     def draw_phase_map_fab(self, save_name="./DOE_phase_map.png"):
-        """Draw phase map. Range from [0, 2pi]."""
+        """Save side-by-side images of the continuous and 16-level quantized phase maps.
+
+        Args:
+            save_name (str, optional): Path to save the figure. Defaults to
+                "./DOE_phase_map.png".
+        """
         pmap = self.get_phase_map0()
         step = 2 * torch.pi / 16
         pmap_q = torch.round(pmap / step) * step
@@ -382,7 +508,12 @@ class DiffractiveSurface(DeepObj):
         plt.close(fig)
 
     def draw_cross_section(self, save_name="./DOE_cross_section.png"):
-        """Draw cross section of the phase map."""
+        """Save a plot of the phase map along its main diagonal.
+
+        Args:
+            save_name (str, optional): Path to save the figure. Defaults to
+                "./DOE_cross_section.png".
+        """
         pmap = self.get_phase_map0()
         pmap = torch.diag(pmap).cpu().numpy()
         r = np.linspace(
@@ -396,11 +527,16 @@ class DiffractiveSurface(DeepObj):
         plt.close(fig)
 
     def draw_widget(self, ax, color="orange", linestyle="-"):
-        """Draw a 2D Fresnel-style widget for the DOE in a layout plot.
+        """Draw a 2D Fresnel-style cross-section of the DOE in a layout plot.
 
         Plots the cross-section along the x-axis at y=0. For a square aperture
-        the half-extent is the half-side (``w/2``); for a circular aperture it
-        is the full radius ``r`` (= half-diagonal).
+        the half-extent is the half-side (`w/2`); for a circular aperture it is
+        the full radius `r` (= half-diagonal).
+
+        Args:
+            ax (matplotlib.axes.Axes): Axes to draw on.
+            color (str, optional): Line color. Defaults to "orange".
+            linestyle (str, optional): Line style. Defaults to "-".
         """
         d = self.d.item()
         max_offset = d / 100
@@ -415,7 +551,13 @@ class DiffractiveSurface(DeepObj):
     # Utils
     # =======================================
     def surf_dict(self):
-        """Return a dict of surface."""
+        """Serialize the DOE surface parameters into a dict.
+
+        Returns:
+            surf_dict (dict): Surface parameters (type, size, position,
+                design wavelength, resolution, fabrication pixel size, and
+                aperture shape flag) suitable for saving or reconstruction.
+        """
         surf_dict = {
             "type": self.__class__.__name__,
             "(size)": [round(self.w, 4), round(self.h, 4)],

@@ -6,12 +6,17 @@ import torch
 def init_device():
     """Initialize and return the default compute device (CUDA or CPU).
 
-    MPS (Apple Silicon) is intentionally NOT auto-selected: DeepLens relies on
-    float64 for wave propagation / coherent ray tracing, and the MPS backend
-    does not support float64 (``Cannot convert a MPS Tensor to float64``), so
-    auto-selecting it crashes every double-precision workflow. Apple Silicon
-    therefore falls back to CPU. A user who only needs the float32 geometric
-    path on MPS can still pass ``device="mps"`` explicitly.
+    Returns `cuda` when a GPU is available, otherwise `cpu`. MPS (Apple Silicon)
+    is intentionally NOT auto-selected: DeepLens relies on float64 for wave
+    propagation / coherent ray tracing, and the MPS backend does not support
+    float64 (`Cannot convert a MPS Tensor to float64`), so auto-selecting it
+    crashes every double-precision workflow. Apple Silicon therefore falls back
+    to CPU. A user who only needs the float32 geometric path on MPS can still
+    pass `device="mps"` explicitly.
+
+    Returns:
+        device (torch.device): The selected compute device, `cuda` if a GPU is
+            available else `cpu`.
     """
     if torch.cuda.is_available():
         device = torch.device("cuda")

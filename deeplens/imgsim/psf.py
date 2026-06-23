@@ -151,14 +151,15 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
     PSF contributions that cross tile boundaries.
 
     Args:
-        img (Tensor): The image to be blurred (B, C, H, W).
-        psf (torch.Tensor): Per-pixel local PSFs, shape
-            ``[H, W, C, ks, ks]``. ``ks`` may be odd or even.
-        chunk_size (int, optional): Source tile size for memory-efficient
-            rendering. If ``None``, render the whole image at once.
-    
+        img (torch.Tensor): Image batch to be blurred, shape ``[B, C, H, W]``.
+        psf (torch.Tensor): Per-pixel local PSFs, shape ``[H, W, C, ks, ks]``.
+            ``ks`` may be odd or even.
+        chunk_size (int or None, optional): Source tile size for
+            memory-efficient rendering. If ``None``, render the whole image at
+            once. Defaults to None.
+
     Returns:
-        img_render (Tensor): Rendered image (B, C, H, W).
+        img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
     """
     B, C, H, W = img.shape
     H_psf, W_psf, C_psf, ks, _ = psf.shape
@@ -229,7 +230,7 @@ def conv_psf_depth_interp(
     """Depth-interpolated PSF convolution for a spatially-uniform but depth-varying blur.
 
     Pre-convolves the image with PSFs at each reference depth, then blends the
-    results using per-pixel linear interpolation weights derived from *depth*.
+    results using per-pixel linear interpolation weights derived from `depth`.
     This approximates defocus blur for a single field position across a depth
     range without computing a separate PSF per pixel.
 
@@ -246,15 +247,15 @@ def conv_psf_depth_interp(
             interpolates linearly in depth; ``"disparity"`` interpolates
             linearly in 1/depth.  Defaults to ``"depth"``.
         padding_mode (str or None, optional): Padding mode passed to
-            ``F.pad`` before convolution. If ``None``, assumes *img* is already
-            padded and applies no additional padding.
+            `F.pad` before convolution. If ``None``, assumes ``img`` is already
+            padded and applies no additional padding. Defaults to "reflect".
 
     Returns:
         img_render (torch.Tensor): Blurred image, shape ``[B, C, H, W]``.
 
     Raises:
-        AssertionError: If *depth* or *psf_depths* contain non-negative values,
-            or if *interp_mode* is not ``"depth"`` or ``"disparity"``.
+        AssertionError: If `depth` or `psf_depths` contain non-negative values,
+            or if `interp_mode` is not ``"depth"`` or ``"disparity"``.
     """
     assert interp_mode in ["depth", "disparity"], f"interp_mode must be 'depth' or 'disparity', got {interp_mode}"
     assert depth.min() < 0 and depth.max() < 0, f"depth must be negative, got {depth.min()} and {depth.max()}"
@@ -362,8 +363,9 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
             ``[grid_h, grid_w, num_depth, C, ks, ks]``.
         psf_depths (torch.Tensor): Reference depths, shape ``[num_depth]``,
             values in ``(-inf, 0)``. Used to interpolate ``psf_map``.
-        interp_mode (str): ``"depth"`` for linear depth interpolation or
-            ``"disparity"`` for linear interpolation in ``1 / depth``.
+        interp_mode (str, optional): ``"depth"`` for linear depth interpolation
+            or ``"disparity"`` for linear interpolation in $1/\text{depth}$.
+            Defaults to "depth".
 
     Returns:
         img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
@@ -421,14 +423,18 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
         [1] "Dr.Bokeh: DiffeRentiable Occlusion-aware Bokeh Rendering", CVPR 2024.
 
     Args:
-        img (torch.Tensor): Input image, shape (B, C, H, W), values in [0, 1].
-        depth (torch.Tensor): Depth map, shape (B, 1, H, W), values in (-inf, 0).
-        psf_kernels (torch.Tensor): PSF at each depth layer, shape (num_layers, C, ks, ks).
-        psf_depths (torch.Tensor): Depth values for each layer, shape (num_layers,).
-            Must be negative and sorted ascending (far to near, i.e. -5000 ... -200).
+        img (torch.Tensor): Input image, shape ``[B, C, H, W]``, values in
+            ``[0, 1]``.
+        depth (torch.Tensor): Depth map, shape ``[B, 1, H, W]``, values in
+            ``(-inf, 0)`` mm (negative convention).
+        psf_kernels (torch.Tensor): PSF at each depth layer, shape
+            ``[num_layers, C, ks, ks]``.
+        psf_depths (torch.Tensor): Depth value for each layer, shape
+            ``[num_layers]`` mm. Must be negative and sorted ascending (far to
+            near, e.g. -5000 ... -200).
 
     Returns:
-        img_render (torch.Tensor): Rendered image, shape (B, C, H, W).
+        img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
     """
     assert depth.min() < 0 and depth.max() < 0, (
         f"depth must be negative, got min={depth.min()} max={depth.max()}"

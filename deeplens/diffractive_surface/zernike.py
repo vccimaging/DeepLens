@@ -12,7 +12,16 @@ from .diffractive import DiffractiveSurface
 
 
 class Zernike(DiffractiveSurface):
-    """DOE parameterized by Zernike polynomials."""
+    """Diffractive optical element parameterized by Zernike polynomials.
+
+    The DOE surface phase is represented as a weighted sum of the first 37
+    Zernike polynomials (OSA/ANSI ordering) over the unit disk. The learnable
+    coefficients `z_coeff` are the only optimized parameters.
+
+    Attributes:
+        zernike_order (int): Number of Zernike terms (fixed at 37).
+        z_coeff (torch.Tensor): Zernike coefficients, shape (zernike_order,).
+    """
 
     def __init__(
         self,
@@ -26,16 +35,26 @@ class Zernike(DiffractiveSurface):
         wvln0=0.55,
         device="cpu",
     ):
-        """Initialize Zernike DOE.
+        """Initialize a Zernike-parameterized DOE.
 
         Args:
-            d: DOE position
-            res: DOE resolution
-            z_coeff: Zernike coefficients
-            zernike_order: Number of Zernike coefficients to use
-            fab_ps: Fabrication pixel size
-            fab_step: Fabrication step
-            device: Computation device
+            d (float): DOE position along the optical axis. [mm]
+            z_coeff (torch.Tensor or None, optional): Zernike coefficients of
+                shape (zernike_order,). If None, initialized to random values
+                scaled by 1e-3. Defaults to None.
+            zernike_order (int, optional): Number of Zernike coefficients. Only
+                37 is currently supported. Defaults to 37.
+            res (tuple, optional): DOE resolution as (H, W) in pixels. Defaults
+                to (2000, 2000).
+            mat (str, optional): DOE substrate material. Defaults to "fused_silica".
+            fab_ps (float, optional): Fabrication pixel size. [mm] Defaults to 0.001.
+            fab_step (int, optional): Number of fabrication quantization levels.
+                Defaults to 16.
+            wvln0 (float, optional): Design wavelength. [um] Defaults to 0.55.
+            device (str, optional): Computation device. Defaults to "cpu".
+
+        Raises:
+            AssertionError: If zernike_order is not 37.
         """
         super().__init__(
             d=d, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, wvln0=wvln0, device=device
@@ -53,7 +72,16 @@ class Zernike(DiffractiveSurface):
 
     @classmethod
     def init_from_dict(cls, doe_dict):
-        """Initialize Zernike DOE from a dict."""
+        """Initialize a Zernike DOE from a serialized surface dict.
+
+        Args:
+            doe_dict (dict): Surface parameters. Requires "d" and "res"; optional
+                keys "mat", "fab_ps", "fab_step", "z_coeff", "zernike_order",
+                "wvln0" fall back to their defaults when absent.
+
+        Returns:
+            zernike (Zernike): The constructed Zernike DOE.
+        """
         return cls(
             d=doe_dict["d"],
             res=doe_dict["res"],
@@ -66,14 +94,29 @@ class Zernike(DiffractiveSurface):
         )
 
     def phase_func(self):
-        """Get the phase map at design wavelength."""
+        """Compute the DOE phase map at the design wavelength.
+
+        Returns:
+            phase (torch.Tensor): Phase map of shape (res[0], res[0]) in radians,
+                evaluated from the Zernike coefficients over the unit disk.
+        """
         return calculate_zernike_phase(self.z_coeff, grid=self.res[0])
 
     # =======================================
     # Optimization
     # =======================================
     def get_optimizer_params(self, lr=0.01):
-        """Get parameters for optimization."""
+        """Build optimizer parameter groups for the Zernike coefficients.
+
+        Sets `z_coeff` to require gradients as a side effect.
+
+        Args:
+            lr (float, optional): Learning rate for the coefficients. Defaults to 0.01.
+
+        Returns:
+            optimizer_params (list): A single parameter group dict with keys
+                "params" (the `z_coeff` tensor) and "lr".
+        """
         self.z_coeff.requires_grad = True
         optimizer_params = [{"params": [self.z_coeff], "lr": lr}]
         return optimizer_params
@@ -82,7 +125,15 @@ class Zernike(DiffractiveSurface):
     # IO
     # =======================================
     def surf_dict(self):
-        """Return a dict of surface."""
+        """Serialize the DOE surface to a dict.
+
+        Extends the base surface dict with the Zernike coefficients (moved to
+        CPU and detached) and the Zernike order.
+
+        Returns:
+            surf_dict (dict): Surface parameters including "z_coeff" and
+                "zernike_order".
+        """
         surf_dict = super().surf_dict()
         surf_dict["z_coeff"] = self.z_coeff.clone().detach().cpu()
         surf_dict["zernike_order"] = self.zernike_order
@@ -90,14 +141,20 @@ class Zernike(DiffractiveSurface):
 
 
 def calculate_zernike_phase(z_coeff, grid=256):
-    """Calculate phase map produced by Zernike polynomials.
+    """Compute the phase map from a weighted sum of Zernike polynomials.
+
+    Evaluates the first 37 Zernike polynomials (OSA/ANSI ordering, normalized)
+    on a `grid` x `grid` sampling of the square $[-1, 1]^2$ and accumulates them
+    weighted by `z_coeff`. Samples outside the unit disk ($r^2 > 1$) are zeroed.
 
     Args:
-        z_coeff: Zernike coefficients
-        grid: Grid size for phase map
+        z_coeff (torch.Tensor): Zernike coefficients of shape (37,).
+        grid (int, optional): Side length of the square sampling grid in pixels.
+            Defaults to 256.
 
     Returns:
-        Phase map
+        phase (torch.Tensor): Phase map of shape (grid, grid), masked to the
+            unit disk.
     """
     device = z_coeff.device
 

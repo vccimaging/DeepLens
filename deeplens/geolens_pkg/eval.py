@@ -120,7 +120,7 @@ class GeoLensEval:
         d_sensor (float): Axial position of the sensor plane (mm).
         sensor_size (tuple[float, float]): Sensor (width, height) in mm.
         pixel_size (float): Pixel pitch in mm.
-        sensor_res (tuple[int, int]): Sensor resolution (H, W) in pixels.
+        sensor_res (tuple[int, int]): Sensor resolution (W, H) in pixels.
         rfov (float): Half field-of-view in **radians**.
         foclen (float): Equivalent focal length in mm.
         fnum (float): F-number.
@@ -212,7 +212,8 @@ class GeoLensEval:
             num_fov (int): Number of field positions sampled uniformly from
                 on-axis (0) to full-field. Defaults to 5.
             depth (float): Object distance in mm (negative = real object).
-                When ``None`` (default), falls back to ``self.obj_depth``.
+                When ``None`` or ``float('inf')`` (default ``None``), falls
+                back to ``self.obj_depth``.
             num_rays (int): Rays per field position per wavelength.
                 Defaults to ``SPP_PSF``.
             wvln_list (list[float]): Wavelengths in µm.  When ``None``
@@ -456,14 +457,14 @@ class GeoLensEval:
             3. Stack as ``[R, G, B]``.
 
         Args:
-            num_grid (int): Spatial resolution of the field sampling grid.
-                Defaults to 32.
+            num_grid (int or tuple[int, int]): Spatial resolution of the field
+                sampling grid. Defaults to 32.
             depth (float): Object distance in mm. When ``None`` (default),
                 falls back to ``self.obj_depth``.
 
         Returns:
             rms_rgb (torch.Tensor): RMS spot error map with shape
-                ``[3, num_grid, num_grid]`` (channels ordered R, G, B). Units
+                ``[3, grid_h, grid_w]`` (channels ordered R, G, B). Units
                 are mm (same as sensor coordinates).
         """
         depth = self.obj_depth if depth is None else depth
@@ -699,7 +700,7 @@ class GeoLensEval:
 
         Returns:
             distortion_grid (torch.Tensor): Distortion grid with shape
-                ``[num_grid, num_grid, 2]``. Each entry ``(dx, dy)`` is in
+                ``[grid_h, grid_w, 2]``. Each entry ``(x, y)`` is in
                 normalized sensor coordinates ``[-1, 1]``, representing the
                 actual centroid position for the corresponding ideal grid
                 position.
@@ -947,7 +948,7 @@ class GeoLensEval:
 
         Returns:
             freq (np.ndarray): Spatial frequency in cycles/mm (positive,
-                excluding DC).  Length is roughly ``H // 2``.
+                excluding DC).  Length is roughly ``W // 2``.
             mtf_tan (np.ndarray): Tangential MTF, normalized to 1 at DC.
             mtf_sag (np.ndarray): Sagittal MTF, normalized to 1 at DC.
 
@@ -1234,8 +1235,9 @@ class GeoLensEval:
 
         Args:
             rfov (float | torch.Tensor): Field angle(s) in **degrees**.
-                A scalar is converted to ``[0, rfov]`` (two-element tensor).
-                A tensor of shape ``[N]`` is used directly.
+                A positive scalar is expanded to ``[0, rfov]`` (two-element
+                tensor); a non-positive scalar becomes a single-element
+                tensor.  A tensor of shape ``[N]`` is used directly.
             depth (float | torch.Tensor): Object depth(s) in mm.
                 Defaults to 0.0 (object at the first surface).
             wvln (float): Wavelength in µm. When ``None`` (default), falls
@@ -1413,8 +1415,8 @@ class GeoLensEval:
         Algorithm:
             1. Convert ``img_org`` to a ``[1, 3, H, W]`` float tensor and
                temporarily set the sensor resolution to match.
-            2. Call ``self.render()`` with the chosen method (ray tracing or PSF
-               convolution).
+            2. Call ``self.render()`` with the chosen method (ray tracing or
+               PSF-map / PSF-patch convolution).
             3. Compute PSNR and SSIM between the original and rendered images.
             4. If ``unwarp=True``, apply ``self.unwarp()`` to correct geometric
                distortion and report metrics again.
@@ -1432,8 +1434,8 @@ class GeoLensEval:
                 Defaults to ``SPP_RENDER``.
             unwarp (bool): If ``True``, apply distortion correction after
                 rendering. Defaults to ``False``.
-            method (str): Rendering backend — ``'ray_tracing'`` or
-                ``'psf_conv'``. Defaults to ``'ray_tracing'``.
+            method (str): Rendering backend — ``'ray_tracing'``, ``'psf_map'``,
+                or ``'psf_patch'``. Defaults to ``'ray_tracing'``.
             show (bool): If ``True``, display the result with matplotlib.
                 Defaults to ``False``.
 

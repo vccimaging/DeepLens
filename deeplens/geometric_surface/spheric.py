@@ -14,7 +14,8 @@ from .base import EPSILON, Surface
 class Spheric(Surface):
     """Spherical refractive surface parameterized by curvature.
 
-    The sag function is:
+    A sphere of radius $R = 1/c$ whose vertex sits at the optical axis. The
+    sag (surface height along $z$) is:
 
     $$
     z(x, y) = \\frac{c \\rho^2}{1 + \\sqrt{1 - c^2 \\rho^2}}, \\quad
@@ -22,8 +23,8 @@ class Spheric(Surface):
     $$
 
     Attributes:
-        c (torch.Tensor): Surface curvature ``1/R`` [1/mm].  Differentiable
-            with respect to gradient-based optimization.
+        c (torch.Tensor): Surface curvature $1/R$ [1/mm], scalar tensor.
+            Gradients are enabled by `get_optimizer_params` for optimization.
     """
 
     def __init__(
@@ -40,18 +41,18 @@ class Spheric(Surface):
         """Initialize a spherical surface.
 
         Args:
-            c (float): Surface curvature ``1/R`` [1/mm].  Use ``0`` for a flat
-                surface (equivalent to ``Plane``).
+            c (float): Surface curvature $1/R$ [1/mm]. Use 0 for a flat
+                surface (treated as a plane).
             r (float): Aperture radius [mm].
             d (float): Axial vertex position [mm].
             mat2 (str or Material): Material on the transmission side.
-            pos_xy (list[float], optional): Lateral offset ``[x, y]`` [mm].
-                Defaults to ``[0.0, 0.0]``.
-            vec_local (list[float], optional): Local normal direction.
-                Defaults to ``[0.0, 0.0, 1.0]``.
-            is_square (bool, optional): Square aperture flag. Defaults to
-                ``False``.
-            device (str, optional): Compute device. Defaults to ``"cpu"``.
+            pos_xy (list[float], optional): Lateral offset `[x, y]` [mm].
+                Defaults to `[0.0, 0.0]`.
+            vec_local (list[float], optional): Local surface normal direction.
+                Defaults to `[0.0, 0.0, 1.0]`.
+            is_square (bool, optional): Use a square aperture instead of a
+                circular one. Defaults to False.
+            device (str, optional): Compute device. Defaults to `"cpu"`.
         """
         super(Spheric, self).__init__(
             r=r,
@@ -67,6 +68,20 @@ class Spheric(Surface):
 
     @classmethod
     def init_from_dict(cls, surf_dict):
+        """Construct a `Spheric` surface from a parameter dictionary.
+
+        Accepts either a radius of curvature `roc` [mm] (converted to curvature
+        `c`, with `roc == 0` mapped to `c = 0`) or a curvature `c` [1/mm]
+        directly. The aperture radius `r` [mm], vertex position `d` [mm], and
+        transmission material `mat2` are read from the dictionary.
+
+        Args:
+            surf_dict (dict): Surface parameters. Must contain `r`, `d`, `mat2`
+                and either `roc` or `c`.
+
+        Returns:
+            surface (Spheric): The constructed spherical surface.
+        """
         if "roc" in surf_dict:
             if surf_dict["roc"] != 0:
                 c = 1 / surf_dict["roc"]
@@ -83,7 +98,18 @@ class Spheric(Surface):
         )
 
     def _sag(self, x, y):
-        """Compute surfaces sag z = r**2 * c / (1 - sqrt(1 - r**2 * c**2))"""
+        """Compute surface sag $z = c\\rho^2 / (1 + \\sqrt{1 - c^2\\rho^2})$.
+
+        Here $\\rho^2 = x^2 + y^2$. The radicand is clamped to `EPSILON` to keep
+        the square root finite beyond the valid radius.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm].
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+
+        Returns:
+            sag (torch.Tensor): Surface sag along z [mm], same shape as `x`.
+        """
         c = self.c
 
         # Compute surface sag
@@ -92,7 +118,16 @@ class Spheric(Surface):
         return sag
 
     def _dfdxy(self, x, y):
-        """Compute surface sag derivatives to x and y: dz / dx, dz / dy."""
+        """Compute first-order sag derivatives $\\partial z/\\partial x$ and $\\partial z/\\partial y$.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm].
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+
+        Returns:
+            dfdx (torch.Tensor): Sag derivative w.r.t. x [dimensionless], same shape as `x`.
+            dfdy (torch.Tensor): Sag derivative w.r.t. y [dimensionless], same shape as `x`.
+        """
         c = self.c
 
         # Compute surface sag derivatives
@@ -106,16 +141,16 @@ class Spheric(Surface):
         return dfdx, dfdy
 
     def _d2fdxy(self, x, y):
-        """Compute second-order derivatives of the surface sag z = sag(x, y).
+        """Compute second-order sag derivatives via the chain rule.
 
         Args:
-            x (tensor): x coordinate
-            y (tensor): y coordinate
+            x (torch.Tensor): Local x coordinate [mm].
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
 
         Returns:
-            d2f_dx2 (tensor): ∂²f / ∂x²
-            d2f_dxdy (tensor): ∂²f / ∂x∂y
-            d2f_dy2 (tensor): ∂²f / ∂y²
+            d2f_dx2 (torch.Tensor): $\\partial^2 z/\\partial x^2$ [1/mm], same shape as `x`.
+            d2f_dxdy (torch.Tensor): $\\partial^2 z/\\partial x\\partial y$ [1/mm], same shape as `x`.
+            d2f_dy2 (torch.Tensor): $\\partial^2 z/\\partial y^2$ [1/mm], same shape as `x`.
         """
         c = self.c
 
@@ -137,18 +172,27 @@ class Spheric(Surface):
         return d2f_dx2, d2f_dxdy, d2f_dy2
 
     def intersect(self, ray, n=1.0):
-        """Solve ray-surface intersection in local coordinate system using analytical method.
+        """Solve the ray-surface intersection analytically in local coordinates.
 
-        Sphere equation: (x)^2 + (y)^2 + (z - R)^2 = R^2, where R = 1/c
-        Ray equation: p(t) = o + t*d
-        Solve quadratic equation for intersection parameter t.
+        Substitutes the ray $p(t) = o + t\\,d$ into the sphere
+        $x^2 + y^2 + (z - R)^2 = R^2$ (with $R = 1/c$) and solves the resulting
+        quadratic for $t$, picking the root whose intersection lies closest to
+        the surface vertex at $z = 0$. A flat surface ($|c| < $ `EPSILON`) is
+        handled as a plane. Rays falling outside the aperture or with no real
+        root are flagged invalid. Updates `ray.o`, `ray.is_valid`, and, for
+        coherent rays, `ray.opl` (adding $n\\,t$).
 
         Args:
-            ray (Ray): input ray.
-            n (float, optional): refractive index. Defaults to 1.0.
+            ray (Ray): Input ray, modified in place.
+            n (float, optional): Refractive index of the incident medium, used
+                for the optical path length update. Defaults to 1.0.
 
         Returns:
-            ray (Ray): ray with updated position and opl.
+            ray (Ray): The same ray with updated position, validity, and opl.
+
+        Raises:
+            Exception: If a coherent ray travels more than 100 mm under
+                float32, where OPL accumulation loses precision.
         """
         c = self.c
 
@@ -211,13 +255,31 @@ class Spheric(Surface):
         return ray
 
     def is_within_data_range(self, x, y):
-        """Invalid when shape is non-defined."""
+        """Check whether points lie within the sag-defined region.
+
+        Points are valid only where $x^2 + y^2 < 1/c^2$, i.e. inside the radius
+        where the sphere's sag is real-valued.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm].
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+
+        Returns:
+            valid (torch.Tensor): Boolean mask, same shape as `x`.
+        """
         c = self.c
         valid = (x**2 + y**2) < 1 / c**2
         return valid
 
     def max_height(self):
-        """Maximum valid height."""
+        """Return the maximum valid radial height of the surface.
+
+        Equal to $|R| = 1/|c|$ minus a small 0.001 mm margin to stay inside the
+        region where the sag is well-defined.
+
+        Returns:
+            max_height (float): Maximum radial height [mm].
+        """
         c = self.c
         max_height = torch.sqrt(1 / c**2).item() - 0.001
         return max_height
@@ -226,7 +288,18 @@ class Spheric(Surface):
     # Optimization
     # =========================================
     def get_optimizer_params(self, lrs=[1e-4, 1e-4], optim_mat=False):
-        """Activate gradient computation for c and d and return optimizer parameters."""
+        """Enable gradients on `c` and `d` and build optimizer parameter groups.
+
+        Args:
+            lrs (list[float], optional): Learning rates `[lr_d, lr_c]` for the
+                vertex position and curvature. Defaults to `[1e-4, 1e-4]`.
+            optim_mat (bool, optional): Also optimize the transmission material
+                parameters (skipped when the material is air). Defaults to False.
+
+        Returns:
+            params (list[dict]): Optimizer parameter groups, each with `params`
+                and `lr` keys.
+        """
         self.c.requires_grad_(True)
         self.d.requires_grad_(True)
 
@@ -243,7 +316,13 @@ class Spheric(Surface):
     # IO
     # =========================================
     def surf_dict(self):
-        """Return surface parameters."""
+        """Serialize the surface to a parameter dictionary.
+
+        Returns:
+            surf_dict (dict): Surface parameters with keys `type`, `r`, `(c)`,
+                `roc`, `(d)`, and `mat2`. Lengths are in [mm], curvature in
+                [1/mm], rounded to 4 decimals.
+        """
         roc = 1 / self.c.item() if self.c.item() != 0 else 0.0
         surf_dict = {
             "type": "Spheric",
@@ -257,7 +336,16 @@ class Spheric(Surface):
         return surf_dict
 
     def zmx_str(self, surf_idx, d_next):
-        """Return Zemax surface string."""
+        """Format the surface as a Zemax STANDARD surface block.
+
+        Args:
+            surf_idx (int): Surface index in the Zemax file.
+            d_next (torch.Tensor): Axial distance to the next surface [mm],
+                scalar tensor.
+
+        Returns:
+            zmx_str (str): Multi-line Zemax surface description.
+        """
         if self.mat2.get_name() == "air":
             zmx_str = f"""SURF {surf_idx} 
     TYPE STANDARD 

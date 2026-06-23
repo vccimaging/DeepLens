@@ -28,7 +28,34 @@ from ..geometric_surface import Aperture
 # ==========================================================
 # local dummy class for pyvista
 class PolyData:
+    """Lightweight stand-in for `pyvista.PolyData` (no PyVista dependency).
+
+    Holds a vertex array plus either a line-connectivity array (line mesh) or a
+    triangle-connectivity array (face mesh), and can save itself to a Wavefront
+    ``.obj`` file. Exactly one of `lines` / `faces` may be set. All coordinates
+    are in millimetres [mm].
+
+    Attributes:
+        n_points (int): Number of vertices.
+        points (np.ndarray): Vertex coordinates, shape (n_points, 3) [mm].
+        lines (np.ndarray or None): Line connectivity, shape (n_lines, 2), or None.
+        faces (np.ndarray or None): Triangle connectivity, shape (n_faces, 3), or None.
+        is_linemesh (bool): True if this holds a line mesh.
+        is_facemesh (bool): True if this holds a face mesh.
+        is_default (bool): True if this is an empty placeholder (see `default`).
+    """
+
     def __init__(self, vertices, lines, faces):
+        """Initialize a PolyData from vertices and either line or face connectivity.
+
+        Args:
+            vertices (np.ndarray): Vertex coordinates, shape (n_points, 3) [mm].
+            lines (np.ndarray or None): Line connectivity, shape (n_lines, 2). Pass None for a face mesh.
+            faces (np.ndarray or None): Triangle connectivity, shape (n_faces, 3). Pass None for a line mesh.
+
+        Raises:
+            AssertionError: If both `lines` and `faces` are provided.
+        """
         self.n_points = len(vertices)
         self.points = vertices
         self.lines = lines
@@ -44,6 +71,15 @@ class PolyData:
         assert not (self.is_linemesh and self.is_facemesh), "Invalid polydata"
 
     def save(self, filename: str):
+        """Save the mesh to a Wavefront ``.obj`` file.
+
+        Writes vertices as ``v`` lines and connectivity as ``l`` (line mesh) or
+        ``f`` (face mesh) lines, converting from 0-based to 1-based indices.
+        Only ``.obj`` output is supported.
+
+        Args:
+            filename (str): Output path for the ``.obj`` file.
+        """
         # the local wrapper of the pyvista.PolyData.save method
         # only support .obj format for now
 
@@ -64,10 +100,13 @@ class PolyData:
     # IMPLEMENT A DEFAULT METHOD FOR THE DUMMY CLASS
     @staticmethod
     def default():
-        """
-        Returns a default PolyData instance that can be used for type checks
-        and placeholder initialization. The default instance has an `is_default`
-        attribute set to True, which can be used to check for default status.
+        """Return an empty placeholder PolyData with `is_default` set to True.
+
+        Useful for type checks and placeholder initialization. The instance has
+        zero points and no connectivity.
+
+        Returns:
+            obj (PolyData): An empty PolyData with `is_default` True.
         """
         obj = PolyData(np.zeros((0, 3)), lines=None, faces=None)
         obj.is_default = True
@@ -75,6 +114,19 @@ class PolyData:
 
 
 def merge(meshes: List[PolyData]) -> PolyData:
+    """Merge several PolyData meshes into one, offsetting connectivity indices.
+
+    All meshes must be of the same kind (all line meshes or all face meshes);
+    the kind is taken from the first mesh. Vertex indices of each subsequent
+    mesh are shifted by the running vertex count before concatenation.
+
+    Args:
+        meshes (List[PolyData]): Meshes to merge. May be empty or None.
+
+    Returns:
+        merged (PolyData): The combined mesh, or an empty default PolyData if
+            `meshes` is empty/None.
+    """
     if meshes is None or len(meshes) == 0:
         return PolyData.default()
     if len(meshes) == 1:
@@ -105,27 +157,66 @@ def merge(meshes: List[PolyData]) -> PolyData:
 
 
 class CrossPoly:
+    """Base class for mesh primitives that can produce a `PolyData`.
+
+    Subclasses (`LineMesh`, `FaceMesh` and their variants) build vertex/edge or
+    vertex/face data and override `get_polydata` to expose it.
+    """
+
     def __init__(self):
+        """Initialize an empty CrossPoly base instance."""
         pass
 
     def get_polydata(self) -> PolyData:
+        """Return the mesh as a `PolyData`.
+
+        Returns:
+            poly (PolyData): An empty default PolyData (overridden by subclasses).
+        """
         return PolyData.default()
 
     def get_obj_data(self):
+        """Placeholder hook for exporting raw ``.obj`` data (no-op in base class)."""
         pass
 
 
 class LineMesh(CrossPoly):
+    """A polyline mesh defined by an ordered list of 3D vertices.
+
+    Connects consecutive vertices with line segments; if `is_loop` is True the
+    last vertex is also joined back to the first. Coordinates are in [mm].
+
+    Attributes:
+        n_vertices (int): Number of vertices.
+        is_loop (bool): Whether the polyline is closed.
+        vertices (np.ndarray): Vertex coordinates, shape (n_vertices, 3) [mm].
+    """
+
     def __init__(self, n_vertices, is_loop=False):
+        """Initialize a line mesh with zeroed vertices.
+
+        Args:
+            n_vertices (int): Number of vertices.
+            is_loop (bool, optional): Whether the polyline is closed. Defaults to False.
+        """
         self.n_vertices = n_vertices
         self.is_loop = is_loop
         self.vertices = np.zeros((n_vertices, 3), dtype=np.float32)
         self.create_data()
 
     def create_data(self):
+        """Populate `vertices` (no-op in base `LineMesh`; overridden by subclasses)."""
         pass
 
     def chain(self, other):
+        """Append another line mesh's vertices to this one in place.
+
+        Args:
+            other (LineMesh): The line mesh to append. Must not be a loop.
+
+        Raises:
+            ValueError: If either this mesh or `other` is a loop.
+        """
         if self.is_loop or other.is_loop:
             raise ValueError("One of the lines is a loop.")
         self.vertices = np.vstack([self.vertices, other.vertices])
@@ -133,6 +224,12 @@ class LineMesh(CrossPoly):
         return None
 
     def get_polydata(self):
+        """Build line connectivity and return the mesh as a `PolyData`.
+
+        Returns:
+            poly (PolyData): A line-mesh PolyData with segments between
+                consecutive vertices (and a closing segment if `is_loop`).
+        """
         n_line = 0 if self.is_loop else -1
         n_line += self.n_vertices
         line = np.array(
@@ -142,9 +239,18 @@ class LineMesh(CrossPoly):
 
 
 class Curve(LineMesh):
-    """A curve mesh with vertices and lines. Currently used for ray meshes."""
+    """An open/closed polyline built directly from a vertex array.
+
+    Currently used to represent traced ray paths. Coordinates are in [mm].
+    """
 
     def __init__(self, vertices: np.ndarray, is_loop: Optional[bool] = None):
+        """Initialize a curve from an explicit vertex array.
+
+        Args:
+            vertices (np.ndarray): Vertex coordinates, shape (n_vertices, 3) [mm].
+            is_loop (bool, optional): Whether the curve is closed. Defaults to False.
+        """
         if is_loop is None:
             is_loop = False
         n_vertices = vertices.shape[0]
@@ -153,15 +259,34 @@ class Curve(LineMesh):
 
 
 class Circle(LineMesh):
-    """A circle mesh with normal direction and radius. The normal direciton is defined right-hand rule. Currently not used."""
+    """A closed circular polyline defined by a centre, normal, and radius.
+
+    The circle lies in the plane perpendicular to `direction` (its normal,
+    right-hand rule) and is centred at `origin`. Coordinates are in [mm].
+    Currently not used.
+
+    Attributes:
+        origin (np.ndarray): Circle centre, shape (3,) [mm].
+        direction (np.ndarray): Plane normal direction, shape (3,).
+        radius (float): Circle radius [mm].
+    """
 
     def __init__(self, n_vertices, origin, direction, radius):
+        """Initialize a circle mesh.
+
+        Args:
+            n_vertices (int): Number of points sampled around the circle.
+            origin (np.ndarray): Circle centre, shape (3,) [mm].
+            direction (np.ndarray): Plane normal direction, shape (3,).
+            radius (float): Circle radius [mm].
+        """
         self.direction = direction
         self.radius = radius
         self.origin = origin
         super().__init__(n_vertices, is_loop=True)
 
     def create_data(self):
+        """Sample `n_vertices` points evenly around the circle into `vertices`."""
         # Normalize the direction vector
         direction = np.array(self.direction, dtype=np.float32)
         direction = direction / np.linalg.norm(direction)
@@ -189,9 +314,26 @@ class Circle(LineMesh):
 
 
 class FaceMesh(CrossPoly):
-    """A face mesh with vertices and faces. Currently used for bridge meshes."""
+    """A triangulated surface mesh defined by vertices and triangle faces.
+
+    Used for lens-element bridges and sensor/surface meshes. May optionally
+    carry a `rim` polyline tracing its boundary. Coordinates are in [mm].
+
+    Attributes:
+        n_vertices (int): Number of vertices.
+        n_faces (int): Number of triangle faces.
+        vertices (np.ndarray): Vertex coordinates, shape (n_vertices, 3) [mm].
+        faces (np.ndarray): Triangle vertex indices, shape (n_faces, 3).
+        rim (LineMesh): Boundary polyline of the mesh, or None.
+    """
 
     def __init__(self, n_vertices: int, n_faces: int):
+        """Initialize a face mesh with zeroed vertices and faces.
+
+        Args:
+            n_vertices (int): Number of vertices.
+            n_faces (int): Number of triangle faces.
+        """
         self.n_vertices = n_vertices
         self.n_faces = n_faces
         self.vertices, self.faces = self._create_empty_data()
@@ -200,25 +342,55 @@ class FaceMesh(CrossPoly):
         self.create_rim()
 
     def _create_empty_data(self):
+        """Allocate zeroed vertex and face arrays.
+
+        Returns:
+            vertices (np.ndarray): Zeroed vertex array, shape (n_vertices, 3).
+            faces (np.ndarray): Zeroed face index array, shape (n_faces, 3).
+        """
         vertices = np.zeros((self.n_vertices, 3), dtype=np.float32)
         faces = np.zeros((self.n_faces, 3), dtype=np.uint32)
         return vertices, faces
 
     def create_data(self):
+        """Populate `vertices` and `faces` (no-op in base; overridden by subclasses)."""
         pass
 
     def create_rim(self):
+        """Populate the boundary `rim` polyline (no-op in base; overridden by subclasses)."""
         pass
 
     def get_mesh(self):
+        """Return the mesh as a `PolyData` (alias of `get_polydata`).
+
+        Returns:
+            poly (PolyData): The face-mesh PolyData.
+        """
         return self.get_polydata()
 
     def get_polydata(self) -> PolyData:
+        """Return the mesh as a face `PolyData`.
+
+        Returns:
+            poly (PolyData): A face-mesh PolyData built from `vertices` and `faces`.
+        """
         return PolyData(self.vertices, lines=None, faces=self.faces)
 
 
 class RectangleMesh(FaceMesh):
-    """A rectangle mesh with vertices and faces. Currently used for sensor meshes."""
+    """A flat rectangular mesh (two triangles) used for the sensor plane.
+
+    The rectangle is centred at `center` and spanned by two orthogonal unit
+    directions; `width` is measured along `direction_w` and `height` along
+    `direction_h`. Coordinates are in [mm].
+
+    Attributes:
+        center (np.ndarray): Rectangle centre, shape (3,) [mm].
+        direction_w (np.ndarray): Unit width direction, shape (3,).
+        direction_h (np.ndarray): Unit height direction, shape (3,).
+        width (float): Extent along `direction_w` [mm].
+        height (float): Extent along `direction_h` [mm].
+    """
 
     def __init__(
         self,
@@ -228,6 +400,19 @@ class RectangleMesh(FaceMesh):
         width: float,
         height: float,
     ):
+        """Initialize a rectangle mesh.
+
+        Args:
+            center (np.ndarray): Rectangle centre, shape (3,) [mm].
+            direction_w (np.ndarray): Width direction, shape (3,) (normalized internally).
+            direction_h (np.ndarray): Height direction, shape (3,) (normalized internally).
+            width (float): Extent along `direction_w` [mm].
+            height (float): Extent along `direction_h` [mm].
+
+        Raises:
+            AssertionError: If the two directions are not orthogonal, or if
+                `width`/`height` are not positive.
+        """
         # Two directions should be orthogonal
         assert np.dot(direction_w, direction_h) == 0, "Invalid directions"
         # width and height should be positive
@@ -241,6 +426,7 @@ class RectangleMesh(FaceMesh):
         super().__init__(n_vertices=4, n_faces=2)
 
     def create_data(self):
+        """Compute the four corner vertices and two triangle faces."""
         self.vertices[0] = (
             self.center
             - 0.5 * self.width * self.direction_w
@@ -275,14 +461,23 @@ def bridge(
     l_a: LineMesh,
     l_b: LineMesh,
 ) -> FaceMesh:
-    """Bridge two curves with triangulated faces.
+    """Bridge two polylines with a triangulated strip of faces.
+
+    The two lines must have the same number of vertices and both be loops or
+    both be open curves. The vertices of `l_b` are first re-aligned to `l_a`
+    (closest-vertex roll for loops, or reversed if the open curve runs the other
+    way), then a triangle strip is generated between corresponding vertices.
 
     Args:
-        l_a : np.ndarray, shape (n_a, 3). The first curve.
-        l_b : np.ndarray, shape (n_b, 3). The second curve.
+        l_a (LineMesh): The first polyline.
+        l_b (LineMesh): The second polyline, with the same vertex count and loop
+            flag as `l_a`.
 
     Returns:
-        face_mesh (FaceMesh): FaceMesh. Triangulated faces.
+        face_mesh (FaceMesh): The triangulated bridge connecting the two lines.
+
+    Raises:
+        ValueError: If only one line is a loop, or the vertex counts differ.
     """
     # Check if both lines are loops or both are open
     if l_a.is_loop ^ l_b.is_loop:
@@ -346,16 +541,16 @@ def bridge(
 
 
 def line_translate(l: LineMesh, dx: float, dy: float, dz: float) -> LineMesh:
-    """Translate a line mesh by a given amount. Return a new line mesh.
+    """Translate a line mesh by a fixed offset, returning a new line mesh.
 
     Args:
-        l: LineMesh. The line mesh to translate.
-        dx: float. The amount to translate in x direction.
-        dy: float. The amount to translate in y direction.
-        dz: float. The amount to translate in z direction.
+        l (LineMesh): The line mesh to translate.
+        dx (float): Translation along x [mm].
+        dy (float): Translation along y [mm].
+        dz (float): Translation along z [mm].
 
     Returns:
-        LineMesh. The translated line mesh.
+        new_l (LineMesh): A new line mesh with translated vertices.
     """
     # create a new line mesh
     new_l = LineMesh(l.n_vertices, l.is_loop)
@@ -365,13 +560,16 @@ def line_translate(l: LineMesh, dx: float, dy: float, dz: float) -> LineMesh:
 
 
 def surf_to_face_mesh(surf) -> FaceMesh:
-    """Convert a Surface object to a FaceMesh object.
+    """Convert a `Surface` mesh into a `FaceMesh`.
+
+    Copies the surface's precomputed `vertices` and `faces` into a new FaceMesh.
 
     Args:
-        surf: Surface. The surface object.
+        surf (Surface): A surface whose mesh has already been created
+            (must expose `vertices` and `faces`).
 
     Returns:
-        FaceMesh. The face mesh object.
+        face_mesh (FaceMesh): The face mesh wrapping the surface geometry.
     """
     n_vertices = surf.vertices.shape[0]
     n_faces = surf.faces.shape[0]
@@ -387,13 +585,13 @@ def surf_to_face_mesh(surf) -> FaceMesh:
 
 
 def curve_list_to_polydata(meshes: List[Curve]) -> List[PolyData]:
-    """Convert a list of Curve objects to a list of PolyData objects.
+    """Convert a list of `Curve` objects to a list of `PolyData` objects.
 
     Args:
-        meshes: List of Curve objects
+        meshes (List[Curve]): The curves to convert.
 
     Returns:
-        List of PolyData objects
+        polys (List[PolyData]): One line-mesh PolyData per input curve.
     """
     return [c.get_polydata() for c in meshes]
 
@@ -405,21 +603,23 @@ def geolens_ray_poly(
     n_rings: int = 3,
     n_arms: int = 4,
 ) -> List[List[Curve]]:
-    """
-    Sample parallel rays to draw the lens setup.\\
-    Hx, Hy = fov * cos(fov_phi), fov * sin(fov_phi).\\
-    Px, Py are sampled using Zemax like rings & arms method.\\
-        
+    """Sample and trace parallel ray bundles for drawing the lens layout.
+
+    For each field angle in `fovs` (and each azimuth in `fov_phis` when the
+    field angle is non-zero), a Zemax-style rings-and-arms pupil pattern is
+    sampled and traced through the lens. A zero field angle is treated as a
+    single on-axis bundle (azimuth is ignored).
+
     Args:
-        lens: GeoLens. The lens object.
-        fovs: List[float]. FoV angles to be sampled, unit: degree.
-        fov_phis: List[float]. FoV azimuthal angles to be sampled, unit: degree.
-        n_rings: int. Number of pupil rings to be sampled.
-        n_arms: int. Number of pupil arms to be sampled.
-    
+        lens (GeoLens): The lens object.
+        fovs (List[float]): Field-of-view (polar) angles to sample [degree].
+        fov_phis (List[float]): Field azimuthal angles to sample [degree].
+        n_rings (int, optional): Number of pupil rings sampled. Defaults to 3.
+        n_arms (int, optional): Number of pupil arms sampled. Defaults to 4.
+
     Returns:
-        rays_poly: List[List[Curve]]. Traced ray represented by curves. Each FoV coord is a List[Curve].
-        (num_fovs, num_fov_phis, num_rays, 3)
+        rays_poly (List[List[Curve]]): One entry per traced field bundle; each
+            entry is a list of `Curve` ray paths for that bundle.
     """
     rays_poly = []
 
@@ -457,22 +657,33 @@ def sample_parallel_3D(
     forward: bool = True,
     entrance_pupil=True,
 ):
-    """
-    Sample 2D parallel rays. Rays have shape [M, 3].
+    """Sample a parallel ray bundle over a rings-and-arms pupil pattern.
 
-    Used for (1) drawing lens setup, (2) paraxial optics calculation, for example, refocusing to infinity
+    Ray origins lie on the entrance pupil (or first surface) and all share the
+    direction set by `view_polar` / `view_azi`. The bundle has $M = rings
+    \\times arms + 1$ rays (the extra ray is the on-axis centre). Used for
+    drawing the lens setup and for paraxial calculations (e.g. refocusing to
+    infinity).
 
     Args:
-        R (float, optional): sampling radius. Defaults to None.
-        wvln (float, optional): ray wvln in µm. When ``None`` (default),
-            falls back to ``lens.primary_wvln``.
-        z (float, optional): sampling depth. Defaults to None.
-        view_polar (float, optional): POLAR incident angle (in degree). Defaults to 0.0.
-        view_azi (float, optional): AZIMUTHAL incident angle (in degree). Defaults to 0.0.
-        rings (int, optional): rings of ray number. Defaults to 5.
-        arms (int, optional): arms of ray number. Defaults to 8.
-        forward (bool, optional): forward or backward rays. Defaults to True.
-        entrance_pupil (bool, optional): whether to use entrance pupil. Defaults to False.
+        lens (GeoLens): The lens object.
+        R (float): Pupil sampling radius [mm]. Currently unused; the sampling
+            radius is taken from the entrance pupil or first-surface radius.
+        wvln (float, optional): Ray wavelength [µm]. When None, falls back to
+            `lens.primary_wvln`. Defaults to None.
+        z (float, optional): Unused; sampling depth is taken from the pupil.
+            Defaults to None.
+        view_polar (float, optional): Polar incident angle [degree]. Defaults to 0.0.
+        view_azi (float, optional): Azimuthal incident angle [degree]. Defaults to 0.0.
+        rings (int, optional): Number of pupil rings. Defaults to 3.
+        arms (int, optional): Number of pupil arms. Defaults to 4.
+        forward (bool, optional): Currently unused. Defaults to True.
+        entrance_pupil (bool, optional): If True, sample on the computed entrance
+            pupil; otherwise sample on the first surface. Defaults to True.
+
+    Returns:
+        ray (Ray): The sampled ray bundle, with origins `o` and directions `d`
+            of shape (M, 3) [mm].
     """
     wvln = lens.primary_wvln if wvln is None else wvln
     if entrance_pupil:
@@ -514,20 +725,22 @@ def sample_parallel_3D(
 
 
 def curve_from_trace(lens, ray: Ray, delete_vignetting=True):
-    """
-    Trace the ray and return the Curve.
+    """Trace a ray bundle to the sensor and return per-ray path curves.
 
-    ## Parameters
-    - lens: GeoLens
-        The lens object.
-    - ray: Ray
-        Sampled ray from the lens.
-    - delete_vignetting: bool
-        Whether to delete the vignetting rays.
+    Traces `ray` through the lens with path recording, stacks the per-surface
+    intersection points (shape (n_surf, M, 3) [mm]) and converts each ray's path
+    into a `Curve`.
 
-    ## Returns
-    - rays_curve: List[Curve]
-        Traced ray represented by curves
+    Args:
+        lens (GeoLens): The lens object.
+        ray (Ray): The sampled ray bundle to trace.
+        delete_vignetting (bool, optional): Intended to drop vignetted rays;
+            currently a no-op, so vignetted rays (NaN coordinates) are kept.
+            Defaults to True.
+
+    Returns:
+        rays_curve (List[Curve]): One `Curve` per ray, tracing its path through
+            the surfaces to the sensor.
     """
     ray, ray_o_records = lens.trace2sensor(ray=ray, record=True)
     rays_curve = []
@@ -551,15 +764,19 @@ def curve_from_trace(lens, ray: Ray, delete_vignetting=True):
 
 
 def _wrap_base_poly_to_pyvista(poly: PolyData, pv):
-    """
-    Wrap the PolyData object to a pyvista.PolyData object.
+    """Wrap a local `PolyData` into a `pyvista.PolyData`.
+
+    Prepends the per-cell vertex count (2 for line segments, 3 for triangles)
+    required by PyVista's connectivity arrays.
 
     Args:
-        poly: PolyData
-        pv: pyvista module (passed to avoid top-level import)
+        poly (PolyData): The local mesh to wrap.
+        pv (module): The imported `pyvista` module (passed in to avoid a
+            top-level import).
 
     Returns:
-        pv.PolyData
+        pv_poly (pyvista.PolyData): The wrapped PyVista mesh (empty if `poly`
+            is a default placeholder).
     """
     if poly.is_default:
         return pv.PolyData()
@@ -584,15 +801,15 @@ def _wrap_base_poly_to_pyvista(poly: PolyData, pv):
 def _draw_mesh_to_plotter(
     plotter, mesh: CrossPoly, color: List[float], opacity: float, pv
 ):
-    """
-    Draw a mesh to the plotter.
+    """Add a single mesh to a PyVista plotter.
 
     Args:
-        plotter: pv.Plotter
-        mesh: CrossPoly
-        color: List[float]. The color of the mesh.
-        opacity: float. The opacity of the mesh.
-        pv: pyvista module (passed to avoid top-level import)
+        plotter (pyvista.Plotter): The plotter to draw into.
+        mesh (CrossPoly): The mesh primitive to draw.
+        color (List[float]): RGB color, each component in [0, 1].
+        opacity (float): Mesh opacity in [0, 1].
+        pv (module): The imported `pyvista` module (passed in to avoid a
+            top-level import).
     """
     poly = _wrap_base_poly_to_pyvista(mesh.get_polydata(), pv)
     plotter.add_mesh(poly, color=color, opacity=opacity)
@@ -604,15 +821,14 @@ def _draw_mesh_to_plotter(
 
 
 class GeoLensVis3D:
-    """Mixin providing 3-D mesh visualisation for ``GeoLens``.
+    """Mixin providing 3D mesh visualization for `GeoLens`.
 
     Creates lens surface, aperture, barrier, sensor, and ray-path meshes as
-    polygon data and optionally renders them with PyVista.  All geometry is
-    expressed in millimetres and stored as `CrossPoly` (vertex/face)
+    polygon data and optionally renders them with PyVista. All geometry is
+    expressed in millimetres [mm] and stored as `CrossPoly` (vertex/face)
     objects that can be saved to ``.obj`` files for external renderers.
 
-    This class is not instantiated directly; it is mixed into
-    `GeoLens`.
+    This class is not instantiated directly; it is mixed into `GeoLens`.
     """
 
     # # Attribute stubs to satisfy type checkers when mixed into GeoLens
@@ -626,16 +842,26 @@ class GeoLensVis3D:
         mesh_arms: int = 128,
         is_wrap: bool = False,
     ):
-        """Create all lens/bridge/sensor/aperture meshes.
+        """Build surface, bridge, and sensor meshes for the whole lens.
+
+        Surfaces are grouped into optical elements (split wherever a surface
+        borders air). Adjacent surfaces within an element are joined by bridge
+        face strips; with `is_wrap` the bridges are projected to form a
+        cylindrical barrel between elements of differing radii.
 
         Args:
-            mesh_rings (int): The number of rings in the mesh.
-            mesh_arms (int): The number of arms in the mesh.
-            is_wrap (bool): Whether to wrap the lens bridge around the lens as cylinder.
+            mesh_rings (int, optional): Number of rings per surface mesh. Defaults to 32.
+            mesh_arms (int, optional): Number of arms per surface mesh. Defaults to 128.
+            is_wrap (bool, optional): Whether to wrap the lens barrel around the
+                elements as a cylinder. Defaults to False.
+
         Returns:
-            surf_meshes (List[Surface]): Lens surfaces meshes.
-            bridge_meshes (List[FaceMesh]): Lens bridges meshes. (NOT support wrap around for now)
-            sensor_mesh (RectangleMesh): Sensor meshes. (only support rectangular sensor for now)
+            surf_meshes_cvt (List[FaceMesh]): Per-surface face meshes.
+            bridge_meshes (List[List[FaceMesh]]): Per-element lists of bridge
+                face meshes (empty list for single-surface elements).
+            element_groups (List[List[int]]): Surface-index groups, one per
+                optical element.
+            sensor_mesh (RectangleMesh): The rectangular sensor mesh.
         """
         surf_meshes = []
         element_group = []
@@ -769,25 +995,35 @@ class GeoLensVis3D:
         ray_arms: int = 8,
         is_wrap: bool = False,
     ):
-        """Draw lens 3D layout with rays using pyvista.
-
-        Note: PyVista is imported lazily only when this method is called.
+        """Render the 3D lens layout (surfaces, sensor, and optional rays) with PyVista.
 
         Args:
-            plotter (pv.Plotter, optional): Optional pyvista Plotter instance. If None, a new one is created.
-            save_dir (str): The directory to save the image.
-            mesh_rings (int): The number of rings in the mesh.
-            mesh_arms (int): The number of arms in the mesh.
-            surface_color (List[float]): The color of the surfaces.
-            draw_rays (bool): Whether to show the rays.
-            fovs (List[float]): The FoV angles to be sampled, unit: degree.
-            fov_phis (List[float]): The FoV azimuthal angles to be sampled, unit: degree.
-            ray_rings (int): The number of pupil rings to be sampled.
-            ray_arms (int): The number of pupil arms to be sampled.
-            is_wrap (bool): Whether to wrap the lens bridge around the lens as cylinder.
+            plotter (pyvista.Plotter, optional): Existing plotter to draw into. A
+                new one is created when None. Defaults to None.
+            save_dir (str, optional): Directory to save the rendered screenshot
+                ``lens_layout3d.png``. No image is saved when None. Defaults to None.
+            mesh_rings (int, optional): Number of rings per surface mesh. Defaults to 32.
+            mesh_arms (int, optional): Number of arms per surface mesh. Defaults to 128.
+            surface_color (List[float], optional): RGB surface color, each in [0, 1].
+                Defaults to [0.06, 0.3, 0.6].
+            draw_rays (bool, optional): Whether to trace and draw rays. Defaults to True.
+            fovs (List[float], optional): Field-of-view angles to sample [degree].
+                Defaults to [0.0].
+            fov_phis (List[float], optional): Field azimuthal angles to sample [degree].
+                Defaults to [0.0].
+            ray_rings (int, optional): Number of pupil rings to sample. Defaults to 6.
+            ray_arms (int, optional): Number of pupil arms to sample. Defaults to 8.
+            is_wrap (bool, optional): Whether to wrap the lens barrel as a cylinder.
+                Defaults to False.
 
         Returns:
-            plotter (pv.Plotter): The pyvista Plotter instance.
+            plotter (pyvista.Plotter): The plotter with all meshes added.
+
+        Raises:
+            ImportError: If PyVista is not installed (imported lazily here).
+
+        Note:
+            PyVista is imported lazily only when this method is called.
         """
         # Lazy import of pyvista
         try:
@@ -858,21 +1094,32 @@ class GeoLensVis3D:
         is_wrap: bool = False,
         save_elements: bool = True,
     ):
-        """Save lens geometry and rays as .obj files using pyvista.
+        """Save lens geometry, sensor, and optional rays as Wavefront ``.obj`` files.
 
-        Note: use #F2F7FFFF as the color for lens when rendering in Blender.
+        Writes ``lens.obj`` (all surfaces and bridges merged, apertures excluded)
+        and ``sensor.obj``. When `save_elements` is True, also writes one
+        ``element_{i}.obj`` per optical element; when `save_rays` is True, writes
+        one ``lens_rays_fov_{i}.obj`` per traced field bundle.
 
         Args:
-            save_dir (str): The directory to save the image.
-            mesh_rings (int): The number of rings in the mesh. (default: 128)
-            mesh_arms (int): The number of arms in the mesh. (default: 256)
-            save_rays (bool): Whether to save the rays.
-            fovs (List[float]): The FoV angles to be sampled, unit: degree.
-            fov_phis (List[float]): The FoV azimuthal angles to be sampled, unit: degree.
-            ray_rings (int): The number of pupil rings to be sampled. (default: 6)
-            ray_arms (int): The number of pupil arms to be sampled. (default: 8)
-            is_wrap (bool): Whether to wrap the lens bridge around the lens as cylinder.
-            save_elements (bool): Whether to save the elements.
+            save_dir (str): Directory to write the ``.obj`` files into.
+            mesh_rings (int, optional): Number of rings per surface mesh. Defaults to 64.
+            mesh_arms (int, optional): Number of arms per surface mesh. Defaults to 128.
+            save_rays (bool, optional): Whether to trace and save rays. Defaults to False.
+            fovs (List[float], optional): Field-of-view angles to sample [degree].
+                Defaults to [0.0].
+            fov_phis (List[float], optional): Field azimuthal angles to sample [degree].
+                Defaults to [0.0].
+            ray_rings (int, optional): Number of pupil rings to sample. Defaults to 6.
+            ray_arms (int, optional): Number of pupil arms to sample. Defaults to 8.
+            is_wrap (bool, optional): Whether to wrap the lens barrel as a cylinder.
+                Defaults to False.
+            save_elements (bool, optional): Whether to additionally save per-element
+                ``.obj`` files. Defaults to True.
+
+        Note:
+            Use #F2F7FFFF as the lens color when rendering in Blender. This
+            routine writes ``.obj`` files directly and does not require PyVista.
         """
         os.makedirs(save_dir, exist_ok=True)
 

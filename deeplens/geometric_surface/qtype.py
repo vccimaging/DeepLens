@@ -7,26 +7,26 @@
 """Q-type (Forbes Q-polynomial) freeform surface.
 
 Q-type polynomials are orthogonal polynomial representations commonly used for
-freeform optical surface design. This module implements Qbfs (Q-basic freeform sag)
-surface representation.
+freeform optical surface design. This module implements the Qbfs (Q "best-fit
+sphere" freeform sag) representation. All lengths are in millimetres [mm].
 
-The surface sag is given by:
-    z(x, y) = z_base(x, y) + z_Qbfs(x, y)
+The total surface sag is the sum of a base conic and a Q-polynomial departure:
 
-Where:
-    z_base = c * r² / (1 + √(1 - (1+k) * c² * r²))  (standard conic)
-    z_Qbfs = u⁴ * Σ aₘ * Qₘ^bfs(u²)                 (Q-polynomial departure)
+$$
+z(x, y) = \\frac{c\\,r^2}{1 + \\sqrt{1 - (1+k)\\,c^2 r^2}}
+          + u^4 \\sum_m a_m\\, Q_m^{bfs}(u^2)
+$$
 
-    r = √(x² + y²)
-    u = r / r_norm  (normalized radial coordinate, 0 ≤ u ≤ 1)
+with $r = \\sqrt{x^2 + y^2}$, curvature $c$ [1/mm], conic constant $k$, and
+normalized radial coordinate $u = r / r_{norm}$ (valid for $0 \\le u \\le 1$).
 
-References:
-    [1] G. W. Forbes, "Shape specification for axially symmetric optical surfaces,"
-        Opt. Express 15, 5218-5226 (2007).
-    [2] G. W. Forbes, "Robust, efficient computational methods for axially symmetric
-        optical aspheres," Opt. Express 18, 19700-19712 (2010).
-    [3] ISO 10110-19:2015 - Optics and photonics - Preparation of drawings for optical
-        elements and systems - Part 19: General description of surfaces and components.
+Reference:
+    G. W. Forbes, "Shape specification for axially symmetric optical surfaces,"
+    Opt. Express 15, 5218-5226 (2007).
+    G. W. Forbes, "Robust, efficient computational methods for axially symmetric
+    optical aspheres," Opt. Express 18, 19700-19712 (2010).
+    ISO 10110-19:2015 - Optics and photonics - Preparation of drawings for optical
+    elements and systems - Part 19: General description of surfaces and components.
 """
 
 import numpy as np
@@ -36,21 +36,23 @@ from .base import EPSILON, Surface
 
 
 def compute_qbfs_polynomials(u2, n_terms):
-    """Compute Qbfs polynomials Q_0, Q_1, ..., Q_{n_terms-1} at u².
+    """Compute Qbfs polynomials $Q_0, Q_1, \\ldots, Q_{n-1}$ evaluated at $u^2$.
 
-    The Qbfs polynomials are defined by the recurrence relation:
-        Q_0(u²) = 1
-        Q_1(u²) = (1 - (13/5) * u²) / (1 - u²)^(5/2)  [normalized form]
-
-    Using the Jacobi polynomial representation:
-        Q_m^bfs(u²) = P_m^(0,4)(1 - 2u²) / (1 - u²)^(5/2) * normalization
+    The Qbfs polynomials are built from the Jacobi polynomials
+    $P_m^{(0,4)}(1 - 2u^2)$ via a three-term recurrence, then rescaled by the
+    Qbfs orthonormalization factor. The $(1 - u^2)^{-5/2}$ weighting of the full
+    Forbes definition is NOT applied here (it is folded into the sag computation
+    for numerical stability), so these are the bare normalized polynomials.
 
     Args:
-        u2: Squared normalized radial coordinate (u² = r²/r_norm²), tensor
-        n_terms: Number of Q polynomial terms to compute
+        u2 (torch.Tensor): Squared normalized radial coordinate
+            $u^2 = r^2 / r_{norm}^2$, any shape.
+        n_terms (int): Number of Q-polynomial terms to compute.
 
     Returns:
-        List of tensors containing Q_0(u²), Q_1(u²), ..., Q_{n_terms-1}(u²)
+        Q (list[torch.Tensor]): List of length `n_terms` holding
+            $Q_0(u^2), Q_1(u^2), \\ldots, Q_{n\\_terms-1}(u^2)$, each the same
+            shape as `u2`. Empty list when `n_terms` is 0.
     """
     if n_terms == 0:
         return []
@@ -117,15 +119,20 @@ def compute_qbfs_polynomials(u2, n_terms):
 class QTypeFreeform(Surface):
     """Q-type (Forbes Qbfs polynomial) freeform surface.
 
-    This surface type uses Forbes Q-polynomials to represent rotationally symmetric
-    aspheric departures from a base conic surface. The representation is well-suited
-    for optimization due to the orthogonality of the basis functions.
+    Represents a rotationally symmetric surface as a base conic plus a Forbes
+    Qbfs polynomial departure. The orthogonality of the basis makes the
+    coefficients well-conditioned for gradient-based optimization. Individual
+    coefficients are also stored as attributes `q0`, `q1`, ... so they can be
+    optimized independently. All lengths are in millimetres [mm].
 
     Attributes:
-        c (tensor): Curvature of the base surface (1/radius of curvature)
-        k (tensor): Conic constant
-        r_norm (float): Normalization radius for Q polynomials (typically equals r)
-        qm (tensor): Q polynomial coefficients [a_0, a_1, ..., a_{n-1}]
+        c (torch.Tensor): Base-surface curvature (1 / radius of curvature) [1/mm].
+        k (torch.Tensor): Conic constant.
+        r_norm (float): Normalization radius for the Q polynomials [mm]; defaults
+            to the aperture radius `r`.
+        qm (torch.Tensor or None): Q-polynomial coefficients
+            $[a_0, a_1, \\ldots, a_{n-1}]$, or None when no coefficients are set.
+        n_qterms (int): Number of Q-polynomial terms (length of `qm`).
     """
 
     def __init__(
@@ -142,20 +149,25 @@ class QTypeFreeform(Surface):
         is_square=False,
         device="cpu",
     ):
-        """Initialize Q-type freeform surface.
+        """Initialize a Q-type freeform surface.
 
         Args:
-            r (float): Aperture radius of the surface
-            d (float): Distance from origin to surface vertex
-            c (float): Curvature of the base surface (1/radius of curvature)
-            k (float): Conic constant (k=0 for sphere, k=-1 for paraboloid)
-            qm (list): Q polynomial coefficients [a_0, a_1, ..., a_{n-1}]
-            mat2 (str or Material): Material after the surface
-            r_norm (float, optional): Normalization radius. Defaults to r.
-            pos_xy (list): Surface center position [x, y]. Defaults to [0, 0].
-            vec_local (list): Local surface normal. Defaults to [0, 0, 1].
-            is_square (bool): Whether aperture is square. Defaults to False.
-            device (str): Torch device. Defaults to "cpu".
+            r (float): Aperture radius (semi-diameter) of the surface [mm].
+            d (float): Axial distance from the origin to the surface vertex [mm].
+            c (float): Base-surface curvature (1 / radius of curvature) [1/mm].
+            k (float): Conic constant (k=0 sphere, k=-1 paraboloid).
+            qm (list): Q-polynomial coefficients $[a_0, a_1, \\ldots, a_{n-1}]$;
+                an empty list or None gives a pure conic.
+            mat2 (str or Material): Material on the exit side of the surface.
+            r_norm (float, optional): Normalization radius for the Q polynomials
+                [mm]. Defaults to None, in which case `r` is used.
+            pos_xy (list, optional): Surface center position [x, y] [mm].
+                Defaults to [0.0, 0.0].
+            vec_local (list, optional): Local surface normal vector.
+                Defaults to [0.0, 0.0, 1.0].
+            is_square (bool, optional): Whether the aperture is square.
+                Defaults to False.
+            device (str, optional): Torch device. Defaults to "cpu".
         """
         Surface.__init__(
             self,
@@ -187,7 +199,19 @@ class QTypeFreeform(Surface):
 
     @classmethod
     def init_from_dict(cls, surf_dict):
-        """Initialize surface from a dictionary specification."""
+        """Construct a `QTypeFreeform` from a surface specification dictionary.
+
+        Accepts either `roc` (radius of curvature, converted to curvature
+        $c = 1 / roc$) or `c` directly. The keys `k`, `qm`, and `r_norm` are
+        optional and fall back to a conic with no Q departure.
+
+        Args:
+            surf_dict (dict): Surface specification with keys `r`, `d`, `mat2`,
+                and either `roc` or `c`; optional keys `k`, `qm`, `r_norm`.
+
+        Returns:
+            surface (QTypeFreeform): The constructed surface instance.
+        """
         if "roc" in surf_dict:
             c = 1 / surf_dict["roc"]
         else:
@@ -204,18 +228,25 @@ class QTypeFreeform(Surface):
         )
 
     def _sag(self, x, y):
-        """Compute surface sag z = f(x, y).
+        """Compute the surface sag $z = f(x, y)$.
 
-        The sag consists of:
-        1. Base conic sag: c*r² / (1 + √(1 - (1+k)*c²*r²))
-        2. Q-polynomial departure: u⁴ * Σ aₘ * Qₘ(u²)
+        The sag is the base conic plus the Q-polynomial departure:
+
+        $$
+        z = \\frac{c\\,r^2}{1 + \\sqrt{1 - (1+k)\\,c^2 r^2}}
+            + u^4 (1 - u^2)^{5/2} \\sum_m a_m\\, Q_m(u^2)
+        $$
+
+        with $r^2 = x^2 + y^2$ and $u^2 = r^2 / r_{norm}^2$. The conic radicand
+        and $1 - u^2$ are clamped to `EPSILON` to avoid NaN sag/gradients beyond
+        the surface boundary.
 
         Args:
-            x (tensor): x coordinates
-            y (tensor): y coordinates
+            x (torch.Tensor): x coordinates [mm], any shape.
+            y (torch.Tensor): y coordinates [mm], same shape as `x`.
 
         Returns:
-            tensor: Surface sag values
+            z (torch.Tensor): Surface sag [mm], same shape as `x`.
         """
         c = self.c
         k = self.k
@@ -257,16 +288,22 @@ class QTypeFreeform(Surface):
         return z_base
 
     def _dfdxy(self, x, y):
-        """Compute first-order derivatives of sag with respect to x and y.
+        """Compute first-order sag derivatives w.r.t. $x$ and $y$.
 
-        Uses chain rule: dz/dx = dz/dr² * dr²/dx = dz/dr² * 2x
+        Applies the chain rule through $r^2$: $\\partial z/\\partial x =
+        (\\partial z/\\partial r^2)\\,(2x)$. The base-conic part is differentiated
+        analytically; the Q-polynomial derivative $\\partial Q_m/\\partial u^2$ is
+        approximated by a forward finite difference (step $10^{-7}$).
 
         Args:
-            x (tensor): x coordinates
-            y (tensor): y coordinates
+            x (torch.Tensor): x coordinates [mm], any shape.
+            y (torch.Tensor): y coordinates [mm], same shape as `x`.
 
         Returns:
-            tuple: (dz/dx, dz/dy)
+            dfdx (torch.Tensor): $\\partial z/\\partial x$ [dimensionless], same
+                shape as `x`.
+            dfdy (torch.Tensor): $\\partial z/\\partial y$ [dimensionless], same
+                shape as `x`.
         """
         c = self.c
         k = self.k
@@ -330,16 +367,20 @@ class QTypeFreeform(Surface):
         return dz_dr2 * 2 * x, dz_dr2 * 2 * y
 
     def is_within_data_range(self, x, y):
-        """Check if points are within valid surface data range.
+        """Check whether points lie within the valid surface data range.
 
-        For conic surfaces with k > -1, there's a maximum valid radius.
+        A point is valid when it is inside the conic boundary (only present when
+        $k > -1$ and $c \\ne 0$) AND within the Q-polynomial normalization radius
+        ($u^2 \\le 1$). The conic test is fully tensorized so it is safe under
+        `torch.compile`.
 
         Args:
-            x (tensor): x coordinates
-            y (tensor): y coordinates
+            x (torch.Tensor): x coordinates [mm], any shape.
+            y (torch.Tensor): y coordinates [mm], same shape as `x`.
 
         Returns:
-            tensor: Boolean mask of valid points
+            mask (torch.Tensor): Boolean tensor, True where the point is valid,
+                same shape as `x`.
         """
         c = self.c
         k = self.k
@@ -369,7 +410,15 @@ class QTypeFreeform(Surface):
         return valid_conic & valid_qpoly
 
     def max_height(self):
-        """Maximum valid height (radial distance)."""
+        """Return the maximum valid radial height of the surface.
+
+        Takes the smaller of the conic boundary radius (when $k > -1$ and
+        $c \\ne 0$, else a large fallback of 1e4) and the Q-polynomial
+        normalization radius `r_norm`.
+
+        Returns:
+            height (float): Maximum valid radial distance [mm].
+        """
         c = self.c
         k = self.k
 
@@ -391,15 +440,23 @@ class QTypeFreeform(Surface):
     def get_optimizer_params(
         self, lrs=[1e-4, 1e-4, 1e-2, 1e-6], decay=0.1, optim_mat=False
     ):
-        """Get optimizer parameters for different surface parameters.
+        """Build per-parameter optimizer groups for this surface.
+
+        Enables gradients on `d`, `c`, `k`, and each Q coefficient. The learning
+        rate for the m-th Q coefficient is `lrs[3] * decay**m`, so higher-order
+        terms are tuned more slowly.
 
         Args:
-            lrs (list): Learning rates for [d, c, k, q_coefficients].
-            decay (float): Decay factor for higher-order Q coefficients.
-            optim_mat (bool): Whether to optimize material parameters.
+            lrs (list, optional): Learning rates for [d, c, k, q_coefficients].
+                Defaults to [1e-4, 1e-4, 1e-2, 1e-6].
+            decay (float, optional): Per-order decay applied to the Q-coefficient
+                learning rate. Defaults to 0.1.
+            optim_mat (bool, optional): Whether to also optimize the exit-side
+                material. Defaults to False.
 
         Returns:
-            list: Parameter groups for optimizer
+            params (list): List of optimizer parameter-group dicts, each with
+                keys "params" and "lr".
         """
         params = []
 
@@ -436,7 +493,15 @@ class QTypeFreeform(Surface):
     # =======================================
 
     def surf_dict(self):
-        """Return dictionary representation of surface."""
+        """Serialize the surface to a dictionary.
+
+        Includes the type tag, geometry (`r`, `d`, `c`, `roc`, `k`, `r_norm`),
+        the Q-coefficient list `qm`, and the exit material name. Display-only
+        keys such as `(c)` and `(q0)` carry rounded scalar values.
+
+        Returns:
+            surf_dict (dict): Dictionary representation of the surface.
+        """
         surf_dict = {
             "type": "QTypeFreeform",
             "r": round(self.r, 4),
@@ -459,10 +524,21 @@ class QTypeFreeform(Surface):
         return surf_dict
 
     def zmx_str(self, surf_idx, d_next):
-        """Return Zemax surface string.
+        """Return the Zemax (.zmx) surface description string.
 
-        Note: Zemax uses a different Q-type representation (QTYPE surface).
-        This export is approximate and may need adjustment for specific Zemax versions.
+        Emits a `QTYPE` surface with curvature, thickness, aperture, conic, the
+        normalization radius (PARM 1), and the Q coefficients (PARM 2, 3, ...).
+
+        Args:
+            surf_idx (int): Surface index in the Zemax file.
+            d_next (torch.Tensor): Distance to the next surface [mm] (scalar).
+
+        Returns:
+            zmx_str (str): Multi-line Zemax surface description.
+
+        Note:
+            Zemax's QTYPE representation differs from this implementation, so the
+            export is approximate and may need adjustment for specific versions.
         """
         if self.mat2.get_name() == "air":
             zmx_str = f"""SURF {surf_idx}

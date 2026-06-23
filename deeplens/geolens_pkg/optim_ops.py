@@ -23,11 +23,17 @@ from ..geometric_surface import Aperture, Aspheric, Spheric
 class GeoLensSurfOps:
     """Mixin providing surface geometry operations for GeoLens.
 
-    Methods:
-        - add_aspheric: Convert a spherical surface to aspheric.
-        - increase_aspheric_order: Add higher-order polynomial terms.
-        - prune_surf: Size clear apertures by ray tracing.
-        - correct_shape: Fix lens geometry during optimisation.
+    Bundles methods that modify a lens during design optimization: converting
+    spherical surfaces to aspheric, raising aspheric polynomial order, sizing
+    clear apertures by ray tracing (pruning), and correcting lens geometry.
+    Intended to be mixed into the `GeoLens` class, so all methods access lens
+    state (`self.surfaces`, `self.d_sensor`, `self.rfov`, etc.) on the host.
+
+    Key methods:
+        add_aspheric: Convert a spherical surface to aspheric.
+        increase_aspheric_order: Add higher-order polynomial terms.
+        prune_surf: Size clear apertures by ray tracing.
+        correct_shape: Fix lens geometry during optimization.
     """
 
     # ====================================================================================
@@ -37,7 +43,7 @@ class GeoLensSurfOps:
     def add_aspheric(self, surf_idx=None, ai_degree=4):
         """Convert a spherical surface to aspheric for improved aberration correction.
 
-        If ``surf_idx`` is given, converts that specific surface. Otherwise,
+        If `surf_idx` is given, converts that specific surface. Otherwise,
         automatically selects the best candidate following established optical
         design principles:
 
@@ -47,31 +53,29 @@ class GeoLensSurfOps:
            aberrations like coma, astigmatism, distortion).
         3. Prefer air-glass interfaces over cemented surfaces.
         4. Among candidates at similar stop-distances, prefer larger semi-diameter
-           (higher marginal ray height → more SA contribution).
+           (higher marginal ray height, hence more spherical-aberration contribution).
 
-        The new surface starts with ``k=0`` and all polynomial coefficients at
-        zero, so it is initially identical to the original spherical surface.
+        The new surface starts with conic constant $k=0$ and all polynomial
+        coefficients at zero, so it is initially identical to the original
+        spherical surface.
 
         Note:
             After calling this method, any existing optimizer is stale.
-            Call ``get_optimizer()`` again to include the new parameters.
+            Call `get_optimizer()` again to include the new parameters.
 
         Args:
-            surf_idx (int or None): Surface index to convert. If ``None``,
-                auto-selects the best candidate.
-            ai_degree (int): Number of even-order aspheric coefficients
-                ``[a2, a4, a6, ...]``. Defaults to 4.
+            surf_idx (int or None, optional): Surface index to convert. If `None`,
+                auto-selects the best candidate. Defaults to None.
+            ai_degree (int, optional): Number of even-order aspheric coefficients
+                `[a4, a6, a8, ...]`. Defaults to 4.
 
         Returns:
             surf_idx (int): Index of the converted surface.
 
         Raises:
-            IndexError: If ``surf_idx`` is out of range.
-            ValueError: If ``surf_idx`` points to a non-Spheric surface, or no
+            IndexError: If `surf_idx` is out of range.
+            ValueError: If `surf_idx` points to a non-Spheric surface, or no
                 eligible candidate exists for auto-selection.
-
-        References:
-            Design principles from ``research/aspheric_design_principles.md``.
         """
         if surf_idx is not None:
             if surf_idx < 0 or surf_idx >= len(self.surfaces):
@@ -105,14 +109,16 @@ class GeoLensSurfOps:
 
         Strategy based on classical aspheric placement theory:
 
-        * **No existing aspheres** → nearest to aperture stop (maximises
-          spherical aberration correction, analogous to Schmidt corrector).
-        * **Asphere(s) already near stop** → farthest from stop (corrects
-          field-dependent aberrations), but **excluding outermost surfaces**
-          (first/last refractive surfaces are typically large protective
-          elements that are impractical and expensive to aspherize).
-        * Ties broken by larger semi-diameter (proxy for marginal ray height).
-        * Only air-glass interfaces are considered (cemented surfaces excluded).
+        - No existing aspheres: pick the surface nearest the aperture stop
+          (maximises spherical aberration correction, analogous to a Schmidt
+          corrector).
+        - Asphere(s) already present: pick the surface farthest from the stop
+          (corrects field-dependent aberrations), excluding the outermost
+          surfaces (the first element's two surfaces and the last refractive
+          surface are typically large protective elements that are impractical
+          and expensive to aspherize).
+        - Ties broken by larger semi-diameter (proxy for marginal ray height).
+        - Only air-glass interfaces are considered (cemented surfaces excluded).
 
         Returns:
             best_idx (int): Surface index of the best candidate.
@@ -199,13 +205,14 @@ class GeoLensSurfOps:
         """Check whether a surface sits at an air-glass boundary.
 
         Looks past adjacent Aperture surfaces when determining the medium
-        on the incident side.
+        on the incident side. The medium on each side is read from the
+        relevant surface's `mat2` material.
 
         Args:
             surf_idx (int): Surface index.
 
         Returns:
-            is_interface (bool): ``True`` if exactly one side is air and the
+            is_interface (bool): True if exactly one side is air and the
                 other is glass.
         """
         # Material before: walk backwards past aperture surfaces
@@ -224,12 +231,15 @@ class GeoLensSurfOps:
     def _spheric_to_aspheric(self, surf_idx, ai_degree=4):
         """Replace a Spheric surface with an equivalent Aspheric in-place.
 
-        The new surface has ``k=0`` and all ``ai`` coefficients set to zero,
-        preserving the original sag profile exactly.
+        The new surface has conic constant $k=0$ and all `ai` coefficients set
+        to zero, preserving the original sag profile exactly. Radius, position,
+        curvature, material, and orientation are copied from the original
+        surface.
 
         Args:
             surf_idx (int): Index of the surface to convert.
-            ai_degree (int): Number of even-order polynomial terms.
+            ai_degree (int, optional): Number of even-order polynomial terms.
+                Defaults to 4.
 
         Raises:
             ValueError: If the surface is not Spheric.
@@ -256,34 +266,35 @@ class GeoLensSurfOps:
 
     @torch.no_grad()
     def increase_aspheric_order(self, surf_idx=None, increment=1):
-        """Add higher-order polynomial terms to existing Aspheric surfaces.
+        """Add higher-order polynomial terms to an existing Aspheric surface.
 
-        Appends ``increment`` additional even-order coefficients (initialised
-        to zero). For example, degree 4 ``[a4, a6, a8, a10]`` becomes degree 5
-        ``[a4, a6, a8, a10, a12]`` after ``increment=1``.
+        Appends `increment` additional even-order coefficients (initialised
+        to zero). For example, degree 4 `[a4, a6, a8, a10]` becomes degree 5
+        `[a4, a6, a8, a10, a12]` after `increment=1`.
 
-        Follows the principle of *start low, add incrementally*: increase
+        Follows the principle of "start low, add incrementally": increase
         order only when residual higher-order aberrations persist after
-        optimisation at the current order.
+        optimization at the current order.
 
         Note:
             After calling this method, any existing optimizer is stale.
-            Call ``get_optimizer()`` again to include the new parameters.
+            Call `get_optimizer()` again to include the new parameters.
 
         Args:
-            surf_idx (int or None): Surface index. If ``None``, auto-selects
-                the best candidate (see ``_find_best_order_increase_candidate``).
-            increment (int): Number of additional coefficients to add.
+            surf_idx (int or None, optional): Surface index. If `None`,
+                auto-selects the best candidate (see
+                `_find_best_order_increase_candidate`). Defaults to None.
+            increment (int, optional): Number of additional coefficients to add.
                 Defaults to 1.
 
         Returns:
             surf_idx (int): Index of the surface whose order was increased.
 
         Raises:
-            IndexError: If ``surf_idx`` is out of range.
-            ValueError: If ``surf_idx`` is given but is not Aspheric, if
-                no Aspheric surfaces exist when ``surf_idx`` is ``None``,
-                or if ``increment`` < 1.
+            IndexError: If `surf_idx` is out of range.
+            ValueError: If `surf_idx` is given but is not Aspheric, if
+                no Aspheric surfaces exist when `surf_idx` is `None`,
+                or if `increment` is less than 1.
         """
         if increment < 1:
             raise ValueError(f"increment must be >= 1, got {increment}.")
@@ -311,16 +322,15 @@ class GeoLensSurfOps:
     def _find_best_order_increase_candidate(self):
         """Select the best Aspheric surface to increase polynomial order.
 
-        Follows Principle 5 (*one surface, one term at a time*) from
-        aspheric design theory.  Ranking criteria (in priority order):
+        Follows the principle of "one surface, one term at a time" from
+        aspheric design theory. Ranking criteria (in priority order):
 
-        1. **Lowest current ``ai_degree``** — the surface with fewest
-           polynomial terms benefits most from an additional term.
-        2. **Largest semi-diameter ``r``** — proxy for marginal ray height;
-           higher-order terms have more leverage on surfaces where the
-           beam is widest (Principle 1).
-        3. **Highest refractive-index contrast ``Δn``** — larger Δn at
-           the interface amplifies the aspheric correction (Principle 2).
+        1. Lowest current `ai_degree`: the surface with fewest polynomial
+           terms benefits most from an additional term.
+        2. Largest semi-diameter `r` [mm]: proxy for marginal ray height;
+           higher-order terms have more leverage where the beam is widest.
+        3. Highest refractive-index contrast $\\Delta n$: a larger index step
+           at the interface amplifies the aspheric correction.
 
         Returns:
             best_idx (int): Surface index of the best candidate.
@@ -361,13 +371,14 @@ class GeoLensSurfOps:
     def _increase_surface_order(self, surf, increment=1):
         """Append zero-initialised higher-order coefficients to a surface.
 
-        Updates ``ai_degree``, individual ``ai{2*(j+2)}`` attributes, and the
-        ``ai`` tensor consistently.  The ai list starts from the 4th-order
-        term (a4): ``[a4, a6, a8, ...]``.
+        Updates `ai_degree`, the individual `ai{2*(j+2)}` attributes, and the
+        `ai` tensor consistently. The coefficient list starts from the
+        4th-order term (a4): `[a4, a6, a8, ...]`.
 
         Args:
-            surf (Aspheric): Surface to modify.
-            increment (int): Number of additional coefficients.
+            surf (Aspheric): Surface to modify in-place.
+            increment (int, optional): Number of additional coefficients.
+                Defaults to 1.
         """
         old_degree = surf.ai_degree
         new_degree = old_degree + increment
@@ -389,17 +400,21 @@ class GeoLensSurfOps:
     # ====================================================================================
     @torch.no_grad()
     def prune_surf(self, mounting_margin=None):
-        """Prune surfaces to allow all valid rays to go through.
+        """Prune surface radii so all valid rays pass through, then enforce manufacturability.
 
-        Determines the clear aperture for each surface by ray tracing, then
-        adds a mounting margin and enforces manufacturability constraints
-        (edge thickness and air-gap clearance).
+        Traces 16 meridional fields from 0 to the full FoV to find the maximum
+        ray height [mm] on each surface, expands it by a mounting margin, then
+        caps the proposed radii to satisfy an edge-sag limit and edge-clearance
+        (air-gap / edge-thickness) constraints with neighbouring surfaces.
+        Aperture surfaces are not resized. The capped radii are committed via
+        each surface's `update_r`.
 
         Args:
-            mounting_margin (float, optional): Absolute mounting margin in mm
-                added to the ray-traced clear aperture radius. If ``None``,
-                the margin is auto-selected per surface: 10 % of the
-                ray-traced radius when it is below 5 mm, otherwise 1 mm.
+            mounting_margin (float or None, optional): Absolute mounting margin
+                [mm] added to the ray-traced clear-aperture radius. If `None`,
+                the margin is auto-selected per surface: 5% of the ray-traced
+                radius when that radius is below 5 mm, otherwise 1 mm. Defaults
+                to None.
         """
         surface_range = self.find_diff_surf()
         num_surfs = len(self.surfaces)
@@ -599,15 +614,18 @@ class GeoLensSurfOps:
 
     @torch.no_grad()
     def correct_shape(self, mounting_margin=None):
-        """Correct wrong lens shape during lens design optimization.
+        """Correct invalid lens shape during lens design optimization.
 
-        Applies correction rules to ensure valid lens geometry:
-            1. Move the first surface to z = 0.0
-            2. Prune all surfaces to allow valid rays through
+        Applies two correction rules to restore valid lens geometry:
+
+        1. Shift all surfaces (and the sensor) so the first surface sits at
+           $z = 0$ mm.
+        2. Prune all surfaces to let all valid rays pass through.
 
         Args:
-            mounting_margin (float, optional): Absolute mounting margin [mm] for
-                surface pruning.  Passed through to `prune_surf`.
+            mounting_margin (float or None, optional): Absolute mounting margin
+                [mm] for surface pruning, passed through to `prune_surf`.
+                Defaults to None.
         """
         # Rule 1: Move the first surface to z = 0.0
         move_dist = self.surfaces[0].d.item()
@@ -620,11 +638,17 @@ class GeoLensSurfOps:
 
     @torch.no_grad()
     def match_materials(self, mat_table="CDGM"):
-        """Match lens materials to a glass catalog.
+        """Match each surface's material to the nearest entry in a glass catalog.
+
+        Replaces every surface's `mat2` glass with the closest real catalog
+        glass in-place, making an idealised design manufacturable.
 
         Args:
-            mat_table (str, optional): Glass catalog name. Common options include
-                'CDGM', 'SCHOTT', 'OHARA'. Defaults to 'CDGM'.
+            mat_table (str, optional): Glass catalog name. Supported values are
+                'CDGM' (default catalog) and 'PLASTIC'. Defaults to 'CDGM'.
+
+        Raises:
+            NotImplementedError: If `mat_table` is an unrecognised catalog name.
         """
         for surf in self.surfaces:
             surf.mat2.match_material(mat_table=mat_table)

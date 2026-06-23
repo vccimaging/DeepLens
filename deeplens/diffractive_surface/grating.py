@@ -16,15 +16,22 @@ from .diffractive import DiffractiveSurface
 
 
 class Grating(DiffractiveSurface):
-    """Grating diffractive optical element.
-    
-    A grating introduces a linear phase gradient defined by:
-        phi(x, y) = alpha * (x * sin(theta) + y * cos(theta)) / norm_radii
-    
-    where:
-        - theta: angle from y-axis to grating vector
-        - alpha: slope of the grating (phase gradient strength)
-        - norm_radii: normalization radius
+    """Linear grating diffractive optical element.
+
+    A grating introduces a linear phase gradient across the surface, which
+    diffracts light into multiple diffraction orders. The phase profile is
+
+    $$\\phi(x, y) = \\alpha \\,\\frac{x \\sin\\theta + y \\cos\\theta}{\\text{norm\\_radii}}$$
+
+    where $\\theta$ is the angle from the y-axis to the grating vector,
+    $\\alpha$ is the grating slope (phase-gradient strength), and `norm_radii`
+    normalizes the coordinates.
+
+    Attributes:
+        theta (torch.Tensor): Angle from the y-axis to the grating vector. [rad]
+        alpha (torch.Tensor): Grating slope (phase-gradient strength). [rad]
+        norm_radii (float): Coordinate normalization radius (half the DOE
+            width). [mm]
     """
 
     def __init__(
@@ -39,18 +46,22 @@ class Grating(DiffractiveSurface):
         alpha=0.0,
         device="cpu",
     ):
-        """Initialize Grating DOE.
-        
+        """Initialize a grating DOE.
+
         Args:
-            d (float): Distance of the DOE surface. [mm]
-            res (tuple or int): Resolution of the DOE, [w, h]. [pixel]
-            mat (str): Material of the DOE.
-            wvln0 (float): Design wavelength. [um]
-            fab_ps (float): Fabrication pixel size. [mm]
-            fab_step (int): Fabrication step.
-            theta (float): Angle from y-axis to grating vector. [rad]
-            alpha (float): Slope of the grating (phase gradient strength).
-            device (str): Device to run the DOE.
+            d (float): Axial position of the DOE plane. [mm]
+            res (tuple or int, optional): Resolution of the DOE as (H, W); an
+                int is expanded to (res, res). [pixel]. Defaults to (2000, 2000).
+            mat (str, optional): Material name of the DOE. Defaults to "fused_silica".
+            wvln0 (float, optional): Design wavelength. [um]. Defaults to 0.55.
+            fab_ps (float, optional): Fabrication pixel size. [mm]. Defaults to 0.001.
+            fab_step (int, optional): Number of fabrication (quantization)
+                levels. Defaults to 16.
+            theta (float, optional): Angle from the y-axis to the grating
+                vector. [rad]. Defaults to 0.0.
+            alpha (float, optional): Grating slope (phase-gradient strength).
+                [rad]. Defaults to 0.0.
+            device (str, optional): Device to place the DOE tensors on. Defaults to "cpu".
         """
         super().__init__(
             d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step, device=device
@@ -67,13 +78,15 @@ class Grating(DiffractiveSurface):
 
     @classmethod
     def init_from_dict(cls, doe_dict):
-        """Initialize Grating DOE from a dict.
-        
+        """Initialize a grating DOE from a parameter dict.
+
         Args:
-            doe_dict (dict): Dictionary containing DOE parameters.
-            
+            doe_dict (dict): Dictionary of DOE parameters. Requires keys "d" and
+                "res"; "mat", "wvln0", "fab_ps", "fab_step", "theta", and
+                "alpha" are optional and fall back to defaults.
+
         Returns:
-            Grating: Initialized Grating DOE object.
+            grating (Grating): The constructed grating DOE instance.
         """
         return cls(
             d=doe_dict["d"],
@@ -87,13 +100,15 @@ class Grating(DiffractiveSurface):
         )
 
     def phase_func(self):
-        """Get the phase map at design wavelength.
-        
-        The grating phase is a linear function of position:
-            phi(x, y) = alpha * (x * sin(theta) + y * cos(theta)) / norm_radii
-        
+        """Compute the raw grating phase profile at the design wavelength.
+
+        The phase is a linear function of position:
+
+        $$\\phi(x, y) = \\alpha \\,\\frac{x \\sin\\theta + y \\cos\\theta}{\\text{norm\\_radii}}$$
+
         Returns:
-            phase (tensor): Phase map at design wavelength.
+            phase (torch.Tensor): Raw, unwrapped phase profile at the design
+                wavelength. [H, W]. [rad]
         """
         # Normalize coordinates
         x_norm = self.x / self.norm_radii
@@ -110,13 +125,18 @@ class Grating(DiffractiveSurface):
     # Optimization
     # =======================================
     def get_optimizer_params(self, lr=0.001):
-        """Get parameters for optimization.
+        """Build optimizer parameter groups for the grating parameters.
+
+        Enables gradients on `theta` and `alpha`. The `alpha` group uses a
+        learning rate scaled by 10x relative to `lr`.
 
         Args:
-            lr (float): Learning rate for grating parameters.
-            
+            lr (float, optional): Base learning rate for the grating
+                parameters. Defaults to 0.001.
+
         Returns:
-            list: List of parameter groups for optimizer.
+            optimizer_params (list): List of parameter-group dicts for the
+                optimizer.
         """
         self.theta.requires_grad = True
         self.alpha.requires_grad = True
@@ -132,10 +152,13 @@ class Grating(DiffractiveSurface):
     # IO
     # =======================================
     def surf_dict(self):
-        """Return a dict of surface parameters.
-        
+        """Return a serializable dict of the grating surface parameters.
+
+        Extends the base surface dict with the grating-specific `theta`,
+        `alpha`, and `norm_radii` entries.
+
         Returns:
-            dict: Dictionary containing surface parameters.
+            surf_dict (dict): Dictionary of surface parameters.
         """
         surf_dict = super().surf_dict()
         surf_dict["theta"] = round(self.theta.item(), 6)
@@ -144,10 +167,11 @@ class Grating(DiffractiveSurface):
         return surf_dict
 
     def save_ckpt(self, save_path="./grating_doe.pth"):
-        """Save grating DOE parameters.
-        
+        """Save the grating DOE parameters to a checkpoint file.
+
         Args:
-            save_path (str): Path to save the checkpoint.
+            save_path (str, optional): Path to write the checkpoint to. Defaults
+                to "./grating_doe.pth".
         """
         torch.save(
             {
@@ -159,10 +183,13 @@ class Grating(DiffractiveSurface):
         )
 
     def load_ckpt(self, load_path="./grating_doe.pth"):
-        """Load grating DOE parameters.
-        
+        """Load the grating DOE parameters from a checkpoint file.
+
+        Restores `theta` and `alpha` onto the current device.
+
         Args:
-            load_path (str): Path to load the checkpoint from.
+            load_path (str, optional): Path to read the checkpoint from.
+                Defaults to "./grating_doe.pth".
         """
         ckpt = torch.load(load_path)
         self.theta = ckpt["theta"].to(self.device)

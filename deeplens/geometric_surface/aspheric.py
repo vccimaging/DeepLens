@@ -6,11 +6,11 @@
 
 """Aspheric surface.
 
-The ``ai`` coefficient list starts from the 4th-order term (a4) by default.
+The `ai` coefficient list starts from the 4th-order term (a4) by default.
 Legacy JSON files that include a 2nd-order term (a2) are loaded via the
-``use_ai2`` flag in ``init_from_dict``.  When present, ``a2`` is stored
+`use_ai2` flag in `init_from_dict`. When present, `a2` is stored
 separately and included in the sag computation but is **not** optimised
-(it competes with the base curvature ``c``).
+(it competes with the base curvature `c`).
 
 Reference:
     [1] https://en.wikipedia.org/wiki/Aspheric_lens.
@@ -33,9 +33,9 @@ class Aspheric(Surface):
     $$
 
     The polynomial starts at the 4th-order term (a4) because the 2nd-order
-    term competes with the base curvature ``c``.
+    term competes with the base curvature `c`.
 
-    All coefficients ``c``, ``k``, and ``ai`` are differentiable torch
+    All coefficients `c`, `k`, and `ai` are differentiable torch
     tensors so they can be optimised with gradient descent.
 
     Attributes:
@@ -43,7 +43,7 @@ class Aspheric(Surface):
         k (torch.Tensor): Conic constant.
         ai2 (torch.Tensor or None): 2nd-order aspheric coefficient (legacy).
         ai (torch.Tensor): Even-order aspheric coefficients
-            ``[a4, a6, a8, ...]``.
+            `[a4, a6, a8, ...]`.
     """
 
     def __init__(
@@ -65,22 +65,22 @@ class Aspheric(Surface):
         Args:
             r (float): Aperture radius [mm].
             d (float): Axial vertex position [mm].
-            c (float): Base curvature ``1/R`` [1/mm].
-            k (float): Conic constant (``0`` = sphere, ``-1`` = paraboloid).
+            c (float): Base curvature `1/R` [1/mm].
+            k (float): Conic constant (`0` = sphere, `-1` = paraboloid).
             ai (list[float] or None): Even-order aspheric coefficients
-                starting from the 4th-order term: ``[a4, a6, a8, ...]``.
-                Pass ``None`` or an empty list for a pure conic.
+                starting from the 4th-order term: `[a4, a6, a8, ...]`.
+                Pass `None` or an empty list for a pure conic.
             mat2 (str or Material): Material on the transmission side.
             ai2 (float or None, optional): 2nd-order aspheric coefficient
-                from legacy data.  Included in sag but not optimised.
-                Defaults to ``None``.
-            pos_xy (list[float], optional): Lateral offset ``[x, y]`` [mm].
-                Defaults to ``[0.0, 0.0]``.
+                from legacy data. Included in sag but not optimised.
+                Defaults to None.
+            pos_xy (list[float], optional): Lateral offset `[x, y]` [mm].
+                Defaults to `[0.0, 0.0]`.
             vec_local (list[float], optional): Local normal direction.
-                Defaults to ``[0.0, 0.0, 1.0]``.
+                Defaults to `[0.0, 0.0, 1.0]`.
             is_square (bool, optional): Square aperture flag.
-                Defaults to ``False``.
-            device (str, optional): Compute device. Defaults to ``"cpu"``.
+                Defaults to False.
+            device (str, optional): Compute device. Defaults to `"cpu"`.
         """
         Surface.__init__(
             self,
@@ -116,6 +116,22 @@ class Aspheric(Surface):
 
     @classmethod
     def init_from_dict(cls, surf_dict):
+        """Create an aspheric surface from a serialized dict.
+
+        The base curvature is read from `roc` (radius of curvature [mm],
+        converted to `c = 1/roc`) when present, otherwise from `c` [1/mm].
+        For legacy data where `use_ai2` is True (or absent), the first
+        element of `ai` is interpreted as the 2nd-order coefficient `a2`
+        and the rest as `[a4, a6, a8, ...]`.
+
+        Args:
+            surf_dict (dict): Serialized surface with keys `r`, `d`, `k`,
+                `mat2`, either `roc` or `c`, and optionally `ai` and
+                `use_ai2`.
+
+        Returns:
+            surface (Aspheric): The reconstructed aspheric surface.
+        """
         if "roc" in surf_dict:
             if surf_dict["roc"] != 0:
                 c = 1 / surf_dict["roc"]
@@ -149,17 +165,35 @@ class Aspheric(Surface):
         )
 
     def _get_curvature_params(self):
-        """Get base curvature ``c`` and conic constant ``k``."""
+        """Return base curvature `c` [1/mm] and conic constant `k`.
+
+        Returns:
+            c (torch.Tensor): Base curvature [1/mm].
+            k (torch.Tensor): Conic constant.
+        """
         return self.c, self.k
 
     def _sag(self, x, y):
-        """Compute surface sag (height) z = sag(x, y).
+        """Compute surface sag (axial height) $z = \\mathrm{sag}(x, y)$.
 
-        The aspheric surface is defined as:
-            z = r²c / (1 + sqrt(1 - (1+k)r²c²)) + [a2*r²] + Σ a_{2i} * r^{2i}
+        The even-order aspheric sag is
 
-        where r² = x² + y², c is curvature, k is conic constant, and ai are
-        the aspheric coefficients (ai4, ai6, ai8, ...).
+        $$
+        z = \\frac{c\\,\\rho^2}{1 + \\sqrt{1-(1+k)c^2\\rho^2}}
+        + a_2\\rho^2 + \\sum_{i\\ge 2} a_{2i}\\,\\rho^{2i},
+        \\quad \\rho^2 = x^2 + y^2,
+        $$
+
+        where the $a_2\\rho^2$ term is only added when the legacy `ai2`
+        coefficient is present. All lengths are in [mm].
+
+        Args:
+            x (torch.Tensor): x coordinate(s) [mm], any shape.
+            y (torch.Tensor): y coordinate(s) [mm], broadcastable with `x`.
+
+        Returns:
+            z (torch.Tensor): Surface sag [mm], same shape as the broadcast
+                of `x` and `y`.
         """
         c, k = self._get_curvature_params()
 
@@ -180,10 +214,20 @@ class Aspheric(Surface):
         return total_surface
 
     def _dfdxy(self, x, y):
-        """Compute first-order height derivatives df/dx and df/dy.
+        """Compute first-order sag derivatives $\\partial z/\\partial x$ and $\\partial z/\\partial y$.
 
-        For the aspheric polynomial Σ a_{2i} * r^{2i} (i >= 2), the derivative
-        w.r.t. r² is Σ i * a_{2i} * r^{2(i-1)}, i.e.: 2*a4*r² + 3*a6*r⁴ + ...
+        Differentiates the sag via $\\partial z/\\partial x = (\\partial z/\\partial \\rho^2)\\,2x$.
+        For the polynomial $\\sum_{i\\ge 2} a_{2i}\\rho^{2i}$, the derivative
+        w.r.t. $\\rho^2$ is $\\sum_{i\\ge 2} i\\,a_{2i}\\,\\rho^{2(i-1)}$, i.e.
+        $2a_4\\rho^2 + 3a_6\\rho^4 + \\dots$
+
+        Args:
+            x (torch.Tensor): x coordinate(s) [mm], any shape.
+            y (torch.Tensor): y coordinate(s) [mm], broadcastable with `x`.
+
+        Returns:
+            dfdx (torch.Tensor): $\\partial z/\\partial x$ [dimensionless], same shape as input.
+            dfdy (torch.Tensor): $\\partial z/\\partial y$ [dimensionless], same shape as input.
         """
         c, k = self._get_curvature_params()
 
@@ -206,12 +250,21 @@ class Aspheric(Surface):
         return dsdr2 * 2 * x, dsdr2 * 2 * y
 
     def is_within_data_range(self, x, y):
-        """Invalid when shape is non-defined.
+        """Return a mask of points where the conic sag is real-valued.
 
-        Fully tensorized (no Python branch on the tensor value of ``k``) so
-        the function is safe to trace through ``torch.compile``. When
-        ``k <= -1`` the conic has no real boundary, so every point is
+        A point is valid when $(1+k)c^2\\rho^2 < 1$, i.e. inside the conic's
+        real boundary. Fully tensorized (no Python branch on the tensor value
+        of `k`) so the function is safe to trace through `torch.compile`.
+        When $k \\le -1$ the conic has no real boundary, so every point is
         treated as valid.
+
+        Args:
+            x (torch.Tensor): x coordinate(s) [mm], any shape.
+            y (torch.Tensor): y coordinate(s) [mm], broadcastable with `x`.
+
+        Returns:
+            valid (torch.Tensor): Boolean mask, same shape as the broadcast
+                of `x` and `y`.
         """
         c, k = self._get_curvature_params()
         one_plus_k = 1 + k
@@ -225,7 +278,16 @@ class Aspheric(Surface):
         return torch.where(one_plus_k > 0, inside, torch.ones_like(inside))
 
     def max_height(self):
-        """Maximum valid height."""
+        """Return the maximum valid radial height of the surface.
+
+        For an oblate/ellipsoidal conic ($k > -1$) the sag is real only up to
+        $\\rho_{max} = \\sqrt{1/((k+1)c^2)}$; a small margin (0.001 mm) is
+        subtracted. For $k \\le -1$ there is no boundary and a large value
+        (10000 mm) is returned.
+
+        Returns:
+            max_height (float): Maximum valid radial height [mm].
+        """
         c, k = self._get_curvature_params()
         if k > -1:
             return torch.sqrt(1 / (k + 1) / (c**2)).item() - 0.001
@@ -238,17 +300,22 @@ class Aspheric(Surface):
     def get_optimizer_params(self, lrs=[1e-4, 1e-4, 1e-2, 1e-4], optim_mat=False):
         """Get optimizer parameters for different parameters.
 
-        The learning rate for each aspheric coefficient ``a_{2n}`` is scaled
-        by ``1 / max(r, 1)^{2n}`` so that the effective sag perturbation per
+        The learning rate for each aspheric coefficient $a_{2n}$ is scaled
+        by $1 / \\max(r, 1)^{2n}$ so that the effective sag perturbation per
         Adam step is approximately constant (~lr_base mm) regardless of
-        surface semi-diameter.  Without this normalisation, gradients scale
-        as ``O(r^{2n})`` and can reach ``10^5`` for camera-sized surfaces,
+        surface semi-diameter. Without this normalisation, gradients scale
+        as $O(r^{2n})$ and can reach $10^5$ for camera-sized surfaces,
         causing NaN within a few dozen iterations.
 
         Args:
-            lrs (list, optional): learning rates for ``[d, c, k, ai]``.
-            optim_mat (bool, optional): whether to optimize material.
-                Defaults to False.
+            lrs (list[float], optional): Learning rates for `[d, c, k, ai]`.
+                Defaults to `[1e-4, 1e-4, 1e-2, 1e-4]`.
+            optim_mat (bool, optional): Whether to also optimize the
+                material parameters. Defaults to False.
+
+        Returns:
+            params (list[dict]): Parameter groups (each a dict with `params`
+                and `lr`) ready to pass to a torch optimizer.
         """
         params = []
 
@@ -290,7 +357,17 @@ class Aspheric(Surface):
     # IO
     # =======================================
     def surf_dict(self):
-        """Return a dict of surface."""
+        """Serialize the surface to a dict.
+
+        The aspheric coefficients are written into the `ai` list as
+        `[a4, a6, a8, ...]`; when the legacy `ai2` coefficient is present it
+        is prepended so `ai[0] = a2` and `use_ai2` is set True.
+
+        Returns:
+            surf_dict (dict): Serialized surface (keys `type`, `r`, `roc`,
+                `d`, `k`, `ai`, `use_ai2`, `mat2`, plus informational
+                `(c)`/`(ai*)` entries). Lengths in [mm], `c` in [1/mm].
+        """
         has_ai2 = self.ai2 is not None
         surf_dict = {
             "type": "Aspheric",
@@ -319,7 +396,19 @@ class Aspheric(Surface):
         return surf_dict
 
     def zmx_str(self, surf_idx, d_next):
-        """Return Zemax surface string."""
+        """Return the Zemax (.zmx) text block for this surface.
+
+        Emits an `EVENASPH` surface. PARM 1 holds the legacy 2nd-order
+        coefficient `a2`, and PARM 2 onward hold `a4, a6, a8, ...`, padded
+        with zeros up to PARM 8 (a16).
+
+        Args:
+            surf_idx (int): Surface index in the Zemax file.
+            d_next (torch.Tensor): Axial distance [mm] to the next surface.
+
+        Returns:
+            zmx_str (str): Multi-line Zemax surface description.
+        """
         assert self.c.item() != 0, (
             "Aperture surface is re-implemented in Aperture class."
         )

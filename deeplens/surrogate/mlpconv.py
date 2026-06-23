@@ -6,20 +6,35 @@ import torch.nn.functional as F
 
 
 class MLPConv(nn.Module):
-    """MLP encoder + convolutional decoder for high-resolution PSF prediction.
+    """MLP encoder plus convolutional decoder for high-resolution PSF prediction.
 
-    Uses a linear encoder to produce a low-resolution feature map, then a
-    transposed-convolution decoder to upsample to the target PSF resolution.
-    The output is Sigmoid-activated and L1-normalized per spatial dimension.
+    The MLP encoder maps the input features to a low-resolution feature map of
+    spatial size `min(ks, 32)`, which a transposed-convolution decoder then
+    upsamples by powers of two to the target PSF size `ks`. The decoder output is
+    always Sigmoid-activated and L1-normalized over the two spatial dimensions so
+    each predicted PSF sums to one.
 
-    Reference: "Differentiable Compound Optics and Processing Pipeline Optimization
-    for End-To-end Camera Design".
+    Reference:
+        "Differentiable Compound Optics and Processing Pipeline Optimization for
+        End-To-end Camera Design".
+
+    Attributes:
+        ks (int): Spatial size of the output PSF.
+        ks_mlp (int): Spatial size of the MLP feature map, `min(ks, 32)`.
+        channels (int): Number of output channels.
+        encoder (nn.Sequential): Linear encoder producing the feature map.
+        decoder (nn.Sequential): Transposed-convolution upsampling decoder.
+        activation (nn.Module): Activation module selected by `activation`. Note
+            that the forward pass uses a Sigmoid regardless of this attribute.
 
     Args:
-        in_features (int): Number of input features (e.g., field angle + wavelength).
-        ks (int): Spatial size of the output PSF. Must be a multiple of 32 if > 32.
-        channels (int): Number of output channels. Defaults to 3.
-        activation (str): Activation function, ``"relu"`` or ``"sigmoid"``. Defaults to ``"relu"``.
+        in_features (int): Number of input features (e.g. field angle plus wavelength).
+        ks (int): Spatial size of the output PSF. When greater than 32 it must be a
+            multiple of 32 (asserted), and in practice $32 \\cdot 2^n$ so the decoder
+            upsamples by integer powers of two.
+        channels (int, optional): Number of output channels. Defaults to 3.
+        activation (str, optional): Activation name, `"relu"` or `"sigmoid"`, stored
+            on `self.activation` but unused by `forward`. Defaults to `"relu"`.
     """
 
     def __init__(self, in_features, ks, channels=3, activation="relu"):
@@ -74,14 +89,18 @@ class MLPConv(nn.Module):
             self.activation = nn.Sigmoid()
 
     def forward(self, x):
-        """Forward pass.
+        """Predict normalized PSFs from input feature vectors.
+
+        Encodes `x` into a `(batch_size, channels, ks_mlp, ks_mlp)` feature map,
+        upsamples it through the conv decoder, then applies Sigmoid and L1
+        normalization over the spatial dimensions so each PSF sums to one.
 
         Args:
-            x (torch.Tensor): Input tensor of shape ``(batch_size, in_features)``.
+            x (torch.Tensor): Input tensor of shape `(batch_size, in_features)`.
 
         Returns:
             decoded (torch.Tensor): Normalized PSF tensor of shape
-                ``(batch_size, channels, ks, ks)``.
+                `(batch_size, channels, ks, ks)`.
         """
         # Encode the input using the MLP
         encoded = self.encoder(x)

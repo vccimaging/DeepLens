@@ -4,7 +4,11 @@
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
-"""A MLP-Conv network architecture to represent the spatiallly varying PSF of a lens.
+"""MLP-Conv network architecture to represent the spatially varying PSF of a lens.
+
+An MLP maps a field condition (r, z) to a latent vector, and a convolutional
+decoder upsamples that latent into a per-channel PSF kernel that is normalized
+to sum to 1 over the spatial dimensions.
 """
 
 import torch
@@ -13,10 +17,27 @@ import torch.nn.functional as F
 
 
 class ChannelwiseNormalization(nn.Module):
+    """Normalize each channel to sum to 1 over the spatial dimensions.
+
+    Applies a softmax over the flattened spatial locations of each channel, so
+    every channel of the output forms a valid PSF energy distribution.
+    """
+
     def __init__(self):
+        """Initialize the channel-wise normalization module."""
         super(ChannelwiseNormalization, self).__init__()
 
     def forward(self, x):
+        """Apply per-channel spatial softmax normalization.
+
+        Args:
+            x (torch.Tensor): Input feature map of shape [batch, channels, height, width].
+
+        Returns:
+            out (torch.Tensor): Normalized feature map of shape
+                [batch, channels, height, width], where each channel sums to 1
+                over the spatial dimensions.
+        """
         # x shape: [batch, channels, height, width]
         # Reshape to [batch, channels, -1] to apply softmax over spatial dimensions
         b, c, h, w = x.shape
@@ -28,7 +49,24 @@ class ChannelwiseNormalization(nn.Module):
 
 
 class ResidualBlock(nn.Module):
+    """Two-convolution residual block with batch norm and ReLU.
+
+    Two conv -> batch-norm layers are summed with a shortcut (identity, or a
+    1x1 conv projection when the channel count or stride changes), then passed
+    through a final ReLU.
+    """
+
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, stride=1):
+        """Initialize the residual block.
+
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int, optional): Convolution kernel size. Defaults to 3.
+            padding (int, optional): Convolution padding. Defaults to 1.
+            stride (int, optional): Stride of the first convolution and shortcut.
+                Defaults to 1.
+        """
         super(ResidualBlock, self).__init__()
         self.conv1 = nn.Conv2d(
             in_channels,
@@ -59,6 +97,16 @@ class ResidualBlock(nn.Module):
             )
 
     def forward(self, x):
+        """Apply the residual block.
+
+        Args:
+            x (torch.Tensor): Input feature map of shape [batch, in_channels, H, W].
+
+        Returns:
+            out (torch.Tensor): Output feature map of shape
+                [batch, out_channels, H', W'], where H' and W' are reduced by
+                `stride`.
+        """
         residual = x
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
@@ -67,7 +115,20 @@ class ResidualBlock(nn.Module):
 
 
 class DecoderBlock(nn.Module):
+    """Residual refinement followed by 2x transposed-convolution upsampling.
+
+    Refines features with a `ResidualBlock` (keeping the channel count), then
+    doubles the spatial resolution via a stride-2 transposed convolution,
+    followed by batch norm and ReLU.
+    """
+
     def __init__(self, in_channels, out_channels):
+        """Initialize the decoder block.
+
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels after upsampling.
+        """
         super().__init__()
         self.residual = ResidualBlock(in_channels, in_channels)
         self.upsample = nn.ConvTranspose2d(
@@ -77,6 +138,15 @@ class DecoderBlock(nn.Module):
         self.activation = nn.ReLU()
 
     def forward(self, x):
+        """Refine and upsample the feature map by a factor of 2.
+
+        Args:
+            x (torch.Tensor): Input feature map of shape [batch, in_channels, H, W].
+
+        Returns:
+            out (torch.Tensor): Upsampled feature map of shape
+                [batch, out_channels, 2*H, 2*W].
+        """
         x = self.residual(x)  # Refine first
         x = self.upsample(x)  # Then upsample
         x = self.norm(x)
@@ -84,13 +154,26 @@ class DecoderBlock(nn.Module):
 
 
 class MLPConditioner(nn.Module):
-    """
-    MLP to process input (r, z) into a latent vector.
-    Input: [batch_size, in_chan]
-    Output: [batch_size, latent_dim] (flat vector)
+    """Map a field condition (e.g. (r, z)) to a flat latent vector.
+
+    A learnable per-channel affine transform (scale and shift) normalizes the
+    differently-scaled inputs, followed by a 4-layer MLP
+    (in_chan -> 128 -> 512 -> 1024 -> latent_dim) with ReLU activations.
+
+    Attributes:
+        scale (torch.Tensor): Learnable per-input scale, shape [in_chan].
+        shift (torch.Tensor): Learnable per-input shift, shape [in_chan].
     """
 
     def __init__(self, in_chan=2, latent_dim=4096):
+        """Initialize the MLP conditioner.
+
+        Args:
+            in_chan (int, optional): Number of input condition channels (e.g. 2
+                for (r, z)). Defaults to 2.
+            latent_dim (int, optional): Dimension of the output latent vector.
+                Defaults to 4096.
+        """
         super(MLPConditioner, self).__init__()
         # Learnable scaling and shifting parameters to handle different input ranges
         self.scale = nn.Parameter(torch.ones(in_chan))
@@ -106,21 +189,54 @@ class MLPConditioner(nn.Module):
         )
 
     def forward(self, x):
+        """Map the input condition to a latent vector.
+
+        Args:
+            x (torch.Tensor): Input condition of shape [batch_size, in_chan].
+
+        Returns:
+            latent (torch.Tensor): Flat latent vector of shape
+                [batch_size, latent_dim].
+        """
         x = x * self.scale + self.shift
         return self.fc(x)
 
 
 class ConvDecoder(nn.Module):
-    """
-    Convolutional decoder to generate PSF from latent vector with multi-scale features.
-    Input: [batch_size, latent_dim] (flat)
-    Output: [batch_size, out_chan, kernel_size, kernel_size]
-    Assumes kernel_size=128 and latent reshapes to [64, 16, 16].
+    """Generate a PSF kernel from a latent vector using a multi-scale decoder.
+
+    The flat latent is reshaped to [latent_channels, 16, 16] and upsampled by
+    three `DecoderBlock`s (16 -> 32 -> 64 -> 128). Two 1x1-conv skip connections
+    from the 32x32 and 64x64 levels are interpolated to full resolution and
+    added before a final 3x3 conv and channel-wise softmax normalization.
+
+    The defaults assume kernel_size=128 (= 16 * 2**3); both `latent_dim` and
+    `kernel_size` are validated against `latent_channels` in `__init__`.
+
+    Attributes:
+        initial_height (int): Starting spatial size before upsampling (16).
+        initial_shape (tuple): Reshape target [latent_channels, 16, 16].
     """
 
     def __init__(
         self, kernel_size=128, out_chan=3, latent_dim=4096, latent_channels=16
     ):
+        """Initialize the convolutional decoder.
+
+        Args:
+            kernel_size (int, optional): Output PSF kernel size; must equal
+                16 * 2**3 = 128. Defaults to 128.
+            out_chan (int, optional): Number of output channels (e.g. RGB).
+                Defaults to 3.
+            latent_dim (int, optional): Dimension of the input latent vector;
+                must equal latent_channels * 16 * 16. Defaults to 4096.
+            latent_channels (int, optional): Number of channels in the reshaped
+                latent feature map. Defaults to 16.
+
+        Raises:
+            AssertionError: If `latent_dim` does not equal
+                latent_channels * 16 * 16, or if `kernel_size` is not 128.
+        """
         super(ConvDecoder, self).__init__()
         # Validate latent dim matches reshape
         self.initial_height = (
@@ -151,6 +267,17 @@ class ConvDecoder(nn.Module):
         self.normalization = ChannelwiseNormalization()
 
     def forward(self, latent):
+        """Decode a latent vector into a normalized PSF kernel.
+
+        Args:
+            latent (torch.Tensor): Flat latent vector of shape
+                [batch_size, latent_dim].
+
+        Returns:
+            psf (torch.Tensor): PSF kernel of shape
+                [batch_size, out_chan, kernel_size, kernel_size], with each
+                channel normalized to sum to 1 over the spatial dimensions.
+        """
         batch_size = latent.size(0)
         # Reshape flat latent to initial feature map
         x = latent.view(batch_size, *self.initial_shape)
@@ -177,10 +304,10 @@ class ConvDecoder(nn.Module):
 
 
 class PSFNet_MLPConv(nn.Module):
-    """
-    Combined model: MLPConditioner + ConvDecoder.
-    Input: [batch_size, 2] (r, z)
-    Output: [batch_size, out_chan, kernel_size, kernel_size]
+    """Spatially varying PSF network combining an MLP conditioner and a conv decoder.
+
+    The `MLPConditioner` maps a field condition (e.g. (r, z)) to a latent
+    vector, and the `ConvDecoder` upsamples it into a normalized PSF kernel.
     """
 
     def __init__(
@@ -191,6 +318,21 @@ class PSFNet_MLPConv(nn.Module):
         latent_dim=4096,
         latent_channels=16,
     ):
+        """Initialize the PSF network.
+
+        Args:
+            in_chan (int, optional): Number of input condition channels (e.g. 2
+                for (r, z)). Defaults to 2.
+            kernel_size (int, optional): Output PSF kernel size; must equal 128.
+                Defaults to 128.
+            out_chan (int, optional): Number of output channels (e.g. RGB).
+                Defaults to 3.
+            latent_dim (int, optional): Latent vector dimension shared by the
+                MLP and decoder; must equal latent_channels * 16 * 16.
+                Defaults to 4096.
+            latent_channels (int, optional): Number of channels in the reshaped
+                latent feature map. Defaults to 16.
+        """
         super(PSFNet_MLPConv, self).__init__()
         self.mlp = MLPConditioner(in_chan=in_chan, latent_dim=latent_dim)
         self.decoder = ConvDecoder(
@@ -201,6 +343,17 @@ class PSFNet_MLPConv(nn.Module):
         )
 
     def forward(self, x):
+        """Predict the PSF kernel for a batch of field conditions.
+
+        Args:
+            x (torch.Tensor): Input condition of shape [batch_size, in_chan]
+                (e.g. (r, z) pairs).
+
+        Returns:
+            psf (torch.Tensor): PSF kernel of shape
+                [batch_size, out_chan, kernel_size, kernel_size], with each
+                channel normalized to sum to 1 over the spatial dimensions.
+        """
         psf = self.decoder(self.mlp(x))
         return psf
 

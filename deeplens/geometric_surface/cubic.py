@@ -7,6 +7,22 @@ from .base import Surface
 
 
 class Cubic(Surface):
+    """Cubic phase plate surface.
+
+    A freeform surface whose sag is an odd polynomial of $x$ and $y$ with no
+    rotational symmetry: $z = b_3 (x^3 + y^3) + b_5 (x^5 + y^5) + b_7 (x^7 + y^7)$.
+    The number of active terms is set by the length of `b` (degree 1 to 3). Such
+    cubic phase masks are used in wavefront-coding / extended-depth-of-field designs.
+
+    Attributes:
+        b (torch.Tensor): All cubic coefficients as a 1D tensor, in [1/mm^2], [1/mm^4], [1/mm^6].
+        b3 (torch.Tensor): Scalar coefficient of the cubic ($x^3 + y^3$) term, in [1/mm^2].
+        b5 (torch.Tensor): Scalar coefficient of the quintic ($x^5 + y^5$) term, in [1/mm^4]. Only present when b_degree at least 2.
+        b7 (torch.Tensor): Scalar coefficient of the septic ($x^7 + y^7$) term, in [1/mm^6]. Only present when b_degree is 3.
+        b_degree (int): Number of active polynomial terms (1, 2, or 3).
+        rotate_angle (float): In-plane rotation angle of the surface, in radians.
+    """
+
     def __init__(
         self,
         r,
@@ -18,6 +34,21 @@ class Cubic(Surface):
         is_square=False,
         device="cpu",
     ):
+        """Initialize a cubic phase plate surface.
+
+        Args:
+            r (float): Aperture radius (semi-diameter), in [mm].
+            d (float): Axial distance (position) of the surface along the optical axis, in [mm].
+            b (list): Cubic coefficients ordered as $[b_3, b_5, b_7]$. Its length (1, 2, or 3) sets the polynomial degree; units are [1/mm^2], [1/mm^4], [1/mm^6].
+            mat2 (str or Material): Material after the surface.
+            pos_xy (list, optional): Lateral $(x, y)$ offset of the surface, in [mm]. Defaults to [0.0, 0.0].
+            vec_local (list, optional): Local surface normal (optical axis) direction. Defaults to [0.0, 0.0, 1.0].
+            is_square (bool, optional): Whether the aperture is square instead of circular. Defaults to False.
+            device (str, optional): Torch device. Defaults to "cpu".
+
+        Raises:
+            ValueError: If `b` has length other than 1, 2, or 3.
+        """
         Surface.__init__(
             self,
             r=r,
@@ -50,10 +81,29 @@ class Cubic(Surface):
 
     @classmethod
     def init_from_dict(cls, surf_dict):
+        """Construct a `Cubic` surface from a parameter dictionary.
+
+        Args:
+            surf_dict (dict): Surface parameters with keys "r", "d", "b", and "mat2".
+
+        Returns:
+            surf (Cubic): The constructed cubic surface.
+        """
         return cls(surf_dict["r"], surf_dict["d"], surf_dict["b"], surf_dict["mat2"])
 
     def _sag(self, x, y):
-        """Compute surface height z(x, y)."""
+        """Compute surface sag $z(x, y)$ for the cubic phase plate.
+
+        Evaluates $z = b_3 (x^3 + y^3) + b_5 (x^5 + y^5) + b_7 (x^7 + y^7)$ up to the
+        active degree, optionally applying the in-plane `rotate_angle` first.
+
+        Args:
+            x (torch.Tensor): Local x-coordinates, in [mm].
+            y (torch.Tensor): Local y-coordinates, in [mm], broadcastable with `x`.
+
+        Returns:
+            z (torch.Tensor): Surface sag at $(x, y)$, in [mm].
+        """
         if self.rotate_angle != 0:
             x = x * float(np.cos(self.rotate_angle)) - y * float(
                 np.sin(self.rotate_angle)
@@ -89,7 +139,16 @@ class Cubic(Surface):
         return z
 
     def _dfdxy(self, x, y):
-        """Compute surface height derivatives to x and y."""
+        """Compute the partial derivatives of the sag with respect to $x$ and $y$.
+
+        Args:
+            x (torch.Tensor): Local x-coordinates, in [mm].
+            y (torch.Tensor): Local y-coordinates, in [mm], broadcastable with `x`.
+
+        Returns:
+            sx (torch.Tensor): Partial derivative $\\partial z / \\partial x$, dimensionless.
+            sy (torch.Tensor): Partial derivative $\\partial z / \\partial y$, dimensionless.
+        """
         if self.rotate_angle != 0:
             x = x * float(np.cos(self.rotate_angle)) - y * float(
                 np.sin(self.rotate_angle)
@@ -121,7 +180,23 @@ class Cubic(Surface):
         return sx, sy
 
     def get_optimizer_params(self, lrs=[1e-4], decay=0.1, optim_mat=False):
-        """Return parameters for optimizer."""
+        """Build per-parameter optimizer groups for this surface.
+
+        Enables gradients on the axial distance `d` and the active cubic
+        coefficients (and optionally the material). If a single learning rate is
+        given, rates for higher-order coefficients are derived by `decay` powers.
+
+        Args:
+            lrs (list, optional): Learning rates. A single-element list is broadcast to all coefficients via `decay`. Defaults to [1e-4].
+            decay (float, optional): Geometric decay factor applied to higher-order coefficient learning rates. Defaults to 0.1.
+            optim_mat (bool, optional): Whether to also optimize the material parameters. Defaults to False.
+
+        Returns:
+            params (list): List of parameter-group dicts ({"params": [...], "lr": ...}) for a torch optimizer.
+
+        Raises:
+            ValueError: If `b_degree` is not 1, 2, or 3.
+        """
         # Broadcast learning rates to all cubic coefficients
         if len(lrs) == 1:
             lrs = lrs + [
@@ -164,11 +239,15 @@ class Cubic(Surface):
     # IO
     # =========================================
     def surf_dict(self):
-        """Return surface parameters.
+        """Serialize the surface parameters to a dictionary.
 
-        Emits the ``b`` coefficient list and ``mat2`` that ``init_from_dict``
-        consumes, so the surface round-trips through JSON. The scalar
-        ``b3/b5/b7`` keys are kept for human readability.
+        Emits the `b` coefficient list and `mat2` that `init_from_dict` consumes.
+        The scalar `b3`/`b5`/`b7` keys are kept for human readability, and the axial
+        position is written under the parenthesized `(d)` key (display-only; the
+        loader reconstructs `d` from accumulated surface spacings).
+
+        Returns:
+            d (dict): Surface parameters with keys "type", "b3", "r", "(d)", "b", "mat2", and (when active) "b5"/"b7".
         """
         b = [self.b3.item()]
         if self.b_degree >= 2:

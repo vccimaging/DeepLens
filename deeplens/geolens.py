@@ -53,48 +53,32 @@ class GeoLens(
 ):
     """Differentiable geometric lens using vectorised ray tracing.
 
-    The primary lens model in DeepLens.  Supports multi-element refractive
-    (and partially reflective) systems loaded from JSON, Zemax ``.zmx``, or
-    Code V ``.seq`` files.  Accuracy is aligned with Zemax OpticStudio.
+    The primary lens model in DeepLens. Supports multi-element refractive
+    (and partially reflective) systems loaded from JSON, Zemax `.zmx`, or
+    Code V `.seq` files. Accuracy is aligned with Zemax OpticStudio.
 
-    Uses a **mixin architecture** – seven specialised mixin classes are
-    composed at class definition time to keep each concern isolated:
-
-    * `GeoLensPSF` – PSF
-      computation (geometric, coherent, Huygens models).
-    * `GeoLensEval` – optical
-      performance evaluation (spot, MTF, distortion, vignetting).
-    * `GeoLensOptim` – loss
-      functions and gradient-based optimisation.
-    * `GeoLensSurfOps` –
-      surface geometry operations (aspheric conversion, pruning, shape
-      correction, material matching).
-    * `GeoLensVis` – 2-D layout
-      and ray visualisation.
-    * `GeoLensIO` – read/write
-      JSON, Zemax ``.zmx``.
-    * `GeoLensVis3D` – 3-D
-      mesh visualisation.
-
-    **Key differentiability trick**: Ray-surface intersection
-    (`newtons_method`)
-    uses a non-differentiable Newton loop followed by one differentiable
-    Newton step to enable gradient flow.
+    Uses a mixin architecture: seven specialised mixin classes are composed
+    at class-definition time to keep each concern isolated: `GeoLensPSF`
+    (PSF computation), `GeoLensEval` (spot/MTF/distortion/vignetting
+    evaluation), `GeoLensOptim` (losses and gradient-based optimisation),
+    `GeoLensSurfOps` (surface geometry operations), `GeoLensVis` (2-D
+    layout/ray visualisation), `GeoLensIO` (JSON/Zemax read-write), and
+    `GeoLensVis3D` (3-D mesh visualisation).
 
     Attributes:
         surfaces (list[Surface]): Ordered list of optical surfaces.
         materials (list[Material]): Optical materials between surfaces.
-        d_sensor (torch.Tensor): Back focal distance [mm].
+        d_sensor (torch.Tensor): Distance from origin to the sensor plane [mm].
         foclen (float): Effective focal length [mm].
         fnum (float): F-number.
-        rfov (float): Half-diagonal field of view [radians].
+        rfov (float): Real half-diagonal field of view [radians].
         sensor_size (tuple): Physical sensor size (W, H) [mm].
         sensor_res (tuple): Sensor resolution (W, H) [pixels].
         pixel_size (float): Pixel pitch [mm].
 
-    References:
+    Reference:
         Xinge Yang et al., "Curriculum learning for ab initio deep learned
-        refractive optics," *Nature Communications* 2024.
+        refractive optics," Nature Communications 2024.
     """
 
     # GeoLens defaults to ray-tracing rendering (it can trace rays end-to-end),
@@ -215,9 +199,14 @@ class GeoLens(
         self.init_constraints()
 
     def __call__(self, ray):
-        """Trace rays through the lens system.
+        """Trace rays through the lens system (callable shorthand for `trace`).
 
-        Makes the GeoLens callable, allowing ray tracing with function call syntax.
+        Args:
+            ray (Ray): Ray object to trace.
+
+        Returns:
+            ray_out (Ray): Ray after propagation through the surfaces.
+            ray_o_record (list or None): Recorded ray positions, or None.
         """
         return self.trace(ray)
 
@@ -235,24 +224,29 @@ class GeoLens(
         sample_more_off_axis=False,
         scale_pupil=1.0,
     ):
-        """Sample grid rays from object space.
-            (1) If depth is infinite, sample parallel rays at different field angles.
-            (2) If depth is finite, sample point source rays from the object plane.
+        """Sample a grid of rays spanning the field of view from object space.
 
-        This function is usually used for (1) PSF map, (2) RMS error map, and (3) spot diagram calculation.
+        If `depth` is infinite, samples collimated rays at evenly-spaced field
+        angles; if `depth` is finite, samples diverging point-source rays from a
+        grid of object points. Used for PSF maps, RMS error maps, and spot
+        diagrams.
 
         Args:
-            depth (float, optional): sampling depth. Defaults to float("inf").
-            num_grid (tuple, optional): number of grid points. Defaults to [11, 11].
-            num_rays (int, optional): number of rays. Defaults to SPP_PSF.
-            wvln (float, optional): ray wvln in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            uniform_fov (bool, optional): If True, sample uniform FoV angles.
-            sample_more_off_axis (bool, optional): If True, sample more off-axis rays.
-            scale_pupil (float, optional): Scale factor for pupil radius.
+            depth (float, optional): Object distance in mm. Use `float("inf")`
+                for collimated light. Defaults to `float("inf")`.
+            num_grid (int or tuple, optional): Number of grid points as
+                (num_x, num_y), or a single int for both. Defaults to (11, 11).
+            num_rays (int, optional): Number of rays per grid point. Defaults to SPP_PSF.
+            wvln (float, optional): Wavelength in µm. When None (default),
+                falls back to `self.primary_wvln`.
+            uniform_fov (bool, optional): If True, sample uniform FoV angles;
+                otherwise sample a uniform object grid. Defaults to True.
+            sample_more_off_axis (bool, optional): If True, concentrate grid
+                samples toward off-axis fields. Defaults to False.
+            scale_pupil (float, optional): Scale factor for pupil radius. Defaults to 1.0.
 
         Returns:
-            ray (Ray object): Ray object. Shape [num_grid[1], num_grid[0], num_rays, 3]
+            rays (Ray): Sampled rays with shape [num_grid[1], num_grid[0], num_rays, 3].
         """
         wvln = self.primary_wvln if wvln is None else wvln
 
@@ -355,20 +349,21 @@ class GeoLens(
         wvln=None,
         scale_pupil=1.0,
     ):
-        """
-        Sample rays from point sources in object space (absolute physical coordinates).
+        """Sample rays from point sources in object space (absolute physical coordinates).
 
-        Used for PSF and chief ray calculation.
+        Rays originate at the given object points and fan out toward the
+        entrance pupil. Used for PSF and chief-ray calculation.
 
         Args:
-            points (list or Tensor): Ray origins in shape [3], [N, 3], or [Nx, Ny, 3].
-            num_rays (int): Number of rays per point. Default: SPP_PSF.
-            wvln (float): Wavelength of rays in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            scale_pupil (float): Scale factor for pupil radius.
+            points (list or torch.Tensor): Object-space ray origins [mm] with
+                shape [3], [N, 3], or [Nx, Ny, 3]. Defaults to [[0.0, 0.0, -10000.0]].
+            num_rays (int): Number of rays per point. Defaults to SPP_PSF.
+            wvln (float): Wavelength in µm. When None (default), falls back to
+                `self.primary_wvln`.
+            scale_pupil (float): Scale factor for pupil radius. Defaults to 1.0.
 
         Returns:
-            rays (Ray): Sampled rays with shape ``(\\*points.shape[:-1], num_rays, 3)``.
+            rays (Ray): Sampled rays with shape [*points.shape[:-1], num_rays, 3].
         """
         wvln = self.primary_wvln if wvln is None else wvln
 
@@ -562,15 +557,16 @@ class GeoLens(
         return ray
 
     def sample_circle(self, r, z, shape=[16, 16, 512]):
-        """Sample points inside a circle.
+        """Sample points uniformly inside a circle on a constant-z plane.
 
         Args:
-            r (float): Radius of the circle.
-            z (float): Z-coordinate for all sampled points.
-            shape (list): Shape of the output tensor.
+            r (float): Radius of the circle [mm].
+            z (float): Z-coordinate shared by all sampled points [mm].
+            shape (list): Shape of the point grid (excluding the trailing
+                coordinate dimension). Defaults to [16, 16, 512].
 
         Returns:
-            points (torch.Tensor): Sampled points, shape ``(\\*shape, 3)``.
+            points (torch.Tensor): Sampled points with shape [*shape, 3].
         """
         device = self.device
 
@@ -596,16 +592,19 @@ class GeoLens(
     def trace(self, ray, surf_range=None, record=False):
         """Trace rays through the lens.
 
-        Forward or backward tracing is automatically determined by the ray direction.
+        Forward or backward tracing is selected automatically from the sign of
+        the ray z-direction.
 
         Args:
-            ray (Ray object): Ray object.
-            surf_range (list): Surface index range.
-            record (bool): record ray path or not.
+            ray (Ray): Ray object to trace.
+            surf_range (range, optional): Range of surface indices to trace
+                through. When None (default), traces through all surfaces.
+            record (bool): If True, record ray positions at each surface. Defaults to False.
 
         Returns:
-            ray_final (Ray object): ray after optical system.
-            ray_o_rec (list): list of intersection points.
+            ray_out (Ray): Ray after propagation through the surfaces.
+            ray_o_record (list or None): Recorded ray positions at each surface,
+                or None when record is False.
         """
         if surf_range is None:
             surf_range = range(0, len(self.surfaces))
@@ -618,28 +617,31 @@ class GeoLens(
         return ray_out, ray_o_rec
 
     def trace2obj(self, ray):
-        """Traces rays backwards through all lens surfaces from sensor side
-        to object side.
+        """Trace rays through the lens toward object space.
+
+        Convenience wrapper around `trace` that discards the position record.
+        Typically called with sensor-side (backward-propagating) rays.
 
         Args:
-            ray (Ray): Ray object to trace backwards.
+            ray (Ray): Ray object to trace.
 
         Returns:
-            ray (Ray): Ray object after backward propagation through the lens.
+            ray (Ray): Ray after propagation through the lens.
         """
         ray, _ = self.trace(ray)
         return ray
 
     def trace2sensor(self, ray, record=False):
-        """Forward trace rays through the lens to sensor plane.
+        """Forward trace rays through the lens and propagate them to the sensor plane.
 
         Args:
-            ray (Ray object): Ray object.
-            record (bool): record ray path or not.
+            ray (Ray): Ray object to trace.
+            record (bool): If True, record ray positions at each surface. Defaults to False.
 
         Returns:
-            ray_out (Ray object): ray after optical system.
-            ray_o_record (list): list of intersection points.
+            ray (Ray): Ray propagated to the sensor plane. When record is True,
+                returns a tuple (ray, ray_o_record) where ray_o_record is the list
+                of recorded ray positions at each surface (invalid points set to NaN).
         """
         # Manually propagate ray to a shallow depth to avoid numerical instability
         if ray.o[..., 2].min() < -100.0:
@@ -681,10 +683,9 @@ class GeoLens(
             record (bool): If True, record ray positions at each surface.
 
         Returns:
-            result (tuple): (ray_out, ray_o_record) where:
-                - ray_out (Ray): Ray after propagation through all surfaces.
-                - ray_o_record (list or None): List of ray positions at each surface,
-                    or None if record is False.
+            ray_out (Ray): Ray after propagation through all surfaces.
+            ray_o_record (list or None): Ray positions at each surface, or None
+                if record is False.
         """
         if record:
             ray_o_record = []
@@ -715,10 +716,9 @@ class GeoLens(
             record (bool): If True, record ray positions at each surface.
 
         Returns:
-            result (tuple): (ray_out, ray_o_record) where:
-                - ray_out (Ray): Ray after backward propagation through all surfaces.
-                - ray_o_record (list or None): List of ray positions at each surface,
-                    or None if record is False.
+            ray_out (Ray): Ray after backward propagation through all surfaces.
+            ray_o_record (list or None): Ray positions at each surface, or None
+                if record is False.
         """
         if record:
             ray_o_record = []
@@ -754,16 +754,18 @@ class GeoLens(
             [3] Ray tracing rendering.
 
         Args:
-            img_obj (Tensor): Input image object in raw space. Shape of [N, C, H, W].
-            depth (float, optional): Depth of the object. When ``None`` (default),
-                falls back to ``self.obj_depth``.
+            img_obj (torch.Tensor): Input image object in raw space. Shape [N, C, H, W].
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
             method (str, optional): Image simulation method. One of 'psf_map', 'psf_patch',
-                or 'ray_tracing'. When ``None`` (default), falls back to
-                ``self._default_render_method`` ('ray_tracing' for ``GeoLens``).
+                or 'ray_tracing'. When None (default), falls back to
+                `self._default_render_method` ('ray_tracing' for `GeoLens`).
             **kwargs: Additional arguments for different methods:
                 - psf_grid (tuple): Grid size for PSF map method. Defaults to (10, 10).
                 - psf_ks (int): Kernel size for PSF methods. Defaults to PSF_KS.
-                - patch_center (tuple): Center position for PSF patch method.
+                - psf_spp (int): Rays per PSF for PSF map method. Defaults to SPP_PSF.
+                - warp_grid (int): Inverse-distortion grid resolution for PSF map method. Defaults to 128.
+                - patch_center (tuple): Center position for PSF patch method. Defaults to (0.0, 0.0).
                 - spp (int): Samples per pixel for ray tracing. Defaults to SPP_RENDER.
 
         Returns:
@@ -815,17 +817,17 @@ class GeoLens(
         return img_render
 
     def render_raytracing(self, img, depth=None, spp=SPP_RENDER, vignetting=False):
-        """Render RGB image using ray tracing rendering.
+        """Render an RGB image using ray-tracing rendering.
 
         Args:
-            img (tensor): RGB image tensor. Shape of [N, 3, H, W].
-            depth (float, optional): Depth of the object. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            spp (int, optional): Sample per pixel. Defaults to 64.
-            vignetting (bool, optional): whether to consider vignetting effect. Defaults to False.
+            img (torch.Tensor): RGB image tensor. Shape [N, 3, H, W].
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            spp (int, optional): Samples per pixel. Defaults to SPP_RENDER.
+            vignetting (bool, optional): Whether to model the vignetting effect. Defaults to False.
 
         Returns:
-            img_render (tensor): Rendered RGB image tensor. Shape of [N, 3, H, W].
+            img_render (torch.Tensor): Rendered RGB image tensor. Shape [N, 3, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         img_render = torch.zeros_like(img)
@@ -840,17 +842,18 @@ class GeoLens(
         return img_render
 
     def render_raytracing_mono(self, img, wvln, depth=None, spp=64, vignetting=False):
-        """Render monochrome image using ray tracing rendering.
+        """Render a monochrome image at a single wavelength using ray-tracing rendering.
 
         Args:
-            img (tensor): Monochrome image tensor. Shape of [N, 1, H, W] or [N, H, W].
-            wvln (float): Wavelength of the light.
-            depth (float, optional): Depth of the object. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            spp (int, optional): Sample per pixel. Defaults to 64.
+            img (torch.Tensor): Monochrome image tensor. Shape [N, 1, H, W] or [N, H, W].
+            wvln (float): Wavelength in µm.
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            spp (int, optional): Samples per pixel. Defaults to 64.
+            vignetting (bool, optional): Whether to model the vignetting effect. Defaults to False.
 
         Returns:
-            img_mono (tensor): Rendered monochrome image tensor. Shape of [N, 1, H, W] or [N, H, W].
+            img_mono (torch.Tensor): Rendered monochrome image tensor. Shape [N, 1, H, W] or [N, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         img = torch.flip(img, [-2, -1])
@@ -863,19 +866,21 @@ class GeoLens(
         return img_mono
 
     def render_compute_image(self, img, depth, scale, ray, vignetting=False):
-        """Computes the intersection points between rays and the object image plane, then generates the rendered image following rendering equation.
+        """Compute ray-image-plane intersections and integrate them into a rendered image.
 
-        Back-propagation gradient flow: image -> w_i -> u -> p -> ray -> surface
+        Propagates the traced rays to the object plane, intersects them with the
+        scaled object image, and accumulates radiance following the rendering
+        equation. Back-propagation gradient flow: image -> w_i -> u -> p -> ray -> surface.
 
         Args:
-            img (tensor): [N, C, H, W] or [N, H, W] shape image tensor.
-            depth (float): depth of the object.
-            scale (float): scale factor.
-            ray (Ray object): Ray object. Shape [H, W, spp, 3].
-            vignetting (bool): whether to consider vignetting effect.
+            img (torch.Tensor): Object image tensor. Shape [N, C, H, W] or [N, H, W].
+            depth (float): Object depth [mm].
+            scale (float): Object-to-image scale factor.
+            ray (Ray): Traced sensor rays. Shape [H, W, spp, 3].
+            vignetting (bool): Whether to model the vignetting effect. Defaults to False.
 
         Returns:
-            image (tensor): [N, C, H, W] or [N, H, W] shape rendered image tensor.
+            image (torch.Tensor): Rendered image tensor. Shape [N, C, H, W] or [N, H, W].
         """
         assert torch.is_tensor(img), "Input image should be Tensor."
 
@@ -914,9 +919,9 @@ class GeoLens(
         """Apply lens distortion to an image using inverse distortion mapping.
 
         Args:
-            img (tensor): Undistorted image tensor, shape ``[B, C, H, W]``.
-            depth (float, optional): Object depth. When ``None`` (default),
-                falls back to ``self.obj_depth``.
+            img (torch.Tensor): Undistorted image tensor, shape [B, C, H, W].
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
             num_grid (int or tuple): Resolution of the inverse distortion grid.
 
         Returns:
@@ -937,17 +942,18 @@ class GeoLens(
         return img_warped
 
     def unwarp(self, img, depth=None, num_grid=128, crop=True, flip=True):
-        """Unwarp rendered images using distortion map.
+        """Unwarp (remove distortion from) a rendered image using the distortion map.
 
         Args:
-            img (tensor): Rendered image tensor. Shape of [N, C, H, W].
-            depth (float, optional): Depth of the object. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            num_grid (int, optional): Grid size. Defaults to 128.
+            img (torch.Tensor): Rendered image tensor. Shape [N, C, H, W].
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            num_grid (int, optional): Resolution of the distortion grid. Defaults to 128.
             crop (bool, optional): Whether to crop the image. Defaults to True.
+            flip (bool, optional): Whether to flip the distortion map. Defaults to True.
 
         Returns:
-            img_unwarpped (torch.Tensor): Unwarped image tensor. Shape of [N, C, H, W].
+            img_unwarpped (torch.Tensor): Unwarped image tensor. Shape [N, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         # Calculate distortion map, shape (num_grid, num_grid, 2)
@@ -988,10 +994,13 @@ class GeoLens(
             paraxial_fov (float, optional): Paraxial field of view in radians
                 for the off-axis ray trace. Defaults to 0.01.
 
-        Updates:
-            self.efl: Effective focal length.
-            self.foclen: Alias for effective focal length.
-            self.bfl: Back focal length (distance from last surface to sensor).
+        Returns:
+            eff_foclen (float): Effective focal length [mm].
+
+        Note:
+            Also caches `self.efl` (effective focal length [mm]), `self.foclen`
+            (alias of `self.efl`), and `self.bfl` (back focal length, the
+            distance from the last surface to the sensor [mm]).
 
         Reference:
             [1] https://wp.optics.arizona.edu/optomech/wp-content/uploads/sites/53/2016/10/Tutorial_MorelSophie.pdf
@@ -1070,7 +1079,7 @@ class GeoLens(
                 falls back to ``self.primary_wvln``.
 
         Returns:
-            focal_plane (float): Focal plane in the object space.
+            focal_plane (float): Object-space focus distance [mm] (negative z, in front of the lens).
         """
         wvln = self.primary_wvln if wvln is None else wvln
         device = self.device
@@ -1114,7 +1123,7 @@ class GeoLens(
             depth (float, optional): Depth of the object plane. Defaults to float("inf").
 
         Returns:
-            d_sensor (torch.Tensor): Sensor plane in the image space.
+            d_sensor (torch.Tensor): In-focus sensor z-position [mm] in image space (scalar tensor).
         """
         # Sample and trace rays, shape [SPP_CALC, 3]
         ray = self.sample_from_fov(
@@ -1145,14 +1154,14 @@ class GeoLens(
                old backward-tracing approach on wide-angle lenses where pupil
                aberration at full field leaves zero valid rays.
 
-        Updates:
-            self.vfov (float): Vertical FoV in radians.
-            self.hfov (float): Horizontal FoV in radians.
-            self.dfov (float): Diagonal FoV in radians.
-            self.rfov_eff (float): Effective half-diagonal FoV in radians (paraxial, ignoring distortion).
-            self.rfov (float): Real half-diagonal FoV from ray tracing (accounts for distortion).
-            self.real_dfov (float): Real diagonal FoV from ray tracing.
-            self.eqfl (float): 35mm equivalent focal length in mm.
+        Note:
+            Caches the following attributes (all FoV values in radians):
+            `self.vfov` (vertical FoV), `self.hfov` (horizontal FoV),
+            `self.dfov` (diagonal FoV), `self.rfov_eff` (effective paraxial
+            half-diagonal FoV, ignoring distortion), `self.rfov` (real
+            half-diagonal FoV from ray tracing, accounts for distortion),
+            `self.real_dfov` (real diagonal FoV from ray tracing), and
+            `self.eqfl` (35 mm equivalent focal length [mm]).
 
         Reference:
             [1] https://en.wikipedia.org/wiki/Angle_of_view_(photography)
@@ -1224,13 +1233,14 @@ class GeoLens(
             - Lens geometry or materials change (e.g., surface curvatures, refractive indices, thicknesses),
             - Or generally, any time the lens configuration is modified.
 
-        Updates:
-            self.aper_idx: Index of the aperture surface.
-            self.exit_pupilz, self.exit_pupilr: Exit pupil position and radius.
-            self.entr_pupilz, self.entr_pupilr: Entrance pupil position and radius.
-            self.exit_pupilz_parax, self.exit_pupilr_parax: Paraxial exit pupil.
-            self.entr_pupilz_parax, self.entr_pupilr_parax: Paraxial entrance pupil.
-            self.fnum: F-number calculated from focal length and entrance pupil.
+        Note:
+            Caches `self.aper_idx` (aperture surface index),
+            `self.exit_pupilz`/`self.exit_pupilr` (real exit pupil position and
+            radius [mm]), `self.entr_pupilz`/`self.entr_pupilr` (real entrance
+            pupil position and radius [mm]),
+            `self.exit_pupilz_parax`/`self.exit_pupilr_parax` and
+            `self.entr_pupilz_parax`/`self.entr_pupilr_parax` (paraxial pupils),
+            and `self.fnum` (F-number from focal length and entrance pupil).
         """
         # Find aperture
         self.aper_idx = None
@@ -1270,7 +1280,8 @@ class GeoLens(
                 If False, return real ray-traced values. Defaults to False.
 
         Returns:
-            result (tuple): (z_position, radius) of the entrance pupil in [mm].
+            pupilz (float): Entrance pupil z-position [mm].
+            pupilr (float): Entrance pupil radius [mm].
         """
         if paraxial:
             return self.entr_pupilz_parax, self.entr_pupilr_parax
@@ -1285,7 +1296,8 @@ class GeoLens(
                 If False, return real ray-traced values. Defaults to False.
 
         Returns:
-            result (tuple): (z_position, radius) of the exit pupil in [mm].
+            pupilz (float): Exit pupil z-position [mm].
+            pupilr (float): Exit pupil radius [mm].
         """
         if paraxial:
             return self.exit_pupilz_parax, self.exit_pupilr_parax
@@ -1389,13 +1401,14 @@ class GeoLens(
                 Defaults to ``False``.
 
         Returns:
-            result (tuple): (z_position, radius) of entrance pupil.
+            avg_pupilz (float): Entrance pupil z-position [mm].
+            avg_pupilr (float): Entrance pupil radius [mm].
 
         Note:
             [1] Use paraxial mode unless precise ray aiming is required.
             [2] This function only works for object at a far distance. For microscopes, this function usually returns a negative entrance pupil.
 
-        References:
+        Reference:
             [1] Entrance pupil: how many rays can come from object space to sensor.
             [2] https://en.wikipedia.org/wiki/Entrance_pupil: "In an optical system, the entrance pupil is the optical image of the physical aperture stop, as 'seen' through the optical elements in front of the stop."
             [3] Zemax LLC, *OpticStudio User Manual*, Version 19.4, Document No. 2311, 2019.
@@ -1519,7 +1532,8 @@ class GeoLens(
         """Refocus the lens to a depth distance by changing sensor position.
 
         Args:
-            foc_dist (float): focal distance.
+            foc_dist (float, optional): Object focus distance [mm].
+                Use ``float('inf')`` for infinity focus. Defaults to ``float('inf')``.
 
         Note:
             In DSLR, phase detection autofocus (PDAF) is a popular and efficient method. But here we simplify the problem by calculating the in-focus position of green light.
@@ -1565,11 +1579,16 @@ class GeoLens(
 
     @torch.no_grad()
     def set_target_fov_fnum(self, rfov, fnum):
-        """Set FoV, ImgH and F number, only use this function to assign design targets.
+        """Set FoV, image height, and F-number as design targets.
+
+        Only use this method to assign design targets (it overwrites the
+        cached first-order quantities directly rather than measuring them).
 
         Args:
-            rfov (float): half diagonal-FoV in radian.
-            fnum (float): F number.
+            rfov (float): Half-diagonal FoV. Interpreted as radians; if the
+                value is greater than $\\pi$ it is treated as degrees and
+                converted to radians.
+            fnum (float): Target F-number.
         """
         if rfov > math.pi:
             self.rfov_eff = rfov / 180.0 * math.pi
