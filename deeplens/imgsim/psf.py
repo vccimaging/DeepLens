@@ -45,21 +45,30 @@ import torch.nn.functional as F
 # PSF rendering for image simulation
 # ================================================
 
-def conv_psf(img, psf):
+def conv_psf(img, psf, method="conv"):
     """Render an image batch with one spatially invariant PSF.
 
-    Applies a per-channel 2-D convolution using reflect padding so that the
-    output has the same spatial dimensions as the input. The PSF is internally
-    flipped to convert the cross-correlation implemented by ``F.conv2d`` into
-    convolution.
+    Applies a per-channel, size-preserving ("same") 2-D convolution using
+    reflect padding so that the output keeps the input spatial dimensions. The
+    ``"conv"`` and ``"fft"`` backends apply the identical reflect-padded
+    convolution and agree to FFT round-off; they differ only in compute cost.
 
     Args:
         img (torch.Tensor): Input image batch, shape ``[B, C, H, W]``.
         psf (torch.Tensor): PSF kernel, shape ``[C, ks, ks]``.  ``ks`` may be
             odd or even.
+        method (str, optional): Convolution backend.  ``"conv"`` uses a direct
+            ``F.conv2d`` (cost ``~O(ks^2)`` per pixel); ``"fft"`` uses an FFT
+            linear convolution (cost roughly independent of ``ks``).  Prefer
+            ``"fft"`` for the large chromatic PSFs of a diffractive lens
+            (``ks ~= 512-768``), where direct convolution is impractical.
+            Defaults to ``"conv"``.
 
     Returns:
         img_render (torch.Tensor): Rendered image, shape ``[B, C, H, W]``.
+
+    Raises:
+        ValueError: If ``method`` is not ``"conv"`` or ``"fft"``.
 
     Example:
         ```python
@@ -71,20 +80,32 @@ def conv_psf(img, psf):
     C_psf, ks, _ = psf.shape
     assert C_psf == C, f"psf channels ({C_psf}) must match image channels ({C})."
 
-    # Flip the PSF because F.conv2d use cross-correlation
-    psf = torch.flip(psf, [1, 2])
-    psf = psf.unsqueeze(1)  # shape [C, 1, ks, ks]
-
-    # Padding
+    # Size-preserving ("same") padding that totals ks - 1, split so both odd and
+    # even kernels keep the output shape equal to the input (symmetric ks // 2
+    # only preserves size for odd ks; even ks would output N + 1).
     pad_top  = (ks - 1) // 2
     pad_bottom = ks // 2
     pad_left  = (ks - 1) // 2
     pad_right = ks // 2
     img_pad = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
-    # Convolution
-    img_render = F.conv2d(img_pad, psf, groups=C)
-    return img_render
+    if method == "conv":
+        # Flip the PSF because F.conv2d computes cross-correlation, not convolution.
+        psf_k = torch.flip(psf, [-2, -1]).unsqueeze(1)  # shape [C, 1, ks, ks]
+        return F.conv2d(img_pad, psf_k, groups=C)
+
+    if method == "fft":
+        Hp, Wp = img_pad.shape[-2:]
+        # Linear (not circular) convolution: zero-pad both operands to at least
+        # ``Hp + ks - 1`` so the FFT product equals the linear convolution, then
+        # keep the "valid" window (length Hp - ks + 1 == H) at offset ks - 1.
+        fh, fw = Hp + ks - 1, Wp + ks - 1
+        fimg = torch.fft.rfft2(img_pad, s=(fh, fw))
+        fpsf = torch.fft.rfft2(psf, s=(fh, fw)).unsqueeze(0)  # [1, C, fh, fw // 2 + 1]
+        conv_full = torch.fft.irfft2(fimg * fpsf, s=(fh, fw))  # [B, C, fh, fw]
+        return conv_full[..., ks - 1 : ks - 1 + H, ks - 1 : ks - 1 + W]
+
+    raise ValueError(f"Unknown conv_psf method: {method!r} (expected 'conv' or 'fft').")
 
 def conv_psf_map(img, psf_map):
     """Render an image batch with a spatially varying PSF map.

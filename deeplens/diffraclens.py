@@ -280,7 +280,7 @@ class DiffractiveLens(Lens):
     # =============================================
     # Image simulation
     # =============================================
-    def render_mono(self, img, wvln=None, ks=None):
+    def render_mono(self, img, wvln=None, ks=None, method="fft"):
         """Simulate monochromatic lens blur by convolving an image with the point spread function.
 
         Args:
@@ -289,6 +289,10 @@ class DiffractiveLens(Lens):
                 falls back to `self.primary_wvln`.
             ks (int, optional): PSF kernel size in pixels. When None (default),
                 the full sensor resolution (`max(self.sensor_res)`) is used.
+            method (str, optional): Convolution backend passed to `conv_psf`,
+                either ``"conv"`` or ``"fft"``. Defaults to ``"fft"`` because the
+                default `ks` (full sensor resolution) makes direct convolution
+                impractical.
 
         Returns:
             img_render (torch.Tensor): Rendered image after applying lens blur with shape (B, 1, H, W).
@@ -299,7 +303,7 @@ class DiffractiveLens(Lens):
         psf = self.psf(
             points=[0.0, 0.0, float("-inf")], wvln=wvln, ks=ks
         ).unsqueeze(0)
-        img_render = conv_psf(img, psf)
+        img_render = conv_psf(img, psf, method=method)
         return img_render
 
     def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
