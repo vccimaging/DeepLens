@@ -26,23 +26,29 @@ from .imgsim import rotate_psf, splat_psf_per_pixel
 
 
 class PSFNetLens(Lens):
-    """Neural surrogate lens that predicts PSFs via a small MLP/MLPConv network.
+    """Neural surrogate lens that predicts PSFs via an MLP/MLPConv network.
 
-    Wraps a `GeoLens` with a neural network
-    trained to predict RGB PSFs from ``(fov, depth, focus_distance)`` inputs.
-    After training, PSF prediction is ~100× faster than ray tracing, making
-    it suitable for real-time applications and large-scale optimisation.
+    Wraps a `GeoLens` with a neural network trained to predict 3-channel RGB
+    PSFs from `(fov, depth, foc_dist)` inputs. After training, PSF prediction
+    is much faster than ray tracing, making it suitable for real-time
+    applications and large-scale optimization.
+
+    Use `train_psfnet` to train the surrogate from ray-traced PSF samples, or
+    `load_net` to load pre-trained weights.
 
     Attributes:
-        lens (GeoLens): The underlying refractive lens (used for training data
-            generation and for sensor metadata).
+        lens (GeoLens): Underlying refractive lens, used for training-data
+            generation and for sensor metadata.
         psfnet (nn.Module): Neural network for PSF prediction.
-        pixel_size (float): Pixel pitch [mm] (copied from the embedded lens).
-        rfov (float): Half-diagonal field of view [radians].
-
-    Notes:
-        Use `train_psfnet` to train the surrogate from ray-traced PSF
-        samples.  Use `load_net` to load pre-trained weights.
+        pixel_size (float): Pixel pitch [mm], copied from the embedded lens.
+        foclen (float): Focal length [mm], copied from the embedded lens.
+        rfov (float): Real half-diagonal field of view [radians].
+        kernel_size (int): Side length of the network's native PSF kernel [pixels].
+        d_close (float): Near object depth bound for training [mm] (negative).
+        d_far (float): Far object depth bound for training [mm] (negative).
+        foc_d_close (float): Near focus-distance bound [mm] (negative).
+        foc_d_far (float): Far focus-distance bound [mm] (negative).
+        foc_dist (float): Current focus distance [mm] (negative).
     """
 
     def __init__(
@@ -59,24 +65,28 @@ class PSFNetLens(Lens):
     ):
         """Initialize a PSF network lens.
 
-        In the default settings, the PSF network takes (fov, depth, foc_dist) as input and outputs RGB PSF on y-axis at (fov, depth, foc_dist).
+        Loads the embedded `GeoLens`, builds the PSF network, and focuses the
+        lens to infinity. In the default settings, the network takes
+        `(fov, depth, foc_dist)` as input and outputs a 3-channel RGB PSF along
+        the y-axis.
 
         Args:
             lens_path (str): Path to the lens file.
-            in_chan (int): Number of input channels.
-            psf_chan (int): Number of output channels.
-            model_name (str): Name of the model.
-            kernel_size (int): Kernel size.
-            dtype (torch.dtype, optional): Data type for computations. Defaults to torch.float32.
-            primary_wvln (float, optional): Primary design wavelength [µm].
-                Used as fallback when a method is called without an explicit
-                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
-            wvln_rgb (sequence of float, optional): Three wavelengths used
-                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
-                to ``WAVE_RGB``.
-            obj_depth (float, optional): Default object depth [mm], used
-                when a method is called without an explicit ``depth``.
-                Defaults to ``DEPTH``.
+            in_chan (int, optional): Number of input channels. Defaults to 3.
+            psf_chan (int, optional): Number of output PSF channels. Defaults to 3.
+            model_name (str, optional): Network architecture, "mlp" or "mlpconv".
+                Defaults to "mlpconv".
+            kernel_size (int, optional): Side length of the predicted PSF kernel
+                [pixels]. Defaults to 128.
+            dtype (torch.dtype, optional): Data type for computations. Defaults to
+                torch.float32.
+            primary_wvln (float, optional): Primary design wavelength [µm]. Used as
+                fallback when a method is called without an explicit `wvln`.
+                Defaults to DEFAULT_WAVE.
+            wvln_rgb (sequence of float, optional): Three wavelengths used for RGB
+                computations, ordered [R, G, B] in µm. Defaults to WAVE_RGB.
+            obj_depth (float, optional): Default object depth [mm], used when a
+                method is called without an explicit depth. Defaults to DEPTH.
         """
         super().__init__(
             dtype=dtype,
@@ -128,7 +138,7 @@ class PSFNetLens(Lens):
         Updates the pixel size accordingly.
 
         Args:
-            sensor_res (tuple): New sensor resolution as ``(W, H)`` in pixels.
+            sensor_res (tuple): New sensor resolution as `(W, H)` in pixels.
         """
         self.lens.set_sensor_res(sensor_res)
         self.pixel_size = self.lens.pixel_size
@@ -137,20 +147,25 @@ class PSFNetLens(Lens):
     # Training functions
     # ==================================================
     def init_net(self, in_chan=2, psf_chan=3, kernel_size=64, model_name="mlpconv"):
-        """Initialize a PSF network.
+        """Initialize and return a PSF network.
 
-        PSF network:
-            Input: [B, 3], (fov, depth, foc_dist). fov from [0, pi/2], depth from [-20000, -100], foc_dist from [-20000, -500]
-            Output: psf kernel [B, 3, ks, ks]
+        The network maps an input of shape [B, in_chan] (the scaled
+        `(fov, depth, foc_dist)` features) to a PSF kernel of shape
+        [B, psf_chan, kernel_size, kernel_size].
 
         Args:
-            in_chan (int): number of input channels
-            psf_chan (int): number of output channels
-            kernel_size (int): kernel size
-            model_name (str): name of the network architecture
+            in_chan (int, optional): Number of input channels. Defaults to 2.
+            psf_chan (int, optional): Number of output PSF channels. Defaults to 3.
+            kernel_size (int, optional): Side length of the PSF kernel [pixels].
+                Defaults to 64.
+            model_name (str, optional): Network architecture, "mlp" or "mlpconv".
+                Defaults to "mlpconv".
 
         Returns:
-            psfnet (nn.Module): network
+            psfnet (nn.Module): The constructed PSF network.
+
+        Raises:
+            Exception: If `model_name` is not a supported architecture.
         """
         if model_name == "mlp":
             psfnet = MLP(
@@ -169,10 +184,14 @@ class PSFNetLens(Lens):
         return psfnet
 
     def load_net(self, net_path):
-        """Load pretrained network.
+        """Load pretrained PSF network weights from disk.
+
+        Prints the pixel size and lens path stored in the checkpoint alongside the
+        current values so a mismatch can be spotted, then loads the weights into
+        `self.psfnet`.
 
         Args:
-            net_path (str): path to load the network
+            net_path (str): Path to the saved checkpoint file.
         """
         # Check the correct model is loaded
         psfnet_dict = torch.load(net_path, map_location="cpu", weights_only=False)
@@ -189,10 +208,14 @@ class PSFNetLens(Lens):
         self.psfnet.load_state_dict(psfnet_dict["psfnet_model_weights"])
 
     def save_psfnet(self, psfnet_path):
-        """Save the PSF network.
+        """Save the PSF network and its metadata to disk.
+
+        Stores the network weights along with the model name, channel counts,
+        kernel size, pixel size, and lens path so the checkpoint is
+        self-describing.
 
         Args:
-            psfnet_path (str): path to save the PSF network
+            psfnet_path (str): Path to save the checkpoint file.
         """
         psfnet_dict = {
             "model_name": self.psfnet.__class__.__name__,
@@ -217,14 +240,22 @@ class PSFNetLens(Lens):
     ):
         """Train the PSF surrogate network.
 
+        Samples ray-traced PSFs as supervision, optimizes the network with an
+        L1 loss and AdamW under a cosine schedule with warmup, and periodically
+        saves a GT/prediction comparison figure and the latest checkpoint to
+        `result_dir`.
+
         Args:
-            iters (int): number of training iterations
-            bs (int): batch size
-            lr (float): learning rate
-            evaluate_every (int): evaluate every how many iterations
-            spp (int): number of samples per pixel
-            concentration_factor (float): concentration factor for training data sampling
-            result_dir (str): directory to save the results
+            iters (int, optional): Number of training iterations. Defaults to 100000.
+            bs (int, optional): Batch size. Defaults to 128.
+            lr (float, optional): Learning rate. Defaults to 5e-5.
+            evaluate_every (int, optional): Evaluate and checkpoint every this many
+                iterations. Defaults to 500.
+            spp (int, optional): Samples per pixel (currently unused). Defaults to 16384.
+            concentration_factor (float, optional): Controls how tightly depths are
+                sampled around the focus distance during data generation. Defaults to 2.0.
+            result_dir (str, optional): Directory to save figures and checkpoints.
+                Defaults to "./results/psfnet".
         """
         # Init network and prepare for training
         psfnet = self.psfnet
@@ -282,20 +313,27 @@ class PSFNetLens(Lens):
 
     @torch.no_grad()
     def sample_training_data(self, num_points=512, concentration_factor=2.0):
-        """Sample training data for PSF surrogate network.
+        """Sample a batch of training data for the PSF surrogate network.
+
+        Draws one focus distance per call (beta-biased towards the near bound),
+        samples fovs (beta-biased towards `rfov`), and samples depths
+        concentrated around the focus distance, then ray-traces the RGB PSF for
+        each sampled point. Depth and focus distance in the returned input are
+        scaled by 1/1000 (i.e. expressed in metres).
 
         Args:
-            num_points (int): number of training points
-            concentration_factor (float): concentration factor for training data sampling
+            num_points (int, optional): Number of training points (batch size).
+                Defaults to 512.
+            concentration_factor (float, optional): Controls how tightly depths are
+                sampled around the focus distance; larger values sample more tightly.
+                Defaults to 2.0.
 
         Returns:
-            sample_input (tensor): [B, 3] tensor, (fov, depth, foc_dist).
-                - fov from [0, rfov] on 0y-axis, [radians]
-                - depth from [d_far, d_close], [mm]
-                - foc_dist from [foc_d_far, foc_d_close], [mm]
-                - We use absolute fov and depth.
-
-            sample_psf (tensor): [B, 3, ks, ks] tensor
+            sample_input (torch.Tensor): Shape [num_points, 3], columns
+                `(fov, depth/1000, foc_dist/1000)`. fov is in [0, rfov] [radians];
+                depth in [d_far, d_close] [mm]; foc_dist in [foc_d_far, foc_d_close] [mm].
+            sample_psf (torch.Tensor): Ray-traced RGB PSFs, shape
+                [num_points, 3, kernel_size, kernel_size].
         """
         d_close = self.d_close
         d_far = self.d_far
@@ -337,22 +375,26 @@ class PSFNetLens(Lens):
     def eval(self):
         """Switch the PSF surrogate network to evaluation mode.
 
-        Disables dropout and batch normalisation updates in the internal
-        ``psfnet`` module.  Call this before inference.
+        Disables dropout and batch-norm updates in the internal `psfnet`
+        module. Call this before inference.
         """
         self.psfnet.eval()
 
     def points2input(self, points):
-        """Convert points to input tensor.
+        """Convert point-source coordinates to the network input tensor.
+
+        Maps normalized sensor-plane coordinates to a field angle, pairs them
+        with depth and the current focus distance, and scales depth and focus
+        distance by 1/1000 (i.e. into metres) to match the training inputs.
 
         Args:
-            points (tensor): [N, 3] tensor, [-1, 1] * [-1, 1] * [depth_min, depth_max]
+            points (torch.Tensor): Shape [N, 3]. Columns are normalized x and y in
+                [-1, 1] (fraction of the half sensor size) and depth [mm].
 
         Returns:
-            input (tensor): [N, 3] tensor, (fov, depth, foc_dist).
-                - fov from [0, rfov] on y-axis, [radians]
-                - depth/1000.0 from [d_far, d_close], [mm]
-                - foc_dist/1000.0 from [foc_d_far, foc_d_close], [mm]
+            network_inp (torch.Tensor): Shape [N, 3], columns
+                `(fov, depth/1000, foc_dist/1000)`. fov in [radians]; depth and
+                foc_dist originally in [mm].
         """
         sensor_h, sensor_w = self.lens.sensor_size
         foclen = self.lens.foclen
@@ -373,29 +415,27 @@ class PSFNetLens(Lens):
     def refocus(self, foc_dist):
         """Refocus the lens to a given object distance.
 
-        Delegates to the embedded `GeoLens` and stores the focus
-        distance for subsequent PSF predictions.
+        Delegates to the embedded `GeoLens` and caches the focus distance in
+        `self.foc_dist` for subsequent PSF predictions.
 
         Args:
-            foc_dist (float): Focus distance in [mm] (negative, towards the
-                object).
+            foc_dist (float): Focus distance [mm] (negative, towards the object).
         """
         self.lens.refocus(foc_dist)
         self.foc_dist = foc_dist
 
     def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
-        """Monochromatic PSF from the RGB surrogate network.
+        """Compute the monochromatic PSF from the RGB surrogate network.
 
-        ``PSFNetLens`` is RGB-native: the network predicts a 3-channel PSF in a
+        `PSFNetLens` is RGB-native: the network predicts a 3-channel PSF in a
         single pass, so the monochromatic PSF returns the RGB channel whose
-        design wavelength (``self.wvln_rgb``) is closest to ``wvln``.
+        design wavelength (`self.wvln_rgb`) is closest to `wvln`.
 
         Args:
             points (torch.Tensor): Point source coordinates, shape [N, 3] or [3].
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``; mapped to the nearest RGB
-                channel.
-            ks (int, optional): Output kernel size. Defaults to ``PSF_KS``.
+            wvln (float, optional): Wavelength [µm]. When None (default), falls
+                back to `self.primary_wvln`; mapped to the nearest RGB channel.
+            ks (int, optional): Output kernel size [pixels]. Defaults to PSF_KS.
             **kwargs: Forwarded to `psf_rgb`.
 
         Returns:
@@ -416,13 +456,20 @@ class PSFNetLens(Lens):
         return psf.squeeze(0) if single_point else psf
 
     def psf_rgb(self, points, ks=PSF_KS, **kwargs):
-        """Calculate RGB PSF using the PSF network.
+        """Compute the RGB PSF for a batch of point sources via the network.
+
+        The network predicts PSFs along the y-axis; each predicted PSF is rotated
+        by `atan2(x, y)` to the point's azimuth and then center-cropped to `ks` if
+        `ks` is smaller than the network's native kernel size.
 
         Args:
-            points (torch.Tensor): [N, 3] tensor, [-1, 1] * [-1, 1] * [depth_min, depth_max]
+            points (torch.Tensor): Shape [N, 3]. Columns are normalized x and y in
+                [-1, 1] (fraction of the half sensor size) and depth [mm].
+            ks (int, optional): Output kernel size [pixels]. Defaults to PSF_KS.
+            **kwargs: Accepted for API compatibility; unused.
 
         Returns:
-            psf (torch.Tensor): [N, 3, ks, ks] tensor
+            psf (torch.Tensor): RGB PSFs, shape [N, 3, ks, ks].
         """
         # Calculate network input
         network_inp = self.points2input(points)
@@ -448,16 +495,20 @@ class PSFNetLens(Lens):
         return psf
 
     def psf_map_rgb(self, grid=(11, 11), depth=None, ks=PSF_KS, **kwargs):
-        """Compute monochrome PSF map.
+        """Compute an RGB PSF map over a grid of field points.
+
+        Builds a grid of point sources at the given depth and evaluates the RGB
+        PSF at each grid location.
 
         Args:
-            grid (tuple, optional): Grid size. Defaults to (11, 11), meaning 11x11 grid.
-            depth (float, optional): Depth of the object. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            ks (int, optional): Kernel size. Defaults to PSF_KS, meaning PSF_KS x PSF_KS kernel size.
+            grid (tuple, optional): Grid size as `(grid_h, grid_w)`. Defaults to
+                (11, 11).
+            depth (float, optional): Object depth [mm]. When None (default), falls
+                back to `self.obj_depth`.
+            ks (int, optional): Kernel size [pixels]. Defaults to PSF_KS.
 
         Returns:
-            psf_map (torch.Tensor): Shape of [grid, grid, 3, ks, ks].
+            psf_map (torch.Tensor): Shape [grid_h, grid_w, 3, ks, ks].
         """
         depth = self.obj_depth if depth is None else depth
         # PSF map grid
@@ -474,18 +525,24 @@ class PSFNetLens(Lens):
     # ==================================================
     @torch.no_grad()
     def render_rgbd(self, img, depth, foc_dist, ks=64, high_res=False, chunk_size=256):
-        """Render image with aif image and depth map. Receive [N, C, H, W] image.
+        """Render a defocused image from an all-in-focus image and depth map.
+
+        Refocuses the lens to `foc_dist`, predicts a per-pixel RGB PSF from the
+        per-pixel field position and depth, then splats those PSFs onto the input
+        image. Only batch size 1 is supported.
 
         Args:
-            img (tensor): [1, C, H, W]
-            depth (tensor): [1, H, W], depth map, unit in mm, range from [-20000, -200]
-            foc_dist (tensor): [1], unit in mm, range from [-20000, -200]
-            ks (int): kernel size
-            high_res (bool): whether to use high resolution rendering
-            chunk_size (int): tile size used when ``high_res`` is True
+            img (torch.Tensor): All-in-focus image, shape [1, C, H, W].
+            depth (torch.Tensor): Depth map [mm], shape [1, H, W] (negative depths).
+            foc_dist (torch.Tensor): Focus distance [mm], shape [1] (negative).
+            ks (int, optional): PSF kernel size [pixels]. Defaults to 64.
+            high_res (bool, optional): If True, splat in tiles to reduce memory use.
+                Defaults to False.
+            chunk_size (int, optional): Tile size used when `high_res` is True.
+                Defaults to 256.
 
         Returns:
-            render (tensor): [1, C, H, W]
+            render (torch.Tensor): Rendered image, shape [1, C, H, W].
         """
         B, C, H, W = img.shape
         assert B == 1, "Only support batch size 1"

@@ -11,23 +11,36 @@ from einops import rearrange
 class ModulateSiren(nn.Module):
     """Modulated SIREN for latent-conditioned image synthesis.
 
-    Combines a SIREN synthesizer network (mapping pixel coordinates to output values)
-    with a modulator network that conditions each layer based on a latent vector.
-    Used to predict spatially-varying PSFs conditioned on lens parameters.
+    Combines a SIREN synthesizer network (mapping a fixed pixel-coordinate grid to
+    output values) with a modulator network that scales each synthesizer layer based
+    on a conditioning latent vector. Used to predict spatially-varying PSFs
+    conditioned on lens parameters. The output is always tanh-activated and reshaped
+    to an image regardless of the `outermost_linear` / `final_activation` settings.
+
+    Attributes:
+        synthesizer (nn.ModuleList): SIREN sine layers plus the final output layer.
+        modulator (nn.ModuleList): Per-layer Linear+ReLU blocks producing modulation
+            vectors from the latent (and previous modulation).
+        grid (torch.Tensor): Registered coordinate buffer of shape
+            `(image_height * image_width, dim_in)`, spanning $[-1, 1]$ on each axis.
 
     Args:
         dim_in (int): Input coordinate dimension (typically 2 for x, y).
         dim_hidden (int): Hidden layer width for both synthesizer and modulator.
         dim_out (int): Output dimension per pixel (e.g., 1 for grayscale PSF).
         dim_latent (int): Dimension of the conditioning latent vector.
-        num_layers (int): Number of SIREN + modulator layers.
+        num_layers (int): Number of SIREN + modulator layers (excluding the final
+            output layer of the synthesizer).
         image_width (int): Output image width in pixels.
         image_height (int): Output image height in pixels.
-        w0 (float): Frequency multiplier for hidden sine layers. Defaults to 1.0.
-        w0_initial (float): Frequency multiplier for the first sine layer. Defaults to 30.0.
-        use_bias (bool): Whether to use bias in sine layers. Defaults to True.
-        final_activation (nn.Module or None): Activation for the last layer. Defaults to None (linear).
-        outermost_linear (bool): If True, the last layer is a plain linear layer. Defaults to True.
+        w0 (float, optional): Frequency multiplier for hidden sine layers. Defaults to 1.0.
+        w0_initial (float, optional): Frequency multiplier for the first sine layer. Defaults to 30.0.
+        use_bias (bool, optional): Whether to use bias in sine layers. Defaults to True.
+        final_activation (nn.Module or None, optional): Activation for the final
+            `Siren` layer when `outermost_linear` is False. Defaults to None
+            (Identity).
+        outermost_linear (bool, optional): If True, the final synthesizer layer is a
+            plain `nn.Linear`; otherwise it is a `Siren` layer. Defaults to True.
     """
 
     def __init__(
@@ -124,15 +137,20 @@ class ModulateSiren(nn.Module):
         self.register_buffer("grid", mgrid)
 
     def forward(self, latent):
-        """Forward pass.
+        """Synthesize a batch of images from conditioning latent vectors.
+
+        Runs the shared coordinate grid through the SIREN synthesizer, scaling each
+        layer by the corresponding modulator output, then applies a tanh and reshapes
+        to a channel-first image batch.
 
         Args:
             latent (torch.Tensor): Conditioning latent vector of shape
-                ``(batch_size, dim_latent)``.
+                `(batch_size, dim_latent)`.
 
         Returns:
             x (torch.Tensor): Output image tensor of shape
-                ``(batch_size, dim_out, image_height, image_width)``.
+                `(batch_size, 1, image_height, image_width)`, with values in
+                $[-1, 1]$.
         """
         x = self.grid.clone().detach().requires_grad_()
 
@@ -155,6 +173,24 @@ class ModulateSiren(nn.Module):
 
 
 class SineLayer(nn.Module):
+    """Single SIREN layer applying a sine nonlinearity to a linear projection.
+
+    Computes $\\sin(\\omega_0 \\cdot (W x + b))$, with weights initialized following
+    the SIREN scheme so that activations keep a stable distribution across depth.
+
+    Attributes:
+        linear (nn.Linear): The affine projection applied before the sine.
+        omega_0 (float): Frequency multiplier inside the sine.
+        is_first (bool): Whether this is the first layer (changes weight init).
+
+    Args:
+        in_features (int): Input feature dimension.
+        out_features (int): Output feature dimension.
+        bias (bool, optional): Whether to include a bias term. Defaults to True.
+        is_first (bool, optional): Whether this is the first SIREN layer. Defaults to False.
+        omega_0 (float, optional): Frequency multiplier inside the sine. Defaults to 30.
+    """
+
     def __init__(
         self, in_features, out_features, bias=True, is_first=False, omega_0=30
     ):
@@ -168,6 +204,11 @@ class SineLayer(nn.Module):
         self.init_weights()
 
     def init_weights(self):
+        """Initialize the linear weights following the SIREN scheme.
+
+        First layers draw uniformly from $[-1/n, 1/n]$; later layers draw from
+        $[-\\sqrt{6/n}/\\omega_0, \\sqrt{6/n}/\\omega_0]$, where $n$ is `in_features`.
+        """
         with torch.no_grad():
             if self.is_first:
                 self.linear.weight.uniform_(-1 / self.in_features, 1 / self.in_features)
@@ -178,10 +219,42 @@ class SineLayer(nn.Module):
                 )
 
     def forward(self, input):
+        """Apply the linear projection followed by a scaled sine.
+
+        Args:
+            input (torch.Tensor): Input tensor of shape `(..., in_features)`.
+
+        Returns:
+            out (torch.Tensor): Activated tensor of shape `(..., out_features)`.
+        """
         return torch.sin(self.omega_0 * self.linear(input))
 
 
 class Siren(nn.Module):
+    """SIREN layer with explicit weight/bias parameters and a sine activation.
+
+    Equivalent to a `SineLayer` but stores `weight`/`bias` as raw `nn.Parameter`
+    tensors and allows a custom activation (defaulting to `Sine`). Used as the final
+    synthesizer layer of `ModulateSiren` when `outermost_linear` is False.
+
+    Attributes:
+        weight (nn.Parameter): Weight tensor of shape `(dim_out, dim_in)`.
+        bias (nn.Parameter or None): Bias tensor of shape `(dim_out,)`, or None.
+        activation (nn.Module): Nonlinearity applied after the linear projection.
+
+    Args:
+        dim_in (int): Input feature dimension.
+        dim_out (int): Output feature dimension.
+        w0 (float, optional): Frequency multiplier passed to the default `Sine`
+            activation and used in weight init. Defaults to 1.0.
+        c (float, optional): Constant in the weight-init bound $\\sqrt{c/\\text{dim\\_in}}/w_0$. Defaults to 6.0.
+        is_first (bool, optional): Whether this is the first SIREN layer (changes
+            weight init). Defaults to False.
+        use_bias (bool, optional): Whether to include a bias term. Defaults to True.
+        activation (nn.Module or None, optional): Activation applied after the linear
+            projection. Defaults to None (a `Sine` with frequency `w0`).
+    """
+
     def __init__(
         self,
         dim_in,
@@ -205,21 +278,59 @@ class Siren(nn.Module):
         self.activation = Sine(w0) if activation is None else activation
 
     def init_(self, weight, bias, c, w0):
+        """Initialize weights in place following the SIREN scheme.
+
+        Samples uniformly from $[-w_{std}, w_{std}]$ where $w_{std}$ is $1/\\text{dim\\_in}$
+        for the first layer and $\\sqrt{c/\\text{dim\\_in}}/w_0$ otherwise. The `bias`
+        argument is accepted but left unchanged (zero-initialized by the caller).
+
+        Args:
+            weight (torch.Tensor): Weight tensor of shape `(dim_out, dim_in)`,
+                modified in place.
+            bias (torch.Tensor or None): Bias tensor; unused.
+            c (float): Constant in the non-first-layer std bound.
+            w0 (float): Frequency multiplier used in the non-first-layer std bound.
+        """
         dim = self.dim_in
 
         w_std = (1 / dim) if self.is_first else (math.sqrt(c / dim) / w0)
         weight.uniform_(-w_std, w_std)
 
     def forward(self, x):
+        """Apply the linear projection followed by the activation.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape `(..., dim_in)`.
+
+        Returns:
+            out (torch.Tensor): Activated tensor of shape `(..., dim_out)`.
+        """
         out = F.linear(x, self.weight, self.bias)
         out = self.activation(out)
         return out
 
 
 class Sine(nn.Module):
+    """Sine activation module computing $\\sin(w_0 x)$.
+
+    The frequency multiplier $w_0$ is the default activation used by `Siren` layers.
+
+    Args:
+        w0 (float, optional): Frequency multiplier inside the sine. Defaults to 1.0.
+    """
+
     def __init__(self, w0=1.0):
         super().__init__()
         self.w0 = w0
 
     def forward(self, x):
+        """Apply the scaled sine activation.
+
+        Args:
+            x (torch.Tensor): Input tensor of any shape.
+
+        Returns:
+            out (torch.Tensor): Tensor of the same shape with $\\sin(w_0 x)$ applied
+                elementwise.
+        """
         return torch.sin(self.w0 * x)

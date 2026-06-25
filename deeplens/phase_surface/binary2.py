@@ -7,7 +7,26 @@ from .phase import Phase
 
 
 class Binary2Phase(Phase):
-    """Binary2 phase on a plane substrate."""
+    """Zemax BINARY_2 phase profile on a flat substrate.
+
+    Parameterizes the diffractive phase as an even radial polynomial in the
+    normalized radius $\\rho = r / r_\\text{norm}$:
+
+    $$\\phi(\\rho) = \\sum_{i=1}^{6} a_{2i}\\,\\rho^{2i}$$
+
+    where the coefficients `order2`..`order12` are stored in radians [rad].
+    The phase is evaluated with Horner's method and wrapped to $[0, 2\\pi)$.
+
+    Attributes:
+        order2 (torch.Tensor): Coefficient of $\\rho^2$, scalar [rad].
+        order4 (torch.Tensor): Coefficient of $\\rho^4$, scalar [rad].
+        order6 (torch.Tensor): Coefficient of $\\rho^6$, scalar [rad].
+        order8 (torch.Tensor): Coefficient of $\\rho^8$, scalar [rad].
+        order10 (torch.Tensor): Coefficient of $\\rho^{10}$, scalar [rad].
+        order12 (torch.Tensor): Coefficient of $\\rho^{12}$, scalar [rad].
+        param_model (str): Parameterization tag, always "binary2".
+        norm_radii (float): Normalization radius $r_\\text{norm}$ [mm].
+    """
 
     def __init__(
         self,
@@ -26,6 +45,25 @@ class Binary2Phase(Phase):
         is_square=True,
         device="cpu",
     ):
+        """Initialize a Binary2 phase surface.
+
+        Args:
+            r (float): Aperture radius (half-diameter) [mm].
+            d (float): Axial position of the surface in global coordinates [mm].
+            order2 (float, optional): Coefficient of $\\rho^2$ [rad]. Defaults to 0.0.
+            order4 (float, optional): Coefficient of $\\rho^4$ [rad]. Defaults to 0.0.
+            order6 (float, optional): Coefficient of $\\rho^6$ [rad]. Defaults to 0.0.
+            order8 (float, optional): Coefficient of $\\rho^8$ [rad]. Defaults to 0.0.
+            order10 (float, optional): Coefficient of $\\rho^{10}$ [rad]. Defaults to 0.0.
+            order12 (float, optional): Coefficient of $\\rho^{12}$ [rad]. Defaults to 0.0.
+            norm_radii (float or None, optional): Normalization radius for the polynomial [mm].
+                Defaults to None, in which case `r` is used.
+            mat2 (str, optional): Material after the surface. Defaults to "air".
+            pos_xy (tuple, optional): Lateral (x, y) offset of the surface center [mm]. Defaults to (0.0, 0.0).
+            vec_local (tuple, optional): Local surface normal direction. Defaults to (0.0, 0.0, 1.0).
+            is_square (bool, optional): If True, use a square aperture; otherwise circular. Defaults to True.
+            device (str, optional): Torch device. Defaults to "cpu".
+        """
         super().__init__(
             r=r,
             d=d,
@@ -50,7 +88,16 @@ class Binary2Phase(Phase):
 
     @classmethod
     def init_from_dict(cls, surf_dict):
-        """Initialize Binary2 phase surface from dictionary."""
+        """Construct a Binary2 phase surface from a parameter dictionary.
+
+        Args:
+            surf_dict (dict): Surface parameters. Requires keys "r" and "d";
+                optionally "order2".."order12", "norm_radii", "mat2", and
+                "is_square".
+
+        Returns:
+            obj (Binary2Phase): The constructed phase surface.
+        """
         mat2 = surf_dict.get("mat2", "air")
         norm_radii = surf_dict.get("norm_radii", None)
         is_square = surf_dict.get("is_square", True)
@@ -70,7 +117,18 @@ class Binary2Phase(Phase):
         return obj
 
     def phi(self, x, y):
-        """Reference phase map at design wavelength."""
+        """Compute the reference phase at the design wavelength.
+
+        Evaluates the even radial polynomial in normalized radius via Horner's
+        method and wraps the result to $[0, 2\\pi)$ with `torch.remainder`.
+
+        Args:
+            x (torch.Tensor): X coordinates [mm], any shape.
+            y (torch.Tensor): Y coordinates [mm], same shape as `x`.
+
+        Returns:
+            phi (torch.Tensor): Phase values [rad] wrapped to $[0, 2\\pi)$, same shape as `x`.
+        """
         x_norm = x / self.norm_radii
         y_norm = y / self.norm_radii
         r2 = x_norm * x_norm + y_norm * y_norm + EPSILON
@@ -85,7 +143,19 @@ class Binary2Phase(Phase):
         return phi
 
     def dphi_dxy(self, x, y):
-        """Calculate phase derivatives (dphi/dx, dphi/dy) for given points."""
+        """Compute the lateral phase gradient at the given points.
+
+        Differentiates the (unwrapped) phase polynomial and applies the chain
+        rule through the normalized radius.
+
+        Args:
+            x (torch.Tensor): X coordinates [mm], any shape.
+            y (torch.Tensor): Y coordinates [mm], same shape as `x`.
+
+        Returns:
+            dphidx (torch.Tensor): Partial derivative $\\partial\\phi/\\partial x$ [rad/mm], same shape as `x`.
+            dphidy (torch.Tensor): Partial derivative $\\partial\\phi/\\partial y$ [rad/mm], same shape as `x`.
+        """
         x_norm = x / self.norm_radii
         y_norm = y / self.norm_radii
         r2 = x_norm * x_norm + y_norm * y_norm + EPSILON
@@ -102,7 +172,22 @@ class Binary2Phase(Phase):
         return dphidx, dphidy
 
     def get_optimizer_params(self, lrs=[1e-4, 1e-2], optim_mat=False):
-        """Generate optimizer parameters."""
+        """Build optimizer parameter groups for the phase surface.
+
+        Enables gradients on the axial position `d` and the six polynomial
+        coefficients, grouping `d` with the first learning rate and all
+        coefficients with the second.
+
+        Args:
+            lrs (list, optional): Learning rates ``[lr_position, lr_coeffs]``. Defaults to [1e-4, 1e-2].
+            optim_mat (bool, optional): Must be False; materials are not optimized for phase surfaces. Defaults to False.
+
+        Returns:
+            params (list): List of parameter-group dicts for a torch optimizer.
+
+        Raises:
+            AssertionError: If `optim_mat` is True.
+        """
         params = []
 
         # Optimize position
@@ -131,7 +216,11 @@ class Binary2Phase(Phase):
         return params
 
     def save_ckpt(self, save_path="./binary2_doe.pth"):
-        """Save Binary2 DOE parameters."""
+        """Save the Binary2 phase coefficients to disk.
+
+        Args:
+            save_path (str, optional): Output checkpoint path. Defaults to "./binary2_doe.pth".
+        """
         torch.save(
             {
                 "param_model": self.param_model,
@@ -146,7 +235,11 @@ class Binary2Phase(Phase):
         )
 
     def load_ckpt(self, load_path="./binary2_doe.pth"):
-        """Load Binary2 DOE parameters."""
+        """Load Binary2 phase coefficients from disk onto the surface device.
+
+        Args:
+            load_path (str, optional): Checkpoint path to load. Defaults to "./binary2_doe.pth".
+        """
         ckpt = torch.load(load_path)
         self.param_model = ckpt["param_model"]
         self.order2 = ckpt["order2"].to(self.device)
@@ -157,11 +250,18 @@ class Binary2Phase(Phase):
         self.order12 = ckpt["order12"].to(self.device)
 
     def zmx_str(self, surf_idx, d_next):
-        """Return Zemax BINARY_2 surface string.
+        """Return the Zemax BINARY_2 surface block as a string.
 
-        PARM 1–8 are set to zero (flat substrate, no aspheric sag) so that
+        PARM 1-8 are set to zero (flat substrate, no aspheric sag) so that
         Zemax interprets the XDAT entries purely as phase polynomial
         coefficients.
+
+        Args:
+            surf_idx (int): Surface index used in the SURF header.
+            d_next (torch.Tensor): Distance to the next surface [mm], scalar tensor (read via `.item()`).
+
+        Returns:
+            zmx_str (str): Multi-line Zemax surface description.
         """
         coeffs = [
             self.order2.item(),
@@ -196,7 +296,13 @@ class Binary2Phase(Phase):
         return zmx_str
 
     def surf_dict(self):
-        """Return surface parameters."""
+        """Return a serializable dictionary of the surface parameters.
+
+        Returns:
+            surf_dict (dict): Surface parameters including type, radius `r` [mm],
+                polynomial coefficients (rounded), `norm_radii` [mm], position `d` [mm],
+                and material name.
+        """
         surf_dict = {
             "type": self.__class__.__name__,
             "r": self.r,

@@ -20,7 +20,22 @@ from ..base import DeepObj
 # Read AGF file
 # ===========================================
 def read_agf(file_path):
-    """Read the AGF file and return the materials data."""
+    """Read a Zemax AGF glass catalog and return its materials data.
+
+    Parses the ``NM`` (name/index/Abbe) and ``CD`` (dispersion coefficient)
+    records of an AGF file, pairing them by order of appearance.
+
+    Args:
+        file_path (str): Path to the ``.AGF`` catalog file.
+
+    Returns:
+        materials (dict): Mapping from lowercase material name to a dict with
+            keys ``calculate_mode``, ``nd``, ``vd`` and the six dispersion
+            coefficients ``a_coeff`` ... ``f_coeff`` (all float).
+
+    Raises:
+        ValueError: If the file cannot be decoded as UTF-8 or UTF-16.
+    """
     encodings = ["utf-8", "utf-16"]
     for enc in encodings:
         try:
@@ -66,7 +81,15 @@ MATERIAL_data = {**MISC_data, **PLASTIC_data, **CDGM_data, **SCHOTT_data}
 # Read custom materials from JSON file
 # ===========================================
 def read_custom_mat(file_path):
-    """Read the JSON file and return the materials data."""
+    """Read a custom materials JSON catalog and return its data.
+
+    Args:
+        file_path (str): Path to the custom materials JSON file.
+
+    Returns:
+        data (dict): Parsed JSON contents, or an empty dict if the file is
+            missing.
+    """
     try:
         with open(file_path, "r") as f:
             return json.load(f)
@@ -85,18 +108,21 @@ class Material(DeepObj):
     """Optical material defined by its wavelength-dependent refractive index.
 
     Materials are looked up by name in the bundled CDGM, SCHOTT, or MISC AGF
-    catalogs, in a custom JSON catalog, or specified inline as ``"n/V"``
-    (Cauchy approximation from Abbe number *V*).
+    catalogs, in a custom JSON catalog, or specified inline as `"n/V"`
+    (Cauchy approximation from Abbe number V).
 
-    Supported dispersion models: ``"sellmeier"``, ``"cauchy"``, ``"schott"``,
-    and ``"interp"`` (lookup table).
+    Supported dispersion models: `"sellmeier"`, `"cauchy"`, `"schott"`,
+    `"interp"` (lookup table), and `"optimizable"` (Cauchy with learnable n, V).
 
     Attributes:
         name (str): Lowercase material name.
-        dispersion (str): Dispersion model used (``"sellmeier"``, ``"cauchy"``,
-            ``"schott"``, or ``"interp"``).
-        n (float): Refractive index at the d-line (587 nm).
-        V (float): Abbe number.
+        device (str): Compute device for dispersion tensors.
+        dispersion (str): Dispersion model in use (`"sellmeier"`, `"cauchy"`,
+            `"schott"`, `"interp"`, or `"optimizable"`).
+        n (float or torch.Tensor): Refractive index at the d-line (587.6 nm).
+            Becomes a learnable tensor after `get_optimizer_params`.
+        V (float or torch.Tensor): Abbe number. Also learnable in
+            `"optimizable"` mode.
     """
 
     def __init__(self, name=None, device="cpu"):
@@ -106,15 +132,14 @@ class Material(DeepObj):
             name (str or None, optional): Material name (case-insensitive).
                 Accepted forms:
 
-                * Glass catalog name, e.g. ``"N-BK7"``, ``"H-K9L"``
-                * ``"air"`` (n = 1, non-dispersive). Legacy names
-                  ``"vacuum"`` and ``"occluder"`` are accepted and
-                  normalised to ``"air"``.
-                * Inline Cauchy, e.g. ``"1.5168/64.17"``
-                * Custom name registered in ``materials_data.json``
+                - Glass catalog name, e.g. `"N-BK7"`, `"H-K9L"`
+                - `"air"` (n = 1, non-dispersive). Legacy names `"vacuum"` and
+                  `"occluder"` are accepted and normalised to `"air"`.
+                - Inline Cauchy `"n/V"`, e.g. `"1.5168/64.17"`
+                - Custom name registered in `materials_data.json`
 
-                Defaults to ``None`` (treated as ``"air"``).
-            device (str, optional): Compute device. Defaults to ``"cpu"``.
+                Defaults to None (treated as `"air"`).
+            device (str, optional): Compute device. Defaults to `"cpu"`.
 
         Raises:
             NotImplementedError: If *name* is not found in any catalog.
@@ -132,6 +157,12 @@ class Material(DeepObj):
         self.device = device
 
     def get_name(self):
+        """Return the material name, or an inline `"n/V"` string if optimizable.
+
+        Returns:
+            name (str): The catalog name, or a `"{n}/{V}"` string formatted from
+                the current (n, V) when the dispersion mode is `"optimizable"`.
+        """
         if self.dispersion == "optimizable":
             return f"{self.n.item():.4f}/{self.V.item():.2f}"
         else:
@@ -141,7 +172,20 @@ class Material(DeepObj):
     # Load dispersion equation
     # -------------------------------------------
     def load_dispersion(self):
-        """Load material dispersion equation."""
+        """Resolve the material name into a dispersion model and its parameters.
+
+        Sets `self.dispersion` and the corresponding coefficients (Sellmeier
+        `k*`/`l*`, Schott `a*`, Cauchy `A`/`B`, or interpolation tables), along
+        with `self.n` (d-line index) and `self.V` (Abbe number). Looks up the
+        name in the AGF catalogs, the inline `"n/V"` form, then the custom JSON
+        tables.
+
+        Raises:
+            NotImplementedError: If the material name is not found in any
+                catalog.
+            ValueError: If a custom `"interp"` entry has mismatched wavelength
+                and index table lengths.
+        """
         # Air (n=1, non-dispersive)
         if self.name == "air":
             self.dispersion = "sellmeier"
@@ -211,7 +255,20 @@ class Material(DeepObj):
             raise NotImplementedError(f"Material {self.name} not implemented.")
 
     def set_material_param_agf(self, material_data, material_name):
-        """Set the material parameters and dispersion equation from AGF file."""
+        """Set dispersion model and coefficients from an AGF catalog entry.
+
+        Reads the `calculate_mode` flag to pick the Schott (mode 1) or Sellmeier
+        (mode 2) model, fills the corresponding coefficients, and sets `self.n`
+        and `self.V` from the catalog's `nd`/`vd` fields.
+
+        Args:
+            material_data (dict): Parsed AGF catalog (name to parameter dict).
+            material_name (str): Lowercase material name to look up.
+
+        Raises:
+            NotImplementedError: If the entry's `calculate_mode` is neither 1
+                nor 2.
+        """
         if material_name in material_data:
             material = material_data[material_name]
 
@@ -242,9 +299,14 @@ class Material(DeepObj):
             print(f"error: not {material_name}")
 
     def set_sellmeier_param(self, params=None):
-        """Manually set sellmeier parameters k1, l1, k2, l2, k3, l3.
+        """Manually set the six Sellmeier coefficients for a custom material.
 
-        This function is used when we want to manually set the sellmeier parameters for a custom material.
+        Switches the dispersion model to `"sellmeier"` so subsequent `ior` calls
+        use the newly set parameters.
+
+        Args:
+            params (tuple or list or None, optional): The six coefficients
+                `(k1, l1, k2, l2, k3, l3)`. Defaults to None (all zeros).
         """
         # Switch the dispersion model so ior() uses the newly set parameters.
         self.dispersion = "sellmeier"
@@ -264,7 +326,18 @@ class Material(DeepObj):
     # Calculate refractive index
     # -------------------------------------------
     def refractive_index(self, wvln):
-        """Compute the refractive index at given wvln."""
+        """Compute the refractive index at a given wavelength.
+
+        Thin wrapper over `ior` that accepts a Python float and returns a float,
+        otherwise passes a tensor through unchanged.
+
+        Args:
+            wvln (float or torch.Tensor): Wavelength in micrometres [µm].
+
+        Returns:
+            n (float or torch.Tensor): Refractive index. A float when `wvln` is a
+                float, otherwise a tensor matching the input shape.
+        """
         if isinstance(wvln, float):
             wvln = torch.tensor(wvln, device=self.device)
             return self.ior(wvln).item()
@@ -272,7 +345,24 @@ class Material(DeepObj):
         return self.ior(wvln)
 
     def ior(self, wvln):
-        """Compute the refractive index at given wvln."""
+        """Compute the refractive index from the active dispersion model.
+
+        Dispatches on `self.dispersion`: Sellmeier, Schott, Cauchy, linear
+        interpolation of a lookup table, or an optimizable Cauchy form with
+        learnable (n, V). The Cauchy branch evaluates $n = A + B/\\lambda^2$
+        with $\\lambda$ in nanometres; all other branches take $\\lambda$ in
+        micrometres directly.
+
+        Args:
+            wvln (torch.Tensor): Wavelength in micrometres [µm]. Must lie in
+                (0.1, 10).
+
+        Returns:
+            n (torch.Tensor): Refractive index, same shape as `wvln`.
+
+        Raises:
+            NotImplementedError: If `self.dispersion` is unknown.
+        """
         assert wvln.min() > 0.1 and wvln.max() < 10, "Wavelength should be in [um]."
 
         if self.dispersion == "sellmeier":
@@ -354,7 +444,21 @@ class Material(DeepObj):
 
     @staticmethod
     def nV_to_AB(n, V):
-        """Convert (n ,V) paramters to (A, B) parameters to find the material."""
+        """Convert (n, V) to Cauchy coefficients (A, B).
+
+        Solves the two-term Cauchy model $n(\\lambda) = A + B/\\lambda^2$ for A
+        and B given the d-line index and Abbe number, using the F/d/C lines
+        (486.1 / 587.6 / 656.3 nm). B is in nm², matching the Cauchy branch of
+        `ior`.
+
+        Args:
+            n (float): Refractive index at the d-line.
+            V (float): Abbe number.
+
+        Returns:
+            A (float): Cauchy constant term.
+            B (float): Cauchy dispersion term, in nm².
+        """
 
         def ivs(a):
             return 1.0 / a**2
@@ -368,7 +472,21 @@ class Material(DeepObj):
     # Optimize and match material
     # -------------------------------------------
     def match_material(self, mat_table=None):
-        """Find the closest material in the CDGM common glasses database."""
+        """Snap this material to the closest real glass in a catalog.
+
+        Finds the catalog entry minimising the normalised (n, V) distance
+        (n scaled by 0.4, V by 40), renames this material to it, and reloads its
+        dispersion. No-op for air.
+
+        Args:
+            mat_table (str or dict or None, optional): Catalog to match against.
+                `None` or `"CDGM"` uses the CDGM common glasses, `"PLASTIC"` uses
+                the plastic table, or pass a name-to-(n, V) dict directly.
+                Defaults to None.
+
+        Raises:
+            NotImplementedError: If `mat_table` is an unrecognised string.
+        """
         if not self.name == "air":
             # Material match table
             if mat_table is None:
@@ -396,12 +514,19 @@ class Material(DeepObj):
             self.load_dispersion()
 
     def get_optimizer_params(self, lrs=[1e-4, 1e-2]):
-        """Optimize the material parameters (n, V). 
-        
-        Optimizing refractive index is more important than optimizing Abbe number.
-        
+        """Make (n, V) learnable and return optimizer parameter groups.
+
+        Converts `self.n` and `self.V` to gradient-tracking tensors and switches
+        the dispersion model to `"optimizable"`. Optimizing the refractive index
+        matters more than the Abbe number.
+
         Args:
-            lrs (list): learning rates for n and V. Defaults to [1e-4, 1e-4].
+            lrs (list, optional): Learning rates `[lr_n, lr_V]` for n and V.
+                Defaults to `[1e-4, 1e-2]`.
+
+        Returns:
+            params (list): Two optimizer parameter-group dicts, one for n and
+                one for V, each with its own learning rate.
         """
         if isinstance(self.n, float):
             self.n = torch.tensor(self.n, device=self.device)

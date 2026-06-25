@@ -103,11 +103,25 @@ class Lens(DeepObj):
         self.obj_depth = float(obj_depth.item())
 
     def read_lens_json(self, filename):
-        """Read lens from a json file."""
+        """Read the lens from a JSON file. Must be overridden by subclasses.
+
+        Args:
+            filename (str): Path to the JSON lens file.
+
+        Raises:
+            NotImplementedError: This base implementation must be overridden.
+        """
         raise NotImplementedError
 
     def write_lens_json(self, filename):
-        """Write lens to a json file."""
+        """Write the lens to a JSON file. Must be overridden by subclasses.
+
+        Args:
+            filename (str): Destination path for the JSON lens file.
+
+        Raises:
+            NotImplementedError: This base implementation must be overridden.
+        """
         raise NotImplementedError
 
     def set_sensor(self, sensor_size, sensor_res):
@@ -193,7 +207,7 @@ class Lens(DeepObj):
         Raises:
             NotImplementedError: This base implementation must be overridden.
 
-        Notes:
+        Note:
             The method is differentiable with respect to all optimisable lens
             parameters so it can be used directly inside a training loop.
 
@@ -231,17 +245,26 @@ class Lens(DeepObj):
     def point_source_grid(
         self, depth, grid=(9, 9), normalized=True, quater=False, center=True
     ):
-        """Generate point source grid for PSF calculation.
+        """Generate a grid of point sources for PSF calculation.
 
         Args:
-            depth (float): Depth of the point source.
-            grid (tuple): Grid size (grid_w, grid_h). Defaults to (9, 9), meaning 9x9 grid.
-            normalized (bool): Return normalized object source coordinates. Defaults to True, meaning object sources xy coordinates range from [-1, 1].
-            quater (bool): Use quater of the sensor plane to save memory. Defaults to False.
-            center (bool): Use center of each patch. Defaults to True.
+            depth (float): Depth (z-coordinate) of the point sources [mm]
+                (negative, in front of the lens).
+            grid (tuple, optional): Grid size (grid_w, grid_h). Defaults to
+                (9, 9), meaning a 9x9 grid.
+            normalized (bool, optional): If True, return normalized object-space
+                xy coordinates in [-1, 1]; if False, scale to physical positions
+                [mm]. Defaults to True.
+            quater (bool, optional): If True, return only one quarter of the grid
+                to save memory. Defaults to False.
+            center (bool, optional): If True, place points at the center of each
+                patch; otherwise sample to the field corners. Defaults to True.
 
         Returns:
-            point_source (torch.Tensor): Normalized object source coordinates. Shape of [grid_h, grid_w, 3], [-1, 1], [-1, 1], [-Inf, 0].
+            point_source (torch.Tensor): Object source coordinates, shape
+                [grid_h, grid_w, 3] with the last dim ordered (x, y, z). When
+                `quater` is True, the first two dimensions are reduced to the
+                returned quarter.
         """
         # Compute point source grid
         if grid[0] == 1:
@@ -293,7 +316,8 @@ class Lens(DeepObj):
             ks (int): Kernel size. Defaults to PSF_KS.
 
         Returns:
-            psf_map (torch.Tensor): Shape of [grid_h, grid_w, 3, ks, ks].
+            psf_map (torch.Tensor): Monochrome PSF map, shape
+                [grid_h, grid_w, 1, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -345,7 +369,24 @@ class Lens(DeepObj):
         save_name="./psf_map.png",
         show=False,
     ):
-        """Draw RGB PSF map of the lens."""
+        """Draw the RGB PSF map of the lens and save it (or return the figure).
+
+        Args:
+            grid (tuple, optional): Grid size (grid_w, grid_h). Defaults to (7, 7).
+            ks (int, optional): PSF kernel size in pixels. Defaults to PSF_KS.
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            log_scale (bool, optional): If True, normalize each PSF in log scale
+                for better visualization. Defaults to False.
+            save_name (str, optional): Output image path. Defaults to
+                "./psf_map.png".
+            show (bool, optional): If True, return (fig, ax) instead of saving.
+                Defaults to False.
+
+        Returns:
+            result (tuple or None): (fig, ax) if `show` is True, otherwise None
+                (the figure is saved to `save_name`).
+        """
         depth = self.obj_depth if depth is None else depth
         # Calculate RGB PSF map, shape [grid_h, grid_w, 3, ks, ks]
         psf_map = self.psf_map_rgb(depth=depth, grid=grid, ks=ks)
@@ -477,7 +518,21 @@ class Lens(DeepObj):
     def draw_psf_radial(
         self, M=3, depth=None, ks=PSF_KS, log_scale=False, save_name="./psf_radial.png"
     ):
-        """Draw radial PSF (45 deg). Will draw M PSFs, each of size ks x ks."""
+        """Draw a radial (45 deg, diagonal) sequence of RGB PSFs and save it.
+
+        Draws M PSFs evenly spaced from the field center to the corner, each of
+        size ks x ks, arranged in a single row.
+
+        Args:
+            M (int, optional): Number of PSFs to draw. Defaults to 3.
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            ks (int, optional): PSF kernel size in pixels. Defaults to PSF_KS.
+            log_scale (bool, optional): If True, normalize each PSF in log scale
+                for better visualization. Defaults to False.
+            save_name (str, optional): Output image path. Defaults to
+                "./psf_radial.png".
+        """
         from torchvision.utils import make_grid, save_image
         depth = self.obj_depth if depth is None else depth
         x = torch.linspace(0, 1, M)
@@ -533,7 +588,8 @@ class Lens(DeepObj):
             **kwargs: Method-specific keyword arguments:
 
                 * For ``"psf_map"``: ``psf_grid`` (tuple, default ``(10, 10)``),
-                  ``psf_ks`` (int, default ``PSF_KS``).
+                  ``psf_ks`` (int, default ``PSF_KS``), ``psf_spp`` (int,
+                  default ``SPP_PSF``).
                 * For ``"psf_patch"``: ``patch_center`` (tuple or Tensor,
                   default ``(0.0, 0.0)``), ``psf_ks`` (int).
 
@@ -545,7 +601,7 @@ class Lens(DeepObj):
                 resolution does not match the sensor resolution.
             Exception: If *method* is not recognised.
 
-        References:
+        Reference:
             [1] "Optical Aberration Correction in Postprocessing using Imaging Simulation", TOG 2021.
             [2] "Efficient depth- and spatially-varying image simulation for defocus deblur", ICCVW 2025.
 
@@ -599,24 +655,44 @@ class Lens(DeepObj):
         return img_render
 
     def render_psf(self, img_obj, depth=None, patch_center=(0, 0), psf_ks=PSF_KS):
-        """Render image patch using PSF convolution. Better not use this function to avoid confusion."""
+        """Render an image patch using PSF convolution (deprecated alias).
+
+        Thin wrapper around `render_psf_patch`. Prefer calling `render_psf_patch`
+        directly to avoid confusion.
+
+        Args:
+            img_obj (torch.Tensor): Input image in raw space, shape [B, C, H, W].
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            patch_center (tuple, optional): Patch center (x, y) in normalized
+                object coordinates. Defaults to (0, 0).
+            psf_ks (int, optional): PSF kernel size in pixels. Defaults to PSF_KS.
+
+        Returns:
+            img_render (torch.Tensor): Rendered image, shape [B, C, H, W].
+        """
         depth = self.obj_depth if depth is None else depth
         return self.render_psf_patch(
             img_obj, depth=depth, patch_center=patch_center, psf_ks=psf_ks
         )
 
     def render_psf_patch(self, img_obj, depth=None, patch_center=(0, 0), psf_ks=PSF_KS):
-        """Render an image patch using PSF convolution, and return positional encoding channel.
+        """Render an image patch using a single PSF evaluated at the patch center.
+
+        Computes the RGB PSF at `patch_center` and convolves it with the input
+        image. All pixels in the patch share the same PSF (valid for a small,
+        roughly isoplanatic patch).
 
         Args:
-            img_obj (tensor): Input image object in raw space. Shape of [B, C, H, W].
-            depth (float): Depth of the object. When ``None`` (default), falls
-                back to ``self.obj_depth``.
-            patch_center (tensor): Center of the image patch. Shape of [2] or [B, 2].
-            psf_ks (int): PSF kernel size. Defaults to PSF_KS.
+            img_obj (torch.Tensor): Input image in raw space, shape [B, C, H, W].
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            patch_center (tuple or torch.Tensor): Patch center (x, y) in
+                normalized object coordinates, shape [2] or [B, 2].
+            psf_ks (int, optional): PSF kernel size in pixels. Defaults to PSF_KS.
 
         Returns:
-            img_render (torch.Tensor): Rendered image. Shape of [B, C, H, W].
+            img_render (torch.Tensor): Rendered image, shape [B, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         # Convert patch_center to tensor
@@ -646,20 +722,22 @@ class Lens(DeepObj):
         psf_ks=PSF_KS,
         psf_spp=SPP_PSF,
     ):
-        """Render image using PSF block convolution.
+        """Render a full-resolution image using spatially-varying PSF block convolution.
 
         Note:
-            Larger psf_grid and psf_ks are typically better for more accurate rendering, but slower.
+            Larger `psf_grid` and `psf_ks` give more accurate rendering but are slower.
 
         Args:
-            img_obj (tensor): Input image object in raw space. Shape of [B, C, H, W].
-            depth (float): Depth of the object. When ``None`` (default), falls
-                back to ``self.obj_depth``.
-            psf_grid (int): PSF grid size.
-            psf_ks (int): PSF kernel size. Defaults to PSF_KS.
+            img_obj (torch.Tensor): Input image in raw space, shape [B, C, H, W].
+            depth (float, optional): Object depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            psf_grid (int or tuple, optional): PSF grid size. Defaults to 7.
+            psf_ks (int, optional): PSF kernel size in pixels. Defaults to PSF_KS.
+            psf_spp (int, optional): Samples per point for PSF computation.
+                Defaults to SPP_PSF.
 
         Returns:
-            img_render (torch.Tensor): Rendered image. Shape of [B, C, H, W].
+            img_render (torch.Tensor): Rendered image, shape [B, C, H, W].
         """
         depth = self.obj_depth if depth is None else depth
         psf_map = self.psf_map_rgb(grid=psf_grid, ks=psf_ks, depth=depth, spp=psf_spp)
@@ -677,13 +755,15 @@ class Lens(DeepObj):
         back to uniform disparity sampling.
 
         Args:
-            depth_min (float): Minimum (nearest) depth in mm (positive).
-            depth_max (float): Maximum (farthest) depth in mm (positive).
+            depth_min (float): Minimum (nearest) depth [mm] (positive).
+            depth_max (float): Maximum (farthest) depth [mm] (positive).
             num_layers (int): Number of depth layers to sample.
 
         Returns:
-            tuple: (disp_ref, depths_ref) where disp_ref has shape (num_layers,) in
-                   disparity space and depths_ref = -1/disp_ref (negative, for PSF).
+            disp_ref (torch.Tensor): Sampled disparities (1/depth), shape
+                [num_layers].
+            depths_ref (torch.Tensor): Corresponding depths [mm] for PSF
+                computation, equal to -1 / disp_ref (negative), shape [num_layers].
         """
         # Try to get focal depth from the lens
         if hasattr(self, 'calc_focal_plane'):
@@ -727,14 +807,21 @@ class Lens(DeepObj):
         TODO: add obstruction-aware image simulation.
 
         Args:
-            img_obj (tensor): Object image. Shape of [B, C, H, W].
-            depth_map (tensor): Depth map [mm]. Shape of [B, 1, H, W]. Values should be positive.
-            method (str, optional): Image simulation method. Defaults to "psf_patch".
-            **kwargs: Additional arguments for different methods.
-                - interp_mode (str): "depth" or "disparity". Defaults to "depth".
+            img_obj (torch.Tensor): Object image, shape [B, C, H, W].
+            depth_map (torch.Tensor): Depth map [mm], shape [B, 1, H, W] (also
+                accepts [B, H, W]). Values should be positive.
+            method (str, optional): Image simulation method, one of "psf_patch",
+                "psf_map", or "psf_pixel". Defaults to "psf_patch".
+            **kwargs: Method-specific keyword arguments, e.g. interp_mode (str):
+                "depth" or "disparity", defaults to "disparity"; num_layers (int):
+                number of depth layers, defaults to 16.
 
         Returns:
-            img_render (torch.Tensor): Rendered image. Shape of [B, C, H, W].
+            img_render (torch.Tensor): Rendered image, shape [B, C, H, W].
+
+        Raises:
+            ValueError: If depth_map contains negative values.
+            Exception: If method is not recognised.
 
         Reference:
             [1] "Aberration-Aware Depth-from-Focus", TPAMI 2023.
@@ -832,15 +919,43 @@ class Lens(DeepObj):
     # Optimization-ralated functions
     # ===========================================
     def activate_grad(self, activate=True):
-        """Activate gradient for each surface."""
+        """Activate (or deactivate) gradients for each surface.
+
+        Must be overridden by subclasses.
+
+        Args:
+            activate (bool, optional): Whether to enable gradients. Defaults to True.
+
+        Raises:
+            NotImplementedError: This base implementation must be overridden.
+        """
         raise NotImplementedError
 
     def get_optimizer_params(self, lr=[1e-4, 1e-4, 1e-1, 1e-3]):
-        """Get optimizer parameters for different lens parameters."""
+        """Build per-parameter-group optimizer params. Must be overridden.
+
+        Args:
+            lr (list, optional): Per-group learning rates for the different lens
+                parameters. Defaults to [1e-4, 1e-4, 1e-1, 1e-3].
+
+        Returns:
+            params (list): List of parameter-group dicts for a torch optimizer.
+
+        Raises:
+            NotImplementedError: This base implementation must be overridden.
+        """
         raise NotImplementedError
 
     def get_optimizer(self, lr=[1e-4, 1e-4, 0, 1e-3]):
-        """Get optimizer."""
+        """Build an Adam optimizer over the lens parameter groups.
+
+        Args:
+            lr (list, optional): Per-group learning rates passed to
+                `get_optimizer_params`. Defaults to [1e-4, 1e-4, 0, 1e-3].
+
+        Returns:
+            optimizer (torch.optim.Adam): Configured Adam optimizer.
+        """
         params = self.get_optimizer_params(lr)
         optimizer = torch.optim.Adam(params)
         return optimizer

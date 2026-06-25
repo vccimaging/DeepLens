@@ -40,13 +40,13 @@ from ..utils import diff_float
 
 
 class GeoLensPSF:
-    """Mixin providing PSF computation for ``GeoLens``.
+    """Mixin providing PSF computation for `GeoLens`.
 
-    All three PSF models are exposed through a single `psf` dispatcher.
-    The geometric and coherent models are differentiable; Huygens is not.
-
-    This class is not instantiated directly; it is mixed into
-    `GeoLens`.
+    Exposes three PSF models through a single `psf` dispatcher: incoherent
+    geometric ray tracing, coherent exit-pupil diffraction (ASM propagation),
+    and Huygens-Fresnel integration. The geometric and coherent models are
+    differentiable; Huygens is not. This class is not instantiated directly;
+    it is mixed into `GeoLens`.
     """
 
     # ====================================================================================
@@ -57,27 +57,33 @@ class GeoLensPSF:
     #   3. Huygens PSF (`psf_huygens`): coherent ray tracing to exit pupil, then Huygens-Fresnel integration
     # ====================================================================================
     def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
-        """Calculate Point Spread Function (PSF) for given point sources.
+        """Compute the Point Spread Function (PSF) for given point sources.
 
-        Supports multiple PSF calculation models:
-            - geometric: Incoherent intensity ray tracing (fast, differentiable)
-            - coherent: Coherent ray tracing with free-space propagation (accurate, differentiable)
-            - huygens: Huygens-Fresnel integration (accurate, not differentiable)
+        Dispatches to one of three PSF models:
+            - geometric: incoherent intensity ray tracing (fast, differentiable).
+            - coherent: coherent tracing to exit pupil + ASM propagation (accurate, differentiable, single point).
+            - huygens: Huygens-Fresnel integration (accurate, not differentiable, single point).
 
         Args:
-            points (Tensor): Point source positions. Shape [N, 3] with x, y in [-1, 1]
-                and z in [-Inf, 0]. Normalized coordinates.
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
+            points (torch.Tensor): Normalized point source positions. Shape [N, 3]
+                with x, y in [-1, 1] and z in [-Inf, 0]. The coherent and huygens
+                models accept only a single point ([3] or [1, 3]).
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`.
             ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
             **kwargs: Model-specific options:
-                - spp (int): Samples per pixel. If None, uses model-specific default.
-                - recenter (bool): If True (default), center PSF using chief ray.
-                - model (str): PSF model, one of 'geometric' (default), 'coherent',
-                  'huygens'.
+                spp (int): Rays sampled per source. If None, uses the
+                model-specific default (SPP_PSF / SPP_COHERENT).
+                recenter (bool): If True (default), center the PSF on the chief
+                ray; otherwise on the pinhole projection.
+                model (str): One of 'geometric' (default), 'coherent', 'huygens'.
 
         Returns:
-            psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks] or [N, ks, ks].
+            psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks] for a
+                single point, or [N, ks, ks] for the geometric model with N points.
+
+        Raises:
+            ValueError: If `model` is not one of the supported names.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         spp = kwargs.get("spp", None)
@@ -98,20 +104,27 @@ class GeoLensPSF:
     def psf_geometric(
         self, points, ks=PSF_KS, wvln=None, spp=SPP_PSF, recenter=True
     ):
-        """Single wavelength geometric PSF calculation.
+        """Compute the single-wavelength geometric PSF by incoherent ray binning.
+
+        Samples rays from each object point, traces them incoherently to the
+        sensor, and bins the hit positions into a `ks × ks` intensity kernel.
+        This model is fast and differentiable.
 
         Args:
-            points (Tensor): Normalized point source position. Shape of [N, 3], x, y in range [-1, 1], z in range [-Inf, 0].
-            ks (int, optional): Output kernel size.
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            spp (int, optional): Sample per pixel.
-            recenter (bool, optional): Recenter PSF using chief ray.
+            points (torch.Tensor): Normalized point source positions. Shape [N, 3]
+                with x, y in [-1, 1] and z in [-Inf, 0].
+            ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`.
+            spp (int, optional): Rays sampled per source. Defaults to SPP_PSF.
+            recenter (bool, optional): If True (default), center on the chief ray;
+                otherwise on the pinhole projection.
 
         Returns:
-            psf (torch.Tensor): Shape of [ks, ks] or [N, ks, ks].
+            psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks] for a
+                single point, or [N, ks, ks] for N points.
 
-        References:
+        Reference:
             [1] https://optics.ansys.com/hc/en-us/articles/42661723066515-What-is-a-Point-Spread-Function
         """
         wvln = self.primary_wvln if wvln is None else wvln
@@ -161,35 +174,63 @@ class GeoLensPSF:
     def psf_coherent(
         self, points, ks=PSF_KS, wvln=None, spp=SPP_COHERENT, recenter=True
     ):
-        """Alias for psf_pupil_prop. Calculates PSF by coherent ray tracing to exit pupil followed by Angular Spectrum Method (ASM) propagation."""
+        """Compute the coherent exit-pupil PSF (alias for `psf_pupil_prop`).
+
+        Traces coherent rays to the exit pupil and propagates the wavefront to
+        the sensor with the Angular Spectrum Method (ASM). See `psf_pupil_prop`
+        for full argument and return documentation.
+
+        Args:
+            points (torch.Tensor): Single normalized point source [3] or [1, 3]
+                with x, y in [-1, 1] and z in [-Inf, 0].
+            ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`.
+            spp (int, optional): Rays sampled. Defaults to SPP_COHERENT.
+            recenter (bool, optional): If True (default), center on the chief ray.
+
+        Returns:
+            psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks].
+        """
         wvln = self.primary_wvln if wvln is None else wvln
         return self.psf_pupil_prop(points, ks=ks, wvln=wvln, spp=spp, recenter=recenter)
 
     def psf_pupil_prop(
         self, points, ks=PSF_KS, wvln=None, spp=SPP_COHERENT, recenter=True
     ):
-        """Single point monochromatic PSF using exit-pupil diffraction model. This function is differentiable.
+        """Compute the single-point monochromatic PSF via the exit-pupil diffraction model.
 
         Steps:
-            1, Calculate complex wavefield at exit-pupil plane by coherent ray tracing.
-            2, Free-space propagation to sensor plane and calculate intensity PSF.
+            1. Compute the complex wavefront at the exit-pupil plane by coherent ray tracing.
+            2. Propagate to the sensor plane with the Angular Spectrum Method (ASM)
+               and take the intensity as the PSF. This function is differentiable.
 
         Args:
-            points (torch.Tensor, optional): [x, y, z] coordinates of the point source. Defaults to torch.Tensor([0,0,-10000]).
-            ks (int, optional): size of the PSF patch. Defaults to PSF_KS.
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            spp (int, optional): number of rays to sample. Defaults to SPP_COHERENT.
-            recenter (bool, optional): Recenter PSF using chief ray. Defaults to True.
+            points (torch.Tensor or list): Single normalized point source [3] or
+                [1, 3] with x, y in [-1, 1] and z in [-Inf, 0].
+            ks (int, optional): Size of the output PSF patch in pixels. If None,
+                the full propagated intensity field is returned uncropped.
+                Defaults to PSF_KS.
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`.
+            spp (int, optional): Number of rays to sample. Defaults to SPP_COHERENT.
+            recenter (bool, optional): If True (default), center on the chief ray;
+                otherwise on the pinhole projection.
 
         Returns:
-            psf_out (torch.Tensor): PSF patch. Normalized to sum to 1. Shape [ks, ks]
+            psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks] when
+                `ks` is given, or the full uncropped intensity field of shape
+                [1, 1, 2H, 2H] (twice the exit-pupil grid after zero-padding)
+                when `ks` is None.
 
         Reference:
             [1] "End-to-End Hybrid Refractive-Diffractive Lens Design with Differentiable Ray-Wave Model", SIGGRAPH Asia 2024.
 
         Note:
-            [1] This function is similar to ZEMAX FFT_PSF but implement free-space propagation with Angular Spectrum Method (ASM) rather than FFT transform. Free-space propagation using ASM is more accurate than doing FFT, because FFT (as used in ZEMAX) assumes far-field condition (e.g., chief ray perpendicular to image plane).
+            Similar to the ZEMAX FFT PSF, but free-space propagation uses the
+            Angular Spectrum Method (ASM) instead of a single FFT. ASM is more
+            accurate because the FFT approach assumes a far-field condition
+            (e.g., chief ray perpendicular to the image plane).
         """
         wvln = self.primary_wvln if wvln is None else wvln
         # Pupil field by coherent ray tracing
@@ -248,24 +289,26 @@ class GeoLensPSF:
         return diff_float(psf)
 
     def pupil_field(self, points, wvln=None, spp=SPP_COHERENT, recenter=True):
-        """Compute complex wavefront at exit pupil plane by coherent ray tracing.
+        """Compute the complex wavefront at the exit-pupil plane by coherent ray tracing.
 
-        The wavefront is flipped for subsequent PSF calculation and has the same
-        size as the image sensor. This function is differentiable.
+        The wavefront is xy-flipped for subsequent PSF calculation and binned at
+        the sensor pixel size onto a square `[H, H]` grid (H = sensor height in
+        pixels). This function is differentiable.
 
         Args:
-            points (Tensor or list): Single point source position. Shape [3] or [1, 3],
-                with x, y in [-1, 1] and z in [-Inf, 0].
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            spp (int, optional): Number of rays to sample. Must be >= 1,000,000 for
-                accurate coherent simulation. Defaults to SPP_COHERENT.
-            recenter (bool, optional): If True, center using chief ray. Defaults to True.
+            points (torch.Tensor or list): Single normalized point source [3] or
+                [1, 3] with x, y in [-1, 1] and z in [-Inf, 0].
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`.
+            spp (int, optional): Number of rays to sample. Must be at least
+                1,000,000 for accurate coherent simulation. Defaults to SPP_COHERENT.
+            recenter (bool, optional): If True (default), center on the chief ray;
+                otherwise on the pinhole projection.
 
         Returns:
-            result (tuple): (wavefront, psf_center) where:
-                - wavefront (torch.Tensor): Complex wavefront at exit pupil. Shape [H, H].
-                - psf_center (list): Normalized PSF center coordinates [x, y] in [-1, 1].
+            wavefront (torch.Tensor): Complex wavefront at the exit pupil, binned
+                at pixel size. Shape [H, H].
+            psf_center (list): Normalized PSF center [x, y] on the sensor in [-1, 1].
 
         Note:
             Default dtype must be torch.float64 for accurate phase calculation.
@@ -337,30 +380,36 @@ class GeoLensPSF:
     def psf_huygens(
         self, points, ks=PSF_KS, wvln=None, spp=SPP_COHERENT, recenter=True
     ):
-        """Single wavelength Huygens PSF calculation.
+        """Compute the single-wavelength Huygens PSF by spherical-wave integration.
 
-        This function is not differentiable due to its heavy computational cost.
+        Not differentiable, due to the heavy computational cost.
 
         Steps:
-            1, Trace coherent rays to exit-pupil plane.
-            2, Treat every ray as a secondary point source emitting a spherical wave.
+            1. Trace coherent rays to the exit-pupil plane.
+            2. Treat every ray as a secondary point source emitting a spherical
+               wave, and coherently sum these waves over the PSF pixel grid. Each
+               contribution uses the Huygens-Fresnel obliquity factor
+               $0.5 (1 + \\cos\\theta)$ and $1/r$ spherical-wave amplitude decay.
 
         Args:
-            points (Tensor): Normalized point source position. Shape of [N, 3], x, y in range [-1, 1], z in range [-Inf, 0].
-            ks (int, optional): Output kernel size.
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            spp (int, optional): Sample per pixel.
-            recenter (bool, optional): Recenter PSF using chief ray.
+            points (torch.Tensor): Single normalized point source [3] or [1, 3]
+                with x, y in [-1, 1] and z in [-Inf, 0].
+            ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`.
+            spp (int, optional): Rays sampled. Defaults to SPP_COHERENT.
+            recenter (bool, optional): If True (default), center on the chief ray;
+                otherwise on the pinhole projection.
 
         Returns:
-            psf (torch.Tensor): Shape of [ks, ks] or [N, ks, ks].
+            psf (torch.Tensor): PSF normalized to sum to 1. Shape [ks, ks].
 
-        References:
-            [1] "Optical Aberrations Correction in Postprocessing Using Imaging Simulation", TOG 2021
+        Reference:
+            [1] "Optical Aberrations Correction in Postprocessing Using Imaging Simulation", TOG 2021.
 
         Note:
-            This is different from ZEMAX Huygens PSF, which traces rays to image plane and do plane wave integration.
+            Different from the ZEMAX Huygens PSF, which traces rays to the image
+            plane and performs plane-wave integration.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         assert torch.get_default_dtype() == torch.float64, (
@@ -496,22 +545,24 @@ class GeoLensPSF:
         wvln=None,
         recenter=True,
     ):
-        """Compute the geometric PSF map at given depth.
+        """Compute the geometric PSF map across the field of view at a given depth.
 
-        Overrides the base method in Lens class to improve efficiency by parallel ray tracing over different field points.
+        Overrides the base `Lens` method to improve efficiency by tracing all
+        field points in parallel.
 
         Args:
-            depth (float, optional): Depth of the object plane. When ``None``
-                (default), falls back to ``self.obj_depth``.
-            grid (int, tuple): Grid size (grid_w, grid_h). Defaults to 7.
-            ks (int, optional): Kernel size. Defaults to PSF_KS.
-            spp (int, optional): Sample per pixel. Defaults to SPP_PSF.
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            recenter (bool, optional): Recenter PSF using chief ray. Defaults to True.
+            depth (float, optional): Object plane depth [mm]. When None (default),
+                falls back to `self.obj_depth`.
+            grid (int or tuple, optional): Grid size (grid_w, grid_h); an int is
+                broadcast to a square grid. Defaults to (7, 7).
+            ks (int, optional): Output kernel size in pixels. Defaults to PSF_KS.
+            spp (int, optional): Rays sampled per source. Defaults to SPP_PSF.
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`.
+            recenter (bool, optional): If True (default), center on the chief ray.
 
         Returns:
-            psf_map (torch.Tensor): PSF map. Shape of [grid_h, grid_w, 1, ks, ks].
+            psf_map (torch.Tensor): PSF map. Shape [grid_h, grid_w, 1, ks, ks].
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -528,14 +579,25 @@ class GeoLensPSF:
 
     @torch.no_grad()
     def psf_center(self, points_obj, method="chief_ray"):
-        """Compute reference PSF center (flipped to match the original point) for given point source.
+        """Compute the reference PSF center on the sensor for a given point source.
+
+        With method "chief_ray" it traces a half-aperture ray bundle and takes
+        the negated sensor centroid (falling back to "pinhole" if no ray is
+        valid); with "pinhole" it uses an ideal perspective projection (no
+        distortion). Both methods return a center whose sign matches the
+        original object point.
 
         Args:
-            points_obj (torch.Tensor): [..., 3] un-normalized point in object plane. [-Inf, Inf] * [-Inf, Inf] * [-Inf, 0]
+            points_obj (torch.Tensor): Un-normalized object-plane point(s), shape
+                [..., 3] [mm], spanning [-Inf, Inf] x [-Inf, Inf] x [-Inf, 0].
             method (str, optional): "chief_ray" or "pinhole". Defaults to "chief_ray".
 
         Returns:
-            psf_center (torch.Tensor): [..., 2] un-normalized psf center in sensor plane.
+            psf_center (torch.Tensor): Un-normalized PSF center on the sensor
+                plane [mm], shape [..., 2].
+
+        Raises:
+            ValueError: If `method` is neither "chief_ray" nor "pinhole".
         """
         if method == "chief_ray":
             # Shrink the pupil and calculate centroid ray as the chief ray

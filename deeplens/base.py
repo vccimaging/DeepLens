@@ -10,20 +10,33 @@ class DeepObj:
     """Base class for all differentiable optical objects in DeepLens.
 
     Provides device management, dtype conversion, and deep-copy support via
-    automatic introspection over instance tensors and nested ``DeepObj``
-    sub-objects.  All lens, surface, material, ray, and wave objects inherit
+    automatic introspection over instance tensors and nested `DeepObj`
+    sub-objects. All lens, surface, material, ray, and wave objects inherit
     from this class.
 
     Attributes:
-        dtype (torch.dtype): Current floating-point dtype of all owned tensors.
-        device: Current compute device (set by `to`).
+        dtype (torch.dtype): Floating-point dtype of all owned tensors.
+        device (str or torch.device): Compute device, set by `to`.
     """
 
     def __init__(self, dtype=None):
+        """Initialize the base object and record its floating-point dtype.
+
+        Args:
+            dtype (torch.dtype, optional): Floating-point dtype for owned
+                tensors. Defaults to `torch.get_default_dtype()` when None.
+        """
         self.dtype = torch.get_default_dtype() if dtype is None else dtype
 
     def __str__(self):
-        """Called when using print() and str()"""
+        """Return a multi-line string listing the object's attributes.
+
+        Scalars and tensors are printed as `key: value`; lists and tuples are
+        expanded element-wise; dicts and sets are skipped.
+
+        Returns:
+            text (str): Human-readable summary of the object's attributes.
+        """
         lines = [self.__class__.__name__ + ":"]
         for key, val in vars(self).items():
             if val.__class__.__name__ in ["list", "tuple"]:
@@ -37,26 +50,37 @@ class DeepObj:
         return "\n    ".join(lines)
 
     def __call__(self, inp):
-        """Call the forward function."""
+        """Forward the input to the subclass `forward` method.
+
+        Args:
+            inp (Any): Input passed through to `self.forward`.
+
+        Returns:
+            output (Any): Result of `self.forward(inp)`.
+        """
         return self.forward(inp)
 
     def clone(self):
-        """Clone a DeepObj object."""
+        """Return a deep copy of this object.
+
+        Returns:
+            obj (DeepObj): A new, independent deep copy of `self`.
+        """
         return copy.deepcopy(self)
 
     def to(self, device):
-        """Move all tensors and nested objects to *device*.
+        """Move all tensors and nested objects to a device.
 
         Recursively walks over every instance attribute and moves tensors,
-        ``nn.Module`` sub-objects, and nested ``DeepObj`` objects to the
-        requested device.
+        `nn.Parameter` data, `nn.Module` sub-objects, nested `DeepObj` objects,
+        and tensors/`DeepObj` items inside lists and tuples to the target device.
 
         Args:
-            device (str or torch.device): Target device, e.g. ``"cuda"``, ``"cpu"``, or a
-                ``torch.device`` instance.
+            device (str or torch.device): Target device, e.g. `"cuda"`, `"cpu"`,
+                or a `torch.device` instance.
 
         Returns:
-            self (DeepObj): ``self`` (for chaining).
+            self (DeepObj): The updated object (for chaining).
 
         Example:
             ```python
@@ -84,21 +108,24 @@ class DeepObj:
         return self
 
     def astype(self, dtype):
-        """Convert all floating-point tensors to *dtype*.
+        """Convert all floating-point tensors to a target dtype.
 
-        Also calls ``torch.set_default_dtype(dtype)`` so that subsequent
-        tensor creation uses the same precision.
+        Recursively converts owned floating-point tensors, `nn.Parameter` data,
+        and nested `DeepObj` objects (including those in lists). When the dtype
+        differs from the current default, also calls
+        `torch.set_default_dtype(dtype)` so subsequent tensor creation matches.
 
         Args:
-            dtype (torch.dtype): Target floating-point dtype.  Must be one of
-                ``torch.float16``, ``torch.float32``, or ``torch.float64``.
-                Pass ``None`` to be a no-op.
+            dtype (torch.dtype or None): Target floating-point dtype, one of
+                `torch.float16`, `torch.float32`, or `torch.float64`. When None,
+                this is a no-op and `self` is returned unchanged.
 
         Returns:
-            self (DeepObj): ``self`` (for chaining).
+            self (DeepObj): The updated object (for chaining).
 
         Raises:
-            AssertionError: If *dtype* is not a recognised floating-point dtype.
+            AssertionError: If dtype is not one of the three supported
+                floating-point dtypes.
 
         Example:
             ```python

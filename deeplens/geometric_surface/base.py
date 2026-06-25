@@ -1,6 +1,7 @@
 """Base class for geometric surfaces.
 
-Surface can refract, and reflect rays. Some surfaces can also diffract rays according to a local grating approximation.
+A surface can refract and reflect rays. Some surfaces can also diffract rays
+according to a local grating approximation.
 """
 
 import math
@@ -17,26 +18,30 @@ from ..material import Material
 class Surface(DeepObj):
     """Base class for all geometric optical surfaces.
 
-    A surface sits at axial position ``d`` (mm) in the global coordinate
-    system, has an aperture radius ``r`` (mm), and separates two optical
-    media.  Subclasses override `_sag` and `_dfdxy` to define
-    their shape.
+    A surface sits at axial position `d` [mm] in the global coordinate
+    system, has an aperture radius `r` [mm], and separates two optical
+    media. Subclasses override `_sag` and `_dfdxy` to define their shape.
 
-    Ray–surface interaction is handled by three stages, implemented in
-    `ray_reaction`:
+    Ray-surface interaction is handled in three stages by `ray_reaction`:
 
-    1. **Coordinate transform** – ray is brought into the local surface frame.
-    2. **Intersection** – solved via Newton's method (`newtons_method`),
-       using a non-differentiable iteration loop followed by a single
-       differentiable Newton step to enable gradient flow.
-    3. **Refraction / reflection** – vector Snell's law (`refract`) or
-       specular reflection (`reflect`).
+    1. Coordinate transform: the ray is brought into the local surface frame.
+    2. Intersection: solved via Newton's method (`newtons_method`), using a
+       non-differentiable iteration loop followed by a single differentiable
+       Newton step to enable gradient flow.
+    3. Refraction / reflection: vector Snell's law (`refract`) or specular
+       reflection (`reflect`).
 
     Attributes:
-        d (torch.Tensor): Axial position of the surface vertex [mm].
-        r (float): Aperture radius [mm].
+        d (torch.Tensor): Axial position of the surface vertex [mm], scalar tensor.
+        r (float): Aperture radius [mm]. For a square aperture this is the
+            circumscribed-circle radius (half-diagonal).
         mat2 (Material): Optical material on the transmission side.
-        is_square (bool): If ``True`` the aperture is square; otherwise circular.
+        pos_x (torch.Tensor): Lateral x offset of the vertex [mm], scalar tensor.
+        pos_y (torch.Tensor): Lateral y offset of the vertex [mm], scalar tensor.
+        vec_local (torch.Tensor): Local surface normal direction, shape [3].
+        is_square (bool): If True the aperture is square; otherwise circular.
+        w (float): Square aperture side length [mm] (only set when `is_square`).
+        h (float): Square aperture side length [mm] (only set when `is_square`).
     """
 
     def __init__(
@@ -52,17 +57,19 @@ class Surface(DeepObj):
         """Initialize a generic optical surface.
 
         Args:
-            r (float): Aperture radius [mm].
+            r (float): Aperture radius [mm]. For a square aperture this is the
+                circumscribed-circle radius (half-diagonal), so the side length
+                is `r * sqrt(2)`.
             d (float): Axial position of the surface vertex [mm].
             mat2 (str or Material): Material on the transmission side
-                (e.g. ``"N-BK7"``, ``"air"``).
-            pos_xy (list[float], optional): Lateral offset ``[x, y]`` [mm].
-                Defaults to ``[0.0, 0.0]``.
-            vec_local (list[float], optional): Local normal direction.
-                Defaults to ``[0.0, 0.0, 1.0]`` (on-axis).
-            is_square (bool, optional): Use a square aperture.
-                Defaults to ``False``.
-            device (str, optional): Compute device. Defaults to ``"cpu"``.
+                (e.g. "N-BK7", "air").
+            pos_xy (list[float], optional): Lateral offset [x, y] [mm].
+                Defaults to [0.0, 0.0].
+            vec_local (list[float], optional): Local surface normal direction;
+                normalized internally. Defaults to [0.0, 0.0, 1.0] (on-axis).
+            is_square (bool, optional): Use a square aperture instead of a
+                circular one. Defaults to False.
+            device (str, optional): Compute device. Defaults to "cpu".
         """
         super(Surface, self).__init__()
 
@@ -103,8 +110,9 @@ class Surface(DeepObj):
     def _cache_rotation_matrices(self):
         """Pre-compute and cache rotation matrices for local/global transforms.
 
-        Called once at init. The matrices depend only on vec_local and vec_global,
-        which are static after construction.
+        Called once at init. The matrices depend only on `vec_local` and
+        `vec_global`, which are static after construction. When the surface is
+        on-axis both cached matrices are set to None (no rotation needed).
         """
         needs_rotation = (
             torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON
@@ -122,7 +130,18 @@ class Surface(DeepObj):
 
     @classmethod
     def init_from_dict(cls, surf_dict):
-        """Initialize surface from a dict."""
+        """Initialize a surface from a serialized dict.
+
+        Args:
+            surf_dict (dict): Surface parameters, typically produced by
+                `surf_dict`.
+
+        Returns:
+            surface (Surface): The reconstructed surface instance.
+
+        Raises:
+            NotImplementedError: Always, on the base class; subclasses override.
+        """
         raise NotImplementedError(
             f"init_from_dict() is not implemented for {cls.__name__}."
         )
@@ -141,8 +160,8 @@ class Surface(DeepObj):
             ray (Ray): Incident ray bundle.
             n1 (float): Refractive index of the incident medium.
             n2 (float): Refractive index of the transmission medium.
-            refraction (bool, optional): If ``True`` (default) refract the ray;
-                if ``False`` reflect it.
+            refraction (bool, optional): If True refract the ray; if False
+                reflect it. Defaults to True.
 
         Returns:
             ray (Ray): Updated ray bundle after the surface interaction.
@@ -167,11 +186,23 @@ class Surface(DeepObj):
         return ray
 
     def intersect(self, ray, n=1.0):
-        """Solve ray-surface intersection in local coordinate system.
+        """Solve ray-surface intersection in the local coordinate system.
+
+        Moves each valid ray origin to the surface and, for coherent rays,
+        accumulates optical path length `n * t` into `ray.opl`.
 
         Args:
-            ray (Ray): input ray.
-            n (float, optional): refractive index. Defaults to 1.0.
+            ray (Ray): Input ray bundle in local coordinates.
+            n (float, optional): Refractive index of the medium the ray
+                travels through to reach the surface. Defaults to 1.0.
+
+        Returns:
+            ray (Ray): Ray with updated origins, validity mask, and (for
+                coherent rays) optical path length.
+
+        Raises:
+            Exception: If a coherent ray has float32 dtype and an intersection
+                distance above 100 mm, which can cause OPL precision problems.
         """
         # Solve ray-surface intersection time by Newton's method
         t, valid = self.newtons_method(ray)
@@ -194,14 +225,20 @@ class Surface(DeepObj):
         return ray
 
     def newtons_method(self, ray):
-        """Solve intersection by Newton's method in local coordinate system.
+        """Solve the ray-surface intersection by Newton's method (local frame).
+
+        Runs `newton_maxiter - 1` non-differentiable iterations followed by one
+        differentiable Newton step, so gradients flow only through the final
+        step. The solved $t$ satisfies `sag(x, y) - z = 0` along the ray.
 
         Args:
-            ray (Ray): input ray.
+            ray (Ray): Input ray bundle in local coordinates.
 
         Returns:
-            t (tensor): intersection time.
-            valid (tensor): valid mask.
+            t (torch.Tensor): Intersection parameter (distance along the ray)
+                [mm], shape [...] matching the ray batch.
+            valid (torch.Tensor): Boolean mask of converged, in-range
+                intersections, shape [...].
         """
         newton_maxiter = self.newton_maxiter
         newton_convergence = self.newton_convergence
@@ -250,18 +287,21 @@ class Surface(DeepObj):
         return t, valid
 
     def refract(self, ray, eta):
-        """Calculate refracted ray according to Snell's law in local coordinate system.
+        """Refract the ray via vector Snell's law (local coordinate system).
 
-        Normal vector points from the surface toward the side where the light is coming from. d is already normalized if both n and ray.d are normalized.
+        The surface normal points from the surface toward the side the light
+        comes from. The output direction stays normalized when `ray.d` is
+        normalized. Rays undergoing total internal reflection are marked
+        invalid.
 
         Args:
-            ray (Ray): incident ray.
-            eta (float): ratio of indices of refraction, eta = n_i / n_t
+            ray (Ray): Incident ray bundle.
+            eta (float): Ratio of refractive indices, $\\eta = n_i / n_t$.
 
         Returns:
-            ray (Ray): refracted ray.
+            ray (Ray): Refracted ray with updated direction and validity mask.
 
-        References:
+        Reference:
             [1] https://registry.khronos.org/OpenGL-Refpages/gl4/html/refract.xhtml
             [2] https://en.wikipedia.org/wiki/Snell%27s_law, "Vector form" section.
         """
@@ -286,18 +326,19 @@ class Surface(DeepObj):
         return ray
 
     def bend_penalty(self, ray, old_d):
-        """Accumulate soft per-surface bend penalty onto ray.
+        """Accumulate a soft per-surface bend penalty onto the ray.
 
-        Penalty rises smoothly once the bend angle between ``old_d`` and the
-        refracted ``ray.d`` exceeds ``bend_angle_max`` and stays near zero for
-        mild refractions.
+        The penalty rises smoothly once the bend angle between `old_d` and the
+        refracted `ray.d` exceeds `bend_angle_max` (degrees, default 30) and
+        stays at zero for milder refractions. It is added into `ray.bend_penalty`.
 
         Args:
-            ray (Ray): ray after refraction (ray.d is the new direction).
-            old_d (Tensor): pre-refraction ray directions, same shape as ray.d.
+            ray (Ray): Ray after refraction (`ray.d` is the new direction).
+            old_d (torch.Tensor): Pre-refraction ray directions, shape [..., 3],
+                same shape as `ray.d`.
 
         Returns:
-            ray (Ray): ray with updated bend_penalty.
+            ray (Ray): Ray with `bend_penalty` (shape [..., 1]) updated.
         """
         bend_angle_max = getattr(self, "bend_angle_max", 30.0)
         cos_bend_min = math.cos(math.radians(bend_angle_max))
@@ -308,17 +349,18 @@ class Surface(DeepObj):
         return ray
 
     def reflect(self, ray):
-        """Calculate reflected ray in local coordinate system.
+        """Reflect the ray specularly off the surface (local coordinate system).
 
-        Normal vector points from the surface toward the side where the light is coming from.
+        The surface normal points from the surface toward the side the light
+        comes from. The reflected direction is renormalized.
 
         Args:
-            ray (Ray): incident ray.
+            ray (Ray): Incident ray bundle.
 
         Returns:
-            ray (Ray): reflected ray.
+            ray (Ray): Reflected ray with updated direction.
 
-        References:
+        Reference:
             [1] https://registry.khronos.org/OpenGL-Refpages/gl4/html/reflect.xhtml
             [2] https://en.wikipedia.org/wiki/Snell%27s_law, "Vector form" section.
         """
@@ -337,15 +379,16 @@ class Surface(DeepObj):
         return ray
 
     def normal_vec(self, ray):
-        """Calculate surface normal vector at the intersection point in local coordinate system.
+        """Compute the unit surface normal at the ray intersection point (local frame).
 
-        Normal vector points from the surface toward the side where the light is coming from.
+        The normal points from the surface toward the side the light comes from
+        (it is flipped to oppose forward-propagating rays).
 
         Args:
-            ray (Ray): input ray.
+            ray (Ray): Input ray bundle whose origins `ray.o` lie on the surface.
 
         Returns:
-            n_vec (tensor): surface normal vector.
+            n_vec (torch.Tensor): Unit surface normal vectors, shape [..., 3].
         """
         x, y = ray.o[..., 0], ray.o[..., 1]
         nx, ny, nz = self.dfdxyz(x, y)
@@ -357,13 +400,16 @@ class Surface(DeepObj):
         return n_vec
 
     def to_local_coord(self, ray):
-        """Transform ray to local coordinate system.
+        """Transform a ray from global to local surface coordinates.
+
+        Shifts the ray origin by the surface vertex offset and, for off-axis
+        surfaces, rotates origin and direction by the cached rotation matrix.
 
         Args:
-            ray (Ray): input ray in global coordinate system.
+            ray (Ray): Input ray bundle in the global coordinate system.
 
         Returns:
-            ray (Ray): transformed ray in local coordinate system.
+            ray (Ray): Ray expressed in the local surface coordinate system.
         """
         # Shift ray origin to surface origin
         offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
@@ -380,13 +426,16 @@ class Surface(DeepObj):
         return ray
 
     def to_global_coord(self, ray):
-        """Transform ray to global coordinate system.
+        """Transform a ray from local surface coordinates back to global.
+
+        Inverse of `to_local_coord`: rotates by the cached inverse matrix (for
+        off-axis surfaces) then shifts the origin back by the vertex offset.
 
         Args:
-            ray (Ray): input ray in local coordinate system.
+            ray (Ray): Input ray bundle in the local surface coordinate system.
 
         Returns:
-            ray (Ray): transformed ray in global coordinate system.
+            ray (Ray): Ray expressed in the global coordinate system.
         """
         # Rotate using the cached inverse matrix (see to_local_coord).
         if self._R_to_global is not None:
@@ -401,14 +450,18 @@ class Surface(DeepObj):
         return ray
 
     def _get_rotation_matrix(self, vec_from, vec_to):
-        """Calculate rotation matrix to rotate vec_from to vec_to.
+        """Compute the rotation matrix that rotates `vec_from` onto `vec_to`.
+
+        Uses Rodrigues' rotation formula in the general case, with special
+        handling for aligned and anti-parallel inputs. Inputs are normalized
+        internally.
 
         Args:
-            vec_from (tensor): source direction vector [3]
-            vec_to (tensor): target direction vector [3]
+            vec_from (torch.Tensor): Source direction vector, shape [3].
+            vec_to (torch.Tensor): Target direction vector, shape [3].
 
         Returns:
-            R (tensor): rotation matrix [3, 3]
+            R (torch.Tensor): Rotation matrix, shape [3, 3].
         """
         # CRITICAL: Normalize input vectors
         vec_from = F.normalize(vec_from.to(self.device), p=2, dim=-1)
@@ -462,14 +515,14 @@ class Surface(DeepObj):
         return R
 
     def _apply_rotation(self, vectors, R):
-        """Apply rotation matrix to vectors.
+        """Apply a rotation matrix to a batch of vectors.
 
         Args:
-            vectors (tensor): input vectors [..., 3]
-            R (tensor): rotation matrix [3, 3]
+            vectors (torch.Tensor): Input vectors, shape [..., 3].
+            R (torch.Tensor): Rotation matrix, shape [3, 3].
 
         Returns:
-            rotated_vectors (tensor): rotated vectors [..., 3]
+            rotated_vectors (torch.Tensor): Rotated vectors, shape [..., 3].
         """
         original_shape = vectors.shape
         # Reshape to [..., 3] for matrix multiplication
@@ -483,11 +536,21 @@ class Surface(DeepObj):
     # Computation functions
     # =====================================================================
     def sag(self, x, y, valid=None):
-        """Calculate sag (z) of the surface: z = f(x, y).
+        """Calculate the surface sag $z = f(x, y)$ [mm] with validity masking.
 
-        Valid term is used to avoid NaN when x, y exceed the data range, which happens in spherical and aspherical surfaces.
+        The `valid` mask zeroes out-of-range coordinates before calling `_sag`,
+        avoiding NaN for spherical/aspheric surfaces where $r = \\sqrt{x^2 + y^2}$
+        is undefined in back-propagation at $x = y = 0$ (since $dr/dx = x/r$).
 
-        Calculating r = sqrt(x**2, y**2) may cause an NaN error during back-propagation. Because dr/dx = x / sqrt(x**2 + y**2), NaN will occur when x=y=0.
+        Args:
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+            valid (torch.Tensor or None, optional): Boolean mask of valid points,
+                same shape as `x`. Defaults to None, in which case it is computed
+                via `is_valid`.
+
+        Returns:
+            z (torch.Tensor): Surface sag [mm], same shape as `x`.
         """
         if valid is None:
             valid = self.is_valid(x, y)
@@ -496,27 +559,43 @@ class Surface(DeepObj):
         return self._sag(x, y)
 
     def _sag(self, x, y):
-        """Calculate sag (z) of the surface: z = f(x, y).
+        """Calculate the raw surface sag $z = f(x, y)$ [mm] (subclass-specific).
+
+        Subclass hook called by `sag`; expects coordinates already masked.
 
         Args:
-            x (tensor): x coordinate
-            y (tensor): y coordinate
-            valid (tensor): valid mask
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
 
         Returns:
-            z (tensor): z = sag(x, y)
+            z (torch.Tensor): Surface sag [mm], same shape as `x`.
+
+        Raises:
+            NotImplementedError: Always, on the base class; subclasses override.
         """
         raise NotImplementedError(
             "_sag() is not implemented for {}".format(self.__class__.__name__)
         )
 
     def dfdxyz(self, x, y, valid=None):
-        """Compute derivatives of surface function. Surface function: f(x, y, z): sag(x, y) - z = 0. This function is used in Newton's method and normal vector calculation.
+        """Compute the gradient of the implicit surface function.
 
-        There are several methods to compute derivatives of surfaces:
-            [1] Analytical derivatives: The current implementation is based on this method. But the implementation only works for surfaces which can be written as z = sag(x, y). For implicit surfaces, we need to compute derivatives (df/dx, df/dy, df/dz).
-            [2] Numerical derivatives: Use finite difference method to compute derivatives. This can be used for those very complex surfaces, for example, NURBS. But it may suffer from numerical instability when the surface is very steep.
-            [3] Automatic differentiation: Use torch.autograd to compute derivatives. This can work for almost all the surfaces and is accurate, but it requires an extra backward pass to compute the derivatives of the surface function.
+        The surface is defined implicitly as $f(x, y, z) = \\mathrm{sag}(x, y) - z = 0$.
+        This gradient is used in Newton's method and normal-vector computation.
+        The analytical implementation here only works for explicit surfaces
+        $z = \\mathrm{sag}(x, y)$; for implicit surfaces one could instead use
+        numerical finite differences or autograd.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+            valid (torch.Tensor or None, optional): Boolean mask of valid points,
+                same shape as `x`. Defaults to None, computed via `is_valid`.
+
+        Returns:
+            dfdx (torch.Tensor): Partial derivative $\\partial f/\\partial x$ [1], same shape as `x`.
+            dfdy (torch.Tensor): Partial derivative $\\partial f/\\partial y$ [1], same shape as `x`.
+            dfdz (torch.Tensor): Partial derivative $\\partial f/\\partial z = -1$, same shape as `x`.
         """
         if valid is None:
             valid = self.is_valid(x, y)
@@ -526,22 +605,45 @@ class Surface(DeepObj):
         return dx, dy, -torch.ones_like(x)
 
     def _dfdxy(self, x, y):
-        """Compute derivatives of sag to x and y. (dfdx, dfdy, dfdz) =  (f'x, f'y, f'z).
+        """Compute the sag partial derivatives w.r.t. x and y (subclass-specific).
 
         Args:
-            x (tensor): x coordinate
-            y (tensor): y coordinate
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
 
         Returns:
-            dfdx (tensor): df / dx
-            dfdy (tensor): df / dy
+            dfdx (torch.Tensor): Partial derivative $\\partial f/\\partial x$, same shape as `x`.
+            dfdy (torch.Tensor): Partial derivative $\\partial f/\\partial y$, same shape as `x`.
+
+        Raises:
+            NotImplementedError: Always, on the base class; subclasses override.
         """
         raise NotImplementedError(
             "_dfdxy() is not implemented for {}".format(self.__class__.__name__)
         )
 
     def d2fdxyz2(self, x, y, valid=None):
-        """Compute second-order partial derivatives of the surface function f(x, y, z): sag(x, y) - z = 0. This function is currently only used for surfaces constraints."""
+        """Compute second-order partial derivatives of the implicit surface function.
+
+        The surface function is $f(x, y, z) = \\mathrm{sag}(x, y) - z = 0$, so all
+        second derivatives involving $z$ vanish. Currently used only for surface
+        constraints.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+            valid (torch.Tensor or None, optional): Boolean mask of valid points,
+                same shape as `x`. Defaults to None, computed via
+                `is_within_data_range`.
+
+        Returns:
+            d2f_dx2 (torch.Tensor): $\\partial^2 f/\\partial x^2$, same shape as `x`.
+            d2f_dxdy (torch.Tensor): $\\partial^2 f/\\partial x\\partial y$, same shape as `x`.
+            d2f_dy2 (torch.Tensor): $\\partial^2 f/\\partial y^2$, same shape as `x`.
+            d2f_dxdz (torch.Tensor): $\\partial^2 f/\\partial x\\partial z = 0$, same shape as `x`.
+            d2f_dydz (torch.Tensor): $\\partial^2 f/\\partial y\\partial z = 0$, same shape as `x`.
+            d2f_dz2 (torch.Tensor): $\\partial^2 f/\\partial z^2 = 0$, same shape as `x`.
+        """
         if valid is None:
             valid = self.is_within_data_range(x, y)
 
@@ -559,18 +661,19 @@ class Surface(DeepObj):
         return d2f_dx2, d2f_dxdy, d2f_dy2, d2f_dxdz, d2f_dydz, d2f_dz2
 
     def _d2fdxy(self, x, y):
-        """Compute second-order derivatives of sag to x and y. (d2fdx2, d2fdxdy, d2fdy2) =  (f''xx, f''xy, f''yy).
+        """Compute second-order sag derivatives via central finite differences.
 
-        Currently, we use finite difference method to compute the second-order derivatives. And the second-order derivatives are only used for surface constraints.
+        Returns $f''_{xx}$, $f''_{xy}$, $f''_{yy}$ using a step of $10^{-6}$ mm.
+        Used only for surface constraints.
 
         Args:
-            x (tensor): x coordinate
-            y (tensor): y coordinate
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
 
         Returns:
-            d2fdx2 (tensor): d2f / dx2
-            d2fdxdy (tensor): d2f / dxdy
-            d2fdy2 (tensor): d2f / dy2
+            d2fdx2 (torch.Tensor): $\\partial^2 f/\\partial x^2$, same shape as `x`.
+            d2fdxy (torch.Tensor): $\\partial^2 f/\\partial x\\partial y$, same shape as `x`.
+            d2fdy2 (torch.Tensor): $\\partial^2 f/\\partial y^2$, same shape as `x`.
         """
         delta_x = 1e-6
         delta_y = 1e-6
@@ -586,11 +689,30 @@ class Surface(DeepObj):
         return d2fdx2, d2fdxy, d2fdy2
 
     def is_valid(self, x, y):
-        """Valid points within the data range and boundary of the surface."""
+        """Return a mask of points within both the data range and aperture boundary.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+
+        Returns:
+            valid (torch.Tensor): Boolean mask, same shape as `x`.
+        """
         return self.is_within_data_range(x, y) & self.is_within_boundary(x, y)
 
     def is_within_boundary(self, x, y):
-        """Valid points within the boundary of the surface."""
+        """Return a mask of points inside the aperture boundary.
+
+        For a square aperture the limits are the half-side lengths `w/2`, `h/2`;
+        otherwise the circular radius `r` is used.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+
+        Returns:
+            valid (torch.Tensor): Boolean mask, same shape as `x`.
+        """
         if self.is_square:
             valid = (torch.abs(x) <= (self.w / 2 + EPSILON)) & (
                 torch.abs(y) <= (self.h / 2 + EPSILON)
@@ -602,17 +724,43 @@ class Surface(DeepObj):
         return valid
 
     def is_within_data_range(self, x, y):
-        """Valid points inside the data region of the sag function."""
+        """Return a mask of points inside the sag function's data region.
+
+        The base surface has an unbounded data region, so all points are valid;
+        subclasses (e.g. spheric) override this to exclude regions where the sag
+        is undefined.
+
+        Args:
+            x (torch.Tensor): Local x coordinate [mm], any shape.
+            y (torch.Tensor): Local y coordinate [mm], same shape as `x`.
+
+        Returns:
+            valid (torch.Tensor): Boolean mask, same shape as `x` (all True here).
+        """
         return torch.ones_like(x, dtype=torch.bool)
 
     def max_height(self):
-        """Maximum valid height."""
+        """Return the maximum valid radial height of the surface [mm].
+
+        Returns:
+            max_height (float): Maximum valid height [mm] (10e3 for the base surface).
+        """
         return 10e3
 
     def surface_with_offset(self, x, y, valid_check=True):
-        """Calculate z coordinate of the surface at (x, y).
+        """Compute the global z coordinate of the surface at (x, y).
 
-        This function is used in lens setup plotting and lens self-intersection detection.
+        Adds the vertex axial position `d` to the local sag. Used in lens layout
+        plotting and self-intersection detection.
+
+        Args:
+            x (torch.Tensor or float): Local x coordinate [mm].
+            y (torch.Tensor or float): Local y coordinate [mm], same shape as `x`.
+            valid_check (bool, optional): If True apply `is_valid` masking via
+                `sag`; if False use the raw `_sag`. Defaults to True.
+
+        Returns:
+            z (torch.Tensor): Global z coordinate [mm], same shape as `x`.
         """
         x = x if torch.is_tensor(x) else torch.tensor(x, device=self.device)
         y = y if torch.is_tensor(y) else torch.tensor(y, device=self.device)
@@ -622,9 +770,16 @@ class Surface(DeepObj):
             return self._sag(x, y) + self.d
 
     def surface_sag(self, x, y):
-        """Calculate sag of the surface at (x, y).
+        """Compute the local surface sag at (x, y) as a Python float.
 
         This function is currently not used.
+
+        Args:
+            x (torch.Tensor or float): Local x coordinate [mm].
+            y (torch.Tensor or float): Local y coordinate [mm].
+
+        Returns:
+            sag (float): Surface sag [mm] at (x, y).
         """
         x = x if torch.is_tensor(x) else torch.tensor(x, device=self.device)
         y = y if torch.is_tensor(y) else torch.tensor(y, device=self.device)
@@ -635,11 +790,19 @@ class Surface(DeepObj):
     # =====================================================================
 
     def get_optimizer_params(self, lrs=[1e-4], optim_mat=False):
-        """Get optimizer parameters for different parameters.
+        """Build the per-parameter optimizer parameter groups (subclass-specific).
 
         Args:
-            lrs (list): learning rates for different parameters.
-            optim_mat (bool): whether to optimize material. Defaults to False.
+            lrs (list[float], optional): Learning rates for the surface's
+                differentiable parameters. Defaults to [1e-4].
+            optim_mat (bool, optional): Whether to also optimize the material
+                refractive index/dispersion. Defaults to False.
+
+        Returns:
+            params (list[dict]): Adam parameter groups (param tensors and `lr`).
+
+        Raises:
+            NotImplementedError: Always, on the base class; subclasses override.
         """
         raise NotImplementedError(
             "get_optimizer_params() is not implemented for {}".format(
@@ -648,12 +811,26 @@ class Surface(DeepObj):
         )
 
     def get_optimizer(self, lrs=[1e-4], optim_mat=False):
-        """Get optimizer for the surface."""
+        """Build an Adam optimizer over the surface's differentiable parameters.
+
+        Args:
+            lrs (list[float], optional): Learning rates passed to
+                `get_optimizer_params`. Defaults to [1e-4].
+            optim_mat (bool, optional): Whether to optimize the material.
+                Defaults to False.
+
+        Returns:
+            optimizer (torch.optim.Adam): Adam optimizer for the surface.
+        """
         params = self.get_optimizer_params(lrs, optim_mat=optim_mat)
         return torch.optim.Adam(params)
 
     def update_r(self, r):
-        """Update surface radius."""
+        """Update the aperture radius, clamped to `max_height`.
+
+        Args:
+            r (float): Requested aperture radius [mm].
+        """
         r_max = self.max_height()
         self.r = min(r, r_max)
 
@@ -661,11 +838,23 @@ class Surface(DeepObj):
     # Visualization
     # =====================================================================
     def draw_r(self):
-        """Effective drawing radius, clamped to the valid data range."""
+        """Return the effective drawing radius [mm], clamped to `max_height`.
+
+        Returns:
+            r_eff (float): Effective drawing radius [mm].
+        """
         return min(self.r, self.max_height())
 
     def draw_widget(self, ax, color="black", linestyle="solid"):
-        """Draw widget for the surface on the 2D plot."""
+        """Draw the surface profile as a 2D line on a Matplotlib axis.
+
+        Plots the meridional (y-z) cross section sampled across the aperture.
+
+        Args:
+            ax (matplotlib.axes.Axes): Axis to draw on.
+            color (str, optional): Line color. Defaults to "black".
+            linestyle (str, optional): Matplotlib line style. Defaults to "solid".
+        """
         r_eff = self.draw_r()
         r = torch.linspace(-r_eff, r_eff, 128, device=self.device)
         z = self.surface_with_offset(
@@ -680,15 +869,19 @@ class Surface(DeepObj):
         )
 
     def create_mesh(self, n_rings=32, n_arms=128, color=[0.06, 0.3, 0.6]):
-        """Create triangulated surface mesh.
+        """Create a triangulated mesh of the surface for 3D visualization.
+
+        Populates `self.vertices`, `self.faces`, `self.rim`, and `self.mesh_color`.
 
         Args:
-            n_rings (int): Number of concentric rings for sampling.
-            n_arms (int): Number of angular divisions.
-            color (List[float]): The color of the mesh.
+            n_rings (int, optional): Number of concentric rings for radial
+                sampling. Defaults to 32.
+            n_arms (int, optional): Number of angular divisions. Defaults to 128.
+            color (list[float], optional): RGB mesh color in [0, 1]. Defaults to
+                [0.06, 0.3, 0.6].
 
         Returns:
-            self (Surface): The surface with mesh data.
+            self (Surface): The surface with mesh data (for chaining).
         """
         self.vertices = self._create_vertices(n_rings, n_arms)
         self.faces = self._create_faces(n_rings, n_arms)
@@ -697,7 +890,16 @@ class Surface(DeepObj):
         return self
 
     def _create_vertices(self, n_rings, n_arms):
-        """Create vertices in radial pattern. Vertices will be used to plot the surface in PyVista."""
+        """Create mesh vertices in a radial pattern for PyVista plotting.
+
+        Args:
+            n_rings (int): Number of concentric rings.
+            n_arms (int): Number of angular divisions.
+
+        Returns:
+            vertices (numpy.ndarray): Vertex coordinates [mm], shape
+                [n_rings * n_arms + 1, 3] (the leading vertex is the center).
+        """
         n_vertices = n_rings * n_arms + 1
         vertices = np.zeros((n_vertices, 3), dtype=np.float32)
 
@@ -726,7 +928,19 @@ class Surface(DeepObj):
         return vertices
 
     def _create_faces(self, n_rings, n_arms):
-        """Create triangular faces. Faces will be used to plot the surface in PyVista."""
+        """Create triangular faces connecting the mesh vertices for PyVista.
+
+        Winding order is flipped depending on the transmission material so the
+        outward normal is consistent.
+
+        Args:
+            n_rings (int): Number of concentric rings.
+            n_arms (int): Number of angular divisions.
+
+        Returns:
+            faces (numpy.ndarray): Vertex-index triplets, shape
+                [n_arms * (2 * n_rings - 1), 3].
+        """
         n_faces = n_arms * (2 * n_rings - 1)
         faces = np.zeros((n_faces, 3), dtype=np.uint32)
         normal_direction = -1 if self.mat2.name != "air" else 1
@@ -765,7 +979,16 @@ class Surface(DeepObj):
         return faces
 
     def _create_rim(self, n_rings, n_arms):
-        """Create rim (outer edge) vertices. Rims will be used to bridge two surfaces."""
+        """Create the rim (outer-edge) curve used to bridge adjacent surfaces.
+
+        Args:
+            n_rings (int): Number of concentric rings.
+            n_arms (int): Number of angular divisions.
+
+        Returns:
+            rim (RimCurve): The outer-edge curve (a single-point, non-loop curve
+                when `n_rings` is 0).
+        """
         if n_rings == 0:
             return RimCurve(self.vertices[[0]], is_loop=False)
 
@@ -775,9 +998,13 @@ class Surface(DeepObj):
         return RimCurve(rim_vertices, is_loop=True)
 
     def get_polydata(self):
-        """Get PyVista PolyData object from previously generated vertices and faces.
+        """Build a PyVista PolyData object from the cached vertices and faces.
 
-        PolyData object will be used to draw the surface and export as .obj file.
+        Requires `create_mesh` to have been called first. The PolyData is used to
+        draw the surface and export it as an .obj file.
+
+        Returns:
+            polydata (pyvista.PolyData): Mesh as a PyVista PolyData object.
         """
         from pyvista import PolyData
 
@@ -794,6 +1021,13 @@ class Surface(DeepObj):
     # IO
     # =====================================================================
     def surf_dict(self):
+        """Serialize the surface's common parameters to a dict.
+
+        Returns:
+            surf_dict (dict): Surface parameters (type, `r`, `d`, `pos_xy`,
+                `vec_local`, `is_square`, `mat2`), with numeric values rounded
+                to 4 decimals.
+        """
         surf_dict = {
             "type": self.__class__.__name__,
             "r": round(self.r, 4),
@@ -811,16 +1045,45 @@ class Surface(DeepObj):
         return surf_dict
 
     def zmx_str(self, surf_idx, d_next):
-        """Return Zemax surface string."""
+        """Return the Zemax (.zmx) text block describing this surface.
+
+        Args:
+            surf_idx (int): Index of this surface in the Zemax surface list.
+            d_next (float): Axial distance [mm] to the next surface (thickness).
+
+        Returns:
+            zmx_str (str): Zemax-formatted surface definition string.
+
+        Raises:
+            NotImplementedError: Always, on the base class; subclasses override.
+        """
         raise NotImplementedError(
             "zmx_str() is not implemented for {}".format(self.__class__.__name__)
         )
 
 
 class RimCurve:
-    """Simple curve class for surface rim, compatible with LineMesh interface."""
+    """Simple polyline curve for a surface rim.
+
+    Holds the outer-edge vertices of a surface mesh and is compatible with the
+    `LineMesh` interface, so rims of adjacent surfaces can be bridged into a
+    closed lens body for 3D visualization and export.
+
+    Attributes:
+        vertices (numpy.ndarray): Rim vertex coordinates [mm], shape [N, 3].
+        is_loop (bool): Whether the rim forms a closed loop.
+        n_vertices (int): Number of rim vertices.
+    """
 
     def __init__(self, vertices, is_loop=False):
+        """Initialize a rim curve from a set of vertices.
+
+        Args:
+            vertices (numpy.ndarray): Rim vertex coordinates [mm], shape [N, 3].
+                Copied if the input supports `.copy()`.
+            is_loop (bool, optional): Whether the rim forms a closed loop.
+                Defaults to False.
+        """
         self.vertices = (
             vertices.copy() if hasattr(vertices, "copy") else np.array(vertices)
         )

@@ -48,7 +48,20 @@ from ..phase_surface import Phase
 
 
 def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps):
-    """Linear warmup then half-cosine decay to zero."""
+    """Build an LR scheduler with linear warmup then half-cosine decay to zero.
+
+    The learning-rate multiplier ramps linearly from 0 to 1 over the warmup
+    steps, then follows a half cosine from 1 down to 0 over the remaining steps.
+
+    Args:
+        optimizer (torch.optim.Optimizer): Optimizer whose learning rate is scheduled.
+        num_warmup_steps (int): Number of linear warmup steps.
+        num_training_steps (int): Total number of training steps.
+
+    Returns:
+        scheduler (torch.optim.lr_scheduler.LambdaLR): Scheduler applying the
+            warmup-then-cosine multiplier.
+    """
 
     def lr_lambda(current_step):
         if current_step < num_warmup_steps:
@@ -86,10 +99,16 @@ class GeoLensOptim:
     # Lens design constraints
     # ================================================================
     def init_constraints(self, constraint_params=None):
-        """Initialize constraints for the lens design.
+        """Initialize geometry, ray-angle, and distortion constraints for the lens.
+
+        Selects a cellphone or camera constraint preset based on whether the
+        sensor radius is below 12 mm, sets the air-gap, thickness, BFL, TTL,
+        surface-shape, CRA, bend-angle, and distortion limits, and propagates
+        the bend-angle limit onto every surface.
 
         Args:
-            constraint_params (dict): Constraint parameters.
+            constraint_params (dict, optional): Constraint parameters. Currently
+                unused (reserved for future overrides). Defaults to None.
         """
         # In the future, we want to use constraint_params to set the constraints.
         if constraint_params is None:
@@ -222,12 +241,20 @@ class GeoLensOptim:
         return loss_reg, loss_dict
 
     def loss_infocus(self, target=0.005, wvln=None):
-        """Sample parallel rays and compute RMS loss on the sensor plane, minimize focus loss.
+        """Sample on-axis parallel rays and penalize the sensor-plane spot RMS.
+
+        Traces a zero-field ray bundle to the sensor and applies a one-sided
+        penalty $\\mathrm{relu}(\\text{rms} - \\text{target})$ that activates
+        only when the RMS spot radius exceeds the target.
 
         Args:
-            target (float, optional): target of RMS loss. Defaults to 0.005 [mm].
-            wvln (float, optional): Wavelength in µm.  When ``None`` (default),
-                falls back to the green channel of ``self.wvln_rgb``.
+            target (float, optional): Target on-axis RMS spot radius in mm.
+                Defaults to 0.005.
+            wvln (float, optional): Wavelength in µm. When None (default),
+                falls back to the green channel of `self.wvln_rgb`. Defaults to None.
+
+        Returns:
+            loss (torch.Tensor): Scalar focus penalty (at least 0).
         """
         if wvln is None:
             wvln = self.wvln_rgb[1]
@@ -391,10 +418,11 @@ class GeoLensOptim:
         """Penalize chief ray angle at sensor exceeding chief_ray_angle_max.
 
         Uses a near-paraxial pupil sample (scale_pupil=0.2) over the full FoV.
-        Penalty is ``relu(cos_ref - cos(CRA))``.
+        The penalty is $\\mathrm{relu}(\\cos\\theta_\\text{ref} - \\cos\\theta_\\text{CRA})$,
+        valid-ray averaged, where $\\cos\\theta = $ `ray.d[..., 2]`.
 
         Returns:
-            loss (torch.Tensor): Scalar CRA penalty (always >= 0).
+            loss (torch.Tensor): Scalar CRA penalty (at least 0).
         """
         cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
 
@@ -414,7 +442,7 @@ class GeoLensOptim:
         by small bends at another.  Uses a full-pupil sample (scale_pupil=1.0).
 
         Returns:
-            loss (torch.Tensor): Scalar bend penalty (always >= 0).
+            loss (torch.Tensor): Scalar bend penalty (at least 0).
         """
         ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=1.0)
         ray = self.trace2sensor(ray)
@@ -459,17 +487,25 @@ class GeoLensOptim:
         num_rays=SPP_PSF,
         sample_more_off_axis=False,
     ):
-        """Loss function to compute RGB spot error RMS.
+        """Compute the RGB spot-size RMS loss over a grid of field points.
+
+        Traces R, G, B ray bundles (green first) to the sensor and measures the
+        spot radius against the green pinhole center. The green spot error sets
+        a detached per-field weight mask that emphasises harder fields.
 
         Args:
-            num_grid (int, optional): Number of grid points. Defaults to GEO_GRID.
-            depth (float, optional): Depth of the lens. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            num_rays (int, optional): Number of rays. Defaults to SPP_PSF.
-            sample_more_off_axis (bool, optional): Whether to sample more off-axis rays. Defaults to False.
+            num_grid (int, optional): Number of field-grid points per axis.
+                Defaults to GEO_GRID.
+            depth (float, optional): Object-plane depth in mm. When None
+                (default), falls back to `self.obj_depth`. Defaults to None.
+            num_rays (int, optional): Number of rays per field point.
+                Defaults to SPP_PSF.
+            sample_more_off_axis (bool, optional): If True, concentrate field
+                samples toward the field edge. Defaults to False.
 
         Returns:
-            avg_rms_error (torch.Tensor): RMS error averaged over wavelengths and grid points.
+            avg_rms_error (torch.Tensor): Scalar RMS spot error in mm, averaged
+                over the R, G, B wavelengths.
         """
         depth = self.obj_depth if depth is None else depth
         # Iterate green first so the error-adaptive weight mask is anchored
@@ -542,17 +578,25 @@ class GeoLensOptim:
         ``self.rfov_eff`` (paraxial pinhole FoV) so the full distorted field is covered.
 
         Args:
-            num_ring (int): Number of rings to sample in the field of view.
-            num_arm (int): Number of arms (spokes) to sample for each ring.
-            spp (int): Total number of rays to be sampled, distributed among field points.
-            depth (float): Depth of the object plane. When ``None`` (default),
-                falls back to ``self.obj_depth``.
-            wvln (float): Wavelength in µm. When ``None`` (default), falls
-                back to ``self.primary_wvln``.
-            scale_pupil (float): Scale factor for the pupil size.
+            num_ring (int, optional): Number of rings to sample in the field
+                of view. Defaults to 8.
+            num_arm (int, optional): Number of arms (spokes) sampled per ring.
+                Defaults to 2.
+            spp (int, optional): Number of rays sampled per field point.
+                Defaults to 2048.
+            depth (float, optional): Depth of the object plane in mm. When None
+                (default), falls back to `self.obj_depth`. Defaults to None.
+            wvln (float, optional): Wavelength in µm. When None (default), falls
+                back to `self.primary_wvln`. Defaults to None.
+            scale_pupil (float, optional): Scale factor for the entrance pupil
+                radius. Defaults to 1.0.
+            sample_more_off_axis (bool, optional): If True, warp ring field
+                angles by a square-root profile to concentrate samples toward
+                the field edge. Defaults to True.
 
         Returns:
-            rays (Ray): A Ray object containing the sampled rays.
+            rays (Ray): Ray bundle with field points laid out as
+                [num_ring, num_arm] and `spp` rays each.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
@@ -801,19 +845,28 @@ class GeoLensOptim:
         optim_mat=False,
         optim_surf_range=None,
     ):
-        """Get optimizer parameters for different lens surface.
+        """Build per-surface Adam parameter groups with per-type learning rates.
+
+        Collects trainable parameters for every surface (dispatching on surface
+        type), plus the sensor distance, into a list of optimizer param groups.
 
         Recommendation:
-            For cellphone lens: [d, c, k, a], [1e-4, 1e-4, 1e-1, 1e-4]
-            For camera lens: [d, c, 0, 0], [1e-3, 1e-4, 0, 0]
+            For cellphone lens: [d, c, k, a], [1e-4, 1e-4, 1e-1, 1e-4].
+            For camera lens: [d, c, 0, 0], [1e-3, 1e-4, 0, 0].
 
         Args:
-            lrs (list): learning rate for different parameters.
-            optim_mat (bool): whether to optimize material. Defaults to False.
-            optim_surf_range (list): surface indices to be optimized. Defaults to None.
+            lrs (list, optional): Learning rates for the [d, c, k, a] parameter
+                groups. Defaults to [1e-4, 1e-4, 1e-2, 1e-4].
+            optim_mat (bool, optional): Whether to optimize material parameters.
+                Defaults to False.
+            optim_surf_range (list or None, optional): Surface indices to
+                optimize. When None, all surfaces are used. Defaults to None.
 
         Returns:
-            params (list): optimizer parameters
+            params (list): List of optimizer parameter-group dicts.
+
+        Raises:
+            Exception: If a surface type is not supported for optimization.
         """
         # Find surfaces to be optimized
         if optim_surf_range is None:
@@ -880,15 +933,15 @@ class GeoLensOptim:
         """Build an Adam optimizer over all trainable lens parameters.
 
         Args:
-            lrs (list): learning rates for parameter groups [d, c, k, ai].
-                Defaults to [1e-4, 1e-4, 1e-1, 1e-4].
-            optim_surf_range (list): surface indices to optimise. If None,
-                all surfaces are included. Defaults to None.
-            optim_mat (bool): whether to include material parameters (n, V).
-                Defaults to False.
+            lrs (list, optional): Learning rates for the [d, c, k, ai] parameter
+                groups. Defaults to [1e-4, 1e-4, 1e-1, 1e-4].
+            optim_surf_range (list or None, optional): Surface indices to
+                optimize. When None, all surfaces are included. Defaults to None.
+            optim_mat (bool, optional): Whether to include material parameters
+                (n, V). Defaults to False.
 
         Returns:
-            optimizer (torch.optim.Adam): configured optimizer.
+            optimizer (torch.optim.Adam): Configured Adam optimizer.
         """
         # Get optimizer
         params = self.get_optimizer_params(

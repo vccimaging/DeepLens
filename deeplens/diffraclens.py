@@ -6,7 +6,7 @@
 
 """Paraxial diffractive lens model. Each optical element (lens, DOE, metasurface, etc.) in the paraxial diffractive model is modeled as a phase function. This simplified optical model is easy to use (but typically not accurate enough) for many real-world applications.
 
-Reference papers:
+Reference:
     [1] Vincent Sitzmann*, Steven Diamond*, Yifan Peng*, Xiong Dun, Stephen Boyd, Wolfgang Heidrich, Felix Heide, Gordon Wetzstein, "End-to-end optimization of optics and image processing for achromatic extended depth of field and super-resolution imaging," Siggraph 2018.
     [2] Qilin Sun, Ethan Tseng, Qiang Fu, Wolfgang Heidrich, Felix Heide. "Learning Rank-1 Diffractive Optics for Single-shot High Dynamic Range Imaging," CVPR 2020.
 """
@@ -41,18 +41,20 @@ class DiffractiveLens(Lens):
 
     Every optical element (converging lens, DOE, metasurface, …) is
     represented by a phase function applied to an incoming complex wavefront.
-    Propagation between surfaces uses the Angular Spectrum Method (ASM).
-    This model is simple and fast, but accurate only in the paraxial regime
-    (it does not account for higher-order geometric aberrations).
+    Free-space propagation between surfaces and to the sensor is handled by
+    `ComplexWave.prop_to`, which selects band-limited ASM or single-FFT
+    Fresnel diffraction based on the propagation distance. This model is
+    simple and fast, but accurate only in the paraxial regime (it does not
+    account for higher-order geometric aberrations).
 
     Attributes:
         surfaces (list): Ordered list of diffractive/phase surfaces.
-        d_sensor (torch.Tensor): Distance from the last surface to the sensor
-            plane [mm].
+        d_sensor (torch.Tensor): Distance from the first surface (z=0) to the
+            sensor plane [mm].
 
-    Notes:
-        Lens parameters default to ``torch.float32``; pass
-        ``dtype=torch.float64`` for higher-precision wave propagation.
+    Note:
+        Lens parameters default to `torch.float32`; pass `dtype=torch.float64`
+        for higher-precision wave propagation.
     """
 
     def __init__(
@@ -67,21 +69,24 @@ class DiffractiveLens(Lens):
         """Initialize a diffractive lens.
 
         Args:
-            filename (str, optional): Path to the lens configuration JSON file. If provided, 
-                loads the lens configuration from file. Defaults to None.
-            device (str, optional): Computation device ('cpu' or 'cuda'). Defaults to 'cpu'.
+            filename (str or None, optional): Path to the lens configuration
+                JSON file. If provided, loads the lens configuration from file;
+                otherwise an empty surface list and a default 8x8 mm,
+                2000x2000 px sensor are used. Defaults to None.
+            device (str or None, optional): Computation device ('cpu' or
+                'cuda'). When None, resolved by the base `Lens`. Defaults to None.
             dtype (torch.dtype, optional): Data type for the lens parameters.
-                Defaults to torch.float32; pass torch.float64 for
-                higher-precision wave propagation.
+                Pass `torch.float64` for higher-precision wave propagation.
+                Defaults to `torch.float32`.
             primary_wvln (float, optional): Primary design wavelength [µm].
                 Used as fallback when a method is called without an explicit
-                ``wvln``.  Defaults to ``DEFAULT_WAVE``.
+                `wvln`. Defaults to `DEFAULT_WAVE`.
             wvln_rgb (sequence of float, optional): Three wavelengths used
-                for RGB computations, ordered ``[R, G, B]`` in µm.  Defaults
-                to ``WAVE_RGB``.
+                for RGB computations, ordered [R, G, B] in µm. Defaults to
+                `WAVE_RGB`.
             obj_depth (float, optional): Default object depth [mm], used
-                when a method is called without an explicit ``depth``.
-                Defaults to ``DEPTH``.
+                when a method is called without an explicit `depth`. Defaults
+                to `DEPTH`.
         """
         super().__init__(
             device=device,
@@ -238,14 +243,24 @@ class DiffractiveLens(Lens):
     # Utils
     # =============================================
     def __call__(self, wave):
-        """Propagate a wave through the lens system."""
+        """Propagate a wave through the lens system (alias of `forward`).
+
+        Args:
+            wave (ComplexWave): Input wave field entering the lens system.
+
+        Returns:
+            wave (ComplexWave): Output wave field at the sensor plane.
+        """
         return self.forward(wave)
 
     def forward(self, wave):
         """Propagate a wave through the diffractive lens system to the sensor.
 
-        Sequentially applies phase modulation from each diffractive surface, then propagates
-        the wave to the sensor plane using wave optics.
+        Sequentially applies the phase modulation of each diffractive surface
+        (with intervening free-space propagation), then propagates the wave to
+        the sensor plane (absolute z = d_sensor [mm]). Free-space propagation
+        is delegated to `ComplexWave.prop_to`, which selects band-limited ASM
+        or single-FFT Fresnel diffraction based on the distance.
 
         Args:
             wave (ComplexWave): Input wave field entering the lens system.
@@ -265,15 +280,19 @@ class DiffractiveLens(Lens):
     # =============================================
     # Image simulation
     # =============================================
-    def render_mono(self, img, wvln=None, ks=None):
+    def render_mono(self, img, wvln=None, ks=None, method="fft"):
         """Simulate monochromatic lens blur by convolving an image with the point spread function.
 
         Args:
             img (torch.Tensor): Input image. Shape: (B, 1, H, W)
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            ks (int, optional): PSF kernel size. When ``None`` (default), the
-                full sensor resolution (``max(self.sensor_res)``) is used.
+            wvln (float, optional): Wavelength [µm]. When None (default),
+                falls back to `self.primary_wvln`.
+            ks (int, optional): PSF kernel size in pixels. When None (default),
+                the full sensor resolution (`max(self.sensor_res)`) is used.
+            method (str, optional): Convolution backend passed to `conv_psf`,
+                either ``"conv"`` or ``"fft"``. Defaults to ``"fft"`` because the
+                default `ks` (full sensor resolution) makes direct convolution
+                impractical.
 
         Returns:
             img_render (torch.Tensor): Rendered image after applying lens blur with shape (B, 1, H, W).
@@ -284,7 +303,7 @@ class DiffractiveLens(Lens):
         psf = self.psf(
             points=[0.0, 0.0, float("-inf")], wvln=wvln, ks=ks
         ).unsqueeze(0)
-        img_render = conv_psf(img, psf)
+        img_render = conv_psf(img, psf, method=method)
         return img_render
 
     def psf(self, points, wvln=None, ks=PSF_KS, **kwargs):
@@ -295,14 +314,14 @@ class DiffractiveLens(Lens):
 
         Args:
             points (torch.Tensor or list): Point source coordinates, shape
-                ``[N, 3]`` or ``[3]``. ``x, y`` are normalised to ``[-1, 1]``
-                (relative to the sensor half-width/height); ``z`` is the depth
-                in mm (negative; ``-inf`` for an object at infinity).
-            wvln (float, optional): Wavelength in µm. When ``None`` (default),
-                falls back to ``self.primary_wvln``.
-            ks (int, optional): PSF kernel size in pixels. Defaults to
-                ``PSF_KS``. Pass ``ks=None`` to use the full sensor resolution
-                (``max(self.sensor_res)``).
+                [N, 3] or [3]. x, y are normalised to [-1, 1] (relative to the
+                sensor half-width/height); z is the depth in mm (negative;
+                -inf for an object at infinity).
+            wvln (float, optional): Wavelength [µm]. When None (default), falls
+                back to `self.primary_wvln`.
+            ks (int, optional): PSF kernel size in pixels. Pass `ks=None` to use
+                the full sensor resolution (`max(self.sensor_res)`). Defaults to
+                `PSF_KS`.
             **kwargs: Model-specific options:
                 - recenter (bool): How the ks x ks kernel is centered (both
                   options keep off-axis PSFs centered in the kernel). If True,
@@ -313,15 +332,15 @@ class DiffractiveLens(Lens):
                   PSF is reported in the sensor/source-sign convention (a +x
                   source -> +x).
                 - upsample_factor (int): Field upsampling factor to meet the
-                  Nyquist sampling constraint. When ``None`` (default), a factor
+                  Nyquist sampling constraint. When None (default), a factor
                   is chosen so the field resolution is close to 4000 x 4000.
 
         Returns:
-            psf (torch.Tensor): PSF intensity map, shape ``[ks, ks]`` for a single
-                point or ``[N, ks, ks]`` for a batch.
+            psf (torch.Tensor): PSF intensity map (normalised to sum 1), shape
+                [ks, ks] for a single point or [N, ks, ks] for a batch.
 
         Note:
-            A single Angular Spectrum Method (ASM) window is used, so very large
+            A single (non-tiled) propagation window is used, so very large
             off-axis fields can suffer from the shifted-phase/aliasing issue;
             see "Modeling off-axis diffraction with the least-sampling angular
             spectrum method".
@@ -460,8 +479,8 @@ class DiffractiveLens(Lens):
         """Draw a 2D layout diagram of the diffractive lens.
 
         Each diffractive surface is drawn as a vertical dashed line at its axial
-        position ``z = surface.d``, and the sensor as a solid rectangle at
-        ``z = d_sensor``.
+        position `z = surface.d`, and the sensor as a solid rectangle at
+        `z = d_sensor`.
 
         Args:
             save_name (str, optional): Path to save the figure. Defaults to './doelens.png'.
@@ -518,11 +537,11 @@ class DiffractiveLens(Lens):
         Computes and saves a visualization of the RGB PSF for a given depth.
 
         Args:
-            depth (float, optional): Depth of the point source. When ``None``
-                (default), falls back to ``self.obj_depth``.
-            ks (int, optional): Size of the PSF kernel in pixels. When ``None``
-                (default), the full sensor resolution
-                (``max(self.sensor_res)``) is used.
+            depth (float, optional): Depth of the point source [mm]. When None
+                (default), falls back to `self.obj_depth`.
+            ks (int, optional): Size of the PSF kernel in pixels. When None
+                (default), the full sensor resolution (`max(self.sensor_res)`)
+                is used.
             save_name (str, optional): Path to save the PSF image. Defaults to './psf_doelens.png'.
             log_scale (bool, optional): If True, display PSF in log scale. Defaults to True.
             eps (float, optional): Small value for log scale to avoid log(0). Defaults to 1e-4.

@@ -6,18 +6,14 @@
 
 """Lens file IO for geometric lens systems.
 
-Functions:
-    JSON Format (.json):
-        - read_lens_json(): Load lens from DeepLens native JSON file
-        - write_lens_json(): Write lens to DeepLens native JSON file
+Provides read/write support for three lens prescription formats:
 
-    ZEMAX Format (.zmx):
-        - read_lens_zmx(): Load lens from ZEMAX .zmx file
-        - write_lens_zmx(): Write lens to ZEMAX .zmx file
+- DeepLens native JSON (.json): `read_lens_json`, `write_lens_json`.
+- Zemax sequential (.zmx): `read_lens_zmx`, `write_lens_zmx`.
+- Code V sequential (.seq): `read_lens_seq`, `write_lens_seq`.
 
-    Code V Format (.seq):
-        - read_lens_seq(): Load lens from Code V .seq file
-        - write_lens_seq(): Write lens to Code V .seq file
+All lengths are in millimetres [mm] and wavelengths in micrometres [µm],
+except field-of-view angles in the .zmx/.seq files, which are in degrees.
 """
 
 import json
@@ -30,31 +26,32 @@ from ..phase_surface import Binary2Phase, Phase
 
 
 class GeoLensIO:
-    """Mixin providing file I/O for ``GeoLens``.
+    """Mixin providing lens-file I/O for `GeoLens`.
 
-    Supports reading and writing lens prescriptions in three formats:
-
-    * **JSON** (primary): human-readable, supports parenthesised optimisable
-      parameters, e.g. ``"(d)": 5.0``.
-    * **Zemax .zmx**: industry-standard sequential lens file.
-    * **Code V .seq**: Code V sequential format (read-only).
-
-    This class is not instantiated directly; it is mixed into
-    `GeoLens`.
+    Adds read/write methods for three lens prescription formats: DeepLens
+    native JSON, Zemax sequential (.zmx), and Code V sequential (.seq). The
+    JSON format is primary and human-readable, with parenthesised keys (e.g.
+    `"(d_sensor)"`) marking optimisable parameters. This class is not
+    instantiated directly; it is mixed into `GeoLens`, and its methods read
+    from and write to the host lens's state (`surfaces`, `d_sensor`,
+    `r_sensor`, `enpd`, `rfov_eff`, etc.).
     """
 
     def read_lens_zmx(self, filename="./test.zmx"):
         """Load the lens from a Zemax .zmx sequential lens file.
 
         Parses STANDARD and EVENASPH surface types, glass materials, field
-        definitions (YFLN), and entrance pupil settings (ENPD/FLOA).
+        definitions (YFLN, in degrees), and entrance pupil settings
+        (ENPD/FLOA). Populates `self.surfaces`, `self.d_sensor` [mm],
+        `self.r_sensor` [mm], `self.enpd`, `self.float_enpd`, and
+        `self.rfov_eff` [rad].
 
         Args:
-            filename (str, optional): Path to the .zmx file. Supports both
-                UTF-8 and UTF-16 encoded files. Defaults to './test.zmx'.
+            filename (str, optional): Path to the .zmx file. Both UTF-8 and
+                UTF-16 encodings are accepted. Defaults to './test.zmx'.
 
         Returns:
-            self (GeoLens): ``self``, for method chaining.
+            self (GeoLens): The updated lens (for chaining).
         """
         # Read .zmx file
         try:
@@ -196,8 +193,10 @@ class GeoLensIO:
     def write_lens_zmx(self, filename="./test.zmx"):
         """Write the lens to a Zemax .zmx sequential lens file.
 
-        Exports surfaces (STANDARD or EVENASPH), materials, field definitions,
-        and entrance pupil settings in Zemax OpticStudio format.
+        Exports surfaces (STANDARD or EVENASPH), materials, field definitions
+        (YFLN at 0, 0.707, and 0.99 of the effective half-FoV, in degrees),
+        RGB wavelengths, and entrance-pupil settings in Zemax OpticStudio
+        format. An extra image (sensor) surface is appended.
 
         Args:
             filename (str, optional): Output file path. Defaults to './test.zmx'.
@@ -273,18 +272,21 @@ SURF 0
     # CODE V Format (.seq)
     # ====================================================================================
     def read_lens_seq(self, filename="./test.seq"):
-        """Load the lens from a CODE V .seq sequential file.
+        """Load the lens from a Code V .seq sequential file.
 
-        Parses standard and aspheric surfaces (with conic and polynomial
-        coefficients A–I), entrance pupil diameter (EPD), field angles (YAN),
-        aperture stop (STO), and image surface (SI).
+        Parses standard and aspheric surfaces (conic K and polynomial
+        coefficients A-I, mapped to even-aspheric terms ai[1]-ai[9]), entrance
+        pupil diameter (EPD), field angles (YAN, in degrees), aperture stop
+        (STO), and the image surface (SI). Populates `self.surfaces`,
+        `self.d_sensor` [mm], `self.r_sensor` [mm], `self.enpd`, `self.hfov`
+        [deg], and `self.rfov_eff` [rad]. Progress is printed to stdout.
 
         Args:
-            filename (str, optional): Path to the .seq file. Supports both
-                UTF-8 and Latin-1 encoded files. Defaults to './test.seq'.
+            filename (str, optional): Path to the .seq file. Both UTF-8 and
+                Latin-1 encodings are accepted. Defaults to './test.seq'.
 
         Returns:
-            self (GeoLens): ``self``, for method chaining.
+            self (GeoLens): The updated lens (for chaining).
         """
         print(f"\n{'=' * 60}")
         print(f"Start reading CODE V file: {filename}")
@@ -629,16 +631,18 @@ SURF 0
         return self
 
     def write_lens_seq(self, filename="./test.seq"):
-        """Write the lens to a CODE V .seq sequential file.
+        """Write the lens to a Code V .seq sequential file.
 
-        Exports surfaces, materials, field definitions, and entrance pupil
-        settings in CODE V format.
+        Exports refractive surfaces (spheric and aspheric; pure apertures are
+        skipped), materials, field angles (YAN at 0, 0.707, and 0.99 of the
+        effective half-FoV, in degrees), entrance pupil diameter, and the
+        image surface in Code V format.
 
         Args:
             filename (str, optional): Output file path. Defaults to './test.seq'.
 
         Returns:
-            self (GeoLens): ``self``, for method chaining.
+            self (GeoLens): The updated lens (for chaining).
         """
 
         import datetime
@@ -747,16 +751,24 @@ SURF 0
     # JSON lens file I/O
     # ====================================================================================
     def read_lens_json(self, filename="./test.json"):
-        """Read the lens from a JSON file.
+        """Read the lens from a DeepLens native JSON file.
 
-        Loads lens configuration including surfaces, materials, and optical properties
-        from the DeepLens native JSON format.
+        Loads the surface list, sensor geometry, entrance pupil, and lens info,
+        rebuilding each surface from its `type` field via `init_from_dict`.
+        Surface positions `d` [mm] are accumulated from the per-surface
+        `d_next` spacings, and `self.d_sensor` [mm] is set to the total.
+        Sets `self.r_sensor` [mm], `self.enpd`, and `self.float_enpd`, then
+        configures the sensor resolution from `sensor_res` (default
+        2000 x 2000).
 
         Args:
             filename (str, optional): Path to the JSON lens file. Defaults to './test.json'.
 
+        Raises:
+            Exception: If a surface `type` is not implemented in this loader.
+
         Note:
-            After loading, the lens is moved to self.device.
+            After loading, the lens is moved to `self.device`.
         """
         self.surfaces = []
         self.materials = []
@@ -827,10 +839,12 @@ SURF 0
         self.set_sensor_res(sensor_res=sensor_res)
 
     def write_lens_json(self, filename="./test.json"):
-        """Write the lens to a JSON file.
+        """Write the lens to a DeepLens native JSON file.
 
-        Saves the complete lens configuration including all surfaces, materials,
-        focal length, F-number, and sensor properties to the DeepLens JSON format.
+        Saves lens info, focal length [mm], F-number, entrance pupil diameter,
+        sensor radius/size [mm] and resolution, and all surfaces (each via
+        `surf_dict`) with their per-surface spacing `d_next` [mm]. Numeric
+        values are rounded to 4 decimal places.
 
         Args:
             filename (str, optional): Path for the output JSON file. Defaults to './test.json'.

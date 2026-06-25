@@ -43,20 +43,34 @@ def create_lens(
 ):
     """Create a lens design starting point with flat surfaces.
 
+    Build a `GeoLens` from a list of element/aperture specs, randomly
+    initializing materials and curvatures, then normalize thicknesses and
+    semi-apertures, attach a dummy sensor, and save the lens JSON and analysis.
+
     Contributor: Rayengineer
 
-    Exactly one of ``foclen`` or ``imgh`` must be provided.  The other is
-    derived via ``imgh = foclen * tan(fov / 2)``.
+    Exactly one of `foclen` or `imgh` must be provided; the other is derived via
+    $\\text{imgh} = \\text{foclen} \\cdot \\tan(\\text{fov} / 2)$.
 
     Args:
-        fov: Diagonal field of view in degrees.
-        fnum: Maximum f-number.
-        bfl: Back focal length — distance from last surface to sensor in mm.
-        foclen: Focal length in mm.  Mutually exclusive with ``imgh``.
-        imgh: Half-diagonal image height in mm (= r_sensor).  Mutually exclusive with ``foclen``.
-        thickness: Total thickness in mm.  Defaults to ``foclen + bfl``.
-        surf_list: List of surface types defining each lens element and aperture.
-        save_dir: Directory to save the lens JSON and analysis.
+        fov (float): Diagonal field of view in degrees.
+        fnum (float): Target f-number (focal length / entrance pupil diameter);
+            sets the aperture radius via $\\text{aper\\_r} = \\text{foclen} / \\text{fnum} / 2$.
+        bfl (float): Back focal length, the distance from the last surface to the sensor in mm.
+        foclen (float or None, optional): Focal length in mm. Mutually exclusive with `imgh`. Defaults to None.
+        imgh (float or None, optional): Half-diagonal image height in mm (= r_sensor). Mutually exclusive with `foclen`. Defaults to None.
+        thickness (float or None, optional): Total thickness in mm. Defaults to None, in which case `foclen + bfl` is used.
+        surf_list (list or None, optional): List of element specs; each element is a string
+            ("Aperture") or a list of surface types. Defaults to None, in which case
+            `[["Spheric", "Spheric"], ["Aperture"], ["Spheric", "Aspheric"]]` is used.
+        save_dir (str, optional): Directory to save the lens JSON and analysis. Defaults to "./".
+
+    Returns:
+        lens (GeoLens): The constructed lens with a dummy 2000x2000 sensor.
+
+    Raises:
+        ValueError: If both or neither of `foclen` and `imgh` are provided.
+        Exception: If a lens element spec or surface type is not supported.
     """
     from ..geolens import GeoLens
 
@@ -165,7 +179,24 @@ def create_lens(
     return lens
 
 def create_surface(surface_type, d_total, aper_r, imgh, mat):
-    """Create a surface object based on the surface type."""
+    """Create a surface object based on the surface type.
+
+    Initialize a `Spheric`, `Aspheric`, or `Plane` surface with a small random
+    curvature (negative when the following medium is air, positive otherwise).
+
+    Args:
+        surface_type (str): Surface type, one of "Spheric", "Aspheric", or "Plane".
+        d_total (float): Axial position of the surface along the optical axis in mm.
+        aper_r (float): Initial semi-aperture radius in mm (updated later after thickness normalization).
+        imgh (float): Half-diagonal image height in mm. Currently unused by this function.
+        mat (str): Material name of the medium following the surface ("air" or a glass name).
+
+    Returns:
+        surface (Surface): The created surface object.
+
+    Raises:
+        Exception: If `surface_type` is not supported.
+    """
     if mat == "air":
         c = -float(np.random.rand()) * 0.001
     else:

@@ -15,33 +15,29 @@ from ..config import EPSILON
 def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
     """Differentiable Monte-Carlo integral over a ray bundle onto a pixel grid.
 
-    Bins ray hit positions into a ``ks × ks`` grid centred on *pointc* (or the
-    ray centroid when *pointc* is ``None``). In coherent mode the complex
-    amplitude is accumulated instead of intensity.
-
-    All ``N`` field points scatter into their own output slices in a single
-    ``index_put_(accumulate=True)`` call with 3-D ``(batch, row, col)``
-    indices. This removes the per-field Python loop the earlier
-    implementation used and fuses the scatter across all field points into
-    one kernel launch.
+    Bins ray hit positions into a `ks` x `ks` grid centred on `pointc` (or the
+    valid-ray centroid when `pointc` is None). In coherent mode the complex
+    amplitude `sqrt(|dz|) * exp(i * phase)` is accumulated; in incoherent mode
+    unit intensity is accumulated. All `N` field points scatter into their own
+    output slices in batched `index_put_(accumulate=True)` calls.
 
     Args:
-        ray (Ray): Traced ray bundle with origin ``ray.o`` of shape
-            ``[N, spp, 3]`` (or ``[spp, 3]`` for a single field point).
+        ray (Ray): Traced ray bundle with origin `ray.o` of shape
+            [N, spp, 3] (or [spp, 3] for a single field point).
         ps (float): Pixel size [mm].
         ks (int): Output grid size in pixels (square).
-        pointc (torch.Tensor or None, optional): Reference centre for each
-            field point, shape ``[N, 2]``. If ``None``, the valid-ray
-            centroid is used.
-        interpolate (bool, optional): If ``True`` (default), each ray splits
-            its contribution across the four surrounding pixels via bilinear
-            weights. If ``False``, each ray is hard-binned into the floor
-            pixel (faster, no gradient w.r.t. in-pixel position).
+        pointc (torch.Tensor or None, optional): Reference centre [mm] for each
+            field point, shape [N, 2]. If None, the valid-ray centroid is used.
+            Defaults to None.
+        interpolate (bool, optional): If True, each ray splits its contribution
+            across the four surrounding pixels via bilinear weights. If False,
+            each ray is hard-binned into the floor pixel (faster, no gradient
+            w.r.t. in-pixel position). Defaults to True.
 
     Returns:
-        field (torch.Tensor): Accumulated field, shape ``[N, ks, ks]`` (or
-            ``[ks, ks]`` for a single input point). Dtype is complex when
-            ``ray.is_coherent`` is ``True``, otherwise float.
+        grid (torch.Tensor): Accumulated field, shape [N, ks, ks] (or [ks, ks]
+            for a single input point). Dtype is complex when `ray.is_coherent`
+            is True, otherwise float.
     """
     if ray.o.ndim == 2:
         single_point = True
@@ -126,31 +122,40 @@ def backward_integral(
     energy_correction=None,
     vignetting=False,
 ):
-    """Backward Monte Carlo integration, for ray tracing based rendering.
+    """Backward Monte-Carlo integration for ray-tracing-based rendering.
 
-    The input image is always replicate-padded by one pixel on each side so
-    that rays landing within half a pixel of the edge can still be bilinearly
-    sampled without silently truncating.
+    Sample an input image at each ray's hit position and average over the
+    samples-per-pixel (spp) axis to render the output. The input image is
+    always replicate-padded by one pixel on each side so that rays landing
+    within half a pixel of the edge can still be bilinearly sampled without
+    silently truncating.
 
     Args:
-        ray (Ray): Ray object. Shape of ``ray.o`` is ``[h, w, spp, 3]``.
-        img_obj (torch.Tensor): [B, C, H, W]. Spatial size ``H, W`` is read from this tensor.
-        ps (float): pixel size
-        interpolate (bool): whether to interpolate
-        energy_correction (torch.Tensor or None, optional): Optional per-ray weight tensor of shape
-            ``[h, w, spp, 1]`` (e.g. ``ray.en``). When supplied, it is used as
-            an importance weight; under the default (non-vignetting) mode it
-            enters both numerator and denominator, yielding a proper weighted
-            Monte Carlo mean. Under ``vignetting=True`` the denominator is
-            fixed, so the weight only scales the numerator. ``None``
-            (default) gives uniform per-ray weights.
-        vignetting (bool): If True, divide by a fixed denominator
-            (``torch.numel(ray.is_valid)``) instead of the sum of weights;
-            pixels hit by few / attenuated rays therefore appear dimmer
-            (mechanical vignetting). Defaults to False.
+        ray (Ray): Ray object. Shape of `ray.o` is [h, w, spp, 3], with
+            positions in [mm].
+        img_obj (torch.Tensor): Source image, shape [B, C, H, W]. Spatial size
+            H, W is read from this tensor.
+        ps (float): Pixel size [mm].
+        interpolate (bool, optional): If True, bilinearly sample the four
+            surrounding pixels; if False, nearest-pixel sampling. Defaults to
+            True.
+        energy_correction (torch.Tensor or None, optional): Per-ray weight
+            tensor of shape [h, w, spp, 1] (e.g. `ray.en`). When supplied, it
+            is used as an importance weight; under the default (non-vignetting)
+            mode it enters both numerator and denominator, yielding a proper
+            weighted Monte-Carlo mean. Under vignetting it scales only the
+            numerator (fixed denominator). Defaults to None (uniform weights).
+        vignetting (bool, optional): If True, divide by a fixed denominator
+            (`torch.numel(ray.is_valid)`) instead of the sum of weights; pixels
+            hit by few or attenuated rays therefore appear dimmer (mechanical
+            vignetting). Defaults to False.
 
     Returns:
-        output (torch.Tensor): shape [B, C, h, w]
+        output (torch.Tensor): Rendered image, shape [B, C, h, w].
+
+    Raises:
+        Exception: If `ray.is_coherent` is True (coherent backward integral is
+            not supported).
     """
     assert len(img_obj.shape) == 4
     H, W = img_obj.shape[-2:]
@@ -206,22 +211,28 @@ def assign_points_to_pixels(
     value,
     interpolate=True,
 ):
-    """Assign points to pixels, supports both incoherent and coherent ray tracing. Use advanced indexing to increment the count for each corresponding pixel.
+    """Scatter point samples onto a `ks` x `ks` pixel grid.
 
-    This function can only compute single point source, constrained by advanced indexing operation.
+    Bins each point's `value` (intensity or complex amplitude) into the grid
+    spanned by `x_range` x `y_range` using `index_put_(accumulate=True)`.
+    Supports both incoherent and coherent ray tracing. Handles a single point
+    source only, constrained by the advanced-indexing scatter.
 
     Args:
-        points (torch.Tensor): shape [spp, 2]
-        mask (torch.Tensor): shape [spp]
-        ks (int): kernel size
-        x_range (tuple): x range
-        y_range (tuple): y range
-        value (torch.Tensor): shape [spp], values we want to assign to each pixel (intensity or complex amplitude)
-        interpolate (bool): whether to interpolate
-
+        points (torch.Tensor): Sample positions [mm], shape [spp, 2] as (x, y).
+        mask (torch.Tensor): Validity mask, shape [spp].
+        ks (int): Output grid size in pixels (square).
+        x_range (tuple): Grid extent (x_min, x_max) [mm].
+        y_range (tuple): Grid extent (y_min, y_max) [mm].
+        value (torch.Tensor): Per-point value to accumulate (intensity or
+            complex amplitude), shape [spp].
+        interpolate (bool, optional): If True, split each point across the four
+            surrounding pixels via bilinear weights; if False, hard-bin into the
+            floor pixel. Defaults to True.
 
     Returns:
-        field (torch.Tensor): intensity or complex amplitude, shape [ks, ks]
+        grid (torch.Tensor): Accumulated intensity or complex amplitude, shape
+            [ks, ks]. Dtype matches `value`.
     """
     # Parameters
     device = points.device

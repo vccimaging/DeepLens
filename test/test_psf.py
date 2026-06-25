@@ -60,17 +60,49 @@ class TestConvPSF:
         # Create image with sharp edges
         img = torch.zeros(1, 3, 64, 64, device=device_auto)
         img[:, :, 20:44, 20:44] = 1.0
-        
+
         # Box blur PSF
         psf = torch.ones(3, 5, 5, device=device_auto)
         psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
-        
+
         result = conv_psf(img, psf)
-        
+
         # Edges should be smoothed
         edge_sharpness_before = (img[:, :, 19, 32] - img[:, :, 20, 32]).abs()
         edge_sharpness_after = (result[:, :, 19, 32] - result[:, :, 20, 32]).abs()
         assert edge_sharpness_after.mean() < edge_sharpness_before.mean()
+
+    @pytest.mark.parametrize("ks", [5, 11, 32])
+    def test_conv_psf_fft_matches_conv(self, device_auto, ks):
+        """FFT backend must match the direct conv backend for odd and even ks."""
+        img = torch.rand(2, 3, 64, 64, device=device_auto)
+        psf = torch.rand(3, ks, ks, device=device_auto)
+        psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
+
+        result_conv = conv_psf(img, psf, method="conv")
+        result_fft = conv_psf(img, psf, method="fft")
+
+        assert result_fft.shape == result_conv.shape == img.shape
+        assert torch.allclose(result_fft, result_conv, atol=1e-5)
+
+    def test_conv_psf_fft_delta(self, device_auto):
+        """Delta PSF via the FFT backend should return the original image."""
+        img = torch.rand(1, 3, 64, 64, device=device_auto)
+        psf = torch.zeros(3, 11, 11, device=device_auto)
+        psf[:, 5, 5] = 1.0
+
+        result = conv_psf(img, psf, method="fft")
+
+        assert torch.allclose(result, img, atol=1e-5)
+
+    def test_conv_psf_unknown_method(self, device_auto):
+        """An unknown method should raise ValueError."""
+        img = torch.rand(1, 3, 16, 16, device=device_auto)
+        psf = torch.ones(3, 5, 5, device=device_auto)
+        psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
+
+        with pytest.raises(ValueError):
+            conv_psf(img, psf, method="bogus")
 
 
 class TestConvPSFMap:

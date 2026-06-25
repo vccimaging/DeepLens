@@ -45,11 +45,11 @@ class MLP(nn.Module):
         """Forward pass.
 
         Args:
-            x (torch.Tensor): Input tensor of shape ``(batch_size, in_features)``.
+            x (torch.Tensor): Input tensor of shape `(batch_size, in_features)`.
 
         Returns:
             x (torch.Tensor): L1-normalized output tensor of shape
-                ``(batch_size, out_features)``.
+                `(batch_size, out_features)`, summing to 1 along the last dim.
         """
         x = self.net(x)
         x = F.normalize(x, p=1, dim=-1)
