@@ -1025,8 +1025,8 @@ class Surface(DeepObj):
 
         Returns:
             surf_dict (dict): Surface parameters (type, `r`, `d`, `pos_xy`,
-                `vec_local`, `is_square`, `mat2`), with numeric values rounded
-                to 4 decimals.
+                `vec_local`, `is_square`, `mat2`, plus informational
+                `(mat2_n)`/`(mat2_V)`), with numeric values rounded to 4 decimals.
         """
         surf_dict = {
             "type": self.__class__.__name__,
@@ -1040,6 +1040,8 @@ class Surface(DeepObj):
             ),
             "is_square": self.is_square,
             "mat2": self.mat2.get_name(),
+            "(mat2_n)": round(float(self.mat2.n), 4),
+            "(mat2_V)": round(float(self.mat2.V), 4),
         }
 
         return surf_dict

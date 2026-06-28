@@ -320,7 +320,8 @@ class Spheric(Surface):
 
         Returns:
             surf_dict (dict): Surface parameters with keys `type`, `r`, `(c)`,
-                `roc`, `(d)`, and `mat2`. Lengths are in [mm], curvature in
+                `roc`, `(d)`, `mat2`, plus informational `(mat2_n)`/`(mat2_V)`.
+                Lengths are in [mm], curvature in
                 [1/mm], rounded to 4 decimals.
         """
         roc = 1 / self.c.item() if self.c.item() != 0 else 0.0
@@ -331,6 +332,8 @@ class Spheric(Surface):
             "roc": round(roc, 4),
             "(d)": round(self.d.item(), 4),
             "mat2": self.mat2.get_name(),
+            "(mat2_n)": round(float(self.mat2.n), 4),
+            "(mat2_V)": round(float(self.mat2.V), 4),
         }
 
         return surf_dict

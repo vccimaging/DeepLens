@@ -247,7 +247,7 @@ class Cubic(Surface):
         loader reconstructs `d` from accumulated surface spacings).
 
         Returns:
-            d (dict): Surface parameters with keys "type", "b3", "r", "(d)", "b", "mat2", and (when active) "b5"/"b7".
+            d (dict): Surface parameters with keys "type", "b3", "r", "(d)", "b", "mat2", informational "(mat2_n)"/"(mat2_V)", and (when active) "b5"/"b7".
         """
         b = [self.b3.item()]
         if self.b_degree >= 2:
@@ -262,6 +262,8 @@ class Cubic(Surface):
             "(d)": round(self.d.item(), 4),
             "b": b,
             "mat2": self.mat2.get_name(),
+            "(mat2_n)": round(float(self.mat2.n), 4),
+            "(mat2_V)": round(float(self.mat2.V), 4),
         }
         if self.b_degree >= 2:
             d["b5"] = self.b5.item()
