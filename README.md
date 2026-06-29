@@ -141,7 +141,7 @@ DeepLens/
 │   ├── diffractive_surface/(diffractive surfaces)
 │   ├── phase_surface/      (phase surfaces)
 │   ├── light/              (Ray, Wave)
-│   ├── material/           (material catalogs)
+│   ├── material/           (glass/plastic catalogs + refractiveindex.info data)
 │   ├── imgsim/             (PSF convolution, monte carlo image simulation)
 │   ├── geolens_pkg/        (eval, optim, vis, io mixins)
 │   └── surrogate/          (MLP, Siren neural surrogates)

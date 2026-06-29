@@ -100,6 +100,15 @@ def read_custom_mat(file_path):
 
 CUSTOM_data = read_custom_mat(os.path.join(_dir, "materials_data.json"))
 
+# refractiveindex.info catalog (optical glasses + substrate crystals), generated
+# offline by tools/build_refractiveindex_data.py. Stored as JSON so the runtime
+# needs no PyYAML dependency. These entries are a *fallback*: any name already
+# defined in the AGF catalogs or materials_data.json keeps its precedence (see
+# load_dispersion), so existing behaviour is unchanged.
+RII_data = read_custom_mat(os.path.join(_dir, "refractiveindex_data.json"))
+RII_data.setdefault("FORMULA", {})
+RII_data.setdefault("INTERP", {})
+
 
 # ===========================================
 # Material class
@@ -108,17 +117,22 @@ class Material(DeepObj):
     """Optical material defined by its wavelength-dependent refractive index.
 
     Materials are looked up by name in the bundled CDGM, SCHOTT, or MISC AGF
-    catalogs, in a custom JSON catalog, or specified inline as `"n/V"`
-    (Cauchy approximation from Abbe number V).
+    catalogs, in a custom JSON catalog, in the bundled refractiveindex.info
+    catalog (optical glasses from SCHOTT/OHARA/HOYA/HIKARI/SUMITA/CDGM/LZOS/
+    Crystran plus common substrate crystals), or specified inline as `"n/V"`
+    (Cauchy approximation from Abbe number V). Names defined by more than one
+    source resolve in that order, so refractiveindex.info only fills gaps and
+    never overrides an existing name.
 
     Supported dispersion models: `"sellmeier"`, `"cauchy"`, `"schott"`,
-    `"interp"` (lookup table), and `"optimizable"` (Cauchy with learnable n, V).
+    `"interp"` (lookup table), `"rii"` (refractiveindex.info dispersion
+    formulas), and `"optimizable"` (Cauchy with learnable n, V).
 
     Attributes:
         name (str): Lowercase material name.
         device (str): Compute device for dispersion tensors.
         dispersion (str): Dispersion model in use (`"sellmeier"`, `"cauchy"`,
-            `"schott"`, `"interp"`, or `"optimizable"`).
+            `"schott"`, `"interp"`, `"rii"`, or `"optimizable"`).
         n (float or torch.Tensor): Refractive index at the d-line (587.6 nm).
             Becomes a learnable tensor after `get_optimizer_params`.
         V (float or torch.Tensor): Abbe number. Also learnable in
@@ -137,6 +151,8 @@ class Material(DeepObj):
                   `"occluder"` are accepted and normalised to `"air"`.
                 - Inline Cauchy `"n/V"`, e.g. `"1.5168/64.17"`
                 - Custom name registered in `materials_data.json`
+                - refractiveindex.info name, e.g. `"s-bsl7"`, `"sapphire"`,
+                  `"znse"` (optical glasses and substrate crystals)
 
                 Defaults to None (treated as `"air"`).
             device (str, optional): Compute device. Defaults to `"cpu"`.
@@ -177,8 +193,9 @@ class Material(DeepObj):
         Sets `self.dispersion` and the corresponding coefficients (Sellmeier
         `k*`/`l*`, Schott `a*`, Cauchy `A`/`B`, or interpolation tables), along
         with `self.n` (d-line index) and `self.V` (Abbe number). Looks up the
-        name in the AGF catalogs, the inline `"n/V"` form, then the custom JSON
-        tables.
+        name in the AGF catalogs, the inline `"n/V"` form, the custom JSON
+        tables, then the bundled refractiveindex.info catalog (`RII_data`) as a
+        final fallback, so names from earlier sources keep precedence.
 
         Raises:
             NotImplementedError: If the material name is not found in any
@@ -205,24 +222,7 @@ class Material(DeepObj):
 
         # Material found in custom JSON file
         elif self.name in CUSTOM_data["INTERP_TABLE"]:
-            self.dispersion = "interp"
-            mat_data = CUSTOM_data["INTERP_TABLE"][self.name]
-            self.ref_wvlns = mat_data["wvlns"]
-            self.ref_n = mat_data["n"]
-            if len(self.ref_wvlns) != len(self.ref_n):
-                raise ValueError(
-                    f"Interpolation wavelength and index tables for {self.name} "
-                    f"have different lengths."
-                )
-            self._ref_wvlns_t = torch.tensor(self.ref_wvlns)
-            self._ref_n_t = torch.tensor(self.ref_n)
-            # Sample n_d at the helium d-line (0.58756 µm) to match the
-            # d-line F/C convention used for the V-number below.
-            nd = float(np.interp(0.58756, self.ref_wvlns, self.ref_n))
-            nF = float(np.interp(0.4861, self.ref_wvlns, self.ref_n))
-            nC = float(np.interp(0.6563, self.ref_wvlns, self.ref_n))
-            self.n = nd
-            self.V = (nd - 1) / (nF - nC) if nF != nC else 1e38
+            self.load_interp_table(CUSTOM_data["INTERP_TABLE"][self.name])
 
         elif self.name in CUSTOM_data["SELLMEIER_TABLE"]:
             self.dispersion = "sellmeier"
@@ -251,8 +251,61 @@ class Material(DeepObj):
             self.n, self.V = CUSTOM_data["MATERIAL_TABLE"][self.name]
             self.A, self.B = self.nV_to_AB(self.n, self.V)
 
+        # refractiveindex.info catalog (fallback: only reached for names not
+        # defined by any of the sources above, so existing names keep priority).
+        elif self.name in RII_data["FORMULA"]:
+            entry = RII_data["FORMULA"][self.name]
+            self.dispersion = "rii"
+            self.rii_formula = entry["formula"]
+            self.rii_coeffs = entry["coeffs"]
+            self.rii_wvln_range = entry.get("wvln_range")
+            self.n = entry["nd"]
+            self.V = entry["vd"]
+
+        elif self.name in RII_data["INTERP"]:
+            self.load_interp_table(RII_data["INTERP"][self.name])
+
         else:
             raise NotImplementedError(f"Material {self.name} not implemented.")
+
+    def load_interp_table(self, mat_data):
+        """Set up a tabulated-index (`"interp"`) material from a data table.
+
+        Stores the reference wavelength/index arrays (and cached tensors), then
+        samples `self.n` (d-line) and `self.V` (Abbe number) from the table.
+
+        Args:
+            mat_data (dict): Mapping with keys `"wvlns"` and `"n"`, two equal
+                length lists of wavelengths [µm] and refractive indices.
+
+        Raises:
+            ValueError: If the wavelength and index tables differ in length.
+        """
+        self.dispersion = "interp"
+        self.ref_wvlns = mat_data["wvlns"]
+        self.ref_n = mat_data["n"]
+        if len(self.ref_wvlns) != len(self.ref_n):
+            raise ValueError(
+                f"Interpolation wavelength and index tables for {self.name} "
+                f"have different lengths."
+            )
+        self._ref_wvlns_t = torch.tensor(self.ref_wvlns)
+        self._ref_n_t = torch.tensor(self.ref_n)
+        # nd/Vd are defined at the visible He/H lines. Only report them when the
+        # table actually spans the F and C lines; otherwise np.interp would clamp
+        # to an endpoint and fabricate a meaningless d-line index (e.g. for
+        # IR/UV-only crystals). In that case expose the in-band reference index
+        # and mark Vd non-applicable (1e38), matching the formula-based path.
+        wmin, wmax = min(self.ref_wvlns), max(self.ref_wvlns)
+        if wmin <= 0.4861 and 0.6563 <= wmax:
+            nd = float(np.interp(0.58756, self.ref_wvlns, self.ref_n))
+            nF = float(np.interp(0.4861, self.ref_wvlns, self.ref_n))
+            nC = float(np.interp(0.6563, self.ref_wvlns, self.ref_n))
+            self.n = nd
+            self.V = (nd - 1) / (nF - nC) if nF != nC else 1e38
+        else:
+            self.n = float(np.interp(0.5 * (wmin + wmax), self.ref_wvlns, self.ref_n))
+            self.V = 1e38
 
     def set_material_param_agf(self, material_data, material_name):
         """Set dispersion model and coefficients from an AGF catalog entry.
@@ -348,10 +401,10 @@ class Material(DeepObj):
         """Compute the refractive index from the active dispersion model.
 
         Dispatches on `self.dispersion`: Sellmeier, Schott, Cauchy, linear
-        interpolation of a lookup table, or an optimizable Cauchy form with
-        learnable (n, V). The Cauchy branch evaluates $n = A + B/\\lambda^2$
-        with $\\lambda$ in nanometres; all other branches take $\\lambda$ in
-        micrometres directly.
+        interpolation of a lookup table, the refractiveindex.info dispersion
+        formulas (`"rii"`), or an optimizable Cauchy form with learnable (n, V).
+        The Cauchy branch evaluates $n = A + B/\\lambda^2$ with $\\lambda$ in
+        nanometres; all other branches take $\\lambda$ in micrometres directly.
 
         Args:
             wvln (torch.Tensor): Wavelength in micrometres [µm]. Must lie in
@@ -426,6 +479,36 @@ class Material(DeepObj):
             )
             weight_low = 1.0 - weight_high
             n = n_ref_low * weight_low + n_ref_high * weight_high
+
+        elif self.dispersion == "rii":
+            # refractiveindex.info dispersion formulas, wavelength in [µm].
+            # https://refractiveindex.info -> "Dispersion formulas". The
+            # coefficient layout is C1 followed by (numerator, denominator/
+            # exponent) pairs, matching the bundled refractiveindex_data.json.
+            c = self.rii_coeffs
+            ws = wvln**2
+            if self.rii_formula == 1:
+                # Sellmeier (preferred): squared denominators.
+                n2 = 1.0 + c[0]
+                for i in range(1, len(c) - 1, 2):
+                    n2 = n2 + c[i] * ws / (ws - c[i + 1] ** 2)
+                n = torch.sqrt(n2)
+            elif self.rii_formula == 2:
+                # Sellmeier-2: non-squared denominators.
+                n2 = 1.0 + c[0]
+                for i in range(1, len(c) - 1, 2):
+                    n2 = n2 + c[i] * ws / (ws - c[i + 1])
+                n = torch.sqrt(n2)
+            elif self.rii_formula == 3:
+                # Polynomial.
+                n2 = c[0] + torch.zeros_like(wvln)
+                for i in range(1, len(c) - 1, 2):
+                    n2 = n2 + c[i] * wvln ** c[i + 1]
+                n = torch.sqrt(n2)
+            else:
+                raise NotImplementedError(
+                    f"refractiveindex.info formula {self.rii_formula} not implemented."
+                )
 
         elif self.dispersion == "optimizable":
             # Cauchy's equation, calculate (A, B) on the fly. Clamp the Abbe
