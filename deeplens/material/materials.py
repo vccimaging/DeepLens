@@ -101,7 +101,7 @@ def read_custom_mat(file_path):
 CUSTOM_data = read_custom_mat(os.path.join(_dir, "materials_data.json"))
 
 # refractiveindex.info catalog (optical glasses + substrate crystals), generated
-# offline by tools/build_refractiveindex_data.py. Stored as JSON so the runtime
+# offline by build_refractiveindex_data.py in this directory. Stored as JSON so the runtime
 # needs no PyYAML dependency. These entries are a *fallback*: any name already
 # defined in the AGF catalogs or materials_data.json keeps its precedence (see
 # load_dispersion), so existing behaviour is unchanged.

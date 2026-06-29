@@ -22,7 +22,7 @@ Usage:
     # 1. Obtain the upstream database (records the exact commit for provenance):
     #    git clone --depth 1 https://github.com/polyanskiy/refractiveindex.info-database
     # 2. Run the converter:
-    python tools/build_refractiveindex_data.py \
+    python deeplens/material/build_refractiveindex_data.py \
         --db /path/to/refractiveindex.info-database \
         --out deeplens/material/refractiveindex_data.json
 
@@ -42,7 +42,10 @@ import os
 import subprocess
 
 import numpy as np
-import yaml
+
+# ``yaml`` (PyYAML) is a build-time-only dependency. It is imported lazily inside
+# build() so that merely importing this module (which now lives inside the
+# runtime package) never requires PyYAML to be installed.
 
 # Spectral lines for the d-line index (nd) and Abbe number (Vd).
 WVLN_D = 0.5875618  # He d-line  [um]
@@ -191,6 +194,8 @@ def _load_agf_names(material_dir):
 
 def build(db_root, material_dir):
     """Parse the database and return (catalog_dict, report_dict)."""
+    import yaml  # build-time-only dependency; see module header
+
     data_root = os.path.join(db_root, "database", "data")
     formula_table, interp_table = {}, {}
     provenance = {}  # name -> maker, used for collision tie-break
@@ -326,7 +331,7 @@ def build(db_root, material_dir):
             "commit": commit,
             "commit_date": commit_date,
             "license": "CC0 1.0 (public domain)",
-            "generated_by": "tools/build_refractiveindex_data.py",
+            "generated_by": "deeplens/material/build_refractiveindex_data.py",
             "scope": (
                 "Manufacturer optical-glass catalogs (specs/<maker>/optical) for "
                 + ", ".join(GLASS_MAKERS)
