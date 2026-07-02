@@ -112,8 +112,8 @@ class Spiral(Surface):
             y (torch.Tensor): y coordinate(s) [mm], same shape as `x`.
 
         Returns:
-            sx (torch.Tensor): Partial derivative dz/dx [dimensionless], same shape as `x`.
-            sy (torch.Tensor): Partial derivative dz/dy [dimensionless], same shape as `x`.
+            dfdx (torch.Tensor): Partial derivative dz/dx [dimensionless], same shape as `x`.
+            dfdy (torch.Tensor): Partial derivative dz/dy [dimensionless], same shape as `x`.
         """
         phi_sq = x**2 + y**2
         phi_norm_sq = phi_sq / (self.r**2 + EPSILON)
@@ -130,13 +130,13 @@ class Spiral(Surface):
 
         # d(u)/dx
         du_dx = -self.N * y * inv_phi_sq + 2 * self.eta * x / self.r**2
-        sx = common_term * du_dx
+        dfdx = common_term * du_dx
 
         # d(u)/dy
         du_dy = self.N * x * inv_phi_sq + 2 * self.eta * y / self.r**2
-        sy = common_term * du_dy
+        dfdy = common_term * du_dy
 
-        return sx, sy
+        return dfdx, dfdy
 
     # =========================================
     # Optimization

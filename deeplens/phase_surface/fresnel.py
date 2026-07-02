@@ -194,7 +194,8 @@ class FresnelPhase(Phase):
 
         Returns:
             surf_dict (dict): Surface parameters including "type", "r", "is_square",
-                "param_model", "f0", "norm_radii", "d", and "mat2", suitable for
+                "param_model", "f0", "norm_radii", "d", "mat2", plus informational
+                "(mat2_n)"/"(mat2_V)", suitable for
                 reconstruction via `init_from_dict`.
         """
         surf_dict = {
@@ -206,5 +207,7 @@ class FresnelPhase(Phase):
             "norm_radii": round(self.norm_radii, 4),
             "d": round(self.d.item(), 4),
             "mat2": self.mat2.get_name(),
+            "(mat2_n)": round(float(self.mat2.n), 4),
+            "(mat2_V)": round(float(self.mat2.V), 4),
         }
         return surf_dict

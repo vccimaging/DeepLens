@@ -102,12 +102,15 @@ class Mirror(Plane):
 
         Returns:
             surf_dict (dict): Parameters with keys "type", "r", "d" (rounded to
-                4 decimals), and "mat2" (material name).
+                4 decimals), "mat2" (material name), and informational
+                "(mat2_n)"/"(mat2_V)".
         """
         surf_dict = {
             "type": self.__class__.__name__,
             "r": self.r,
             "d": round(self.d.item(), 4),
             "mat2": self.mat2.get_name(),
+            "(mat2_n)": round(float(self.mat2.n), 4),
+            "(mat2_V)": round(float(self.mat2.V), 4),
         }
         return surf_dict

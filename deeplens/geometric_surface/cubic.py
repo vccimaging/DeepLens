@@ -146,8 +146,8 @@ class Cubic(Surface):
             y (torch.Tensor): Local y-coordinates, in [mm], broadcastable with `x`.
 
         Returns:
-            sx (torch.Tensor): Partial derivative $\\partial z / \\partial x$, dimensionless.
-            sy (torch.Tensor): Partial derivative $\\partial z / \\partial y$, dimensionless.
+            dfdx (torch.Tensor): Partial derivative $\\partial z / \\partial x$, dimensionless.
+            dfdy (torch.Tensor): Partial derivative $\\partial z / \\partial y$, dimensionless.
         """
         if self.rotate_angle != 0:
             x = x * float(np.cos(self.rotate_angle)) - y * float(
@@ -158,14 +158,14 @@ class Cubic(Surface):
             )
 
         if self.b_degree == 1:
-            sx = 3 * self.b3 * x**2
-            sy = 3 * self.b3 * y**2
+            dfdx = 3 * self.b3 * x**2
+            dfdy = 3 * self.b3 * y**2
         elif self.b_degree == 2:
-            sx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4
-            sy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4
+            dfdx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4
+            dfdy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4
         elif self.b_degree == 3:
-            sx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4 + 7 * self.b7 * x**6
-            sy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4 + 7 * self.b7 * y**6
+            dfdx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4 + 7 * self.b7 * x**6
+            dfdy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4 + 7 * self.b7 * y**6
         else:
             raise ValueError("Unsupported cubic degree!")
 
@@ -177,7 +177,7 @@ class Cubic(Surface):
                 np.cos(self.rotate_angle)
             )
 
-        return sx, sy
+        return dfdx, dfdy
 
     def get_optimizer_params(self, lrs=[1e-4], decay=0.1, optim_mat=False):
         """Build per-parameter optimizer groups for this surface.
@@ -247,7 +247,7 @@ class Cubic(Surface):
         loader reconstructs `d` from accumulated surface spacings).
 
         Returns:
-            d (dict): Surface parameters with keys "type", "b3", "r", "(d)", "b", "mat2", and (when active) "b5"/"b7".
+            d (dict): Surface parameters with keys "type", "b3", "r", "(d)", "b", "mat2", informational "(mat2_n)"/"(mat2_V)", and (when active) "b5"/"b7".
         """
         b = [self.b3.item()]
         if self.b_degree >= 2:
@@ -262,6 +262,8 @@ class Cubic(Surface):
             "(d)": round(self.d.item(), 4),
             "b": b,
             "mat2": self.mat2.get_name(),
+            "(mat2_n)": round(float(self.mat2.n), 4),
+            "(mat2_V)": round(float(self.mat2.V), 4),
         }
         if self.b_degree >= 2:
             d["b5"] = self.b5.item()

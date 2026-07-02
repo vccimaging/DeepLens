@@ -366,7 +366,7 @@ class Aspheric(Surface):
         Returns:
             surf_dict (dict): Serialized surface (keys `type`, `r`, `roc`,
                 `d`, `k`, `ai`, `use_ai2`, `mat2`, plus informational
-                `(c)`/`(ai*)` entries). Lengths in [mm], `c` in [1/mm].
+                `(c)`/`(ai*)`/`(mat2_n)`/`(mat2_V)` entries). Lengths in [mm], `c` in [1/mm].
         """
         has_ai2 = self.ai2 is not None
         surf_dict = {
@@ -379,6 +379,8 @@ class Aspheric(Surface):
             "ai": [],
             "use_ai2": has_ai2,
             "mat2": self.mat2.get_name(),
+            "(mat2_n)": round(float(self.mat2.n), 4),
+            "(mat2_V)": round(float(self.mat2.V), 4),
         }
 
         # Prepend a2 to ai list if present (ai2 key is informational;

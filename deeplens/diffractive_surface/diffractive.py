@@ -308,7 +308,7 @@ class DiffractiveSurface(DeepObj):
     # =======================================
     # Fabrication-related functions
     # =======================================
-    def pmap_quantize(self, bits=16):
+    def quantize_phase_map(self, bits=16):
         """Quantize the design-wavelength phase map to a given number of levels.
 
         Args:
@@ -322,7 +322,7 @@ class DiffractiveSurface(DeepObj):
         pmap_q = torch.round(pmap / (2 * torch.pi / bits)) * (2 * torch.pi / bits)
         return pmap_q
 
-    def pmap_fab(self, bits=16, save_path=None):
+    def export_fab_phase_map(self, bits=16, save_path=None):
         """Generate a fabrication-resolution quantized phase map and save a checkpoint.
 
         The phase map is upsampled from the design pixel size to the fabrication
@@ -441,7 +441,7 @@ class DiffractiveSurface(DeepObj):
                 "./DOE_phase_map.png".
         """
         if bits is not None:
-            pmap = self.pmap_quantize(bits)
+            pmap = self.quantize_phase_map(bits)
         else:
             pmap = self.get_phase_map0()
         save_image(pmap, save_name, normalize=True)
@@ -457,7 +457,7 @@ class DiffractiveSurface(DeepObj):
                 "./DOE_phase_map3d.png".
         """
         if bits is not None:
-            pmap = self.pmap_quantize(bits)
+            pmap = self.quantize_phase_map(bits)
         else:
             pmap = self.get_phase_map0()
         

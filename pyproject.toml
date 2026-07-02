@@ -43,7 +43,6 @@ dependencies = [
     "opencv-python>=4.8.0",
     "matplotlib>=3.7.0",
     "scikit-image>=0.20.0",
-    "transformers>=4.30.0",
     "lpips>=0.1.4",
     "einops>=0.7.0",
 

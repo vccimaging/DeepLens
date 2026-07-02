@@ -15,9 +15,9 @@ import torch
 import torch.nn as nn
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-from transformers import get_cosine_schedule_with_warmup
 
 from .geolens import GeoLens
+from .geolens_pkg.optim import get_cosine_schedule_with_warmup
 from .lens import Lens
 from .surrogate import MLP
 from .surrogate.psfnet_mplconv import PSFNet_MLPConv

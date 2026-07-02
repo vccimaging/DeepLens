@@ -9,13 +9,8 @@ scikit-image>=0.20.0
 matplotlib>=3.7.0
 
 # Deep Learning Utilities
-transformers>=4.30.0
 lpips>=0.1.4
 einops>=0.7.0
-timm>=0.9.0
-
-# Experiment Tracking
-wandb>=0.15.0
 
 # Utilities
 tqdm>=4.65.0
