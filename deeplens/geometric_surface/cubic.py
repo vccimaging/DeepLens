@@ -146,8 +146,8 @@ class Cubic(Surface):
             y (torch.Tensor): Local y-coordinates, in [mm], broadcastable with `x`.
 
         Returns:
-            sx (torch.Tensor): Partial derivative $\\partial z / \\partial x$, dimensionless.
-            sy (torch.Tensor): Partial derivative $\\partial z / \\partial y$, dimensionless.
+            dfdx (torch.Tensor): Partial derivative $\\partial z / \\partial x$, dimensionless.
+            dfdy (torch.Tensor): Partial derivative $\\partial z / \\partial y$, dimensionless.
         """
         if self.rotate_angle != 0:
             x = x * float(np.cos(self.rotate_angle)) - y * float(
@@ -158,14 +158,14 @@ class Cubic(Surface):
             )
 
         if self.b_degree == 1:
-            sx = 3 * self.b3 * x**2
-            sy = 3 * self.b3 * y**2
+            dfdx = 3 * self.b3 * x**2
+            dfdy = 3 * self.b3 * y**2
         elif self.b_degree == 2:
-            sx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4
-            sy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4
+            dfdx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4
+            dfdy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4
         elif self.b_degree == 3:
-            sx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4 + 7 * self.b7 * x**6
-            sy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4 + 7 * self.b7 * y**6
+            dfdx = 3 * self.b3 * x**2 + 5 * self.b5 * x**4 + 7 * self.b7 * x**6
+            dfdy = 3 * self.b3 * y**2 + 5 * self.b5 * y**4 + 7 * self.b7 * y**6
         else:
             raise ValueError("Unsupported cubic degree!")
 
@@ -177,7 +177,7 @@ class Cubic(Surface):
                 np.cos(self.rotate_angle)
             )
 
-        return sx, sy
+        return dfdx, dfdy
 
     def get_optimizer_params(self, lrs=[1e-4], decay=0.1, optim_mat=False):
         """Build per-parameter optimizer groups for this surface.
