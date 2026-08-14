@@ -159,6 +159,17 @@ class GeoLens(
         else:
             raise ValueError(f"File format {filename[-4:]} not supported.")
 
+        if not hasattr(self, "r_sensor"):
+            if hasattr(self, "sensor_size") and len(self.sensor_size) == 2:
+                self.r_sensor = math.hypot(*self.sensor_size) / 2.0
+            else:
+                raise ValueError(
+                    "Lens file is missing sensor geometry; provide an image surface "
+                    "or r_sensor/sensor_size."
+                )
+        if not math.isfinite(float(self.r_sensor)) or float(self.r_sensor) <= 0:
+            raise ValueError("Lens sensor radius must be a finite positive number.")
+
         # Complete sensor size and resolution if not set from lens file
         if not hasattr(self, "sensor_size"):
             self.sensor_size = (8.0, 8.0)
@@ -1268,6 +1279,25 @@ class GeoLens(
         self.entr_pupilz_parax, self.entr_pupilr_parax = self.calc_entrance_pupil(
             paraxial=True
         )
+
+        for name, radius in (
+            ("entrance", self.entr_pupilr),
+            ("exit", self.exit_pupilr),
+            ("paraxial entrance", self.entr_pupilr_parax),
+            ("paraxial exit", self.exit_pupilr_parax),
+        ):
+            try:
+                radius_value = float(radius)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid {name} pupil radius {radius!r}; check lens surfaces "
+                    "and aperture data."
+                ) from exc
+            if not math.isfinite(radius_value) or radius_value <= 0:
+                raise ValueError(
+                    f"Invalid {name} pupil radius {radius_value!r}; check lens "
+                    "surfaces and aperture data."
+                )
 
         # Compute F-number
         self.fnum = self.foclen / (2 * self.entr_pupilr)

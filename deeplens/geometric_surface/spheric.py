@@ -204,27 +204,41 @@ class Spheric(Surface):
                 ray.is_valid > 0
             )
         else:
-            R = 1.0 / c
+            # Use the vertex-anchored sphere equation. The surface passes
+            # through the local origin, so
+            #
+            #   x² + y² + z² - 2 z R = 0,  R = 1 / c.
+            #
+            # Multiplying by c before substituting o + t*d gives a quadratic
+            # with no R² subtraction:
+            #
+            #   (c |d|²)t² + 2(c(o·d) - d_z)t + (c|o|² - 2o_z) = 0.
+            #
+            # The center-anchored textbook form loses R²*eps absolute
+            # precision in float32 for near-flat surfaces, which is especially
+            # damaging in the compiled HPC implementation.
+            od = torch.sum(ray.o * ray.d, dim=-1)
+            dd = torch.sum(ray.d * ray.d, dim=-1)
+            oo = torch.sum(ray.o * ray.o, dim=-1)
 
-            # Vector from ray origin to sphere center at (0, 0, R)
-            oc = ray.o.clone()
-            oc[..., 2] = oc[..., 2] - R
-
-            # Quadratic equation: a*t^2 + b*t + c = 0
-            # a = d·d = 1 (since ray direction is normalized)
-            # b = 2*(o-center)·d
-            # c = (o-center)·(o-center) - R^2
-
-            a = torch.sum(ray.d * ray.d, dim=-1)  # Should be 1 for normalized rays
-            b = 2.0 * torch.sum(oc * ray.d, dim=-1)
-            c_coeff = torch.sum(oc * oc, dim=-1) - R * R
+            a = c * dd
+            b = 2.0 * (c * od - ray.d[..., 2])
+            c_coeff = c * oo - 2.0 * ray.o[..., 2]
 
             discriminant = b * b - 4 * a * c_coeff
             valid_intersect = discriminant >= 0
 
             sqrt_discriminant = torch.sqrt(torch.clamp(discriminant, min=EPSILON))
-            t1 = (-b - sqrt_discriminant) / (2 * a + EPSILON)
-            t2 = (-b + sqrt_discriminant) / (2 * a + EPSILON)
+
+            # Stable root pair. q avoids subtracting nearly equal values;
+            # q/a and c_coeff/q are the two roots by Vieta's formula.
+            q = torch.where(
+                b >= 0,
+                -(b + sqrt_discriminant) / 2.0,
+                (sqrt_discriminant - b) / 2.0,
+            )
+            t1 = q / a
+            t2 = c_coeff / q
 
             # Choose intersection closest to z=0 (surface vertex)
             z1 = ray.o[..., 2] + t1 * ray.d[..., 2]

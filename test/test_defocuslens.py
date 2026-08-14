@@ -243,6 +243,24 @@ class TestDefocusLensPSF:
         # In-focus PSF should be more concentrated (higher peak)
         assert psf_focus.max() > psf_defocus.max()
 
+    def test_even_sized_in_focus_psf_is_peak_preserving(self, device_auto):
+        """The default even kernel must contain a unit delta at exact focus."""
+        lens = DefocusLens(
+            foclen=50.0,
+            fnum=1.8,
+            sensor_size=(20.0, 20.0),
+            sensor_res=(1000, 1000),
+            device=device_auto,
+        )
+        lens.refocus(-1000.0)
+        points = torch.tensor([[0.0, 0.0, -1000.0]], device=device_auto)
+
+        psf = lens.psf(points, ks=64, psf_type="gaussian")
+
+        assert psf.sum().item() == pytest.approx(1.0, abs=1e-6)
+        assert psf.max().item() == pytest.approx(1.0, abs=1e-6)
+        assert torch.count_nonzero(psf).item() == 1
+
     def test_paraxial_psf_rgb(self, device_auto):
         """Should generate RGB PSF."""
         lens = DefocusLens(
@@ -465,6 +483,43 @@ class TestDefocusLensRenderRGBD:
         result = lens.render_rgbd(rgb, depth, num_layers=8)
         assert not torch.isnan(result).any()
         assert result.sum() > 0
+
+    def test_render_rgbd_preserves_in_focus_image_with_even_psf(self, device_auto):
+        """Occlusion rendering at the focal plane is an identity operation."""
+        lens = DefocusLens(
+            foclen=50.0,
+            fnum=1.8,
+            sensor_size=(20.0, 20.0),
+            sensor_res=(64, 64),
+            device=device_auto,
+        )
+        lens.refocus(-1000.0)
+        image = torch.rand(1, 3, 64, 64, device=device_auto)
+        depth = torch.full((1, 1, 64, 64), 1000.0, device=device_auto)
+
+        result = lens.render_rgbd(
+            image,
+            depth,
+            psf_ks=64,
+            num_layers=4,
+        )
+
+        assert torch.allclose(result, image, atol=1e-6, rtol=0)
+
+    def test_depth_layers_include_defocus_focus(self, device_auto):
+        """Mixed-depth occlusion rendering samples the focal plane explicitly."""
+        lens = DefocusLens(
+            foclen=50.0,
+            fnum=1.8,
+            sensor_size=(20.0, 20.0),
+            sensor_res=(64, 64),
+            device=device_auto,
+        )
+        lens.refocus(-800.0)
+
+        _, depths = lens._sample_depth_layers(500.0, 2000.0, num_layers=6)
+
+        assert torch.min(torch.abs(depths + 800.0)).item() < 1e-4
 
     def test_render_rgbd_rejects_method_argument(self, device_auto):
         """render_rgbd should expose only defocus-specific rendering options."""
