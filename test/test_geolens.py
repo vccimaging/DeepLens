@@ -385,6 +385,24 @@ class TestGeoLensRendering:
 class TestGeoLensProperties:
     """Test lens property calculations."""
 
+    def test_calc_pupil_rejects_zero_entrance_radius(
+        self, sample_cellphone_lens, monkeypatch
+    ):
+        """A failed pupil fallback raises a domain error before F/# division."""
+        monkeypatch.setattr(
+            sample_cellphone_lens,
+            "calc_exit_pupil",
+            lambda paraxial=False: (0.0, 1.0),
+        )
+        monkeypatch.setattr(
+            sample_cellphone_lens,
+            "calc_entrance_pupil",
+            lambda paraxial=False: (0.0, 0.0),
+        )
+
+        with pytest.raises(ValueError, match="entrance pupil radius"):
+            sample_cellphone_lens.calc_pupil()
+
     def test_geolens_refocus(self, sample_singlet_lens):
         """Should refocus lens to new distance."""
         lens = sample_singlet_lens

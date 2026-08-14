@@ -3,7 +3,10 @@
 Tests lens file I/O for JSON, Zemax (.zmx), and Code V (.seq) formats.
 """
 
+import json
+import math
 import os
+from pathlib import Path
 
 import pytest
 import torch
@@ -40,6 +43,22 @@ class TestJSONIO:
 
         lens2 = GeoLens(filename=out_path)
         assert len(lens2.surfaces) == original_num_surfs
+
+    def test_legacy_sensor_size_derives_sensor_radius(self, test_output_dir):
+        """Legacy JSON without r_sensor retains its explicit rectangular sensor."""
+        source = Path("datasets/lenses/singlet/example1.json")
+        data = json.loads(source.read_text(encoding="utf-8"))
+        data.pop("r_sensor", None)
+        sensor_size = data["(sensor_size)"]
+        output = Path(test_output_dir) / "legacy_sensor_size.json"
+        output.write_text(json.dumps(data), encoding="utf-8")
+
+        from deeplens import GeoLens
+
+        lens = GeoLens(filename=str(output))
+        expected_radius = math.hypot(*sensor_size) / 2.0
+        assert lens.r_sensor == pytest.approx(expected_radius)
+        assert tuple(lens.sensor_size) == pytest.approx(tuple(sensor_size))
 
 
 class TestZMXIO:
@@ -118,6 +137,48 @@ class TestZMXIO:
         aper2 = next(s for s in lens2.surfaces if isinstance(s, Aperture))
         assert aper2.r == pytest.approx(1.234, abs=1e-3)
 
+    def test_unknown_named_glass_uses_embedded_model_values(
+        self, lenses_dir, test_output_dir
+    ):
+        """An unknown catalog glass falls back to nd/Vd carried by GLAS."""
+        source = Path(lenses_dir) / "camera/ef35mm_f2.0.zmx"
+        zmx = source.read_text(encoding="utf-8").replace(
+            "GLAS ___BLANK 1 0 1.58913 61.2",
+            "GLAS D-FK90 0 0 1.48656 84.47",
+            1,
+        )
+        output = Path(test_output_dir) / "unknown_model_glass.zmx"
+        output.write_text(zmx, encoding="utf-16")
+
+        from deeplens import GeoLens
+
+        lens = GeoLens(filename=str(output))
+        material = lens.surfaces[0].mat2
+        assert material.name == "1.48656/84.47"
+        assert float(material.n) == pytest.approx(1.48656, rel=1e-6)
+        assert float(material.V) == pytest.approx(84.47, rel=1e-6)
+
+    def test_unsupported_surface_type_is_rejected_before_finalization(
+        self, lenses_dir, test_output_dir
+    ):
+        """Unknown Zemax surfaces cannot be silently removed from the lens."""
+        source = Path(lenses_dir) / "camera/ef35mm_f2.0.zmx"
+        zmx = source.read_text(encoding="utf-8").replace(
+            "SURF 1 \n    TYPE STANDARD",
+            "SURF 1 \n    TYPE TOROIDAL",
+            1,
+        )
+        output = Path(test_output_dir) / "unsupported_surface.zmx"
+        output.write_text(zmx, encoding="utf-8")
+
+        from deeplens import GeoLens
+
+        with pytest.raises(
+            NotImplementedError,
+            match=r"Unsupported Zemax surface types: TOROIDAL",
+        ):
+            GeoLens(filename=str(output))
+
 
 class TestSEQIO:
     """Tests for Code V .seq lens file I/O."""
@@ -128,6 +189,22 @@ class TestSEQIO:
         out_path = os.path.join(test_output_dir, "test_write.seq")
         lens.write_lens_seq(out_path)
         assert os.path.exists(out_path)
+
+    def test_missing_image_surface_reports_actionable_error(self, test_output_dir):
+        """A truncated Code V file names the missing SI image surface."""
+        output = Path(test_output_dir) / "missing_image.seq"
+        output.write_text(
+            "RDM\nEPD 10.0\nYAN 0 10\n"
+            "SO 0.0 1e10\n"
+            "S 50.0 3.0 SK16\n"
+            "S -50.0 5.0\n",
+            encoding="utf-8",
+        )
+
+        from deeplens import GeoLens
+
+        with pytest.raises(ValueError, match=r"image surface.*\bSI\b"):
+            GeoLens(filename=str(output))
 
 
 class TestCrossFormat:

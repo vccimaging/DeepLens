@@ -22,6 +22,7 @@ import math
 import torch
 
 from ..geometric_surface import Aperture, Aspheric, Cubic, Plane, Spheric, ThinLens
+from ..material import Material
 from ..phase_surface import Binary2Phase, Phase
 
 
@@ -36,6 +37,79 @@ class GeoLensIO:
     from and write to the host lens's state (`surfaces`, `d_sensor`,
     `r_sensor`, `enpd`, `rfov_eff`, etc.).
     """
+
+    @staticmethod
+    def _resolve_zmx_glass(glass_record):
+        """Resolve a Zemax GLAS record, using embedded model values as fallback."""
+        parts = glass_record.split()
+        name = parts[0]
+        if name == "___BLANK":
+            return f"{parts[3]}/{parts[4]}"
+
+        normalized_name = name.lower()
+        try:
+            # Preserve catalog dispersion whenever the named glass is known.
+            Material(normalized_name)
+            return normalized_name
+        except NotImplementedError:
+            pass
+
+        # Zemax model-glass records carry nd/Vd in fields four and five. These
+        # values are a safer fallback than guessing a vendor catalog alias.
+        if len(parts) >= 5:
+            try:
+                nd = float(parts[3])
+                vd = float(parts[4])
+            except ValueError:
+                pass
+            else:
+                if math.isfinite(nd) and nd > 1.0 and math.isfinite(vd) and vd > 0:
+                    return f"{nd}/{vd}"
+
+        return normalized_name
+
+    def _set_sensor_from_data(self, data):
+        """Set JSON sensor geometry, deriving radius from a legacy size."""
+        sensor_res = data.get("sensor_res", (2000, 2000))
+        r_sensor = data.get("r_sensor")
+
+        if r_sensor is None:
+            sensor_size = data.get("sensor_size", data.get("(sensor_size)"))
+            if not isinstance(sensor_size, (list, tuple)) or len(sensor_size) != 2:
+                raise ValueError(
+                    "Lens data must define a positive r_sensor or a two-value sensor_size."
+                )
+            try:
+                sensor_size = tuple(float(value) for value in sensor_size)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Lens data sensor_size values must be finite positive numbers."
+                ) from exc
+            if any(not math.isfinite(value) or value <= 0 for value in sensor_size):
+                raise ValueError(
+                    "Lens data sensor_size values must be finite positive numbers."
+                )
+
+            self.r_sensor = math.hypot(*sensor_size) / 2.0
+            self.to(self.device)
+            try:
+                self.set_sensor(sensor_size=sensor_size, sensor_res=sensor_res)
+            except AssertionError as exc:
+                raise ValueError(
+                    "Lens data sensor_size and sensor_res must have matching aspect ratios."
+                ) from exc
+            return
+
+        try:
+            r_sensor = float(r_sensor)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Lens data r_sensor must be a finite positive number.") from exc
+        if not math.isfinite(r_sensor) or r_sensor <= 0:
+            raise ValueError("Lens data r_sensor must be a finite positive number.")
+
+        self.r_sensor = r_sensor
+        self.to(self.device)
+        self.set_sensor_res(sensor_res=sensor_res)
 
     def read_lens_zmx(self, filename="./test.zmx"):
         """Load the lens from a Zemax .zmx sequential lens file.
@@ -111,6 +185,22 @@ class GeoLensIO:
         if not hasattr(self, "rfov_eff"):
             self.rfov_eff = None
 
+        lens_surface_types = {
+            surf_dict.get("TYPE")
+            for surf_idx, surf_dict in surfs_dict.items()
+            if 0 < surf_idx < current_surf
+        }
+        unsupported_surface_types = sorted(
+            "<missing>" if surface_type is None else surface_type
+            for surface_type in lens_surface_types
+            if surface_type not in {"STANDARD", "EVENASPH"}
+        )
+        if unsupported_surface_types:
+            raise NotImplementedError(
+                "Unsupported Zemax surface types: "
+                + ", ".join(unsupported_surface_types)
+            )
+
         # Read the extracted data from each SURF
         self.surfaces = []
         d = 0.0
@@ -119,10 +209,7 @@ class GeoLensIO:
             if surf_idx > 0 and surf_idx < current_surf:
                 # Lens surface parameters
                 if "GLAS" in surf_dict:
-                    if surf_dict["GLAS"].split()[0] == "___BLANK":
-                        mat2_name = f"{surf_dict['GLAS'].split()[3]}/{surf_dict['GLAS'].split()[4]}"
-                    else:
-                        mat2_name = surf_dict["GLAS"].split()[0].lower()
+                    mat2_name = self._resolve_zmx_glass(surf_dict["GLAS"])
                 else:
                     mat2_name = "air"
 
@@ -489,6 +576,9 @@ SURF 0
         if current_surface:
             surfaces.append(current_surface)
 
+        if not any(surface["type"] == "IMAGE" for surface in surfaces):
+            raise ValueError("Code V lens file is missing its image surface (SI).")
+
         print(f"\nParsing complete, total {len(surfaces)} surfaces\n")
 
         # ============ Step 2: Create surface objects ============
@@ -830,13 +920,7 @@ SURF 0
         self.float_enpd = True if self.enpd is None else False
         self.float_foclen = False
         self.float_rfov = False
-        self.r_sensor = data["r_sensor"]
-
-        self.to(self.device)
-
-        # Set sensor size and resolution
-        sensor_res = data.get("sensor_res", (2000, 2000))
-        self.set_sensor_res(sensor_res=sensor_res)
+        self._set_sensor_from_data(data)
 
     def write_lens_json(self, filename="./test.json"):
         """Write the lens to a DeepLens native JSON file.
