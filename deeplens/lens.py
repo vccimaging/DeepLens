@@ -750,9 +750,10 @@ class Lens(DeepObj):
     def _sample_depth_layers(self, depth_min, depth_max, num_layers):
         """Sample depth layers centered on the focal plane in disparity space.
 
-        If the lens has a `calc_focal_plane` method, samples are split around the
-        focal plane so that it is always an explicit sample point. Otherwise falls
-        back to uniform disparity sampling.
+        If the lens has a `calc_focal_plane` method, or exposes a paraxial
+        ``foc_dist``, samples are split around the focal plane so that it is
+        always an explicit sample point. Otherwise falls back to uniform
+        disparity sampling.
 
         Args:
             depth_min (float): Minimum (nearest) depth [mm] (positive).
@@ -765,13 +766,30 @@ class Lens(DeepObj):
             depths_ref (torch.Tensor): Corresponding depths [mm] for PSF
                 computation, equal to -1 / disp_ref (negative), shape [num_layers].
         """
-        # Try to get focal depth from the lens
-        if hasattr(self, 'calc_focal_plane'):
-            focal_depth = abs(self.calc_focal_plane())  # positive mm
+        if num_layers < 1:
+            raise ValueError("num_layers must be at least 1.")
+
+        # Try to get focal depth from the lens. DefocusLens stores the selected
+        # object-space focus directly instead of implementing calc_focal_plane.
+        if hasattr(self, "calc_focal_plane"):
+            focal_depth = float(abs(self.calc_focal_plane()))  # positive mm
+        elif hasattr(self, "foc_dist"):
+            focal_depth = abs(float(self.foc_dist))
         else:
             focal_depth = None
 
+        if focal_depth is not None and (
+            not np.isfinite(focal_depth) or focal_depth <= 0
+        ):
+            focal_depth = None
+
         if focal_depth is not None:
+            if num_layers == 1:
+                disp_ref = torch.tensor(
+                    [1.0 / focal_depth], device=self.device
+                )
+                return disp_ref, -1.0 / disp_ref
+
             # Extend range to include the focal depth
             depth_min_ext = min(float(depth_min), focal_depth)
             depth_max_ext = max(float(depth_max), focal_depth)

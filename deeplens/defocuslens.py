@@ -154,10 +154,14 @@ class DefocusLens(Lens):
         coc_pixel = coc_pixel.unsqueeze(-1).unsqueeze(-1)  # Shape [N, 1, 1], broadcasts with [ks, ks]
         coc_pixel_radius = coc_pixel / 2
 
-        # Create coordinate meshgrid
+        # Create an integer-centered coordinate grid. In particular, an even
+        # kernel (the project default is 64) must still contain an explicit
+        # origin sample. The previous half-pixel grid left an exact-focus CoC
+        # mask empty, yielding a zero PSF instead of a peak-preserving delta.
+        coords = torch.arange(ks, device=self.device, dtype=coc_pixel.dtype) - ks // 2
         x, y = torch.meshgrid(
-            torch.linspace(-ks / 2 + 1 / 2, ks / 2 - 1 / 2, ks, device=self.device),
-            torch.linspace(-ks / 2 + 1 / 2, ks / 2 - 1 / 2, ks, device=self.device),
+            coords,
+            coords,
             indexing="xy",
         )
         distance_sq = x**2 + y**2

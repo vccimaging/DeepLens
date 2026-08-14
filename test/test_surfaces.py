@@ -81,6 +81,23 @@ class TestSphericSurface:
         assert ray.o[0, 2].item() > 9.0
         assert ray.o[0, 2].item() < 11.0
 
+    def test_spheric_intersect_near_flat_float32_is_vertex_accurate(self):
+        """Large-radius intersections must avoid center-form cancellation."""
+        surf = Spheric(c=1e-4, r=40.0, d=0.0, mat2="air", device="cpu")
+        x = torch.linspace(-39.0, 39.0, 79, dtype=torch.float32)
+        origins = torch.stack(
+            [x, torch.zeros_like(x), torch.full_like(x, -10.0)], dim=-1
+        )
+        directions = torch.zeros_like(origins)
+        directions[:, 2] = 1.0
+        ray = Ray(origins, directions, wvln=0.55, device="cpu")
+
+        surf.intersect(ray)
+
+        expected_sag = surf.sag(ray.o[:, 0], ray.o[:, 1])
+        assert ray.is_valid.bool().all()
+        assert torch.allclose(ray.o[:, 2], expected_sag, atol=2e-6, rtol=0)
+
     def test_spheric_refract(self, device_auto):
         """Ray should refract at spheric surface."""
         surf = Spheric(c=0.05, r=5.0, d=10.0, mat2="bk7", device=device_auto)
