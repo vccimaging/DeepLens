@@ -29,7 +29,7 @@ class Fresnel(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         f0=None,
         wvln0=0.55,
         res=(2000, 2000),
@@ -44,7 +44,7 @@ class Fresnel(DiffractiveSurface):
         inverse dispersion compared to a refractive lens.
 
         Args:
-            d (float): Axial position of the DOE surface. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             f0 (float or None, optional): Design-wavelength focal length. [mm]
                 If None, initialized to a random near-infinite value. Defaults to None.
             wvln0 (float, optional): Design wavelength. [um] Defaults to 0.55.
@@ -57,7 +57,7 @@ class Fresnel(DiffractiveSurface):
             device (str, optional): Device to run the DOE. Defaults to "cpu".
         """
         super().__init__(
-            d=d, res=res, wvln0=wvln0, mat=mat, fab_ps=fab_ps, fab_step=fab_step, device=device
+            d_next=d_next, res=res, wvln0=wvln0, mat=mat, fab_ps=fab_ps, fab_step=fab_step, device=device
         )
 
         # Initial focal length
@@ -76,14 +76,14 @@ class Fresnel(DiffractiveSurface):
         """Initialize a Fresnel DOE from a dictionary of surface parameters.
 
         Args:
-            doe_dict (dict): Surface parameters. Requires "d" and "res"; optionally
+            doe_dict (dict): Surface parameters. Requires "d_next" and "res"; optionally
                 "f0", "wvln0", "mat", "fab_ps", "fab_step".
 
         Returns:
             doe (Fresnel): The constructed Fresnel DOE.
         """
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             res=doe_dict["res"],
             fab_ps=doe_dict.get("fab_ps", 0.001),
             fab_step=doe_dict.get("fab_step", 16),

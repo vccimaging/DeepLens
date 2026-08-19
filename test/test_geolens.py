@@ -450,7 +450,7 @@ class TestGeoLensDifferentiability:
         lens = sample_cellphone_lens
         
         # Make a surface parameter require grad
-        lens.surfaces[1].d.requires_grad_(True)
+        lens.surfaces[1].d_next.requires_grad_(True)
         
         points = torch.tensor([[0.0, 0.0, DEPTH]], device=lens.device)
         psf = lens.psf(points, wvln=DEFAULT_WAVE, ks=31)
@@ -459,7 +459,7 @@ class TestGeoLensDifferentiability:
         loss.backward()
         
         # Check gradient exists
-        assert lens.surfaces[1].d.grad is not None
+        assert lens.surfaces[1].d_next.grad is not None
 
     def test_geolens_get_optimizer(self, sample_cellphone_lens):
         """Should return optimizer parameters."""
@@ -504,7 +504,7 @@ class TestGeoLensDeviceHandling:
         
         assert lens.device.type == device_auto.type
         for surf in lens.surfaces:
-            assert surf.d.device.type == device_auto.type
+            assert surf.d_next.device.type == device_auto.type
 
     def test_geolens_trace_on_gpu(self, sample_singlet_lens, device_auto):
         """Tracing should work on GPU."""

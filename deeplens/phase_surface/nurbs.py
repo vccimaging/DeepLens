@@ -39,7 +39,7 @@ class NURBSPhase(Phase):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         control_points_u=8,
         control_points_v=8,
         degree_u=3,
@@ -78,7 +78,7 @@ class NURBSPhase(Phase):
         """
         super().__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             norm_radii=norm_radii,
             mat2=mat2,
             pos_xy=pos_xy,
@@ -405,7 +405,7 @@ class NURBSPhase(Phase):
 
         obj = cls(
             surf_dict["r"],
-            surf_dict["d"],
+            surf_dict["d_next"],
             control_points_u=control_points_u,
             control_points_v=control_points_v,
             degree_u=degree_u,
@@ -589,7 +589,7 @@ class NURBSPhase(Phase):
             "knots_u": self.knots_u.clone().detach().cpu().tolist(),
             "knots_v": self.knots_v.clone().detach().cpu().tolist(),
             "norm_radii": round(self.norm_radii, 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

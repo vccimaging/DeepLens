@@ -31,7 +31,7 @@ class Binary2(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         res=(2000, 2000),
         mat="fused_silica",
         wvln0=0.55,
@@ -43,7 +43,7 @@ class Binary2(DiffractiveSurface):
         """Initialize a Binary2 DOE with small random polynomial coefficients.
 
         Args:
-            d (float): Axial position of the DOE surface. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             res (tuple or int, optional): Resolution as (H, W); an int is
                 expanded to (res, res). [pixel]. Defaults to (2000, 2000).
             mat (str, optional): DOE material name. Defaults to "fused_silica".
@@ -54,7 +54,7 @@ class Binary2(DiffractiveSurface):
             device (str, optional): Device to store tensors on. Defaults to "cpu".
         """
         super().__init__(
-            d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step,
+            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step,
             is_square=is_square, device=device,
         )
 
@@ -81,7 +81,7 @@ class Binary2(DiffractiveSurface):
         """Initialize a Binary2 DOE from a serialized surface dict.
 
         Args:
-            doe_dict (dict): Surface dict. Requires keys "d" and "res"; optional
+            doe_dict (dict): Surface dict. Requires keys "d_next" and "res"; optional
                 keys "mat", "wvln0", "fab_ps", "fab_step", "is_square" fall back
                 to the constructor defaults.
 
@@ -89,7 +89,7 @@ class Binary2(DiffractiveSurface):
             doe (Binary2): The constructed Binary2 surface.
         """
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             res=doe_dict["res"],
             mat=doe_dict.get("mat", "fused_silica"),
             wvln0=doe_dict.get("wvln0", 0.55),

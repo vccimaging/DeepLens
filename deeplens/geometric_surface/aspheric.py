@@ -49,7 +49,7 @@ class Aspheric(Surface):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         c,
         k,
         ai,
@@ -85,7 +85,7 @@ class Aspheric(Surface):
         Surface.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -156,7 +156,7 @@ class Aspheric(Surface):
 
         return cls(
             r=surf_dict["r"],
-            d=surf_dict["d"],
+            d_next=surf_dict["d_next"],
             c=c,
             k=surf_dict["k"],
             ai=ai,
@@ -320,8 +320,8 @@ class Aspheric(Surface):
         params = []
 
         # Optimize distance
-        self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[0]})
+        self.d_next.requires_grad_(True)
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         # Optimize curvature
         self.c.requires_grad_(True)
@@ -374,7 +374,7 @@ class Aspheric(Surface):
             "r": round(self.r, 4),
             "(c)": round(self.c.item(), 4),
             "roc": round(1 / self.c.item(), 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "k": round(self.k.item(), 4),
             "ai": [],
             "use_ai2": has_ai2,

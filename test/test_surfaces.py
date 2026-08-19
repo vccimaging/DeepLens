@@ -19,7 +19,7 @@ class TestSphericSurface:
         surf = Spheric(
             c=0.1,  # curvature = 1/radius
             r=5.0,  # aperture radius
-            d=0.0,  # distance from origin
+            d_next=0.0,  # distance from origin
             mat2="bk7",
             device=device_auto,
         )
@@ -29,7 +29,7 @@ class TestSphericSurface:
 
     def test_spheric_sag_center(self, device_auto):
         """Sag at center should be zero."""
-        surf = Spheric(c=0.1, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
         
         x = torch.tensor([0.0], device=device_auto)
         y = torch.tensor([0.0], device=device_auto)
@@ -39,7 +39,7 @@ class TestSphericSurface:
 
     def test_spheric_sag_offaxis(self, device_auto):
         """Sag should increase with distance from axis."""
-        surf = Spheric(c=0.1, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
         
         x1 = torch.tensor([1.0], device=device_auto)
         x2 = torch.tensor([2.0], device=device_auto)
@@ -53,7 +53,7 @@ class TestSphericSurface:
 
     def test_spheric_sag_symmetry(self, device_auto):
         """Sag should be symmetric about optical axis."""
-        surf = Spheric(c=0.1, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
         
         x_pos = torch.tensor([2.0], device=device_auto)
         x_neg = torch.tensor([-2.0], device=device_auto)
@@ -66,7 +66,7 @@ class TestSphericSurface:
 
     def test_spheric_intersect(self, device_auto):
         """Ray should intersect spheric surface."""
-        surf = Spheric(c=0.1, r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
@@ -77,13 +77,13 @@ class TestSphericSurface:
         n2 = surf.mat2.ior(torch.tensor([0.55], device=device_auto)).item()
         ray = surf.ray_reaction(ray, n1, n2)
         
-        # Ray should hit the surface near z=10
-        assert ray.o[0, 2].item() > 9.0
+        # A standalone surface is evaluated in its own reference frame.
+        assert ray.o[0, 2].item() == pytest.approx(0.0, abs=1e-6)
         assert ray.o[0, 2].item() < 11.0
 
     def test_spheric_intersect_near_flat_float32_is_vertex_accurate(self):
         """Large-radius intersections must avoid center-form cancellation."""
-        surf = Spheric(c=1e-4, r=40.0, d=0.0, mat2="air", device="cpu")
+        surf = Spheric(c=1e-4, r=40.0, d_next=0.0, mat2="air", device="cpu")
         x = torch.linspace(-39.0, 39.0, 79, dtype=torch.float32)
         origins = torch.stack(
             [x, torch.zeros_like(x), torch.full_like(x, -10.0)], dim=-1
@@ -100,7 +100,7 @@ class TestSphericSurface:
 
     def test_spheric_refract(self, device_auto):
         """Ray should refract at spheric surface."""
-        surf = Spheric(c=0.05, r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.05, r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         # Off-axis ray
         o = torch.tensor([[1.0, 0.0, 0.0]], device=device_auto)
@@ -124,7 +124,7 @@ class TestSphericSurface:
             "type": "Spheric",
             "c": 0.05,
             "r": 5.0,
-            "d": 10.0,
+            "d_next": 10.0,
             "mat2": "bk7",
         }
         
@@ -135,7 +135,7 @@ class TestSphericSurface:
 
     def test_spheric_surf_dict(self, device_auto):
         """Spheric should export to dictionary."""
-        surf = Spheric(c=0.1, r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         d = surf.surf_dict()
         
@@ -154,7 +154,7 @@ class TestAsphericSurface:
             k=0.0,  # conic constant
             ai=[0.0] * 6,  # higher-order coefficients
             r=5.0,
-            d=0.0,
+            d_next=0.0,
             mat2="bk7",
             device=device_auto,
         )
@@ -167,8 +167,8 @@ class TestAsphericSurface:
         c = 0.05
         r = 5.0
         
-        asph = Aspheric(c=c, k=0.0, ai=[0.0]*6, r=r, d=0.0, mat2="bk7", device=device_auto)
-        sph = Spheric(c=c, r=r, d=0.0, mat2="bk7", device=device_auto)
+        asph = Aspheric(c=c, k=0.0, ai=[0.0]*6, r=r, d_next=0.0, mat2="bk7", device=device_auto)
+        sph = Spheric(c=c, r=r, d_next=0.0, mat2="bk7", device=device_auto)
         
         x = torch.tensor([1.0, 2.0, 3.0], device=device_auto)
         y = torch.tensor([0.0, 0.0, 0.0], device=device_auto)
@@ -181,7 +181,7 @@ class TestAsphericSurface:
     def test_aspheric_conic_parabola(self, device_auto):
         """k=-1 should give parabolic sag z = c*r^2 / 2."""
         c = 0.1
-        surf = Aspheric(c=c, k=-1.0, ai=[0.0]*6, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Aspheric(c=c, k=-1.0, ai=[0.0]*6, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
         
         x = torch.tensor([2.0], device=device_auto)
         y = torch.tensor([0.0], device=device_auto)
@@ -197,7 +197,7 @@ class TestAsphericSurface:
         c = 0.0  # No base curvature
         ai = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0]  # Only ai4
 
-        surf = Aspheric(c=c, k=0.0, ai=ai, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Aspheric(c=c, k=0.0, ai=ai, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
 
         x = torch.tensor([2.0], device=device_auto)
         y = torch.tensor([0.0], device=device_auto)
@@ -216,7 +216,7 @@ class TestAsphericSurface:
             "k": -0.5,
             "ai": [0.001, 0.0001, 0.0, 0.0, 0.0, 0.0],
             "r": 5.0,
-            "d": 10.0,
+            "d_next": 10.0,
             "mat2": "pmma",
         }
         
@@ -231,14 +231,14 @@ class TestApertureSurface:
 
     def test_aperture_init(self, device_auto):
         """Aperture should initialize with radius."""
-        aper = Aperture(r=2.0, d=5.0, device=device_auto)
+        aper = Aperture(r=2.0, d_next=5.0, device=device_auto)
         
         assert aper.r == 2.0
-        assert aper.d.item() == pytest.approx(5.0)
+        assert aper.d_next.item() == pytest.approx(5.0)
 
     def test_aperture_clips_rays(self, device_auto):
         """Aperture should invalidate rays outside radius."""
-        aper = Aperture(r=2.0, d=5.0, device=device_auto)
+        aper = Aperture(r=2.0, d_next=5.0, device=device_auto)
         
         # Ray inside aperture
         o_in = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
@@ -257,7 +257,7 @@ class TestApertureSurface:
 
     def test_aperture_surf_dict(self, device_auto):
         """Aperture should export to dictionary."""
-        aper = Aperture(r=2.0, d=5.0, device=device_auto)
+        aper = Aperture(r=2.0, d_next=5.0, device=device_auto)
         
         d = aper.surf_dict()
         
@@ -270,14 +270,14 @@ class TestPlaneSurface:
 
     def test_plane_init(self, device_auto):
         """Plane surface should initialize."""
-        plane = Plane(r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        plane = Plane(r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         assert plane.r == 5.0
-        assert plane.d.item() == pytest.approx(10.0)
+        assert plane.d_next.item() == pytest.approx(10.0)
 
     def test_plane_sag_zero(self, device_auto):
         """Plane sag should be zero everywhere."""
-        plane = Plane(r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        plane = Plane(r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         x = torch.tensor([0.0, 1.0, 2.0, 3.0], device=device_auto)
         y = torch.tensor([0.0, 1.0, 2.0, 3.0], device=device_auto)
@@ -287,8 +287,8 @@ class TestPlaneSurface:
         assert torch.allclose(z, torch.zeros_like(z))
 
     def test_plane_intersect(self, device_auto):
-        """Ray should intersect plane at z=d."""
-        plane = Plane(r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        """A standalone surface intersects at z=0 in its reference frame."""
+        plane = Plane(r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
@@ -299,7 +299,7 @@ class TestPlaneSurface:
         n2 = plane.mat2.ior(torch.tensor([0.55], device=device_auto)).item()
         ray = plane.ray_reaction(ray, n1, n2)
         
-        assert ray.o[0, 2].item() == pytest.approx(10.0, abs=0.1)
+        assert ray.o[0, 2].item() == pytest.approx(0.0, abs=0.1)
 
 
 class TestSurfaceBase:
@@ -307,7 +307,7 @@ class TestSurfaceBase:
 
     def test_surface_normal_vec(self, device_auto):
         """Normal vector should point toward light source."""
-        surf = Spheric(c=0.1, r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
@@ -321,7 +321,7 @@ class TestSurfaceBase:
 
     def test_surface_reflect(self, device_auto):
         """Reflection should obey law of reflection."""
-        surf = Spheric(c=0.0, r=5.0, d=10.0, mat2="bk7", device=device_auto)  # Flat mirror
+        surf = Spheric(c=0.0, r=5.0, d_next=10.0, mat2="bk7", device=device_auto)  # Flat mirror
         
         # 45 degree incidence
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
@@ -338,7 +338,7 @@ class TestSurfaceBase:
 
     def test_surface_local_coord_transform(self, device_auto):
         """Local coordinate transform should be invertible."""
-        surf = Spheric(c=0.1, r=5.0, d=10.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=10.0, mat2="bk7", device=device_auto)
         
         o = torch.tensor([[1.0, 2.0, 0.0]], device=device_auto)
         d = torch.tensor([[0.1, 0.2, 1.0]], device=device_auto)
@@ -360,7 +360,7 @@ class TestSurfaceDerivatives:
 
     def test_spheric_dfdxy_center(self, device_auto):
         """Derivatives at center should be zero."""
-        surf = Spheric(c=0.1, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
         
         x = torch.tensor([0.0], device=device_auto)
         y = torch.tensor([0.0], device=device_auto)
@@ -372,7 +372,7 @@ class TestSurfaceDerivatives:
 
     def test_spheric_dfdxy_symmetry(self, device_auto):
         """Derivatives should have appropriate symmetry."""
-        surf = Spheric(c=0.1, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Spheric(c=0.1, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
         
         x = torch.tensor([2.0], device=device_auto)
         y = torch.tensor([0.0], device=device_auto)
@@ -385,7 +385,7 @@ class TestSurfaceDerivatives:
 
     def test_aspheric_dfdxy(self, device_auto):
         """Aspheric derivatives should be consistent with numerical gradient."""
-        surf = Aspheric(c=0.05, k=-0.5, ai=[0.001]*6, r=5.0, d=0.0, mat2="bk7", device=device_auto)
+        surf = Aspheric(c=0.05, k=-0.5, ai=[0.001]*6, r=5.0, d_next=0.0, mat2="bk7", device=device_auto)
         
         x = torch.tensor([1.5], device=device_auto, requires_grad=True)
         y = torch.tensor([0.5], device=device_auto, requires_grad=True)

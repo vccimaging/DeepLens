@@ -25,7 +25,7 @@ class Zernike(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         z_coeff=None,
         zernike_order=37,
         res=(2000, 2000),
@@ -38,7 +38,7 @@ class Zernike(DiffractiveSurface):
         """Initialize a Zernike-parameterized DOE.
 
         Args:
-            d (float): DOE position along the optical axis. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             z_coeff (torch.Tensor or None, optional): Zernike coefficients of
                 shape (zernike_order,). If None, initialized to random values
                 scaled by 1e-3. Defaults to None.
@@ -57,7 +57,7 @@ class Zernike(DiffractiveSurface):
             AssertionError: If zernike_order is not 37.
         """
         super().__init__(
-            d=d, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, wvln0=wvln0, device=device
+            d_next=d_next, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, wvln0=wvln0, device=device
         )
 
         # Initialize Zernike coefficients with random values
@@ -75,7 +75,7 @@ class Zernike(DiffractiveSurface):
         """Initialize a Zernike DOE from a serialized surface dict.
 
         Args:
-            doe_dict (dict): Surface parameters. Requires "d" and "res"; optional
+            doe_dict (dict): Surface parameters. Requires "d_next" and "res"; optional
                 keys "mat", "fab_ps", "fab_step", "z_coeff", "zernike_order",
                 "wvln0" fall back to their defaults when absent.
 
@@ -83,7 +83,7 @@ class Zernike(DiffractiveSurface):
             zernike (Zernike): The constructed Zernike DOE.
         """
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             res=doe_dict["res"],
             mat=doe_dict.get("mat", "fused_silica"),
             fab_ps=doe_dict.get("fab_ps", 0.001),

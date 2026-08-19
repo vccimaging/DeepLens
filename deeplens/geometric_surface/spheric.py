@@ -31,7 +31,7 @@ class Spheric(Surface):
         self,
         c,
         r,
-        d,
+        d_next,
         mat2,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
@@ -56,7 +56,7 @@ class Spheric(Surface):
         """
         super(Spheric, self).__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -93,7 +93,7 @@ class Spheric(Surface):
         return cls(
             c=c,
             r=surf_dict["r"],
-            d=surf_dict["d"],
+            d_next=surf_dict["d_next"],
             mat2=surf_dict["mat2"],
         )
 
@@ -315,10 +315,10 @@ class Spheric(Surface):
                 and `lr` keys.
         """
         self.c.requires_grad_(True)
-        self.d.requires_grad_(True)
+        self.d_next.requires_grad_(True)
 
         params = []
-        params.append({"params": [self.d], "lr": lrs[0]})
+        params.append({"params": [self.d_next], "lr": lrs[0]})
         params.append({"params": [self.c], "lr": lrs[1]})
 
         if optim_mat and self.mat2.get_name() != "air":
@@ -344,7 +344,7 @@ class Spheric(Surface):
             "r": round(self.r, 4),
             "(c)": round(self.c.item(), 4),
             "roc": round(roc, 4),
-            "(d)": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

@@ -5,7 +5,7 @@ from deeplens.geometric_surface import Prism
 lens = GeoLens(filename="./thinlens.json")
 
 # Add a prism to the lenss
-prism = Prism(r=7.5, d=20.0, mirror_angle=45.0, mat2="bk7", device=lens.device)
+prism = Prism(r=7.5, d_next=20.0, mirror_angle=45.0, mat2="bk7", device=lens.device)
 lens.surfaces.append(prism)
 
 # Ray tracing (after the thinlens, the input ray should be parallel to +z entering the prism)

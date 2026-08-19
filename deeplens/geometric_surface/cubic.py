@@ -26,7 +26,7 @@ class Cubic(Surface):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         b,
         mat2,
         pos_xy=[0.0, 0.0],
@@ -38,7 +38,7 @@ class Cubic(Surface):
 
         Args:
             r (float): Aperture radius (semi-diameter), in [mm].
-            d (float): Axial distance (position) of the surface along the optical axis, in [mm].
+            d_next (float): Axial thickness to the next vertex, in [mm].
             b (list): Cubic coefficients ordered as $[b_3, b_5, b_7]$. Its length (1, 2, or 3) sets the polynomial degree; units are [1/mm^2], [1/mm^4], [1/mm^6].
             mat2 (str or Material): Material after the surface.
             pos_xy (list, optional): Lateral $(x, y)$ offset of the surface, in [mm]. Defaults to [0.0, 0.0].
@@ -52,7 +52,7 @@ class Cubic(Surface):
         Surface.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -84,12 +84,12 @@ class Cubic(Surface):
         """Construct a `Cubic` surface from a parameter dictionary.
 
         Args:
-            surf_dict (dict): Surface parameters with keys "r", "d", "b", and "mat2".
+            surf_dict (dict): Surface parameters with keys "r", "d_next", "b", and "mat2".
 
         Returns:
             surf (Cubic): The constructed cubic surface.
         """
-        return cls(surf_dict["r"], surf_dict["d"], surf_dict["b"], surf_dict["mat2"])
+        return cls(surf_dict["r"], surf_dict["d_next"], surf_dict["b"], surf_dict["mat2"])
 
     def _sag(self, x, y):
         """Compute surface sag $z(x, y)$ for the cubic phase plate.
@@ -207,8 +207,8 @@ class Cubic(Surface):
         params = []
 
         # Optimize distance
-        self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[0]})
+        self.d_next.requires_grad_(True)
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         # Optimize cubic coefficients
         if self.b_degree == 1:
@@ -247,7 +247,7 @@ class Cubic(Surface):
         loader reconstructs `d` from accumulated surface spacings).
 
         Returns:
-            d (dict): Surface parameters with keys "type", "b3", "r", "(d)", "b", "mat2", informational "(mat2_n)"/"(mat2_V)", and (when active) "b5"/"b7".
+            d (dict): Surface parameters with keys "type", "b3", "r", "d_next", "b", "mat2", informational "(mat2_n)"/"(mat2_V)", and (when active) "b5"/"b7".
         """
         b = [self.b3.item()]
         if self.b_degree >= 2:
@@ -259,7 +259,7 @@ class Cubic(Surface):
             "type": "Cubic",
             "b3": self.b3.item(),
             "r": self.r,
-            "(d)": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "b": b,
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),

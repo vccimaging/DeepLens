@@ -138,7 +138,7 @@ class QTypeFreeform(Surface):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         c,
         k,
         qm,
@@ -172,7 +172,7 @@ class QTypeFreeform(Surface):
         Surface.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -219,7 +219,7 @@ class QTypeFreeform(Surface):
 
         return cls(
             r=surf_dict["r"],
-            d=surf_dict["d"],
+            d_next=surf_dict["d_next"],
             c=c,
             k=surf_dict.get("k", 0.0),
             qm=surf_dict.get("qm", []),
@@ -461,8 +461,8 @@ class QTypeFreeform(Surface):
         params = []
 
         # Distance
-        self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[0]})
+        self.d_next.requires_grad_(True)
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         # Curvature
         self.c.requires_grad_(True)
@@ -505,7 +505,7 @@ class QTypeFreeform(Surface):
         surf_dict = {
             "type": "QTypeFreeform",
             "r": round(self.r, 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "(c)": round(self.c.item(), 6),
             "roc": round(1 / self.c.item(), 4)
             if abs(self.c.item()) > EPSILON

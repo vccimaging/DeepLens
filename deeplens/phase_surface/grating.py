@@ -28,7 +28,7 @@ class GratingPhase(Phase):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         theta=0.0,
         alpha=0.0,
         norm_radii=None,
@@ -56,7 +56,7 @@ class GratingPhase(Phase):
         """
         super().__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             norm_radii=norm_radii,
             mat2=mat2,
             pos_xy=pos_xy,
@@ -87,7 +87,7 @@ class GratingPhase(Phase):
         """
         # Extract parameters with defaults matching __init__ signature
         r = param_dict.get("r")
-        d = param_dict.get("d")
+        d_next = param_dict.get("d_next")
         theta = param_dict.get("theta", 0.0)
         alpha = param_dict.get("alpha", 0.0)
         norm_radii = param_dict.get("norm_radii", None)
@@ -98,7 +98,7 @@ class GratingPhase(Phase):
         device = param_dict.get("device", "cpu")
         return cls(
             r=r,
-            d=d,
+            d_next=d_next,
             theta=theta,
             alpha=alpha,
             norm_radii=norm_radii,
@@ -230,7 +230,7 @@ class GratingPhase(Phase):
             "theta": round(self.theta.item(), 4),
             "alpha": round(self.alpha.item(), 4),
             "norm_radii": round(self.norm_radii, 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

@@ -15,7 +15,7 @@ class Mirror(Plane):
     Attributes:
         r (float): Aperture radius [mm]. For a square aperture this is the
             circumscribed-circle radius (half-diagonal).
-        d (torch.Tensor): Axial position of the mirror vertex [mm].
+        d_next (torch.Tensor): Axial thickness to the next vertex [mm].
         mat2 (Material): Material on the far side of the mirror.
         is_square (bool): Whether the aperture is square.
     """
@@ -23,7 +23,7 @@ class Mirror(Plane):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         mat2="air",
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
@@ -36,7 +36,7 @@ class Mirror(Plane):
             r (float): Aperture radius [mm]. For a square aperture this is the
                 circumscribed-circle radius (half-diagonal), so the side length
                 is r * sqrt(2).
-            d (float): Axial position of the mirror vertex [mm].
+            d_next (float): Axial thickness to the next vertex [mm].
             mat2 (str or Material, optional): Material on the far side of the
                 mirror. Defaults to "air".
             pos_xy (list[float], optional): Lateral offset [x, y] [mm].
@@ -49,7 +49,7 @@ class Mirror(Plane):
         Surface.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             is_square=is_square,
             pos_xy=pos_xy,
@@ -62,13 +62,13 @@ class Mirror(Plane):
         """Construct a `Mirror` from a surface-parameter dict.
 
         Args:
-            surf_dict (dict): Surface parameters; reads keys "r", "d", and
+            surf_dict (dict): Surface parameters; reads keys "r", "d_next", and
                 "mat2".
 
         Returns:
             mirror (Mirror): The constructed mirror surface.
         """
-        return cls(surf_dict["r"], surf_dict["d"], surf_dict["mat2"])
+        return cls(surf_dict["r"], surf_dict["d_next"], surf_dict["mat2"])
 
     def ray_reaction(self, ray, n1=None, n2=None):
         """Compute the output ray after intersection and reflection.
@@ -101,14 +101,14 @@ class Mirror(Plane):
         """Return mirror parameters as a serializable dict.
 
         Returns:
-            surf_dict (dict): Parameters with keys "type", "r", "d" (rounded to
+            surf_dict (dict): Parameters with keys "type", "r", "d_next" (rounded to
                 4 decimals), "mat2" (material name), and informational
                 "(mat2_n)"/"(mat2_V)".
         """
         surf_dict = {
             "type": self.__class__.__name__,
             "r": self.r,
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

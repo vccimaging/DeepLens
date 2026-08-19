@@ -872,7 +872,13 @@ class GeoLensVis3D:
         # Create the surface meshes
         for i, surf in enumerate(self.surfaces):
             # Create the surface mesh (list of Surface objects)
-            surf_meshes.append(surf.create_mesh(n_rings=mesh_rings, n_arms=mesh_arms))
+            surf_meshes.append(
+                surf.create_mesh(
+                    n_rings=mesh_rings,
+                    n_arms=mesh_arms,
+                    d=self.surf_d(i).item(),
+                )
+            )
 
             # Add the surface to the element group
             element_group.append(i)

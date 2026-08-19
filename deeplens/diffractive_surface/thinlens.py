@@ -25,7 +25,7 @@ class ThinLens(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         f0=None,
         res=(2000, 2000),
         mat="fused_silica",
@@ -36,7 +36,7 @@ class ThinLens(DiffractiveSurface):
         """Initialize a thin lens.
 
         Args:
-            d (float): Distance of the lens surface along the optical axis. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             f0 (float or None, optional): Initial focal length. [mm] If None, a
                 very large random focal length (magnitude on the order of 1e6 mm)
                 is sampled. Defaults to None.
@@ -48,7 +48,7 @@ class ThinLens(DiffractiveSurface):
                 Defaults to 16.
             device (str, optional): Device to run the lens on. Defaults to "cpu".
         """
-        super().__init__(d=d, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, device=device)
+        super().__init__(d_next=d_next, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, device=device)
 
         # Initial focal length
         if f0 is None:
@@ -65,14 +65,14 @@ class ThinLens(DiffractiveSurface):
         """Initialize a thin lens from a dict.
 
         Args:
-            doe_dict (dict): Surface parameters. Requires keys `d` and `res`;
+            doe_dict (dict): Surface parameters. Requires keys `d_next` and `res`;
                 optional keys `f0`, `mat`, `fab_ps`, `fab_step`.
 
         Returns:
             surface (ThinLens): The constructed thin lens.
         """
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             res=doe_dict["res"],
             f0=doe_dict.get("f0", None),
             mat=doe_dict.get("mat", "fused_silica"),

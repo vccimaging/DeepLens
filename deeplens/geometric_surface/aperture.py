@@ -14,7 +14,7 @@ class Aperture(Plane):
 
     Attributes:
         r (float): Aperture radius (clear half-diameter) in [mm].
-        d (torch.Tensor): Axial position along the optical axis in [mm].
+        d_next (torch.Tensor): Thickness to the next vertex in [mm].
         is_square (bool): If True, the aperture is square instead of circular.
         tolerancing (bool): Whether tolerancing perturbations are enabled.
     """
@@ -22,7 +22,7 @@ class Aperture(Plane):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
         is_square=False,
@@ -32,7 +32,7 @@ class Aperture(Plane):
 
         Args:
             r (float): Aperture radius (clear half-diameter) in [mm].
-            d (float): Axial position along the optical axis in [mm].
+            d_next (float): Thickness to the next vertex in [mm].
             pos_xy (list, optional): Lateral (x, y) offset of the surface in [mm]. Defaults to [0.0, 0.0].
             vec_local (list, optional): Local surface normal (z-axis) direction. Defaults to [0.0, 0.0, 1.0].
             is_square (bool, optional): If True, use a square aperture. Defaults to False.
@@ -41,7 +41,7 @@ class Aperture(Plane):
         Plane.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2="air",
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -56,7 +56,7 @@ class Aperture(Plane):
         """Construct an Aperture from a surface dictionary.
 
         Args:
-            surf_dict (dict): Surface parameters. Requires "r" and "d"; optional
+            surf_dict (dict): Surface parameters. Requires "r" and "d_next"; optional
                 keys "is_square", "pos_xy", "vec_local", and "device".
 
         Returns:
@@ -64,7 +64,7 @@ class Aperture(Plane):
         """
         return cls(
             r=surf_dict["r"],
-            d=surf_dict["d"],
+            d_next=surf_dict["d_next"],
             is_square=surf_dict["is_square"] if "is_square" in surf_dict else False,
             pos_xy=surf_dict["pos_xy"] if "pos_xy" in surf_dict else [0.0, 0.0],
             vec_local=surf_dict["vec_local"] if "vec_local" in surf_dict else [0.0, 0.0, 1.0],
@@ -96,7 +96,7 @@ class Aperture(Plane):
     # =======================================
     # Visualization
     # =======================================
-    def draw_widget(self, ax, color="orange", linestyle="solid"):
+    def draw_widget(self, ax, color="orange", linestyle="solid", d=0.0):
         """Draw the aperture as wedge marks on a 2D cross-section plot.
 
         Args:
@@ -104,7 +104,7 @@ class Aperture(Plane):
             color (str, optional): Line color. Defaults to "orange".
             linestyle (str, optional): Matplotlib line style. Defaults to "solid".
         """
-        d = self.d.item()
+        d = float(d)
         aper_wedge_l = 0.05 * self.r  # [mm]
         aper_wedge_h = 0.15 * self.r  # [mm]
 
@@ -122,7 +122,7 @@ class Aperture(Plane):
         x = np.linspace(-self.r - aper_wedge_h, -self.r, 3)
         ax.plot(z, x, color=color, linestyle=linestyle, linewidth=0.8)
 
-    def draw_widget3D(self, ax, color="black"):
+    def draw_widget3D(self, ax, color="black", d=0.0):
         """Draw the aperture as an edge circle in a 3D plot.
 
         Args:
@@ -136,14 +136,16 @@ class Aperture(Plane):
         theta = np.linspace(0, 2 * np.pi, 100)
         edge_x = self.r * np.cos(theta)
         edge_y = self.r * np.sin(theta)
-        edge_z = np.full_like(edge_x, self.d.item())  # Constant z at aperture position
+        edge_z = np.full_like(edge_x, float(d))
 
         # Plot the edge circle
         line = ax.plot(edge_z, edge_x, edge_y, color=color, linewidth=1.5)
 
         return line
 
-    def create_mesh(self, n_rings=32, n_arms=128, color=[0.0, 0.0, 0.0]):
+    def create_mesh(
+        self, n_rings=32, n_arms=128, color=[0.0, 0.0, 0.0], d=0.0
+    ):
         """Create a triangulated surface mesh for the aperture.
 
         Builds vertices, faces, and rim, then stores them on the surface.
@@ -156,13 +158,13 @@ class Aperture(Plane):
         Returns:
             self (Aperture): The aperture with `vertices`, `faces`, `rim`, and `mesh_color` set (for chaining).
         """
-        self.vertices = self._create_vertices(n_rings, n_arms)
+        self.vertices = self._create_vertices(n_rings, n_arms, d=d)
         self.faces = self._create_faces(n_rings, n_arms)
         self.rim = self._create_rim(n_rings, n_arms)
         self.mesh_color = color
         return self
 
-    def _create_vertices(self, n_rings, n_arms):
+    def _create_vertices(self, n_rings, n_arms, d=0.0):
         """Generate mesh vertices for the aperture annulus.
 
         Builds two coplanar rings at the aperture position: an inner ring at
@@ -177,7 +179,7 @@ class Aperture(Plane):
         """
         n_vertices = n_rings * n_arms + 1
         vertices = np.zeros((n_vertices, 3), dtype=np.float32)
-        aperture_z = self.d.item()  # All vertices at aperture position
+        aperture_z = float(d)
         inner_radius = self.r
         outer_radius = 1.1 * self.r
 
@@ -261,10 +263,10 @@ class Aperture(Plane):
         Returns:
             params (list): List with one optimizer param group dict for `d`.
         """
-        self.d.requires_grad_(True)
+        self.d_next.requires_grad_(True)
 
         params = []
-        params.append({"params": [self.d], "lr": lrs[0]})
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         return params
 
@@ -275,13 +277,13 @@ class Aperture(Plane):
         """Serialize the aperture parameters to a dictionary.
 
         Returns:
-            surf_dict (dict): Surface parameters with keys "type", "r", "(d)",
+            surf_dict (dict): Surface parameters with keys "type", "r", "d_next",
                 "mat2", and "is_square". Radius and position are in [mm].
         """
         surf_dict = {
             "type": "Aperture",
             "r": round(self.r, 4),
-            "(d)": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": "air",
             "is_square": self.is_square,
         }

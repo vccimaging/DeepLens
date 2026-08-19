@@ -51,7 +51,7 @@ class DiffractedRotation(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         f0,
         num_wings=3,
         wvln_min=0.42,
@@ -68,7 +68,7 @@ class DiffractedRotation(DiffractiveSurface):
         """Initialize a diffracted-rotation DOE.
 
         Args:
-            d (float): Axial position of the DOE surface. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             f0 (float): Focal length used in the per-wedge Fresnel blaze. [mm]
             num_wings (int): Number of angular wedges N. Defaults to 3.
             wvln_min (float): Minimum matched wavelength. [um] Defaults to 0.42.
@@ -87,7 +87,7 @@ class DiffractedRotation(DiffractiveSurface):
         if wvln0 is None:
             wvln0 = wvln_max
         super().__init__(
-            d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
+            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
             fab_step=fab_step, is_square=is_square, device=device,
         )
         self.f0 = f0 if torch.is_tensor(f0) else torch.tensor(float(f0))
@@ -106,7 +106,7 @@ class DiffractedRotation(DiffractiveSurface):
         """Initialize a DiffractedRotation DOE from a config dict.
 
         Args:
-            doe_dict (dict): Surface parameters. Requires keys "d", "f0", and
+            doe_dict (dict): Surface parameters. Requires keys "d_next", "f0", and
                 "res"; all other constructor arguments fall back to their
                 defaults when absent.
 
@@ -114,7 +114,7 @@ class DiffractedRotation(DiffractiveSurface):
             surf (DiffractedRotation): The constructed DOE surface.
         """
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             f0=doe_dict["f0"],
             num_wings=doe_dict.get("num_wings", 3),
             wvln_min=doe_dict.get("wvln_min", 0.42),

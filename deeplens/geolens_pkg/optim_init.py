@@ -102,23 +102,19 @@ def create_lens(
     lens = GeoLens()
     surfaces = lens.surfaces
 
-    d_total = 0.0
     for elem_type in surf_list:
         if elem_type == "Aperture":
             d_next = (torch.rand(1) + 0.5).item()
-            surfaces.append(Aperture(r=aper_r, d=d_total))
-            d_total += d_next
+            surfaces.append(Aperture(r=aper_r, d_next=d_next))
 
         elif isinstance(elem_type, list):
             if len(elem_type) == 1 and elem_type[0] == "Aperture":
                 d_next = (torch.rand(1) + 0.5).item()
-                surfaces.append(Aperture(r=aper_r, d=d_total))
-                d_total += d_next
+                surfaces.append(Aperture(r=aper_r, d_next=d_next))
 
             elif len(elem_type) == 1 and elem_type[0] == "ThinLens":
                 d_next = (torch.rand(1) + 1.0).item()
-                surfaces.append(ThinLens(r=aper_r, d=d_total))
-                d_total += d_next
+                surfaces.append(ThinLens(r=aper_r, d_next=d_next))
 
             elif len(elem_type) in [2, 3]:
                 for i, surface_type in enumerate(elem_type):
@@ -130,37 +126,36 @@ def create_lens(
                         d_next = (torch.rand(1) + 1.0).item()
 
                     surfaces.append(
-                        create_surface(surface_type, d_total, aper_r, imgh, mat)
+                        create_surface(surface_type, d_next, aper_r, imgh, mat)
                     )
-                    d_total += d_next
             else:
                 raise Exception("Lens element type not supported yet.")
         else:
             raise Exception("Lens type format not correct.")
 
     # Normalize optical part total thickness
-    d_opt_actual = d_total - d_next
-    for s in surfaces:
-        s.d = s.d / d_opt_actual * d_opt
+    d_opt_actual = sum(float(s.d_next) for s in surfaces[:-1])
+    for s in surfaces[:-1]:
+        s.d_next = s.d_next / d_opt_actual * d_opt
+    surfaces[-1].d_next = torch.tensor(bfl)
 
     # Update surface semi-apertures based on position relative to aperture stop.
     # Surfaces far from the stop need larger radii to pass off-axis rays.
     # r_i = aper_r + |d_i - d_stop| * tan(half_fov)
+    d_list = [lens.surf_d(i).item() for i in range(len(surfaces))]
     d_stop = None
-    for s in surfaces:
+    for s, d_i in zip(surfaces, d_list):
         if isinstance(s, Aperture):
-            d_stop = s.d.item() if hasattr(s.d, "item") else float(s.d)
+            d_stop = d_i
             break
     if d_stop is not None:
-        for s in surfaces:
+        for s, d_i in zip(surfaces, d_list):
             if isinstance(s, Aperture):
                 continue
-            d_i = s.d.item() if hasattr(s.d, "item") else float(s.d)
             s.r = aper_r + abs(d_i - d_stop) * float(np.tan(half_fov))
 
     # Lens sensor (dummy sensor resolution)
     lens = lens.to(lens.device)
-    lens.d_sensor = torch.tensor(thickness, device=lens.device)
     lens.r_sensor = imgh
     lens.set_sensor_res(sensor_res=(2000, 2000))
 
@@ -178,7 +173,7 @@ def create_lens(
 
     return lens
 
-def create_surface(surface_type, d_total, aper_r, imgh, mat):
+def create_surface(surface_type, d_next, aper_r, imgh, mat):
     """Create a surface object based on the surface type.
 
     Initialize a `Spheric`, `Aspheric`, or `Plane` surface with a small random
@@ -186,7 +181,7 @@ def create_surface(surface_type, d_total, aper_r, imgh, mat):
 
     Args:
         surface_type (str): Surface type, one of "Spheric", "Aspheric", or "Plane".
-        d_total (float): Axial position of the surface along the optical axis in mm.
+        d_next (float): Thickness to the next surface in mm.
         aper_r (float): Initial semi-aperture radius in mm (updated later after thickness normalization).
         imgh (float): Half-diagonal image height in mm. Currently unused by this function.
         mat (str): Material name of the medium following the surface ("air" or a glass name).
@@ -205,17 +200,16 @@ def create_surface(surface_type, d_total, aper_r, imgh, mat):
     r = aper_r
 
     if surface_type == "Spheric":
-        return Spheric(r=r, d=d_total, c=c, mat2=mat)
+        return Spheric(r=r, d_next=d_next, c=c, mat2=mat)
 
     elif surface_type == "Aspheric":
         ai = np.random.randn(8).astype(np.float32) * 1e-24
         k = float(np.random.rand()) * 1e-6
-        return Aspheric(r=r, d=d_total, c=c, ai=ai, k=k, mat2=mat)
+        return Aspheric(r=r, d_next=d_next, c=c, ai=ai, k=k, mat2=mat)
 
     elif surface_type == "Plane":
-        return Plane(r=r, d=d_total, mat2=mat)
+        return Plane(r=r, d_next=d_next, mat2=mat)
 
     else:
         raise Exception("Surface type not supported yet.")
-
 

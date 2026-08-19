@@ -203,7 +203,6 @@ class GeoLensIO:
 
         # Read the extracted data from each SURF
         self.surfaces = []
-        d = 0.0
         mat1_name = "air"
         for surf_idx, surf_dict in surfs_dict.items():
             if surf_idx > 0 and surf_idx < current_surf:
@@ -235,17 +234,22 @@ class GeoLensIO:
                 if surf_dict["TYPE"] == "STANDARD":
                     if mat2_name == "air" and mat1_name == "air":
                         # Aperture
-                        s = Aperture(r=surf_r, d=d)
+                        s = Aperture(r=surf_r, d_next=surf_d_next)
                     else:
                         # Spherical surface
-                        s = Spheric(c=surf_c, r=surf_r, d=d, mat2=mat2_name)
+                        s = Spheric(
+                            c=surf_c,
+                            r=surf_r,
+                            d_next=surf_d_next,
+                            mat2=mat2_name,
+                        )
 
                 elif surf_dict["TYPE"] == "EVENASPH":
                     # Aspherical surface
                     s = Aspheric(
                         c=surf_c,
                         r=surf_r,
-                        d=d,
+                        d_next=surf_d_next,
                         ai=[
                             surf_param2,
                             surf_param3,
@@ -264,7 +268,6 @@ class GeoLensIO:
                     continue
 
                 self.surfaces.append(s)
-                d += surf_d_next
                 mat1_name = mat2_name
 
             elif surf_idx == current_surf:
@@ -274,7 +277,6 @@ class GeoLensIO:
             else:
                 pass
 
-        self.d_sensor = torch.tensor(d)
         return self
 
     def write_lens_zmx(self, filename="./test.zmx"):
@@ -332,12 +334,7 @@ SURF 0
 
         # Surface string
         for i, s in enumerate(self.surfaces):
-            d_next = (
-                self.surfaces[i + 1].d - self.surfaces[i].d
-                if i < len(self.surfaces) - 1
-                else self.d_sensor - self.surfaces[i].d
-            )
-            surf_str = s.zmx_str(surf_idx=i + 1, d_next=d_next)
+            surf_str = s.zmx_str(surf_idx=i + 1, d_next=s.d_next)
             lens_zmx_str += surf_str
 
         # Sensor (image) surface, formatted like the per-surface zmx_str blocks:
@@ -589,6 +586,7 @@ SURF 0
         self.surfaces = []
         d = 0.0  # Cumulative distance from the first optical surface to the current surface
         previous_material = "air"
+        pending_gap = 0.0
 
         for surf in surfaces:
             surf_idx = surf["index"]
@@ -601,9 +599,9 @@ SURF 0
             if surf_type == "OBJECT":
                 obj_thickness = surf["thickness"]
                 if obj_thickness < 1e9:  # Finite object distance
-                    d += obj_thickness
+                    self.obj_depth = -float(obj_thickness)
                     print(
-                        f"   Object surface thickness={obj_thickness} → accumulated d={d:.4f}"
+                        f"   Object surface thickness={obj_thickness} → obj_depth={self.obj_depth:.4f}"
                     )
                 else:
                     print("   Object surface at infinity")
@@ -612,7 +610,6 @@ SURF 0
 
             # Handle image surface
             if surf_type == "IMAGE":
-                self.d_sensor = torch.tensor(d)
                 # Read diameter from surf dictionary (CIR value)
                 self.r_sensor = (
                     surf.get("diameter") if surf.get("diameter") is not None else 18.0
@@ -639,18 +636,19 @@ SURF 0
             print(f"   is_stop={is_stop}")
 
             # Create surface object
+            created = None
             try:
                 # Case 1: pure aperture (air on both sides + STO flag)
                 if is_stop and current_material == "air" and previous_material == "air":
-                    aperture = Aperture(r=r, d=d)
-                    self.surfaces.append(aperture)
+                    created = Aperture(r=r, d_next=d_next)
                     print(f"   Created pure aperture: Aperture(r={r:.4f}, d={d:.4f})")
 
                 # Case 2: refractive surface (material change)
                 elif current_material != previous_material:
                     if surf_type == "STANDARD":
-                        s = Spheric(c=c, r=r, d=d, mat2=current_material)
-                        self.surfaces.append(s)
+                        created = Spheric(
+                            c=c, r=r, d_next=d_next, mat2=current_material
+                        )
                         status = " (stop surface)" if is_stop else ""
                         print(
                             f"   Created spherical surface{status}: Spheric(c={c:.6f}, r={r:.4f}, d={d:.4f}, mat2='{current_material}')"
@@ -684,8 +682,14 @@ SURF 0
                         ai[8] = asph_coeffs.get("H", 0.0)  # ρ¹⁶
                         ai[9] = asph_coeffs.get("I", 0.0)  # ρ¹⁸
 
-                        s = Aspheric(c=c, r=r, d=d, ai=ai, k=k, mat2=current_material)
-                        self.surfaces.append(s)
+                        created = Aspheric(
+                            c=c,
+                            r=r,
+                            d_next=d_next,
+                            ai=ai,
+                            k=k,
+                            mat2=current_material,
+                        )
                         status = " (stop surface)" if is_stop else ""
                         print(
                             f"   Created aspheric surface{status}: Aspheric(c={c:.6f}, r={r:.4f}, d={d:.4f}, k={k}, mat2='{current_material}')"
@@ -706,10 +710,21 @@ SURF 0
 
                 traceback.print_exc()
 
+            if created is not None:
+                if pending_gap != 0.0 and self.surfaces:
+                    self.surfaces[-1].d_next += pending_gap
+                pending_gap = 0.0
+                self.surfaces.append(created)
+            else:
+                pending_gap += d_next
+
             # Key: accumulate distance at the end of the loop
             d += d_next
             print(f"   After accumulation: d={d:.4f}")
             previous_material = current_material
+
+        if pending_gap != 0.0 and self.surfaces:
+            self.surfaces[-1].d_next += pending_gap
 
         print(f"\n{'=' * 60}")
         print(f"   Done! Created {len(self.surfaces)} objects")
@@ -760,10 +775,7 @@ SURF 0
         previous_material = "air"
 
         for i, surf in enumerate(self.surfaces):
-            if i < len(self.surfaces) - 1:
-                d_next = self.surfaces[i + 1].d - surf.d
-            else:
-                d_next = float(self.d_sensor - surf.d)
+            d_next = float(surf.d_next)
 
             current_material = getattr(surf, "mat2", "air")
 
@@ -780,6 +792,12 @@ SURF 0
             is_aperture = surf.__class__.__name__ == "Aperture"
 
             if is_aperture:
+                surf_str = f"S     0.0 {d_next}\n"
+                surf_str += "  CCY 0; THC 0\n"
+                surf_str += "  STO\n"
+                surf_str += f"  CIR {surf.r}\n"
+                lens_seq_str += surf_str
+                previous_material = "air"
                 continue
 
             is_aspheric = surf.__class__.__name__ == "Aspheric"
@@ -845,8 +863,8 @@ SURF 0
 
         Loads the surface list, sensor geometry, entrance pupil, and lens info,
         rebuilding each surface from its `type` field via `init_from_dict`.
-        Surface positions `d` [mm] are accumulated from the per-surface
-        `d_next` spacings, and `self.d_sensor` [mm] is set to the total.
+        Absolute surface positions and `self.d_sensor` are derived from the
+        per-surface `d_next` prefix sums.
         Sets `self.r_sensor` [mm], `self.enpd`, and `self.float_enpd`, then
         configures the sensor resolution from `sensor_res` (default
         2000 x 2000).
@@ -864,9 +882,9 @@ SURF 0
         self.materials = []
         with open(filename, "r") as f:
             data = json.load(f)
-            d = 0.0
             for idx, surf_dict in enumerate(data["surfaces"]):
-                surf_dict["d"] = d
+                # Absolute `d`/`(d)` values are informational compatibility
+                # metadata only. Runtime geometry comes solely from d_next.
                 surf_dict["surf_idx"] = idx
 
                 if surf_dict["type"] == "Aperture":
@@ -912,9 +930,7 @@ SURF 0
 
                 s.is_aperture = bool(surf_dict.get("is_aperture", False))
                 self.surfaces.append(s)
-                d += surf_dict["d_next"]
 
-        self.d_sensor = torch.tensor(d)
         self.lens_info = data.get("info", "None")
         self.enpd = data.get("enpd", None)
         self.float_enpd = True if self.enpd is None else False
@@ -949,14 +965,7 @@ SURF 0
             surf_dict.update(s.surf_dict())
             if getattr(s, "is_aperture", False):
                 surf_dict["is_aperture"] = True
-            if i < len(self.surfaces) - 1:
-                surf_dict["d_next"] = round(
-                    self.surfaces[i + 1].d.item() - self.surfaces[i].d.item(), 4
-                )
-            else:
-                surf_dict["d_next"] = round(
-                    self.d_sensor.item() - self.surfaces[i].d.item(), 4
-                )
+            surf_dict["d_next"] = round(s.d_next.item(), 4)
 
             data["surfaces"].append(surf_dict)
 

@@ -14,14 +14,15 @@ class Phase(DeepObj):
     """Base phase profile for diffractive surfaces (metasurface or DOE).
 
     Represents a flat (zero-sag) substrate carrying a phase pattern $\\phi(x, y)$,
-    placed at axial position $d$ in the global coordinate system. Provides the
+    using sequential geometry. It owns only `d_next`, the thickness to the next
+    vertex; the containing `GeoLens` derives its absolute position. Provides the
     common ray-tracing machinery (intersection, refraction, generalized-Snell
     diffraction, local/global transforms); the phase profile $\\phi$ and its
     gradient are defined by subclasses.
 
     Attributes:
         vec_global (torch.Tensor): Global axis direction $[0, 0, 1]$, shape [3].
-        d (torch.Tensor): Axial position of the surface plane in [mm], scalar.
+        d_next (torch.Tensor): Thickness to the next vertex in [mm], scalar.
         pos_x (torch.Tensor): Surface x-offset in [mm], scalar.
         pos_y (torch.Tensor): Surface y-offset in [mm], scalar.
         vec_local (torch.Tensor): Unit surface normal in global coordinates, shape [3].
@@ -46,7 +47,7 @@ class Phase(DeepObj):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         norm_radii=None,
         mat2="air",
         pos_xy=(0.0, 0.0),
@@ -58,7 +59,7 @@ class Phase(DeepObj):
 
         Args:
             r (float): Surface radius / half-aperture in [mm].
-            d (float): Axial position of the surface plane in [mm].
+            d_next (float): Axial thickness to the next vertex in [mm].
             norm_radii (float or None, optional): Radius in [mm] used to normalize
                 coordinates for the phase polynomial. Defaults to None, which uses `r`.
             mat2 (str, optional): Material on the exit side of the surface. Defaults to "air".
@@ -75,8 +76,14 @@ class Phase(DeepObj):
         # Global direction vector, always pointing to the positive z-axis
         self.vec_global = torch.tensor([0.0, 0.0, 1.0])
 
-        # Surface position in global coordinate system
-        self.d = torch.tensor(d)
+        # Sequential thickness (Zemax DISZ), kept as a differentiable tensor.
+        self.d_next = (
+            d_next.detach().clone()
+            if torch.is_tensor(d_next)
+            else torch.tensor(d_next, dtype=torch.get_default_dtype())
+        )
+        if not self.d_next.is_floating_point():
+            self.d_next = self.d_next.to(torch.get_default_dtype())
         self.pos_x = torch.tensor(pos_xy[0])
         self.pos_y = torch.tensor(pos_xy[1])
 
@@ -100,6 +107,10 @@ class Phase(DeepObj):
 
         # Pre-compute rotation matrices (depends only on static vec_local/vec_global)
         self._cache_rotation_matrices()
+
+    def _get_effective_d_next(self):
+        """Return the thickness used by the sequential lens tracer."""
+        return self.d_next
 
     def _cache_rotation_matrices(self):
         """Pre-compute and cache rotation matrices for local/global transforms."""
@@ -319,8 +330,11 @@ class Phase(DeepObj):
         Returns:
             ray (Ray): transformed ray in local coordinate system.
         """
-        # Shift ray origin to surface origin
-        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        # Axial position is represented by the lens reference frame. Only the
+        # phase surface's local lateral offset belongs here.
+        offset = torch.stack(
+            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
+        ).expand_as(ray.o)
         ray.o = ray.o - offset
 
         # Rotate using the matrix cached at init instead of rebuilding it every
@@ -347,8 +361,10 @@ class Phase(DeepObj):
             ray.d = self._apply_rotation(ray.d, self._R_to_global)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
-        # Shift ray origin back to global coordinates
-        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        # Shift ray origin back to the surface reference frame.
+        offset = torch.stack(
+            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
+        ).expand_as(ray.o)
         ray.o = ray.o + offset
 
         return ray
@@ -470,17 +486,17 @@ class Phase(DeepObj):
         """Effective drawing radius for 2D layout drawing."""
         return self.r
 
-    def surface_with_offset(self, *args, **kwargs):
-        """Return the surface axial position for layout drawing.
+    def surface_with_offset(self, *args, d=0.0, **kwargs):
+        """Return the caller-provided vertex position for layout drawing.
 
-        The surface is flat (zero sag), so this returns the plane position `d`
-        regardless of the lateral coordinates. Any positional/keyword arguments
-        are accepted for API compatibility and ignored.
+        The phase surface is flat and does not own an absolute position.
 
         Returns:
             d (torch.Tensor): Axial plane position in [mm], scalar.
         """
-        return self.d
+        if torch.is_tensor(d):
+            return d
+        return torch.tensor(float(d), device=self.device)
 
     def draw_phase_map(self, save_name="./DOE_phase_map.png"):
         """Draw the phase map (clipped to $[0, 2\\pi]$) and save it to a file.
@@ -505,7 +521,7 @@ class Phase(DeepObj):
         fig.savefig(save_name, dpi=600, bbox_inches="tight")
         plt.close(fig)
 
-    def draw_widget(self, ax, color="black", linestyle="-"):
+    def draw_widget(self, ax, color="black", linestyle="-", d=0.0):
         """Draw the DOE as a sawtooth (blazed) profile on a 2D layout axis.
 
         Args:
@@ -515,12 +531,8 @@ class Phase(DeepObj):
             linestyle (str, optional): Matplotlib line style for the profile.
                 Defaults to "-".
         """
-        # Use an offset that does not depend on axial position: a DOE at d=0
-        # would otherwise give max_offset=0 (np.fmod -> NaN, blank plot), and a
-        # negative d would give a negative offset. Falling back to r keeps it
-        # strictly positive for any DOE with r>0.
-        max_offset = max(abs(self.d.item()), self.r) / 100
-        d = self.d.item()
+        max_offset = self.r / 100
+        d = float(d)
 
         # Draw DOE
         roc = self.r * 2
