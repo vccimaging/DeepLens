@@ -238,6 +238,22 @@ class Surface(DeepObj):
 
         return ray
 
+    def newton_initial_t(self, ray):
+        """Return the initial ray parameter for Newton intersection solving.
+
+        The generic approximation intersects the ray with the local vertex
+        plane at ``z = 0``. Surfaces with a closer analytic base shape can
+        override this hook without duplicating the Newton iteration itself.
+
+        Args:
+            ray (Ray): Input ray bundle in local surface coordinates.
+
+        Returns:
+            t (torch.Tensor): Initial intersection parameter [mm], shape [...]
+                matching the ray batch.
+        """
+        return -ray.o[..., 2] / ray.d[..., 2]
+
     def newtons_method(self, ray):
         """Solve the ray-surface intersection by Newton's method (local frame).
 
@@ -261,8 +277,8 @@ class Surface(DeepObj):
         # Ray direction components (reused across iterations)
         dxdt, dydt, dzdt = ray.d[..., 0], ray.d[..., 1], ray.d[..., 2]
 
-        # Initial guess of t (can also use spherical surface for initial guess)
-        t = -ray.o[..., 2] / dzdt
+        # Surface-specific initial guess (the generic default is the z=0 plane)
+        t = self.newton_initial_t(ray)
 
         # 1. Non-differentiable Newton's iterations to find the intersection
         #    Run (maxiter - 1) iterations; the differentiable step below acts as
