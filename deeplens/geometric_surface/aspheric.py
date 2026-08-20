@@ -294,6 +294,72 @@ class Aspheric(Surface):
         return 10e3
 
     # =======================================
+    # Intersection
+    # =======================================
+
+    def newton_initial_t(self, ray):
+        """Seed Newton's method with the base-sphere intersection.
+
+        The base sphere is defined by the asphere curvature ``c`` with
+        conic constant and polynomial coefficients set to zero. Its vertex is
+        at the local origin and its center is at ``(0, 0, 1/c)``. Of the two
+        analytic intersections, this method selects the point closest to the
+        vertex, matching the sag branch represented by :meth:`_sag`.
+
+        A repeated root is handled explicitly. A flat base, a ray that misses
+        the sphere, or a non-finite analytic result falls back safely to the
+        vertex-plane approximation supplied by :class:`Surface`.
+
+        Args:
+            ray (Ray): Input ray bundle in local surface coordinates.
+
+        Returns:
+            t (torch.Tensor): Initial intersection parameter [mm], shape [...]
+                matching the ray batch.
+        """
+        t_plane = super().newton_initial_t(ray)
+        c = self.c
+
+        if c.abs() < EPSILON:
+            return t_plane
+
+        # Vertex-anchored base-sphere equation:
+        #
+        #   c * (x^2 + y^2 + z^2) - 2z = 0.
+        #
+        # This form avoids the R^2 subtraction in the center-anchored
+        # equation and remains accurate for shallow curvatures in float32.
+        od = torch.sum(ray.o * ray.d, dim=-1)
+        dd = torch.sum(ray.d * ray.d, dim=-1)
+        oo = torch.sum(ray.o * ray.o, dim=-1)
+
+        a = c * dd
+        b = 2.0 * (c * od - ray.d[..., 2])
+        c_coeff = c * oo - 2.0 * ray.o[..., 2]
+        discriminant = b * b - 4.0 * a * c_coeff
+        sqrt_discriminant = torch.sqrt(torch.clamp(discriminant, min=0.0))
+
+        # Stable quadratic roots. For a repeated root q is zero, so use the
+        # standard repeated-root expression for the second candidate.
+        q = torch.where(
+            b >= 0,
+            -(b + sqrt_discriminant) / 2.0,
+            (sqrt_discriminant - b) / 2.0,
+        )
+        t1 = q / a
+        repeated_root = -b / (2.0 * a)
+        q_is_nonzero = q.abs() > EPSILON
+        q_safe = torch.where(q_is_nonzero, q, torch.ones_like(q))
+        t2 = torch.where(q_is_nonzero, c_coeff / q_safe, repeated_root)
+
+        z1 = ray.o[..., 2] + t1 * ray.d[..., 2]
+        z2 = ray.o[..., 2] + t2 * ray.d[..., 2]
+        t_sphere = torch.where(z1.abs() < z2.abs(), t1, t2)
+
+        has_real_finite_root = (discriminant >= 0) & torch.isfinite(t_sphere)
+        return torch.where(has_real_finite_root, t_sphere, t_plane)
+
+    # =======================================
     # Optimization
     # =======================================
 
