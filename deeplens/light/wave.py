@@ -740,7 +740,11 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     # f_limit = 1 / (lambda * sqrt((2 * df * z)^2 + 1)), with df = 1 / (N * ps)
     # the frequency sampling interval. Below this limit the window is all-ones,
     # so short-distance propagation matches the standard ASM exactly.
-    z_abs = abs(float(z)) if not torch.is_tensor(z) else float(torch.as_tensor(z).abs().max())
+    z_abs = (
+        abs(float(z))
+        if not torch.is_tensor(z)
+        else float(torch.as_tensor(z).detach().abs().max())
+    )
     dfx = 1.0 / (Wimg * ps)
     dfy = 1.0 / (Himg * ps)
     fx_limit = 1.0 / (wvln_mm * math.sqrt((2.0 * dfx * z_abs) ** 2 + 1.0))

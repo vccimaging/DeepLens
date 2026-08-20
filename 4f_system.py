@@ -61,7 +61,7 @@ print(
 )
 for i, s in enumerate(lens.surfaces):
     print(
-        f"  surface {i}: {type(s).__name__:9s} z={float(s.d):6.1f} mm  "
+        f"  surface {i}: {type(s).__name__:9s} z={float(lens.surf_d(i)):6.1f} mm  "
         f"res={tuple(s.res)}  ps={s.ps:.4f} mm  size={float(s.w):.1f} mm"
     )
 

@@ -32,7 +32,7 @@ class DiffractiveSurface(DeepObj):
     i.e. it has the highest 1st-order diffraction efficiency at 0.55um.
 
     Attributes:
-        d (torch.Tensor): Axial position of the DOE plane. [mm]
+        d_next (torch.Tensor): Axial thickness to the next plane. [mm]
         res (tuple): DOE resolution as (H, W). [pixel]
         ps (float): Pixel size of the phase map (design pixel size if given,
             otherwise the fabrication pixel size). [mm]
@@ -52,7 +52,7 @@ class DiffractiveSurface(DeepObj):
 
     def __init__(
         self,
-        d,
+        d_next,
         res,
         fab_ps=0.001,
         fab_step=16,
@@ -65,7 +65,7 @@ class DiffractiveSurface(DeepObj):
         """Initialize a diffractive surface.
 
         Args:
-            d (float): Axial position of the DOE plane. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             res (tuple or int): Resolution of the DOE as (H, W); an int is
                 expanded to (res, res). [pixel]
             fab_ps (float, optional): Fabrication pixel size. [mm]. Defaults to 0.001.
@@ -80,7 +80,13 @@ class DiffractiveSurface(DeepObj):
             device (str, optional): Device to place the DOE tensors on. Defaults to "cpu".
         """
         # Geometry
-        self.d = torch.tensor(d) if not isinstance(d, torch.Tensor) else d
+        self.d_next = (
+            d_next.detach().clone()
+            if torch.is_tensor(d_next)
+            else torch.tensor(d_next, dtype=torch.get_default_dtype())
+        )
+        if not self.d_next.is_floating_point():
+            self.d_next = self.d_next.to(torch.get_default_dtype())
         self.res = (res, res) if isinstance(res, int) else res
         self.ps = fab_ps if design_ps is None else design_ps
         self.w = self.res[0] * self.ps
@@ -233,7 +239,7 @@ class DiffractiveSurface(DeepObj):
         )
 
     def forward(self, wave):
-        """Propagate the wave field to the DOE plane and apply phase modulation.
+        """Apply phase modulation, then propagate by this surface's `d_next`.
 
         The input wave field may have a different pixel size and physical extent
         than the DOE; the phase map is resampled (nearest) to match the wave
@@ -251,9 +257,6 @@ class DiffractiveSurface(DeepObj):
         Reference:
             [1] https://github.com/vsitzmann/deepoptics function phaseshifts_from_height_map
         """
-        # Propagate to DOE
-        wave.prop_to(self.d)
-
         # Compute phase map at the wave field wavelength, shape of [H, W]
         phase_map = self.get_phase_map(wave.wvln)
 
@@ -292,6 +295,7 @@ class DiffractiveSurface(DeepObj):
             )
 
         wave.u = wave.u * torch.exp(1j * phase_map)
+        wave.prop(self.d_next)
         return wave
 
     def __call__(self, wave):
@@ -526,7 +530,7 @@ class DiffractiveSurface(DeepObj):
         fig.savefig(save_name, dpi=600, bbox_inches="tight")
         plt.close(fig)
 
-    def draw_widget(self, ax, color="orange", linestyle="-"):
+    def draw_widget(self, ax, color="orange", linestyle="-", d=0.0):
         """Draw a 2D Fresnel-style cross-section of the DOE in a layout plot.
 
         Plots the cross-section along the x-axis at y=0. For a square aperture
@@ -537,9 +541,11 @@ class DiffractiveSurface(DeepObj):
             ax (matplotlib.axes.Axes): Axes to draw on.
             color (str, optional): Line color. Defaults to "orange".
             linestyle (str, optional): Line style. Defaults to "-".
+            d (float, optional): Derived global vertex position [mm].
+                Defaults to 0.
         """
-        d = self.d.item()
-        max_offset = d / 100
+        d = float(d)
+        max_offset = self.r / 100
         roc = self.r * 2
         x_half = self.w / 2 if self.is_square else self.r
         x = np.linspace(-x_half, x_half, 256)
@@ -554,14 +560,14 @@ class DiffractiveSurface(DeepObj):
         """Serialize the DOE surface parameters into a dict.
 
         Returns:
-            surf_dict (dict): Surface parameters (type, size, position,
+            surf_dict (dict): Surface parameters (type, size, thickness,
                 design wavelength, resolution, fabrication pixel size, and
                 aperture shape flag) suitable for saving or reconstruction.
         """
         surf_dict = {
             "type": self.__class__.__name__,
             "(size)": [round(self.w, 4), round(self.h, 4)],
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "wvln0": round(self.wvln0, 4),
             "res": self.res,
             "fab_ps": self.fab_ps,

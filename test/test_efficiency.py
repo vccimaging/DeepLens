@@ -15,7 +15,7 @@ from deeplens.phase_surface import NURBSPhase
 def test_cached_rotation_matrices_equal_freshly_built():
     """to_local/to_global now use the cached _R_*; the cache must equal the
     matrix the old code rebuilt every call."""
-    surf = Plane(r=5.0, d=10.0, mat2="air", vec_local=[0.1, -0.2, 1.0])
+    surf = Plane(r=5.0, d_next=10.0, mat2="air", vec_local=[0.1, -0.2, 1.0])
     assert surf._R_to_local is not None  # tilted surface needs rotation
     assert torch.allclose(
         surf._R_to_local, surf._get_rotation_matrix(surf.vec_local, surf.vec_global)
@@ -28,7 +28,7 @@ def test_cached_rotation_matrices_equal_freshly_built():
 def test_local_global_roundtrip_on_tilted_surface():
     """to_global_coord(to_local_coord(ray)) returns the original ray (the cached
     matrices are exact inverses)."""
-    surf = Plane(r=5.0, d=10.0, mat2="air", vec_local=[0.1, -0.2, 1.0])
+    surf = Plane(r=5.0, d_next=10.0, mat2="air", vec_local=[0.1, -0.2, 1.0])
     o = torch.tensor([[0.3, -0.4, -2.0], [1.0, 0.5, 3.0]])
     d = torch.tensor([[0.0, 0.0, 1.0], [0.1, 0.0, 0.99]])
     ray = Ray(o.clone(), d.clone(), wvln=0.55)
@@ -42,7 +42,7 @@ def test_local_global_roundtrip_on_tilted_surface():
 
 def test_on_axis_surface_has_no_rotation_cache():
     """An on-axis surface needs no rotation; the cache is None (no-op path)."""
-    surf = Plane(r=5.0, d=10.0, mat2="air")  # vec_local default [0,0,1]
+    surf = Plane(r=5.0, d_next=10.0, mat2="air")  # vec_local default [0,0,1]
     assert surf._R_to_local is None
     assert surf._R_to_global is None
 
@@ -77,7 +77,7 @@ def test_nurbs_phi_vectorized_matches_per_point():
     cp = torch.randn(ncp, ncp, 3) * 0.3  # only z (phase) matters for phi
     weights = torch.rand(ncp, ncp) + 0.5  # positive weights
     surf = NURBSPhase(
-        r=2.0, d=0.0,
+        r=2.0, d_next=0.0,
         control_points_u=ncp, control_points_v=ncp,
         degree_u=3, degree_v=3,
         control_points=cp, weights=weights,

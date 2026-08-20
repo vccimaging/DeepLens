@@ -26,7 +26,7 @@ class CubicPhase(Phase):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         coeff_x3=0.0,
         coeff_y3=0.0,
         coeff_x2y=0.0,
@@ -65,7 +65,7 @@ class CubicPhase(Phase):
         """
         super().__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             norm_radii=norm_radii,
             mat2=mat2,
             pos_xy=pos_xy,
@@ -271,7 +271,7 @@ class CubicPhase(Phase):
             "coeff_x3y": round(self.coeff_x3y.item(), 4),
             "coeff_xy3": round(self.coeff_xy3.item(), 4),
             "norm_radii": round(self.norm_radii, 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

@@ -9,8 +9,8 @@ from .plane import Plane
 class ThinLens(Plane):
     """Ideal thin lens with air on both sides.
 
-    A zero-thickness paraxial lens of focal length `f` [mm] placed at axial
-    position `d` [mm]. It refracts every ray toward the on-axis focal point
+    A zero-thickness paraxial lens of focal length `f` [mm] in a sequential
+    optical train. It refracts every ray toward the on-axis focal point
     (back focus for `f` greater than 0, front virtual focus for `f` less than
     0) with no aberrations, and in coherent mode applies the ideal quadratic
     phase (optical path length) of a Fresnel lens. Inherits the planar
@@ -18,14 +18,14 @@ class ThinLens(Plane):
 
     Attributes:
         f (torch.Tensor): Focal length [mm], scalar tensor.
-        d (torch.Tensor): Axial position of the lens [mm], scalar tensor.
+        d_next (torch.Tensor): Axial thickness to the next vertex [mm].
         r (float): Aperture radius [mm] (half-diagonal if `is_square`).
     """
 
     def __init__(
         self,
         r,
-        d,
+        d_next,
         f=100.0,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
@@ -36,7 +36,7 @@ class ThinLens(Plane):
 
         Args:
             r (float): Aperture radius [mm] (half-diagonal if `is_square`).
-            d (float): Axial position of the lens [mm].
+            d_next (float): Axial thickness to the next vertex [mm].
             f (float, optional): Focal length [mm]; positive converges,
                 negative diverges. Defaults to 100.0.
             pos_xy (list[float], optional): Lateral offset [x, y] [mm].
@@ -50,7 +50,7 @@ class ThinLens(Plane):
         Plane.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2="air",
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -72,12 +72,12 @@ class ThinLens(Plane):
         """Construct a ThinLens from a surface dictionary.
 
         Args:
-            surf_dict (dict): Surface parameters with keys "r", "d", and "f".
+            surf_dict (dict): Surface parameters with keys "r", "d_next", and "f".
 
         Returns:
             thinlens (ThinLens): The constructed thin lens surface.
         """
-        return cls(surf_dict["r"], surf_dict["d"], surf_dict["f"])
+        return cls(surf_dict["r"], surf_dict["d_next"], surf_dict["f"])
 
     # =========================================
     # Optimization
@@ -87,7 +87,7 @@ class ThinLens(Plane):
 
         Args:
             lrs (list[float], optional): Learning rates; `lrs[0]` is applied to
-                the axial position `d` and `lrs[1]` to the focal length `f`.
+                `d_next` and `lrs[1]` to the focal length `f`.
                 Defaults to [1e-4, 1e-4].
             optim_mat (bool, optional): Unused for a thin lens (both sides are
                 air). Defaults to False.
@@ -98,8 +98,8 @@ class ThinLens(Plane):
         """
         params = []
 
-        self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[0]})
+        self.d_next.requires_grad_(True)
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         self.f.requires_grad_(True)
         params.append({"params": [self.f], "lr": lrs[1]})
@@ -133,16 +133,12 @@ class ThinLens(Plane):
         if forward:
             t0 = self.f / ray.d[..., 2]
             xy_final = ray.d[..., :2] * t0.unsqueeze(-1)
-            z_final = (
-                (self.d + self.f).view(1).expand_as(xy_final[..., 0].unsqueeze(-1))
-            )
+            z_final = self.f.view(1).expand_as(xy_final[..., 0].unsqueeze(-1))
             o_final = torch.cat([xy_final, z_final], dim=-1)
         else:
             t0 = -self.f / ray.d[..., 2]
             xy_final = ray.d[..., :2] * t0.unsqueeze(-1)
-            z_final = (
-                (self.d - self.f).view(1).expand_as(xy_final[..., 0].unsqueeze(-1))
-            )
+            z_final = (-self.f).view(1).expand_as(xy_final[..., 0].unsqueeze(-1))
             o_final = torch.cat([xy_final, z_final], dim=-1)
 
         # New ray direction
@@ -205,7 +201,7 @@ class ThinLens(Plane):
     # =========================================
     # Visualization
     # =========================================
-    def draw_widget(self, ax, color="black", linestyle="-"):
+    def draw_widget(self, ax, color="black", linestyle="-", d=0.0):
         """Draw the thin lens on a Matplotlib axis.
 
         Renders a vertical line spanning the aperture with a double-headed
@@ -216,7 +212,7 @@ class ThinLens(Plane):
             color (str, optional): Line and arrow color. Defaults to "black".
             linestyle (str, optional): Matplotlib line style. Defaults to "-".
         """
-        d = self.d.item()
+        d = float(d)
         r = self.r
 
         # Draw a vertical line to represent the thin lens
@@ -241,13 +237,13 @@ class ThinLens(Plane):
 
         Returns:
             surf_dict (dict): Surface parameters with keys "type", "f", "r",
-                "(d)", and "mat2".
+                "d_next", and "mat2".
         """
         surf_dict = {
             "type": "ThinLens",
             "f": round(self.f.item(), 4),
             "r": round(self.r, 4),
-            "(d)": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": "air",
         }
 

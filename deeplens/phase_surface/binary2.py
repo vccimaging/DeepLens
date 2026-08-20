@@ -31,7 +31,7 @@ class Binary2Phase(Phase):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         order2=0.0,
         order4=0.0,
         order6=0.0,
@@ -66,7 +66,7 @@ class Binary2Phase(Phase):
         """
         super().__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             norm_radii=norm_radii,
             mat2=mat2,
             pos_xy=pos_xy,
@@ -91,7 +91,7 @@ class Binary2Phase(Phase):
         """Construct a Binary2 phase surface from a parameter dictionary.
 
         Args:
-            surf_dict (dict): Surface parameters. Requires keys "r" and "d";
+            surf_dict (dict): Surface parameters. Requires keys "r" and "d_next";
                 optionally "order2".."order12", "norm_radii", "mat2", and
                 "is_square".
 
@@ -103,7 +103,7 @@ class Binary2Phase(Phase):
         is_square = surf_dict.get("is_square", True)
         obj = cls(
             surf_dict["r"],
-            surf_dict["d"],
+            surf_dict["d_next"],
             surf_dict.get("order2", 0.0),
             surf_dict.get("order4", 0.0),
             surf_dict.get("order6", 0.0),
@@ -174,8 +174,8 @@ class Binary2Phase(Phase):
     def get_optimizer_params(self, lrs=[1e-4, 1e-2], optim_mat=False):
         """Build optimizer parameter groups for the phase surface.
 
-        Enables gradients on the axial position `d` and the six polynomial
-        coefficients, grouping `d` with the first learning rate and all
+        Enables gradients on `d_next` and the six polynomial coefficients,
+        grouping `d_next` with the first learning rate and all
         coefficients with the second.
 
         Args:
@@ -190,9 +190,9 @@ class Binary2Phase(Phase):
         """
         params = []
 
-        # Optimize position
-        self.d.requires_grad = True
-        params.append({"params": [self.d], "lr": lrs[0]})
+        # Optimize sequential thickness.
+        self.d_next.requires_grad = True
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         # Optimize polynomial coefficients
         self.order2.requires_grad = True
@@ -315,7 +315,7 @@ class Binary2Phase(Phase):
             "order10": round(self.order10.item(), 4),
             "order12": round(self.order12.item(), 4),
             "norm_radii": round(self.norm_radii, 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

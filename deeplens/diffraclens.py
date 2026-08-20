@@ -42,7 +42,7 @@ class DiffractiveLens(Lens):
     Every optical element (converging lens, DOE, metasurface, …) is
     represented by a phase function applied to an incoming complex wavefront.
     Free-space propagation between surfaces and to the sensor is handled by
-    `ComplexWave.prop_to`, which selects band-limited ASM or single-FFT
+    `ComplexWave.prop`, which selects band-limited ASM or single-FFT
     Fresnel diffraction based on the propagation distance. This model is
     simple and fast, but accurate only in the paraxial regime (it does not
     account for higher-order geometric aberrations).
@@ -108,12 +108,38 @@ class DiffractiveLens(Lens):
         self.astype(self.dtype)
 
         # Use total track length (first element to sensor) as focal length
-        if hasattr(self, "d_sensor"):
+        if self.surfaces:
             self.foclen = float(self.d_sensor)
             self.calc_fov()
 
         # Move all tensors (surfaces, sensor params) to the target device.
         self.to(self.device)
+
+    @property
+    def d_sensor(self):
+        """Derived global sensor position from sequential DOE thicknesses."""
+        return self.surf_d(len(self.surfaces))
+
+    @d_sensor.setter
+    def d_sensor(self, value):
+        """Move the sensor by changing the final DOE's `d_next` in place."""
+        if not self.surfaces:
+            raise ValueError("Cannot set d_sensor on a lens without surfaces.")
+        target = float(value.detach()) if torch.is_tensor(value) else float(value)
+        delta = target - float(self.d_sensor.detach())
+        with torch.no_grad():
+            self.surfaces[-1].d_next.add_(delta)
+
+    def surf_d(self, idx):
+        """Return the derived global vertex position of DOE `idx` [mm]."""
+        num_surfs = len(self.surfaces)
+        if idx < 0:
+            idx += num_surfs
+        if idx < 0 or idx > num_surfs:
+            raise IndexError(f"Surface index {idx} out of range [0, {num_surfs}].")
+        if idx == 0 or num_surfs == 0:
+            return torch.zeros((), device=self.device, dtype=self.dtype)
+        return torch.stack([surface.d_next for surface in self.surfaces[:idx]]).sum()
 
     def read_lens_json(self, filename):
         """Load the lens configuration from a JSON file.
@@ -130,7 +156,6 @@ class DiffractiveLens(Lens):
         with open(filename, "r") as f:
             # Lens general info
             data = json.load(f)
-            self.d_sensor = torch.tensor(data["d_sensor"])
             self.lens_info = data.get("info", "None")
 
             # Read sensor_size with default
@@ -157,11 +182,8 @@ class DiffractiveLens(Lens):
             self.set_sensor(sensor_size, sensor_res)
 
             # Load diffractive surfaces/elements
-            d = 0.0
             self.surfaces = []
             for surf_dict in data["surfaces"]:
-                surf_dict["d"] = d
-
                 if surf_dict["type"].lower() == "binary2":
                     s = Binary2.init_from_dict(surf_dict)
                 elif surf_dict["type"].lower() == "fresnel":
@@ -184,8 +206,6 @@ class DiffractiveLens(Lens):
                     )
 
                 self.surfaces.append(s)
-                d_next = surf_dict["d_next"]
-                d += d_next
 
     def write_lens_json(self, filename):
         """Write the lens configuration to a JSON file.
@@ -222,17 +242,6 @@ class DiffractiveLens(Lens):
 
             surf_dict.update(surf_data)
 
-            if i < len(self.surfaces) - 1:
-                surf_dict["d_next"] = (
-                    self.surfaces[i + 1].d.item() - self.surfaces[i].d.item()
-                )
-            else:
-                # Last surface: distance to the sensor. read_lens_json requires
-                # d_next on every surface, so the file must always include it.
-                surf_dict["d_next"] = round(
-                    float(self.d_sensor) - self.surfaces[i].d.item(), 3
-                )
-
             data["surfaces"].append(surf_dict)
 
         # Save data to a file
@@ -256,11 +265,8 @@ class DiffractiveLens(Lens):
     def forward(self, wave):
         """Propagate a wave through the diffractive lens system to the sensor.
 
-        Sequentially applies the phase modulation of each diffractive surface
-        (with intervening free-space propagation), then propagates the wave to
-        the sensor plane (absolute z = d_sensor [mm]). Free-space propagation
-        is delegated to `ComplexWave.prop_to`, which selects band-limited ASM
-        or single-FFT Fresnel diffraction based on the distance.
+        Sequentially applies each phase modulation and its following `d_next`
+        free-space propagation. The final surface's `d_next` reaches the sensor.
 
         Args:
             wave (ComplexWave): Input wave field entering the lens system.
@@ -271,9 +277,6 @@ class DiffractiveLens(Lens):
         # Propagate to DOE
         for surf in self.surfaces:
             wave = surf(wave)
-
-        # Propagate to sensor
-        wave = wave.prop_to(self.d_sensor.item())
 
         return wave
 
@@ -478,9 +481,8 @@ class DiffractiveLens(Lens):
     def draw_layout(self, save_name="./doelens.png"):
         """Draw a 2D layout diagram of the diffractive lens.
 
-        Each diffractive surface is drawn as a vertical dashed line at its axial
-        position `z = surface.d`, and the sensor as a solid rectangle at
-        `z = d_sensor`.
+        Each diffractive surface is drawn at the prefix sum returned by
+        `surf_d`, and the sensor at the sum of all surface `d_next` values.
 
         Args:
             save_name (str, optional): Path to save the figure. Defaults to './doelens.png'.
@@ -491,7 +493,7 @@ class DiffractiveLens(Lens):
 
         # Draw each diffractive surface as a vertical dashed line.
         for i, surf in enumerate(self.surfaces):
-            d = float(surf.d)
+            d = float(self.surf_d(i))
             surf_l = float(getattr(surf, "w", default_l))
             ax.plot(
                 [d, d], [-surf_l / 2, surf_l / 2], "orange", linestyle="--", dashes=[1, 1]

@@ -32,7 +32,7 @@ class VortexPhase(Phase):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         charge=1,
         f0=None,
         norm_radii=None,
@@ -66,7 +66,7 @@ class VortexPhase(Phase):
         """
         super().__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             norm_radii=norm_radii,
             mat2=mat2,
             pos_xy=pos_xy,
@@ -95,7 +95,7 @@ class VortexPhase(Phase):
         f0_raw = surf_dict.get("f0", None)
         return cls(
             r=surf_dict["r"],
-            d=surf_dict["d"],
+            d_next=surf_dict["d_next"],
             charge=surf_dict.get("charge", 1),
             f0=f0_raw,
             norm_radii=surf_dict.get("norm_radii", None),
@@ -216,7 +216,7 @@ class VortexPhase(Phase):
             "param_model": self.param_model,
             "charge": self.charge,
             "norm_radii": round(self.norm_radii, 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

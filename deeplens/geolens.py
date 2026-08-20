@@ -41,6 +41,7 @@ from .geometric_surface import Aperture
 from .material import Material
 from .light import Ray
 
+
 class GeoLens(
     GeoLensPSF,
     GeoLensEval,
@@ -68,7 +69,8 @@ class GeoLens(
     Attributes:
         surfaces (list[Surface]): Ordered list of optical surfaces.
         materials (list[Material]): Optical materials between surfaces.
-        d_sensor (torch.Tensor): Distance from origin to the sensor plane [mm].
+        d_sensor (torch.Tensor): Derived distance from the first surface to the
+            sensor plane [mm].
         foclen (float): Effective focal length [mm].
         fnum (float): F-number.
         rfov (float): Real half-diagonal field of view [radians].
@@ -190,6 +192,47 @@ class GeoLens(
         self.to(self.device)
         self.astype(self.dtype)
         self.post_computation()
+
+    # ====================================================================================
+    # Axial geometry derived from sequential surface thicknesses
+    # ====================================================================================
+    @property
+    def d_sensor(self):
+        """Global axial position of the sensor plane [mm].
+
+        Surface 0 is the origin. The sensor position is derived by summing each
+        surface's `d_next`, so the image plane remains part of the same
+        differentiable sequential thickness chain.
+        """
+        return self.surf_d(len(self.surfaces))
+
+    @d_sensor.setter
+    def d_sensor(self, value):
+        """Move the sensor by changing the last surface's `d_next` in place."""
+        if not self.surfaces:
+            raise ValueError("Cannot set d_sensor on a lens without surfaces.")
+        target = float(value.detach()) if torch.is_tensor(value) else float(value)
+        delta = target - float(self.d_sensor.detach())
+        with torch.no_grad():
+            self.surfaces[-1].d_next.add_(delta)
+
+    def surf_d(self, idx):
+        """Return the derived global vertex position of surface `idx` [mm].
+
+        `surf_d(0)` is zero and `surf_d(i)` is the differentiable prefix sum
+        of `d_next` for surfaces before `i`. Passing `len(surfaces)` returns the
+        sensor position. Negative indices follow Python surface indexing.
+        """
+        num_surfs = len(self.surfaces)
+        if idx < 0:
+            idx += num_surfs
+        if idx < 0 or idx > num_surfs:
+            raise IndexError(f"Surface index {idx} out of range [0, {num_surfs}].")
+        if idx == 0 or num_surfs == 0:
+            return torch.zeros((), device=self.device, dtype=self.dtype)
+        return torch.stack(
+            [surface._get_effective_d_next() for surface in self.surfaces[:idx]]
+        ).sum()
 
     def post_computation(self):
         """Compute derived optical properties after loading or modifying lens.
@@ -341,7 +384,11 @@ class GeoLens(
             # sample_from_fov creates a meshgrid; for pairwise diagonal, loop
             rays = [
                 self.sample_from_fov(
-                    fov_x=f.item(), fov_y=f.item(), depth=depth, num_rays=num_rays, wvln=wvln
+                    fov_x=f.item(),
+                    fov_y=f.item(),
+                    depth=depth,
+                    num_rays=num_rays,
+                    wvln=wvln,
                 )
                 for f in fov_list
             ]
@@ -349,7 +396,9 @@ class GeoLens(
             ray_d = torch.stack([r.d for r in rays], dim=0)
             ray = Ray(ray_o, ray_d, wvln, device=device)
         else:
-            raise ValueError(f"Invalid direction: {direction!r}. Use 'x', 'y', or 'diagonal'.")
+            raise ValueError(
+                f"Invalid direction: {direction!r}. Use 'x', 'y', or 'diagonal'."
+            )
         return ray
 
     @torch.no_grad()
@@ -463,15 +512,19 @@ class GeoLens(
         if y_scalar:
             fov_y = [float(fov_y)]
 
-        fov_x_rad = torch.tensor([fx * torch.pi / 180 for fx in fov_x], device=self.device)
-        fov_y_rad = torch.tensor([fy * torch.pi / 180 for fy in fov_y], device=self.device)
+        fov_x_rad = torch.tensor(
+            [fx * torch.pi / 180 for fx in fov_x], device=self.device
+        )
+        fov_y_rad = torch.tensor(
+            [fy * torch.pi / 180 for fy in fov_y], device=self.device
+        )
         fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
 
         # Pupil position and radius
         if entrance_pupil:
             pupilz, pupilr = self.get_entrance_pupil()
         else:
-            pupilz, pupilr = self.surfaces[0].d.item(), self.surfaces[0].r
+            pupilz, pupilr = self.surf_d(0).item(), self.surfaces[0].r
         pupilr *= scale_pupil
 
         if depth == float("inf"):
@@ -533,8 +586,18 @@ class GeoLens(
         # Sample points on sensor plane
         # Use top-left point as reference in rendering, so here we should sample bottom-right point
         x1, y1 = torch.meshgrid(
-            torch.linspace(-w / 2, w / 2, W + 1, device=device,)[1:],
-            torch.linspace(h / 2, -h / 2, H + 1, device=device,)[1:],
+            torch.linspace(
+                -w / 2,
+                w / 2,
+                W + 1,
+                device=device,
+            )[1:],
+            torch.linspace(
+                h / 2,
+                -h / 2,
+                H + 1,
+                device=device,
+            )[1:],
             indexing="xy",
         )
         z1 = torch.full_like(x1, self.d_sensor.item())
@@ -550,14 +613,8 @@ class GeoLens(
 
         # Sub-pixel sampling for more realistic rendering
         if sub_pixel:
-            delta_ox = (
-                torch.rand(ray_o.shape[:-1], device=device)
-                * self.pixel_size
-            )
-            delta_oy = (
-                -torch.rand(ray_o.shape[:-1], device=device)
-                * self.pixel_size
-            )
+            delta_ox = torch.rand(ray_o.shape[:-1], device=device) * self.pixel_size
+            delta_oy = -torch.rand(ray_o.shape[:-1], device=device) * self.pixel_size
             delta_oz = torch.zeros_like(delta_ox)
             delta_o = torch.stack((delta_ox, delta_oy, delta_oz), -1)
             ray_o = ray_o + delta_o
@@ -686,7 +743,11 @@ class GeoLens(
         return ray
 
     def forward_tracing(self, ray, surf_range, record):
-        """Forward traces rays through each surface in the specified range from object side to image side.
+        """Trace forward using sequential per-surface reference frames.
+
+        Rays enter and leave in global coordinates. Interactions happen with
+        each vertex at local z=0; after a surface, the ray origin is shifted by
+        `-d_next` to express it in the next surface's frame.
 
         Args:
             ray (Ray): Ray object to trace.
@@ -704,22 +765,40 @@ class GeoLens(
         else:
             ray_o_record = None
 
-        mat1 = Material("air")
-        for i in surf_range:
-            n1 = mat1.ior(ray.wvln)
-            n2 = self.surfaces[i].mat2.ior(ray.wvln)
-            ray = self.surfaces[i].ray_reaction(ray, n1, n2)
-            mat1 = self.surfaces[i].mat2
+        surf_indices = [int(i) for i in surf_range]
+        if not surf_indices:
+            return ray, ray_o_record
+        first, last = min(surf_indices), max(surf_indices)
+        surf_set = set(surf_indices)
 
-            if record:
-                ray_out_o = ray.o.clone().detach()
-                ray_out_o[ray.is_valid == 0] = float("nan")
-                ray_o_record.append(ray_out_o)
+        z_frame = self.surf_d(first)
+        ray.o[..., 2] -= z_frame
+
+        mat1 = Material("air") if first == 0 else self.surfaces[first - 1].mat2
+        for i in range(first, last + 1):
+            surf = self.surfaces[i]
+            if i in surf_set:
+                n1 = mat1.ior(ray.wvln)
+                n2 = surf.mat2.ior(ray.wvln)
+                ray = surf.ray_reaction(ray, n1, n2)
+                mat1 = surf.mat2
+
+                if record:
+                    ray_out_o = ray.o.clone().detach()
+                    ray_out_o[..., 2] += z_frame.detach()
+                    ray_out_o[ray.is_valid == 0] = float("nan")
+                    ray_o_record.append(ray_out_o)
+
+            dz = surf._get_effective_d_next()
+            ray.o[..., 2] -= dz
+            z_frame = z_frame + dz
+
+        ray.o[..., 2] += z_frame
 
         return ray, ray_o_record
 
     def backward_tracing(self, ray, surf_range, record):
-        """Backward traces rays through each surface in reverse order from image side to object side.
+        """Trace backward through the inverse sequential frame steps.
 
         Args:
             ray (Ray): Ray object to trace.
@@ -737,19 +816,40 @@ class GeoLens(
         else:
             ray_o_record = None
 
-        surf_indices = list(surf_range)
-        mat1 = self.surfaces[surf_indices[-1]].mat2 if surf_indices else Material("air")
-        for i in reversed(surf_indices):
-            n1 = mat1.ior(ray.wvln)
-            mat2 = Material("air") if i == 0 else self.surfaces[i - 1].mat2
-            n2 = mat2.ior(ray.wvln)
-            ray = self.surfaces[i].ray_reaction(ray, n1, n2)
-            mat1 = mat2
+        surf_indices = [int(i) for i in surf_range]
+        if not surf_indices:
+            return ray, ray_o_record
+        first, last = min(surf_indices), max(surf_indices)
+        surf_set = set(surf_indices)
 
-            if record:
-                ray_out_o = ray.o.clone().detach()
-                ray_out_o[ray.is_valid == 0] = float("nan")
-                ray_o_record.append(ray_out_o)
+        z_frame = self.surf_d(last + 1)
+        ray.o[..., 2] -= z_frame
+
+        # The medium on the image side of the last traced surface is always
+        # that surface's `mat2`, including when it is the final lens surface.
+        # This preserves the pre-refactor material convention for cover glass
+        # and other non-air image-space media.
+        mat1 = self.surfaces[last].mat2
+        for i in range(last, first - 1, -1):
+            surf = self.surfaces[i]
+            dz = surf._get_effective_d_next()
+            ray.o[..., 2] += dz
+            z_frame = z_frame - dz
+
+            if i in surf_set:
+                n1 = mat1.ior(ray.wvln)
+                mat2 = Material("air") if i == 0 else self.surfaces[i - 1].mat2
+                n2 = mat2.ior(ray.wvln)
+                ray = surf.ray_reaction(ray, n1, n2)
+                mat1 = mat2
+
+                if record:
+                    ray_out_o = ray.o.clone().detach()
+                    ray_out_o[..., 2] += z_frame.detach()
+                    ray_out_o[ray.is_valid == 0] = float("nan")
+                    ray_o_record.append(ray_out_o)
+
+        ray.o[..., 2] += z_frame
 
         return ray, ray_o_record
 
@@ -1026,10 +1126,10 @@ class GeoLens(
         )
         ray_axis, _ = self.trace(ray_axis)
         valid_axis = ray_axis.is_valid > 0
-        t = -(ray_axis.d[valid_axis, 0] * ray_axis.o[valid_axis, 0]
-              + ray_axis.d[valid_axis, 1] * ray_axis.o[valid_axis, 1]) / (
-            ray_axis.d[valid_axis, 0] ** 2 + ray_axis.d[valid_axis, 1] ** 2
-        )
+        t = -(
+            ray_axis.d[valid_axis, 0] * ray_axis.o[valid_axis, 0]
+            + ray_axis.d[valid_axis, 1] * ray_axis.o[valid_axis, 1]
+        ) / (ray_axis.d[valid_axis, 0] ** 2 + ray_axis.d[valid_axis, 1] ** 2)
         focus_z = ray_axis.o[valid_axis, 2] + t * ray_axis.d[valid_axis, 2]
         focus_z = focus_z[~torch.isnan(focus_z) & (focus_z > 0)]
         if focus_z.numel() == 0:
@@ -1061,7 +1161,7 @@ class GeoLens(
         self.foclen = eff_foclen
 
         # Compute the back focal length
-        self.bfl = self.d_sensor.item() - self.surfaces[-1].d.item()
+        self.bfl = self.d_sensor.item() - self.surf_d(-1).item()
 
         return eff_foclen
 
@@ -1137,9 +1237,7 @@ class GeoLens(
             d_sensor (torch.Tensor): In-focus sensor z-position [mm] in image space (scalar tensor).
         """
         # Sample and trace rays, shape [SPP_CALC, 3]
-        ray = self.sample_from_fov(
-            fov_x=0.0, fov_y=0.0, depth=depth, num_rays=SPP_CALC
-        )
+        ray = self.sample_from_fov(fov_x=0.0, fov_y=0.0, depth=depth, num_rays=SPP_CALC)
         ray = self.trace2sensor(ray)
 
         # Calculate in-focus sensor position
@@ -1194,9 +1292,7 @@ class GeoLens(
         fov_hi = min(float(np.rad2deg(self.rfov_eff)) * 1.8, 89.0)
         fov_samples = torch.linspace(fov_lo, fov_hi, num_fov, device=self.device)
 
-        ray = self.sample_from_fov(
-            fov_x=0.0, fov_y=fov_samples.tolist(), num_rays=256
-        )
+        ray = self.sample_from_fov(fov_x=0.0, fov_y=fov_samples.tolist(), num_rays=256)
         ray = self.trace2sensor(ray)
 
         # Centroid image height per FOV angle, shape [num_fov]
@@ -1363,18 +1459,22 @@ class GeoLens(
         """
         if self.aper_idx is None or hasattr(self, "aper_idx") is False:
             print("No aperture, use the last surface as exit pupil.")
-            return self.surfaces[-1].d.item(), self.surfaces[-1].r
+            return self.surf_d(-1).item(), self.surfaces[-1].r
 
         # Sample rays from aperture (edge or center)
         aper_idx = self.aper_idx
-        aper_z = self.surfaces[aper_idx].d.item()
+        aper_z = self.surf_d(aper_idx).item()
         aper_r = self.surfaces[aper_idx].r
 
         if paraxial:
-            ray_o = torch.tensor([[DELTA_PARAXIAL, 0, aper_z]], device=self.device).repeat(32, 1)
+            ray_o = torch.tensor(
+                [[DELTA_PARAXIAL, 0, aper_z]], device=self.device
+            ).repeat(32, 1)
             phi_rad = torch.linspace(-0.01, 0.01, 32, device=self.device)
         else:
-            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(128, 1)  # pupil ray-fan size
+            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(
+                128, 1
+            )  # pupil ray-fan size
             rfov = float(np.arctan(self.r_sensor / self.foclen))
             phi_rad = torch.linspace(-rfov / 2, rfov / 2, 128, device=self.device)
 
@@ -1400,7 +1500,7 @@ class GeoLens(
         if len(intersection_points) == 0:
             print("No intersection points found, use the last surface as exit pupil.")
             avg_pupilr = self.surfaces[-1].r
-            avg_pupilz = self.surfaces[-1].d.item()
+            avg_pupilz = self.surf_d(-1).item()
         else:
             avg_pupilr = torch.mean(intersection_points[:, 0]).item()
             avg_pupilz = torch.mean(intersection_points[:, 1]).item()
@@ -1413,7 +1513,7 @@ class GeoLens(
                     "Zero or negative exit pupil is detected, use the last surface as pupil."
                 )
                 avg_pupilr = self.surfaces[-1].r
-                avg_pupilz = self.surfaces[-1].d.item()
+                avg_pupilz = self.surf_d(-1).item()
 
         return avg_pupilz, avg_pupilr
 
@@ -1445,22 +1545,26 @@ class GeoLens(
         """
         if self.aper_idx is None or not hasattr(self, "aper_idx"):
             print("No aperture stop, use the first surface as entrance pupil.")
-            return self.surfaces[0].d.item(), self.surfaces[0].r
+            return self.surf_d(0).item(), self.surfaces[0].r
 
         # Sample rays from edge of aperture stop
         aper_idx = self.aper_idx
         aper_surf = self.surfaces[aper_idx]
-        aper_z = aper_surf.d.item()
+        aper_z = self.surf_d(aper_idx).item()
         if aper_surf.is_square:
             aper_r = float(np.sqrt(2)) * aper_surf.r
         else:
             aper_r = aper_surf.r
 
         if paraxial:
-            ray_o = torch.tensor([[DELTA_PARAXIAL, 0, aper_z]], device=self.device).repeat(32, 1)
+            ray_o = torch.tensor(
+                [[DELTA_PARAXIAL, 0, aper_z]], device=self.device
+            ).repeat(32, 1)
             phi = torch.linspace(-0.01, 0.01, 32, device=self.device)
         else:
-            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(128, 1)  # pupil ray-fan size
+            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(
+                128, 1
+            )  # pupil ray-fan size
             rfov = float(np.arctan(self.r_sensor / self.foclen))
             phi = torch.linspace(-rfov / 2, rfov / 2, 128, device=self.device)
 
@@ -1488,7 +1592,7 @@ class GeoLens(
                 "No intersection points found, use the first surface as entrance pupil."
             )
             avg_pupilr = self.surfaces[0].r
-            avg_pupilz = self.surfaces[0].d.item()
+            avg_pupilz = self.surf_d(0).item()
         else:
             avg_pupilr = torch.mean(intersection_points[:, 0]).item()
             avg_pupilz = torch.mean(intersection_points[:, 1]).item()
@@ -1501,7 +1605,7 @@ class GeoLens(
                     "Zero or negative entrance pupil is detected, use the first surface as entrance pupil."
                 )
                 avg_pupilr = self.surfaces[0].r
-                avg_pupilz = self.surfaces[0].d.item()
+                avg_pupilz = self.surf_d(0).item()
 
         return avg_pupilz, avg_pupilr
 
@@ -1527,23 +1631,29 @@ class GeoLens(
         Di = directions[idx_i]  # Shape: [N*(N-1)/2, 2]
         Dj = directions[idx_j]  # Shape: [N*(N-1)/2, 2]
 
-        # Vector from Oi to Oj
+        # A pair of non-parallel 2-D lines has a closed-form intersection.
+        # Filter parallel/near-parallel pairs before division: batched
+        # ``torch.linalg.lstsq`` rejects an entire CUDA batch when even one
+        # pair is rank deficient, which made valid real prescriptions fail
+        # during pupil estimation.
         b = Oj - Oi  # Shape: [N*(N-1)/2, 2]
+        cross_d = Di[:, 0] * Dj[:, 1] - Di[:, 1] * Dj[:, 0]
+        direction_scale = torch.linalg.vector_norm(
+            Di, dim=-1
+        ) * torch.linalg.vector_norm(Dj, dim=-1)
+        tolerance = 100 * torch.finfo(directions.dtype).eps * direction_scale
+        valid = cross_d.abs() > tolerance
+        if not valid.any():
+            return origins.new_empty((0, 2))
 
-        # Coefficients matrix A
-        A = torch.stack([Di, -Dj], dim=-1)  # Shape: [N*(N-1)/2, 2, 2]
-
-        # Solve the linear system Ax = b
-        # Using least squares to handle the case of no exact solution
-        if A.device.type == "mps":
-            # Perform lstsq on CPU for MPS devices and move result back
-            x, _ = torch.linalg.lstsq(A.cpu(), b.unsqueeze(-1).cpu())[:2]
-            x = x.to(A.device)
-        else:
-            x, _ = torch.linalg.lstsq(A, b.unsqueeze(-1))[:2]
-        x = x.squeeze(-1)  # Shape: [N*(N-1)/2, 2]
-        s = x[:, 0]
-        t = x[:, 1]
+        Oi = Oi[valid]
+        Oj = Oj[valid]
+        Di = Di[valid]
+        Dj = Dj[valid]
+        b = b[valid]
+        cross_d = cross_d[valid]
+        s = (b[:, 0] * Dj[:, 1] - b[:, 1] * Dj[:, 0]) / cross_d
+        t = (b[:, 0] * Di[:, 1] - b[:, 1] * Di[:, 0]) / cross_d
 
         # Calculate the intersection points using either rays
         P_i = Oi + s.unsqueeze(-1) * Di  # Shape: [N*(N-1)/2, 2]

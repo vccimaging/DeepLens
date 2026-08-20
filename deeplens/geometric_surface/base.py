@@ -18,9 +18,12 @@ from ..material import Material
 class Surface(DeepObj):
     """Base class for all geometric optical surfaces.
 
-    A surface sits at axial position `d` [mm] in the global coordinate
-    system, has an aperture radius `r` [mm], and separates two optical
-    media. Subclasses override `_sag` and `_dfdxy` to define their shape.
+    Surfaces use sequential geometry: each surface owns only `d_next`, the
+    axial thickness [mm] from its vertex to the next vertex (or from the last
+    surface to the sensor). Absolute vertex positions are derived by
+    `GeoLens.surf_d`; they are not stored on individual surfaces. A surface
+    also has an aperture radius `r` [mm] and separates two optical media.
+    Subclasses override `_sag` and `_dfdxy` to define their shape.
 
     Ray-surface interaction is handled in three stages by `ray_reaction`:
 
@@ -32,7 +35,7 @@ class Surface(DeepObj):
        reflection (`reflect`).
 
     Attributes:
-        d (torch.Tensor): Axial position of the surface vertex [mm], scalar tensor.
+        d_next (torch.Tensor): Thickness to the next vertex [mm], scalar tensor.
         r (float): Aperture radius [mm]. For a square aperture this is the
             circumscribed-circle radius (half-diagonal).
         mat2 (Material): Optical material on the transmission side.
@@ -47,7 +50,7 @@ class Surface(DeepObj):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         mat2,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
@@ -60,7 +63,7 @@ class Surface(DeepObj):
             r (float): Aperture radius [mm]. For a square aperture this is the
                 circumscribed-circle radius (half-diagonal), so the side length
                 is `r * sqrt(2)`.
-            d (float): Axial position of the surface vertex [mm].
+            d_next (float): Axial thickness to the next vertex [mm].
             mat2 (str or Material): Material on the transmission side
                 (e.g. "N-BK7", "air").
             pos_xy (list[float], optional): Lateral offset [x, y] [mm].
@@ -76,8 +79,14 @@ class Surface(DeepObj):
         # Global direction vector, always pointing to the positive z-axis
         self.vec_global = torch.tensor([0.0, 0.0, 1.0])
 
-        # Surface position in global coordinate system
-        self.d = torch.tensor(d)
+        # Sequential thickness (Zemax DISZ), kept as a differentiable tensor.
+        self.d_next = (
+            d_next.detach().clone()
+            if torch.is_tensor(d_next)
+            else torch.tensor(d_next, dtype=torch.get_default_dtype())
+        )
+        if not self.d_next.is_floating_point():
+            self.d_next = self.d_next.to(torch.get_default_dtype())
         self.pos_x = torch.tensor(pos_xy[0])
         self.pos_y = torch.tensor(pos_xy[1])
 
@@ -146,15 +155,20 @@ class Surface(DeepObj):
             f"init_from_dict() is not implemented for {cls.__name__}."
         )
 
+    def _get_effective_d_next(self):
+        """Return the thickness used by the sequential lens tracer."""
+        return self.d_next
+
     # =====================================================================
     # Intersection, refraction, reflection between ray and surface
     # =====================================================================
     def ray_reaction(self, ray, n1, n2, refraction=True):
         """Compute the output ray after intersection and refraction/reflection.
 
-        Transforms the ray to the local surface frame, solves the intersection
-        via Newton's method, applies vector Snell's law (or specular reflection),
-        then transforms back to global coordinates.
+        The input ray is expressed in this surface's reference frame (its
+        vertex is at z=0). This method applies only the surface-local lateral
+        offset/orientation, intersection and refraction/reflection. `GeoLens`
+        applies the axial `d_next` frame step between surface interactions.
 
         Args:
             ray (Ray): Incident ray bundle.
@@ -180,7 +194,7 @@ class Surface(DeepObj):
             # Reflection
             ray = self.reflect(ray)
 
-        # Transform ray to global coordinate system
+        # Transform ray back to the surface reference frame
         ray = self.to_global_coord(ray)
 
         return ray
@@ -411,8 +425,11 @@ class Surface(DeepObj):
         Returns:
             ray (Ray): Ray expressed in the local surface coordinate system.
         """
-        # Shift ray origin to surface origin
-        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        # Axial position is represented by the lens reference frame. Only the
+        # surface-local lateral offset belongs in this transform.
+        offset = torch.stack(
+            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
+        ).expand_as(ray.o)
         ray.o = ray.o - offset
 
         # Rotate using the matrix cached at init (vec_local/vec_global are static),
@@ -443,8 +460,10 @@ class Surface(DeepObj):
             ray.d = self._apply_rotation(ray.d, self._R_to_global)
             ray.d = F.normalize(ray.d, p=2, dim=-1)
 
-        # Shift ray origin back to global coordinates
-        offset = torch.stack([self.pos_x, self.pos_y, self.d]).expand_as(ray.o)
+        # Shift ray origin back to the surface reference frame.
+        offset = torch.stack(
+            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
+        ).expand_as(ray.o)
         ray.o = ray.o + offset
 
         return ray
@@ -747,17 +766,19 @@ class Surface(DeepObj):
         """
         return 10e3
 
-    def surface_with_offset(self, x, y, valid_check=True):
-        """Compute the global z coordinate of the surface at (x, y).
+    def surface_with_offset(self, x, y, valid_check=True, d=0.0):
+        """Compute the z coordinate `sag(x, y) + d`.
 
-        Adds the vertex axial position `d` to the local sag. Used in lens layout
-        plotting and self-intersection detection.
+        The surface does not own an absolute axial position, so callers that
+        need global geometry pass the vertex position from `GeoLens.surf_d`.
 
         Args:
             x (torch.Tensor or float): Local x coordinate [mm].
             y (torch.Tensor or float): Local y coordinate [mm], same shape as `x`.
             valid_check (bool, optional): If True apply `is_valid` masking via
                 `sag`; if False use the raw `_sag`. Defaults to True.
+            d (float or torch.Tensor, optional): Vertex position to add [mm].
+                Defaults to 0 (the surface reference frame).
 
         Returns:
             z (torch.Tensor): Global z coordinate [mm], same shape as `x`.
@@ -765,9 +786,9 @@ class Surface(DeepObj):
         x = x if torch.is_tensor(x) else torch.tensor(x, device=self.device)
         y = y if torch.is_tensor(y) else torch.tensor(y, device=self.device)
         if valid_check:
-            return self.sag(x, y) + self.d
+            return self.sag(x, y) + d
         else:
-            return self._sag(x, y) + self.d
+            return self._sag(x, y) + d
 
     def surface_sag(self, x, y):
         """Compute the local surface sag at (x, y) as a Python float.
@@ -845,7 +866,7 @@ class Surface(DeepObj):
         """
         return min(self.r, self.max_height())
 
-    def draw_widget(self, ax, color="black", linestyle="solid"):
+    def draw_widget(self, ax, color="black", linestyle="solid", d=0.0):
         """Draw the surface profile as a 2D line on a Matplotlib axis.
 
         Plots the meridional (y-z) cross section sampled across the aperture.
@@ -858,7 +879,10 @@ class Surface(DeepObj):
         r_eff = self.draw_r()
         r = torch.linspace(-r_eff, r_eff, 128, device=self.device)
         z = self.surface_with_offset(
-            r, torch.zeros(len(r), device=self.device), valid_check=False
+            r,
+            torch.zeros(len(r), device=self.device),
+            valid_check=False,
+            d=d,
         )
         ax.plot(
             z.cpu().detach().numpy(),
@@ -868,7 +892,9 @@ class Surface(DeepObj):
             linewidth=0.75,
         )
 
-    def create_mesh(self, n_rings=32, n_arms=128, color=[0.06, 0.3, 0.6]):
+    def create_mesh(
+        self, n_rings=32, n_arms=128, color=[0.06, 0.3, 0.6], d=0.0
+    ):
         """Create a triangulated mesh of the surface for 3D visualization.
 
         Populates `self.vertices`, `self.faces`, `self.rim`, and `self.mesh_color`.
@@ -883,13 +909,13 @@ class Surface(DeepObj):
         Returns:
             self (Surface): The surface with mesh data (for chaining).
         """
-        self.vertices = self._create_vertices(n_rings, n_arms)
+        self.vertices = self._create_vertices(n_rings, n_arms, d=d)
         self.faces = self._create_faces(n_rings, n_arms)
         self.rim = self._create_rim(n_rings, n_arms)
         self.mesh_color = color
         return self
 
-    def _create_vertices(self, n_rings, n_arms):
+    def _create_vertices(self, n_rings, n_arms, d=0.0):
         """Create mesh vertices in a radial pattern for PyVista plotting.
 
         Args:
@@ -904,7 +930,11 @@ class Surface(DeepObj):
         vertices = np.zeros((n_vertices, 3), dtype=np.float32)
 
         # Center vertex
-        vertices[0] = [0.0, 0.0, self.surface_with_offset(0.0, 0.0).item()]
+        vertices[0] = [
+            0.0,
+            0.0,
+            self.surface_with_offset(0.0, 0.0, d=d).item(),
+        ]
 
         # Create meshgrid and flatten
         rings_mesh, arms_mesh = np.meshgrid(
@@ -918,7 +948,7 @@ class Surface(DeepObj):
         # Calculate x, y, z coordinates
         x_values = rings_flat * np.cos(arms_flat)
         y_values = rings_flat * np.sin(arms_flat)
-        z_values = self.surface_with_offset(x_values, y_values).cpu().numpy()
+        z_values = self.surface_with_offset(x_values, y_values, d=d).cpu().numpy()
 
         # Fill vertices array
         vertices[1:, 0] = x_values
@@ -1024,14 +1054,14 @@ class Surface(DeepObj):
         """Serialize the surface's common parameters to a dict.
 
         Returns:
-            surf_dict (dict): Surface parameters (type, `r`, `d`, `pos_xy`,
+            surf_dict (dict): Surface parameters (type, `r`, `d_next`, `pos_xy`,
                 `vec_local`, `is_square`, `mat2`, plus informational
                 `(mat2_n)`/`(mat2_V)`), with numeric values rounded to 4 decimals.
         """
         surf_dict = {
             "type": self.__class__.__name__,
             "r": round(self.r, 4),
-            "(d)": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "pos_xy": (round(self.pos_x.item(), 4), round(self.pos_y.item(), 4)),
             "vec_local": (
                 round(self.vec_local[0].item(), 4),

@@ -33,7 +33,7 @@ class Spiral(Surface):
         Spiral diopter: freeform lenses with enhanced multifocal behavior, Optica 2024.
     """
 
-    def __init__(self, r, d, c1, c2, mat2, N=1, eta=5, is_square=False, device="cpu"):
+    def __init__(self, r, d_next, c1, c2, mat2, N=1, eta=5, is_square=False, device="cpu"):
         """Initialize a Spiral surface.
 
         Args:
@@ -47,7 +47,7 @@ class Spiral(Surface):
             is_square (bool, optional): Whether the aperture is square. Defaults to False.
             device (str, optional): Device for torch tensors. Defaults to "cpu".
         """
-        super().__init__(r, d, mat2, is_square=is_square, device=device)
+        super().__init__(r, d_next, mat2, is_square=is_square, device=device)
         self.c1 = torch.tensor(c1, dtype=torch.float32, device=device)
         self.c2 = torch.tensor(c2, dtype=torch.float32, device=device)
         self.N = N
@@ -68,7 +68,7 @@ class Spiral(Surface):
         """
         return cls(
             surf_dict["r"],
-            surf_dict["d"],
+            surf_dict["d_next"],
             surf_dict["c1"],
             surf_dict["c2"],
             surf_dict["mat2"],
@@ -162,8 +162,8 @@ class Spiral(Surface):
         params = []
 
         # Optimize distance
-        self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[0]})
+        self.d_next.requires_grad_(True)
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         # Optimize c1
         self.c1.requires_grad_(True)

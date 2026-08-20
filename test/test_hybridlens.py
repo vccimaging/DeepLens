@@ -1,5 +1,6 @@
 """Tests for deeplens/optics/hybridlens.py — HybridLens."""
 
+import json
 import os
 
 import pytest
@@ -23,12 +24,14 @@ class TestHybridLensInit:
         assert lens.geolens is not None
         assert lens.doe is not None
         assert len(lens.geolens.surfaces) > 0
+        assert hasattr(lens.doe, "d_next")
+        assert not hasattr(lens.doe, "d")
 
     def test_device_transfer(self, sample_hybridlens):
         """to(device) transfers both geolens and doe."""
         lens = sample_hybridlens
         lens.to(torch.device("cpu"))
-        assert lens.doe.d.device.type == "cpu"
+        assert lens.doe.d_next.device.type == "cpu"
 
 
 class TestHybridLensPSF:
@@ -71,6 +74,25 @@ class TestHybridLensUtils:
 class TestHybridLensIO:
     """Tests for I/O."""
 
+    def test_legacy_absolute_d_is_normalized_at_read_boundary(
+        self, sample_hybridlens, test_output_dir
+    ):
+        path = os.path.join(test_output_dir, "legacy_hybridlens.json")
+        sample_hybridlens.write_lens_json(path)
+        with open(path) as f:
+            data = json.load(f)
+        doe_gap = data["DOE"].pop("d_next")
+        data["DOE"]["d"] = data["d_sensor"] - doe_gap
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+        from deeplens import HybridLens
+
+        loaded = HybridLens(filename=path)
+
+        assert loaded.doe.d_next.item() == pytest.approx(doe_gap)
+        assert not hasattr(loaded.doe, "d")
+
     def test_write_read_json_roundtrip(self, sample_hybridlens, test_output_dir):
         """write_lens_json then read_lens_json preserves structure."""
         lens = sample_hybridlens
@@ -79,6 +101,10 @@ class TestHybridLensIO:
 
         lens.write_lens_json(out_path)
         assert os.path.exists(out_path)
+        with open(out_path) as f:
+            data = json.load(f)
+        assert "d_next" in data["DOE"]
+        assert "d" not in data["DOE"]
 
         from deeplens import HybridLens
 

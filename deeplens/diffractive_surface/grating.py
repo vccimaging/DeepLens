@@ -36,7 +36,7 @@ class Grating(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         res=(2000, 2000),
         mat="fused_silica",
         wvln0=0.55,
@@ -49,7 +49,7 @@ class Grating(DiffractiveSurface):
         """Initialize a grating DOE.
 
         Args:
-            d (float): Axial position of the DOE plane. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             res (tuple or int, optional): Resolution of the DOE as (H, W); an
                 int is expanded to (res, res). [pixel]. Defaults to (2000, 2000).
             mat (str, optional): Material name of the DOE. Defaults to "fused_silica".
@@ -64,7 +64,7 @@ class Grating(DiffractiveSurface):
             device (str, optional): Device to place the DOE tensors on. Defaults to "cpu".
         """
         super().__init__(
-            d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step, device=device
+            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step, device=device
         )
 
         # Grating parameters
@@ -81,7 +81,7 @@ class Grating(DiffractiveSurface):
         """Initialize a grating DOE from a parameter dict.
 
         Args:
-            doe_dict (dict): Dictionary of DOE parameters. Requires keys "d" and
+            doe_dict (dict): Dictionary of DOE parameters. Requires keys "d_next" and
                 "res"; "mat", "wvln0", "fab_ps", "fab_step", "theta", and
                 "alpha" are optional and fall back to defaults.
 
@@ -89,7 +89,7 @@ class Grating(DiffractiveSurface):
             grating (Grating): The constructed grating DOE instance.
         """
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             res=doe_dict["res"],
             mat=doe_dict.get("mat", "fused_silica"),
             wvln0=doe_dict.get("wvln0", 0.55),
