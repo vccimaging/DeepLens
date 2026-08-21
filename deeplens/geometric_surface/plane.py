@@ -234,7 +234,9 @@ class Plane(Surface):
         surf_dict = {
             "type": "Plane",
             "r": self.r,
-            "d_next": round(self.d_next.item(), 4),
+            "d_next": self.d_next.item(),
+            "pos_xy": [self.pos_x.item(), self.pos_y.item()],
+            "vec_local": self.vec_local.tolist(),
             "is_square": self.is_square,
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),

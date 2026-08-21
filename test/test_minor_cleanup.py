@@ -14,14 +14,12 @@ from deeplens.light import Ray
 from deeplens import utils
 
 
-def test_gpu_init_uses_supported_api():
-    """gpu_init used torch.set_default_tensor_type, removed in recent torch."""
+def test_gpu_init_uses_supported_api_without_global_dtype_mutation():
+    """Device selection must not mutate application-wide precision state."""
     old = torch.get_default_dtype()
-    try:
-        device = utils.gpu_init()
-        assert isinstance(device, torch.device)
-    finally:
-        torch.set_default_dtype(old)
+    device = utils.gpu_init()
+    assert isinstance(device, torch.device)
+    assert torch.get_default_dtype() == old
 
 
 def test_mirror_surf_dict_is_json_serializable():

@@ -300,7 +300,7 @@ def create_video_from_images(image_folder, output_video_path, fps=30):
 # Experimental logging
 # ==================================
 def gpu_init(gpu=0):
-    """Select a compute device and set the default float dtype to float32.
+    """Select a compute device without changing process-wide dtype state.
 
     Args:
         gpu (int, optional): CUDA device index to use when available.
@@ -312,7 +312,6 @@ def gpu_init(gpu=0):
     """
     device = torch.device(f"cuda:{gpu}" if torch.cuda.is_available() else "cpu")
     print("Using: {}".format(device))
-    torch.set_default_dtype(torch.float32)
     return device
 
 

@@ -10,6 +10,11 @@ Technical Paper:
     Xinge Yang, Qiang Fu, Mohamed Elhoseiny, and Wolfgang Heidrich, "Aberration-Aware Depth-from-Focus" IEEE-TPAMI 2023.
 """
 
+import os
+import re
+import warnings
+from collections.abc import Mapping
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -23,6 +28,45 @@ from .surrogate import MLP
 from .surrogate.psfnet_mplconv import PSFNet_MLPConv
 from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
 from .imgsim import rotate_psf, splat_psf_per_pixel
+
+
+_SAFE_WEIGHTS_ONLY_TORCH = (2, 10)
+_DEFAULT_CHECKPOINT_LIMIT = 2 * 1024**3
+_DEFAULT_TENSOR_ELEMENT_LIMIT = 500_000_000
+
+
+def _torch_release_tuple(version):
+    """Return the numeric major/minor components of a Torch version string."""
+    match = re.match(r"^(\d+)\.(\d+)", version)
+    if match is None:
+        return (0, 0)
+    return int(match.group(1)), int(match.group(2))
+
+
+def _load_psfnet_checkpoint(path, *, trusted=False, max_bytes=_DEFAULT_CHECKPOINT_LIMIT):
+    """Load a checkpoint without silently crossing the pickle trust boundary."""
+    size = os.path.getsize(path)
+    if size > max_bytes:
+        raise ValueError(
+            f"PSFNet checkpoint is {size} bytes, above the {max_bytes}-byte limit."
+        )
+
+    if trusted:
+        warnings.warn(
+            "Loading a trusted PSFNet checkpoint with unrestricted pickle. "
+            "Only use trusted=True for artifacts whose provenance you control.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return torch.load(path, map_location="cpu", weights_only=False)
+
+    if _torch_release_tuple(torch.__version__) < _SAFE_WEIGHTS_ONLY_TORCH:
+        raise RuntimeError(
+            "Safe PSFNet checkpoint loading requires PyTorch 2.10 or newer. "
+            "Upgrade PyTorch, or pass trusted=True only for a checkpoint whose "
+            "provenance you control."
+        )
+    return torch.load(path, map_location="cpu", weights_only=True)
 
 
 class PSFNetLens(Lens):
@@ -183,7 +227,7 @@ class PSFNetLens(Lens):
 
         return psfnet
 
-    def load_net(self, net_path):
+    def load_net(self, net_path, *, trusted=False):
         """Load pretrained PSF network weights from disk.
 
         Prints the pixel size and lens path stored in the checkpoint alongside the
@@ -192,9 +236,47 @@ class PSFNetLens(Lens):
 
         Args:
             net_path (str): Path to the saved checkpoint file.
+            trusted (bool, optional): Permit unrestricted legacy pickle loading.
+                Defaults to False. Only enable for artifacts with controlled,
+                verified provenance.
         """
-        # Check the correct model is loaded
-        psfnet_dict = torch.load(net_path, map_location="cpu", weights_only=False)
+        psfnet_dict = _load_psfnet_checkpoint(net_path, trusted=trusted)
+        if not isinstance(psfnet_dict, Mapping):
+            raise ValueError("PSFNet checkpoint must contain a mapping.")
+        required = {"pixel_size", "lens_path", "psfnet_model_weights"}
+        missing = sorted(required - set(psfnet_dict))
+        if missing:
+            raise ValueError(f"PSFNet checkpoint is missing fields: {missing}.")
+        if not isinstance(psfnet_dict["pixel_size"], (int, float)):
+            raise ValueError("PSFNet checkpoint pixel_size must be numeric.")
+        if not isinstance(psfnet_dict["lens_path"], str):
+            raise ValueError("PSFNet checkpoint lens_path must be a string.")
+
+        weights = psfnet_dict["psfnet_model_weights"]
+        if not isinstance(weights, Mapping) or not all(
+            isinstance(key, str) and torch.is_tensor(value)
+            for key, value in weights.items()
+        ):
+            raise ValueError("PSFNet model weights must be a string-to-tensor mapping.")
+        if sum(value.numel() for value in weights.values()) > _DEFAULT_TENSOR_ELEMENT_LIMIT:
+            raise ValueError("PSFNet checkpoint tensor payload exceeds the element limit.")
+
+        expected = self.psfnet.state_dict()
+        if set(weights) != set(expected):
+            missing_weights = sorted(set(expected) - set(weights))
+            extra_weights = sorted(set(weights) - set(expected))
+            raise ValueError(
+                "PSFNet checkpoint state schema mismatch: "
+                f"missing={missing_weights}, unexpected={extra_weights}."
+            )
+        bad_shapes = {
+            key: (tuple(weights[key].shape), tuple(expected[key].shape))
+            for key in expected
+            if weights[key].shape != expected[key].shape
+        }
+        if bad_shapes:
+            raise ValueError(f"PSFNet checkpoint tensor shape mismatch: {bad_shapes}.")
+
         print(
             f"Pretrained model lens pixel size: {psfnet_dict['pixel_size']*1000.0:.1f} um, "
             f"Current lens pixel size: {self.pixel_size*1000.0:.1f} um"
@@ -205,7 +287,7 @@ class PSFNetLens(Lens):
         )
 
         # Load the model weights
-        self.psfnet.load_state_dict(psfnet_dict["psfnet_model_weights"])
+        self.psfnet.load_state_dict(weights, strict=True)
 
     def save_psfnet(self, psfnet_path):
         """Save the PSF network and its metadata to disk.
@@ -218,6 +300,7 @@ class PSFNetLens(Lens):
             psfnet_path (str): Path to save the checkpoint file.
         """
         psfnet_dict = {
+            "format_version": 1,
             "model_name": self.psfnet.__class__.__name__,
             "in_chan": self.in_chan,
             "pixel_size": self.pixel_size,

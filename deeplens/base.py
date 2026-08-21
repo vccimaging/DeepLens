@@ -88,32 +88,21 @@ class DeepObj:
             lens.to("cuda")  # move all tensors to GPU
             ```
         """
-        self.device = device
+        self.device = torch.device(device)
 
-        for key, val in vars(self).items():
-            if isinstance(val, nn.Parameter):
-                val.data = val.data.to(device)
-            elif torch.is_tensor(val):
-                setattr(self, key, val.to(device))
-            elif isinstance(val, nn.Module):
-                val.to(device)
-            elif issubclass(type(val), DeepObj):
-                val.to(device)
-            elif val.__class__.__name__ in ("list", "tuple"):
-                for i, v in enumerate(val):
-                    if torch.is_tensor(v):
-                        val[i] = v.to(device)
-                    elif issubclass(type(v), DeepObj):
-                        v.to(device)
+        for key, val in list(vars(self).items()):
+            if key == "device":
+                continue
+            setattr(self, key, self._map_state(val, device=self.device))
         return self
 
     def astype(self, dtype):
         """Convert all floating-point tensors to a target dtype.
 
-        Recursively converts owned floating-point tensors, `nn.Parameter` data,
-        and nested `DeepObj` objects (including those in lists). When the dtype
-        differs from the current default, also calls
-        `torch.set_default_dtype(dtype)` so subsequent tensor creation matches.
+        Recursively converts owned floating-point and complex tensors,
+        `nn.Parameter` data, modules, nested `DeepObj` objects, and values inside
+        lists, tuples, and dictionaries. Conversion is local to this object; it
+        never changes PyTorch's process-wide default dtype.
 
         Args:
             dtype (torch.dtype or None): Target floating-point dtype, one of
@@ -139,23 +128,93 @@ class DeepObj:
         dtype_ls = [torch.float16, torch.float32, torch.float64]
         assert dtype in dtype_ls, f"Data type {dtype} is not supported."
 
-        if torch.get_default_dtype() != dtype:
-            torch.set_default_dtype(dtype)
-            print(f"Set {dtype} as default torch dtype.")
-
         self.dtype = dtype
-        for key, val in vars(self).items():
-            if isinstance(val, nn.Parameter):
-                if val.dtype in dtype_ls:
-                    val.data = val.data.to(dtype)
-            elif torch.is_tensor(val) and val.dtype in dtype_ls:
-                setattr(self, key, val.to(dtype))
-            elif issubclass(type(val), DeepObj):
-                val.astype(dtype)
-            elif issubclass(type(val), list):
-                for i, v in enumerate(val):
-                    if torch.is_tensor(v) and v.dtype in dtype_ls:
-                        val[i] = v.to(dtype)
-                    elif issubclass(type(v), DeepObj):
-                        v.astype(dtype)
+        for key, val in list(vars(self).items()):
+            if key == "dtype":
+                continue
+            setattr(self, key, self._map_state(val, dtype=dtype))
         return self
+
+    @staticmethod
+    def _complex_dtype(dtype):
+        """Return the complex counterpart of a real floating-point dtype."""
+        if dtype == torch.float64:
+            return torch.complex128
+        if dtype == torch.float32:
+            return torch.complex64
+        return getattr(torch, "complex32", torch.complex64)
+
+    @classmethod
+    def _convert_tensor(cls, tensor, *, device=None, dtype=None):
+        """Convert a tensor while retaining live optimizer references.
+
+        Surface optimization parameters are ordinary leaf tensors rather than
+        ``nn.Parameter`` instances. Replacing them with ``tensor.to(...)`` makes
+        existing optimizers point at stale objects and turns the replacement
+        into a non-leaf tensor. For leaf tensors that require gradients (and for
+        ``nn.Parameter``), update storage in place so object identity and leaf
+        status are preserved.
+        """
+        target_dtype = None
+        if dtype is not None:
+            if tensor.is_floating_point():
+                target_dtype = dtype
+            elif tensor.is_complex():
+                target_dtype = cls._complex_dtype(dtype)
+
+        converted = tensor.to(device=device, dtype=target_dtype)
+        preserve_identity = isinstance(tensor, nn.Parameter) or (
+            tensor.is_leaf and tensor.requires_grad
+        )
+        if preserve_identity and converted is not tensor:
+            tensor.data = converted.data
+            if tensor.grad is not None:
+                grad_dtype = target_dtype if (
+                    tensor.grad.is_floating_point() or tensor.grad.is_complex()
+                ) else None
+                tensor.grad.data = tensor.grad.data.to(
+                    device=device, dtype=grad_dtype
+                )
+            return tensor
+        return converted
+
+    @classmethod
+    def _map_state(cls, value, *, device=None, dtype=None):
+        """Recursively migrate an owned state-tree value."""
+        if torch.is_tensor(value):
+            return cls._convert_tensor(value, device=device, dtype=dtype)
+
+        if isinstance(value, nn.Module):
+            kwargs = {}
+            if device is not None:
+                kwargs["device"] = device
+            if dtype is not None:
+                kwargs["dtype"] = dtype
+            value.to(**kwargs)
+            return value
+
+        if isinstance(value, DeepObj):
+            if device is not None:
+                value.to(device)
+            if dtype is not None:
+                value.astype(dtype)
+            return value
+
+        if isinstance(value, list):
+            return [cls._map_state(item, device=device, dtype=dtype) for item in value]
+
+        if isinstance(value, tuple):
+            converted = tuple(
+                cls._map_state(item, device=device, dtype=dtype) for item in value
+            )
+            if hasattr(value, "_fields"):
+                return type(value)(*converted)
+            return converted
+
+        if isinstance(value, dict):
+            return type(value)(
+                (key, cls._map_state(item, device=device, dtype=dtype))
+                for key, item in value.items()
+            )
+
+        return value

@@ -318,14 +318,14 @@ class GeoLens(
         # Calculate FoV_x and FoV_y
         if uniform_fov:
             # Sample uniform FoV angles
-            fov_x_list = [x * self.vfov / 2 for x in x_list]
-            fov_y_list = [y * self.hfov / 2 for y in y_list]
+            fov_x_list = [x * self.hfov / 2 for x in x_list]
+            fov_y_list = [y * self.vfov / 2 for y in y_list]
             fov_x_list = [float(np.rad2deg(fov_x)) for fov_x in fov_x_list]
             fov_y_list = [float(np.rad2deg(fov_y)) for fov_y in fov_y_list]
         else:
             # Sample uniform object grid
-            fov_x_list = [np.arctan(x * np.tan(self.vfov / 2)) for x in x_list]
-            fov_y_list = [np.arctan(y * np.tan(self.hfov / 2)) for y in y_list]
+            fov_x_list = [np.arctan(x * np.tan(self.hfov / 2)) for x in x_list]
+            fov_y_list = [np.arctan(y * np.tan(self.vfov / 2)) for y in y_list]
             fov_x_list = [float(np.rad2deg(fov_x)) for fov_x in fov_x_list]
             fov_y_list = [float(np.rad2deg(fov_y)) for fov_y in fov_y_list]
 
@@ -370,7 +370,9 @@ class GeoLens(
         wvln = self.primary_wvln if wvln is None else wvln
         device = self.device
         fov_deg = self.rfov * 180 / torch.pi
-        fov_list = torch.linspace(0, fov_deg, num_field, device=device)
+        fov_list = torch.linspace(
+            0, fov_deg, num_field, device=device, dtype=self.dtype
+        )
 
         if direction == "y":
             ray = self.sample_from_fov(
@@ -429,9 +431,9 @@ class GeoLens(
 
         # Ray origin is given
         if not torch.is_tensor(points):
-            ray_o = torch.tensor(points, device=self.device)
+            ray_o = torch.as_tensor(points, device=self.device, dtype=self.dtype)
         else:
-            ray_o = points.to(self.device)
+            ray_o = points.to(device=self.device, dtype=self.dtype)
 
         # Sample points on the pupil
         pupilz, pupilr = self.get_entrance_pupil()
@@ -512,12 +514,12 @@ class GeoLens(
         if y_scalar:
             fov_y = [float(fov_y)]
 
-        fov_x_rad = torch.tensor(
-            [fx * torch.pi / 180 for fx in fov_x], device=self.device
-        )
-        fov_y_rad = torch.tensor(
-            [fy * torch.pi / 180 for fy in fov_y], device=self.device
-        )
+        fov_x_rad = torch.as_tensor(
+            fov_x, device=self.device, dtype=self.dtype
+        ) * (math.pi / 180.0)
+        fov_y_rad = torch.as_tensor(
+            fov_y, device=self.device, dtype=self.dtype
+        ) * (math.pi / 180.0)
         fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
 
         # Pupil position and radius
@@ -591,12 +593,14 @@ class GeoLens(
                 w / 2,
                 W + 1,
                 device=device,
+                dtype=self.dtype,
             )[1:],
             torch.linspace(
                 h / 2,
                 -h / 2,
                 H + 1,
                 device=device,
+                dtype=self.dtype,
             )[1:],
             indexing="xy",
         )
@@ -613,8 +617,12 @@ class GeoLens(
 
         # Sub-pixel sampling for more realistic rendering
         if sub_pixel:
-            delta_ox = torch.rand(ray_o.shape[:-1], device=device) * self.pixel_size
-            delta_oy = -torch.rand(ray_o.shape[:-1], device=device) * self.pixel_size
+            delta_ox = torch.rand(
+                ray_o.shape[:-1], device=device, dtype=self.dtype
+            ) * self.pixel_size
+            delta_oy = -torch.rand(
+                ray_o.shape[:-1], device=device, dtype=self.dtype
+            ) * self.pixel_size
             delta_oz = torch.zeros_like(delta_ox)
             delta_o = torch.stack((delta_ox, delta_oy, delta_oz), -1)
             ray_o = ray_o + delta_o
@@ -639,8 +647,8 @@ class GeoLens(
         device = self.device
 
         # Generate random angles and radii
-        theta = torch.rand(*shape, device=device) * 2 * torch.pi
-        r2 = torch.rand(*shape, device=device) * r**2
+        theta = torch.rand(*shape, device=device, dtype=self.dtype) * 2 * torch.pi
+        r2 = torch.rand(*shape, device=device, dtype=self.dtype) * r**2
         radius = torch.sqrt(r2)
 
         # Stack to form 3D points
@@ -677,10 +685,17 @@ class GeoLens(
         if surf_range is None:
             surf_range = range(0, len(self.surfaces))
 
-        if (ray.d[..., 2] > 0).any():
+        forward = ray.d[..., 2] > 0
+        backward = ray.d[..., 2] < 0
+        if bool(forward.all().item()):
             ray_out, ray_o_rec = self.forward_tracing(ray, surf_range, record=record)
-        else:
+        elif bool(backward.all().item()):
             ray_out, ray_o_rec = self.backward_tracing(ray, surf_range, record=record)
+        else:
+            raise ValueError(
+                "A ray bundle must have one tracing direction; split mixed "
+                "forward/backward or zero-z-direction rays before tracing."
+            )
 
         return ray_out, ray_o_rec
 
@@ -711,10 +726,6 @@ class GeoLens(
                 returns a tuple (ray, ray_o_record) where ray_o_record is the list
                 of recorded ray positions at each surface (invalid points set to NaN).
         """
-        # Manually propagate ray to a shallow depth to avoid numerical instability
-        if ray.o[..., 2].min() < -100.0:
-            ray = ray.prop_to(-10.0)
-
         # Trace rays
         ray, ray_o_record = self.trace(ray, record=record)
         ray = ray.prop_to(self.d_sensor)
@@ -742,6 +753,27 @@ class GeoLens(
         ray = ray.prop_to(pupil_z)
         return ray
 
+    def _validate_surf_range(self, surf_range):
+        """Return a bounded contiguous set of surface indices.
+
+        Partial tracing has a well-defined incident medium only for a contiguous
+        segment of the sequential prescription. Accepting gaps would propagate
+        through skipped vertices without applying their optical interactions.
+        """
+        surf_indices = [int(i) for i in surf_range]
+        if not surf_indices:
+            return surf_indices
+        if min(surf_indices) < 0 or max(surf_indices) >= len(self.surfaces):
+            raise IndexError(
+                f"Surface range {surf_indices} is outside [0, {len(self.surfaces) - 1}]."
+            )
+        expected = list(range(min(surf_indices), max(surf_indices) + 1))
+        if sorted(surf_indices) != expected:
+            raise ValueError(
+                "surf_range must select each surface in one contiguous segment."
+            )
+        return surf_indices
+
     def forward_tracing(self, ray, surf_range, record):
         """Trace forward using sequential per-surface reference frames.
 
@@ -765,7 +797,7 @@ class GeoLens(
         else:
             ray_o_record = None
 
-        surf_indices = [int(i) for i in surf_range]
+        surf_indices = self._validate_surf_range(surf_range)
         if not surf_indices:
             return ray, ray_o_record
         first, last = min(surf_indices), max(surf_indices)
@@ -775,6 +807,37 @@ class GeoLens(
         ray.o[..., 2] -= z_frame
 
         mat1 = Material("air") if first == 0 else self.surfaces[first - 1].mat2
+
+        # Re-anchor a far object-space bundle once per trace, after entering the
+        # first selected surface's local frame. This avoids a device-to-host
+        # condition check at every spherical surface while retaining accurate
+        # local geometry at large coordinates.
+        far = (ray.o[..., 2] < -100.0) & (ray.is_valid > 0)
+        if bool(far.any().item()):
+            work_dtype = (
+                torch.float64 if ray.o.dtype == torch.float32 else ray.o.dtype
+            )
+            o_work = ray.o.to(work_dtype)
+            d_work = ray.d.to(work_dtype)
+            dz = torch.where(
+                d_work[..., 2].abs() < EPSILON,
+                torch.full_like(d_work[..., 2], EPSILON),
+                d_work[..., 2],
+            )
+            t_work = (-10.0 - o_work[..., 2]) / dz
+            new_o = (o_work + d_work * t_work.unsqueeze(-1)).to(ray.o.dtype)
+            ray.o = torch.where(far.unsqueeze(-1), new_o, ray.o)
+            if ray.is_coherent:
+                if ray.o.dtype != torch.float64:
+                    raise ValueError("Coherent ray tracing requires float64 rays.")
+                incident_index = mat1.ior(ray.wvln).to(work_dtype)
+                ray.opl = torch.where(
+                    far.unsqueeze(-1),
+                    ray.opl + incident_index * t_work.unsqueeze(-1),
+                    ray.opl,
+                )
+        ray._coordinates_conditioned = True
+
         for i in range(first, last + 1):
             surf = self.surfaces[i]
             if i in surf_set:
@@ -816,7 +879,7 @@ class GeoLens(
         else:
             ray_o_record = None
 
-        surf_indices = [int(i) for i in surf_range]
+        surf_indices = self._validate_surf_range(surf_range)
         if not surf_indices:
             return ray, ray_o_record
         first, last = min(surf_indices), max(surf_indices)
@@ -1196,7 +1259,7 @@ class GeoLens(
         device = self.device
 
         # Sample point source rays from sensor center
-        o1 = torch.zeros(SPP_CALC, 3, device=device)
+        o1 = torch.zeros(SPP_CALC, 3, device=device, dtype=self.dtype)
         o1[:, 2] = self.d_sensor
 
         # Sample the first surface as pupil
@@ -1279,8 +1342,8 @@ class GeoLens(
             return
 
         # 1. Perspective projection (effective FoV)
-        self.vfov = 2 * math.atan(self.sensor_size[0] / 2 / self.foclen)
-        self.hfov = 2 * math.atan(self.sensor_size[1] / 2 / self.foclen)
+        self.hfov = 2 * math.atan(self.sensor_size[0] / 2 / self.foclen)
+        self.vfov = 2 * math.atan(self.sensor_size[1] / 2 / self.foclen)
         self.dfov = 2 * math.atan(self.r_sensor / self.foclen)
         self.rfov_eff = self.dfov / 2  # effective (paraxial) half-diagonal FoV
 
@@ -1290,7 +1353,9 @@ class GeoLens(
         num_fov = 64
         fov_lo = float(np.rad2deg(self.rfov_eff)) * 0.5
         fov_hi = min(float(np.rad2deg(self.rfov_eff)) * 1.8, 89.0)
-        fov_samples = torch.linspace(fov_lo, fov_hi, num_fov, device=self.device)
+        fov_samples = torch.linspace(
+            fov_lo, fov_hi, num_fov, device=self.device, dtype=self.dtype
+        )
 
         ray = self.sample_from_fov(fov_x=0.0, fov_y=fov_samples.tolist(), num_rays=256)
         ray = self.trace2sensor(ray)
@@ -1468,15 +1533,19 @@ class GeoLens(
 
         if paraxial:
             ray_o = torch.tensor(
-                [[DELTA_PARAXIAL, 0, aper_z]], device=self.device
+                [[DELTA_PARAXIAL, 0, aper_z]], device=self.device, dtype=self.dtype
             ).repeat(32, 1)
-            phi_rad = torch.linspace(-0.01, 0.01, 32, device=self.device)
+            phi_rad = torch.linspace(
+                -0.01, 0.01, 32, device=self.device, dtype=self.dtype
+            )
         else:
-            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(
-                128, 1
-            )  # pupil ray-fan size
+            ray_o = torch.tensor(
+                [[aper_r, 0, aper_z]], device=self.device, dtype=self.dtype
+            ).repeat(128, 1)
             rfov = float(np.arctan(self.r_sensor / self.foclen))
-            phi_rad = torch.linspace(-rfov / 2, rfov / 2, 128, device=self.device)
+            phi_rad = torch.linspace(
+                -rfov / 2, rfov / 2, 128, device=self.device, dtype=self.dtype
+            )
 
         d = torch.stack(
             (torch.sin(phi_rad), torch.zeros_like(phi_rad), torch.cos(phi_rad)), axis=-1
@@ -1558,15 +1627,19 @@ class GeoLens(
 
         if paraxial:
             ray_o = torch.tensor(
-                [[DELTA_PARAXIAL, 0, aper_z]], device=self.device
+                [[DELTA_PARAXIAL, 0, aper_z]], device=self.device, dtype=self.dtype
             ).repeat(32, 1)
-            phi = torch.linspace(-0.01, 0.01, 32, device=self.device)
+            phi = torch.linspace(
+                -0.01, 0.01, 32, device=self.device, dtype=self.dtype
+            )
         else:
-            ray_o = torch.tensor([[aper_r, 0, aper_z]], device=self.device).repeat(
-                128, 1
-            )  # pupil ray-fan size
+            ray_o = torch.tensor(
+                [[aper_r, 0, aper_z]], device=self.device, dtype=self.dtype
+            ).repeat(128, 1)
             rfov = float(np.arctan(self.r_sensor / self.foclen))
-            phi = torch.linspace(-rfov / 2, rfov / 2, 128, device=self.device)
+            phi = torch.linspace(
+                -rfov / 2, rfov / 2, 128, device=self.device, dtype=self.dtype
+            )
 
         d = torch.stack(
             (torch.sin(phi), torch.zeros_like(phi), -torch.cos(phi)), axis=-1

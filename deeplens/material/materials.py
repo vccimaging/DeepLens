@@ -7,6 +7,7 @@
 """Glass and plastic materials for optical lenses."""
 
 import json
+import math
 import os
 import re
 
@@ -47,25 +48,34 @@ def read_agf(file_path):
     else:
         raise ValueError(f"Error! {file_path} not found.")
 
-    nm_lines = [line for line in lines if re.match(r"^NM\b", line)]
-    cd_lines = [line for line in lines if re.match(r"^CD\b", line)]
-
     materials = {}
-    for i in range(len(nm_lines)):
-        nm_parts = nm_lines[i].strip().split()
-        cd_parts = cd_lines[i].strip().split()
-
-        materials[nm_parts[1].lower()] = {
-            "calculate_mode": float(nm_parts[2]),
-            "nd": float(nm_parts[4]),
-            "vd": float(nm_parts[5]),
-            "a_coeff": float(cd_parts[1]),
-            "b_coeff": float(cd_parts[2]),
-            "c_coeff": float(cd_parts[3]),
-            "d_coeff": float(cd_parts[4]),
-            "e_coeff": float(cd_parts[5]),
-            "f_coeff": float(cd_parts[6]),
-        }
+    current_name = None
+    for line in lines:
+        parts = line.strip().split()
+        if not parts:
+            continue
+        if parts[0] == "NM":
+            current_name = parts[1].lower()
+            materials[current_name] = {
+                "calculate_mode": float(parts[2]),
+                "nd": float(parts[4]),
+                "vd": float(parts[5]),
+            }
+        elif parts[0] == "CD" and current_name is not None:
+            coefficients = [float(value) for value in parts[1:7]]
+            (
+                materials[current_name]["a_coeff"],
+                materials[current_name]["b_coeff"],
+                materials[current_name]["c_coeff"],
+                materials[current_name]["d_coeff"],
+                materials[current_name]["e_coeff"],
+                materials[current_name]["f_coeff"],
+            ) = coefficients
+        elif parts[0] == "LD" and current_name is not None:
+            materials[current_name]["wvln_range"] = (
+                float(parts[1]),
+                float(parts[2]),
+            )
     return materials
 
 
@@ -169,7 +179,9 @@ class Material(DeepObj):
         raw = "air" if name is None else name.lower()
         # Normalise legacy aliases to "air"
         self.name = "air" if raw in ("vacuum", "occluder") else raw
+        self.wvln_range = None
         self.load_dispersion()
+        self._validated_wavelengths = set()
         self.device = device
 
     def get_name(self):
@@ -259,6 +271,7 @@ class Material(DeepObj):
             self.rii_formula = entry["formula"]
             self.rii_coeffs = entry["coeffs"]
             self.rii_wvln_range = entry.get("wvln_range")
+            self.wvln_range = self.rii_wvln_range
             self.n = entry["nd"]
             self.V = entry["vd"]
 
@@ -297,6 +310,7 @@ class Material(DeepObj):
         # IR/UV-only crystals). In that case expose the in-band reference index
         # and mark Vd non-applicable (1e38), matching the formula-based path.
         wmin, wmax = min(self.ref_wvlns), max(self.ref_wvlns)
+        self.wvln_range = tuple(mat_data.get("wvln_range", (wmin, wmax)))
         if wmin <= 0.4861 and 0.6563 <= wmax:
             nd = float(np.interp(0.58756, self.ref_wvlns, self.ref_n))
             nF = float(np.interp(0.4861, self.ref_wvlns, self.ref_n))
@@ -348,6 +362,7 @@ class Material(DeepObj):
 
             self.n = material["nd"]
             self.V = material["vd"]
+            self.wvln_range = material.get("wvln_range")
         else:
             print(f"error: not {material_name}")
 
@@ -416,7 +431,9 @@ class Material(DeepObj):
         Raises:
             NotImplementedError: If `self.dispersion` is unknown.
         """
-        assert wvln.min() > 0.1 and wvln.max() < 10, "Wavelength should be in [um]."
+        if not torch.is_tensor(wvln):
+            wvln = torch.as_tensor(wvln, device=self.device)
+        self._validate_wavelength(wvln)
 
         if self.dispersion == "sellmeier":
             # Sellmeier equation: https://en.wikipedia.org/wiki/Sellmeier_equation
@@ -524,6 +541,36 @@ class Material(DeepObj):
             raise NotImplementedError(f"Error: {self.dispersion} not implemented.")
 
         return n
+
+    def _validate_wavelength(self, wvln):
+        """Reject wavelengths outside the selected material's measured domain."""
+        if wvln.numel() == 1 and not wvln.requires_grad:
+            value = float(wvln.detach().cpu())
+            cache_key = (value, str(wvln.dtype))
+            if cache_key in self._validated_wavelengths:
+                return
+            values = [value]
+        else:
+            if not bool(torch.isfinite(wvln).all().item()):
+                raise ValueError("Wavelength values must be finite [µm].")
+            values = [
+                float(wvln.detach().min().cpu()),
+                float(wvln.detach().max().cpu()),
+            ]
+
+        if any(not math.isfinite(value) or not (0.1 < value < 10.0) for value in values):
+            raise ValueError("Wavelength must be finite and satisfy 0.1 < wavelength < 10 µm.")
+
+        if self.wvln_range is not None:
+            wmin, wmax = (float(value) for value in self.wvln_range)
+            if values[0] < wmin or values[-1] > wmax:
+                raise ValueError(
+                    f"Material {self.name!r} is valid only for wavelengths in "
+                    f"[{wmin}, {wmax}] µm; received [{values[0]}, {values[-1]}] µm."
+                )
+
+        if wvln.numel() == 1 and not wvln.requires_grad:
+            self._validated_wavelengths.add(cache_key)
 
     @staticmethod
     def nV_to_AB(n, V):

@@ -55,8 +55,9 @@ def conv_psf(img, psf, method="conv"):
 
     Args:
         img (torch.Tensor): Input image batch, shape ``[B, C, H, W]``.
-        psf (torch.Tensor): PSF kernel, shape ``[C, ks, ks]``.  ``ks`` may be
-            odd or even.
+        psf (torch.Tensor): Shared PSF kernel with shape ``[C, ks, ks]``, or
+            per-image kernels with shape ``[B, C, ks, ks]``. ``ks`` may be odd
+            or even.
         method (str, optional): Convolution backend.  ``"conv"`` uses a direct
             ``F.conv2d`` (cost ``~O(ks^2)`` per pixel); ``"fft"`` uses an FFT
             linear convolution (cost roughly independent of ``ks``).  Prefer
@@ -76,9 +77,29 @@ def conv_psf(img, psf, method="conv"):
         img_blur = conv_psf(img, psf)
         ```
     """
+    if img.ndim != 4:
+        raise ValueError(f"img must have shape [B, C, H, W], got {tuple(img.shape)}.")
     B, C, H, W = img.shape
-    C_psf, ks, _ = psf.shape
-    assert C_psf == C, f"psf channels ({C_psf}) must match image channels ({C})."
+    if psf.ndim == 3:
+        C_psf, ks, kw = psf.shape
+        batched_psf = False
+    elif psf.ndim == 4:
+        B_psf, C_psf, ks, kw = psf.shape
+        batched_psf = True
+        if B_psf != B:
+            raise ValueError(
+                f"psf batch size ({B_psf}) must match image batch size ({B})."
+            )
+    else:
+        raise ValueError(
+            f"psf must have shape [C, K, K] or [B, C, K, K], got {tuple(psf.shape)}."
+        )
+    if C_psf != C:
+        raise ValueError(
+            f"psf channels ({C_psf}) must match image channels ({C})."
+        )
+    if ks != kw:
+        raise ValueError("psf kernels must be square.")
 
     # Size-preserving ("same") padding that totals ks - 1, split so both odd and
     # even kernels keep the output shape equal to the input (symmetric ks // 2
@@ -91,8 +112,15 @@ def conv_psf(img, psf, method="conv"):
 
     if method == "conv":
         # Flip the PSF because F.conv2d computes cross-correlation, not convolution.
-        psf_k = torch.flip(psf, [-2, -1]).unsqueeze(1)  # shape [C, 1, ks, ks]
-        return F.conv2d(img_pad, psf_k, groups=C)
+        if not batched_psf:
+            psf_k = torch.flip(psf, [-2, -1]).unsqueeze(1)
+            return F.conv2d(img_pad, psf_k, groups=C)
+
+        # Group over both batch and channel so each image receives its own PSF.
+        psf_k = torch.flip(psf, [-2, -1]).reshape(B * C, 1, ks, ks)
+        img_grouped = img_pad.reshape(1, B * C, *img_pad.shape[-2:])
+        rendered = F.conv2d(img_grouped, psf_k, groups=B * C)
+        return rendered.reshape(B, C, H, W)
 
     if method == "fft":
         Hp, Wp = img_pad.shape[-2:]
@@ -101,7 +129,9 @@ def conv_psf(img, psf, method="conv"):
         # keep the "valid" window (length Hp - ks + 1 == H) at offset ks - 1.
         fh, fw = Hp + ks - 1, Wp + ks - 1
         fimg = torch.fft.rfft2(img_pad, s=(fh, fw))
-        fpsf = torch.fft.rfft2(psf, s=(fh, fw)).unsqueeze(0)  # [1, C, fh, fw // 2 + 1]
+        fpsf = torch.fft.rfft2(psf, s=(fh, fw))
+        if not batched_psf:
+            fpsf = fpsf.unsqueeze(0)
         conv_full = torch.fft.irfft2(fimg * fpsf, s=(fh, fw))  # [B, C, fh, fw]
         return conv_full[..., ks - 1 : ks - 1 + H, ks - 1 : ks - 1 + W]
 

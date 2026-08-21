@@ -57,7 +57,7 @@ class ThinLens(Plane):
             is_square=is_square,
             device=device,
         )
-        self.f = torch.tensor(f, device=device)
+        self.f = torch.as_tensor(f, device=device, dtype=self.d_next.dtype)
 
     def set_f(self, f):
         """Set the focal length.
@@ -65,7 +65,7 @@ class ThinLens(Plane):
         Args:
             f (float): New focal length [mm].
         """
-        self.f = torch.tensor(f, device=self.device)
+        self.f = torch.as_tensor(f, device=self.device, dtype=self.dtype)
 
     @classmethod
     def init_from_dict(cls, surf_dict):
@@ -77,7 +77,15 @@ class ThinLens(Plane):
         Returns:
             thinlens (ThinLens): The constructed thin lens surface.
         """
-        return cls(surf_dict["r"], surf_dict["d_next"], surf_dict["f"])
+        return cls(
+            surf_dict["r"],
+            surf_dict["d_next"],
+            surf_dict["f"],
+            pos_xy=surf_dict.get("pos_xy", [0.0, 0.0]),
+            vec_local=surf_dict.get("vec_local", [0.0, 0.0, 1.0]),
+            is_square=surf_dict.get("is_square", False),
+            device=surf_dict.get("device", "cpu"),
+        )
 
     # =========================================
     # Optimization
@@ -241,10 +249,13 @@ class ThinLens(Plane):
         """
         surf_dict = {
             "type": "ThinLens",
-            "f": round(self.f.item(), 4),
-            "r": round(self.r, 4),
-            "d_next": round(self.d_next.item(), 4),
+            "f": self.f.item(),
+            "r": self.r,
+            "d_next": self.d_next.item(),
             "mat2": "air",
+            "pos_xy": [self.pos_x.item(), self.pos_y.item()],
+            "vec_local": self.vec_local.tolist(),
+            "is_square": self.is_square,
         }
 
         return surf_dict

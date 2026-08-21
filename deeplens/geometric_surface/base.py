@@ -87,11 +87,14 @@ class Surface(DeepObj):
         )
         if not self.d_next.is_floating_point():
             self.d_next = self.d_next.to(torch.get_default_dtype())
-        self.pos_x = torch.tensor(pos_xy[0])
-        self.pos_y = torch.tensor(pos_xy[1])
+        self.pos_x = torch.as_tensor(pos_xy[0], dtype=self.d_next.dtype)
+        self.pos_y = torch.as_tensor(pos_xy[1], dtype=self.d_next.dtype)
 
         # Surface direction vector in global coordinate system
-        self.vec_local = F.normalize(torch.tensor(vec_local), p=2, dim=-1)
+        self.vec_global = self.vec_global.to(self.d_next.dtype)
+        self.vec_local = F.normalize(
+            torch.as_tensor(vec_local, dtype=self.d_next.dtype), p=2, dim=-1
+        )
 
         # Material after the surface
         self.mat2 = Material(mat2)
@@ -310,9 +313,21 @@ class Surface(DeepObj):
             ft / (dfdt + EPSILON), -newton_step_bound, newton_step_bound
         )
 
-        # 3. Determine valid solutions — reuse ft and valid from the diff step
+        # 3. Re-evaluate the actual final update. The previous implementation
+        # checked the residual and aperture before applying the last Newton step,
+        # so a divergent final point could still be marked valid.
         with torch.no_grad():
-            valid = valid & (ft.abs() < newton_convergence)
+            final_o = ray.o + ray.d * t.unsqueeze(-1)
+            final_x, final_y = final_o[..., 0], final_o[..., 1]
+            valid = self.is_valid(final_x, final_y) & (ray.is_valid > 0)
+            x, y = final_x * valid, final_y * valid
+            final_residual = self._sag(x, y) - final_o[..., 2]
+            valid = (
+                valid
+                & torch.isfinite(t)
+                & torch.isfinite(final_residual)
+                & (final_residual.abs() < newton_convergence)
+            )
 
         return t, valid
 
@@ -506,22 +521,28 @@ class Surface(DeepObj):
         dot_product = torch.dot(vec_from, vec_to)
         if torch.abs(dot_product - 1.0) < EPSILON:
             # Vectors are already aligned, return identity matrix
-            return torch.eye(3, device=self.device)
+            return torch.eye(3, device=self.device, dtype=vec_from.dtype)
 
         if torch.abs(dot_product + 1.0) < EPSILON:
             # Vectors are opposite, need 180-degree rotation
             # Find a perpendicular vector
             if torch.abs(vec_from[0]) < 0.9:
-                perp = torch.tensor([1.0, 0.0, 0.0], device=self.device)
+                perp = torch.tensor(
+                    [1.0, 0.0, 0.0], device=self.device, dtype=vec_from.dtype
+                )
             else:
-                perp = torch.tensor([0.0, 1.0, 0.0], device=self.device)
+                perp = torch.tensor(
+                    [0.0, 1.0, 0.0], device=self.device, dtype=vec_from.dtype
+                )
 
             # Get rotation axis by cross product
             axis = torch.linalg.cross(vec_from, perp)
             axis = F.normalize(axis, p=2, dim=-1)
 
             # 180-degree rotation matrix
-            R = 2.0 * torch.outer(axis, axis) - torch.eye(3, device=self.device)
+            R = 2.0 * torch.outer(axis, axis) - torch.eye(
+                3, device=self.device, dtype=axis.dtype
+            )
             return R
 
         # General case: use Rodrigues' rotation formula
@@ -544,7 +565,7 @@ class Surface(DeepObj):
 
         # Rodrigues' formula: R = I + K + K²/(1 + cos(θ))
         # This is equivalent to: R = I + sin(θ)K + (1-cos(θ))K²
-        identity = torch.eye(3, device=self.device)
+        identity = torch.eye(3, device=self.device, dtype=K.dtype)
         R = identity + K + torch.mm(K, K) / (1 + cos_angle)
 
         return R
@@ -799,8 +820,16 @@ class Surface(DeepObj):
         Returns:
             z (torch.Tensor): Global z coordinate [mm], same shape as `x`.
         """
-        x = x if torch.is_tensor(x) else torch.tensor(x, device=self.device)
-        y = y if torch.is_tensor(y) else torch.tensor(y, device=self.device)
+        x = (
+            x
+            if torch.is_tensor(x)
+            else torch.tensor(x, device=self.device, dtype=self.dtype)
+        )
+        y = (
+            y
+            if torch.is_tensor(y)
+            else torch.tensor(y, device=self.device, dtype=self.dtype)
+        )
         if valid_check:
             return self.sag(x, y) + d
         else:
@@ -818,8 +847,16 @@ class Surface(DeepObj):
         Returns:
             sag (float): Surface sag [mm] at (x, y).
         """
-        x = x if torch.is_tensor(x) else torch.tensor(x, device=self.device)
-        y = y if torch.is_tensor(y) else torch.tensor(y, device=self.device)
+        x = (
+            x
+            if torch.is_tensor(x)
+            else torch.tensor(x, device=self.device, dtype=self.dtype)
+        )
+        y = (
+            y
+            if torch.is_tensor(y)
+            else torch.tensor(y, device=self.device, dtype=self.dtype)
+        )
         return self.sag(x, y).item()
 
     # =====================================================================
@@ -893,10 +930,12 @@ class Surface(DeepObj):
             linestyle (str, optional): Matplotlib line style. Defaults to "solid".
         """
         r_eff = self.draw_r()
-        r = torch.linspace(-r_eff, r_eff, 128, device=self.device)
+        r = torch.linspace(
+            -r_eff, r_eff, 128, device=self.device, dtype=self.dtype
+        )
         z = self.surface_with_offset(
             r,
-            torch.zeros(len(r), device=self.device),
+            torch.zeros(len(r), device=self.device, dtype=self.dtype),
             valid_check=False,
             d=d,
         )
@@ -1076,14 +1115,10 @@ class Surface(DeepObj):
         """
         surf_dict = {
             "type": self.__class__.__name__,
-            "r": round(self.r, 4),
-            "d_next": round(self.d_next.item(), 4),
-            "pos_xy": (round(self.pos_x.item(), 4), round(self.pos_y.item(), 4)),
-            "vec_local": (
-                round(self.vec_local[0].item(), 4),
-                round(self.vec_local[1].item(), 4),
-                round(self.vec_local[2].item(), 4),
-            ),
+            "r": self.r,
+            "d_next": self.d_next.item(),
+            "pos_xy": (self.pos_x.item(), self.pos_y.item()),
+            "vec_local": tuple(self.vec_local.tolist()),
             "is_square": self.is_square,
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
