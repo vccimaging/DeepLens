@@ -53,23 +53,30 @@ class Ray(DeepObj):
                 coherent tracing. Defaults to False.
             device (str, optional): Compute device. Defaults to "cpu".
         """
-        # Basic ray parameters - move to device
-        self.o = (o if torch.is_tensor(o) else torch.tensor(o)).to(device)
-        self.d = (d if torch.is_tensor(d) else torch.tensor(d)).to(device)
+        # Basic ray parameters. Directions and all auxiliary tensors inherit the
+        # origin dtype so ray state does not depend on the process-wide default
+        # after construction.
+        self.o = torch.as_tensor(o, device=device)
+        if not self.o.is_floating_point():
+            self.o = self.o.to(torch.get_default_dtype())
+        self.d = torch.as_tensor(d, device=device, dtype=self.o.dtype)
+        super().__init__(dtype=self.o.dtype)
         self.shape = self.o.shape[:-1]
 
         # Wavelength
         assert wvln > 0.1 and wvln < 10.0, "Ray wavelength unit should be [um]"
-        self.wvln = torch.tensor(wvln, device=device)
+        self.wvln = torch.as_tensor(wvln, device=device, dtype=self.o.dtype)
 
         # Auxiliary ray parameters - create directly on device
-        self.is_valid = torch.ones(self.shape, device=device)
-        self.en = torch.ones((*self.shape, 1), device=device)
-        self.bend_penalty = torch.zeros((*self.shape, 1), device=device)
+        self.is_valid = torch.ones(self.shape, device=device, dtype=self.o.dtype)
+        self.en = torch.ones((*self.shape, 1), device=device, dtype=self.o.dtype)
+        self.bend_penalty = torch.zeros(
+            (*self.shape, 1), device=device, dtype=self.o.dtype
+        )
 
         # Coherent ray tracing
         self.is_coherent = is_coherent  # bool
-        self.opl = torch.zeros((*self.shape, 1), device=device)
+        self.opl = torch.zeros((*self.shape, 1), device=device, dtype=self.o.dtype)
 
         self.device = device
         self.d = F.normalize(self.d, p=2, dim=-1)
@@ -101,7 +108,7 @@ class Ray(DeepObj):
 
         if self.is_coherent:
             if t.dtype != torch.float64:
-                raise Warning("Should use float64 in coherent ray tracing.")
+                raise ValueError("Coherent ray tracing requires float64 rays.")
             else:
                 new_opl = self.opl + n * t.unsqueeze(-1)
                 self.opl = torch.where(valid_mask, new_opl, self.opl)
@@ -143,11 +150,21 @@ class Ray(DeepObj):
         center_ref = center_ref.unsqueeze(-2)
 
         # Calculate RMS error for each region
-        rms_error = ((self.o[..., :2] - center_ref[..., :2]) ** 2).sum(-1)
-        rms_error = (rms_error * self.is_valid).sum(-1) / (
-            self.is_valid.sum(-1) + EPSILON
+        squared_radius = ((self.o[..., :2] - center_ref[..., :2]) ** 2).sum(-1)
+        valid_count = self.is_valid.sum(-1)
+        mean_squared_radius = (squared_radius * self.is_valid).sum(-1) / valid_count.clamp_min(1)
+
+        # ``sqrt(0)`` has an infinite derivative and yielded NaN gradients for
+        # coincident or all-invalid bundles. The shifted safe square root keeps
+        # an exact zero value with a finite zero gradient. A bundle with no valid
+        # rays is an invalid optical result, not a perfect zero-RMS spot.
+        epsilon = torch.as_tensor(EPSILON, device=self.o.device, dtype=self.o.dtype)
+        rms_error = torch.sqrt(mean_squared_radius + epsilon) - torch.sqrt(epsilon)
+        rms_error = torch.where(
+            valid_count > 0,
+            rms_error,
+            torch.full_like(rms_error, float("inf")),
         )
-        rms_error = rms_error.sqrt()
 
         # Average RMS error
         return rms_error.mean()
@@ -188,8 +205,11 @@ class Ray(DeepObj):
         ray.opl = self.opl.clone().to(target_device)
 
         ray.is_coherent = self.is_coherent
-        ray.device = target_device
+        ray.device = torch.device(target_device)
+        ray.dtype = ray.o.dtype
         ray.shape = ray.o.shape[:-1]
+        if hasattr(self, "_coordinates_conditioned"):
+            ray._coordinates_conditioned = self._coordinates_conditioned
 
         return ray
 

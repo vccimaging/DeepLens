@@ -300,8 +300,8 @@ class GeoLensEval:
         Algorithm:
             For each wavelength in ``wvln_list``:
                 1. ``self.sample_grid_rays()`` samples a ``grid_h × grid_w``
-                   field-angle grid spanning ``[-vfov/2, vfov/2]`` ×
-                   ``[-hfov/2, hfov/2]``.
+                   field-angle grid spanning horizontal ``[-hfov/2, hfov/2]``
+                   and vertical ``[-vfov/2, vfov/2]`` angles.
                 2. ``self.trace2sensor()`` traces them to the sensor.
                 3. Valid (x, y) positions are scatter-plotted in the
                    corresponding subplot of the ``num_grid × num_grid`` figure.

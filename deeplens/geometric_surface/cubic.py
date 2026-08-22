@@ -59,19 +59,20 @@ class Cubic(Surface):
             is_square=is_square,
             device=device,
         )
-        self.b = torch.tensor(b)
+        tensor_kwargs = {"device": device, "dtype": self.d_next.dtype}
+        self.b = torch.as_tensor(b, **tensor_kwargs)
 
         if len(b) == 1:
-            self.b3 = torch.tensor(b[0])
+            self.b3 = torch.as_tensor(b[0], **tensor_kwargs)
             self.b_degree = 1
         elif len(b) == 2:
-            self.b3 = torch.tensor(b[0])
-            self.b5 = torch.tensor(b[1])
+            self.b3 = torch.as_tensor(b[0], **tensor_kwargs)
+            self.b5 = torch.as_tensor(b[1], **tensor_kwargs)
             self.b_degree = 2
         elif len(b) == 3:
-            self.b3 = torch.tensor(b[0])
-            self.b5 = torch.tensor(b[1])
-            self.b7 = torch.tensor(b[2])
+            self.b3 = torch.as_tensor(b[0], **tensor_kwargs)
+            self.b5 = torch.as_tensor(b[1], **tensor_kwargs)
+            self.b7 = torch.as_tensor(b[2], **tensor_kwargs)
             self.b_degree = 3
         else:
             raise ValueError("Unsupported cubic degree!")
@@ -89,7 +90,16 @@ class Cubic(Surface):
         Returns:
             surf (Cubic): The constructed cubic surface.
         """
-        return cls(surf_dict["r"], surf_dict["d_next"], surf_dict["b"], surf_dict["mat2"])
+        return cls(
+            surf_dict["r"],
+            surf_dict["d_next"],
+            surf_dict["b"],
+            surf_dict["mat2"],
+            pos_xy=surf_dict.get("pos_xy", [0.0, 0.0]),
+            vec_local=surf_dict.get("vec_local", [0.0, 0.0, 1.0]),
+            is_square=surf_dict.get("is_square", False),
+            device=surf_dict.get("device", "cpu"),
+        )
 
     def _sag(self, x, y):
         """Compute surface sag $z(x, y)$ for the cubic phase plate.
@@ -259,8 +269,11 @@ class Cubic(Surface):
             "type": "Cubic",
             "b3": self.b3.item(),
             "r": self.r,
-            "d_next": round(self.d_next.item(), 4),
+            "d_next": self.d_next.item(),
             "b": b,
+            "pos_xy": [self.pos_x.item(), self.pos_y.item()],
+            "vec_local": self.vec_local.tolist(),
+            "is_square": self.is_square,
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

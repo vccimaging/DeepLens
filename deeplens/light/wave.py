@@ -22,6 +22,13 @@ from ..config import DELTA, EPSILON
 from ..base import DeepObj
 
 
+def _crop_padding(u, hpad, wpad):
+    """Remove possibly-zero spatial padding without creating ``0:-0`` slices."""
+    h_slice = slice(hpad, -hpad if hpad else None)
+    w_slice = slice(wpad, -wpad if wpad else None)
+    return u[..., h_slice, w_slice]
+
+
 # ===================================
 # Complex wave field
 # ===================================
@@ -650,22 +657,33 @@ def AngularSpectrumMethod(u, z, wvln, ps, n=1.0, padding=True):
     # Propagation with angular spectrum method
     # Compute fx²+fy² via outer sum of 1D arrays (avoids meshgrid allocation)
     real_dtype = u.real.dtype
-    fx_1d = torch.fft.fftfreq(Wimg, d=ps, device=u.device, dtype=real_dtype)
-    fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=real_dtype)
+    # Phase is far more sensitive to rounding than the FFT itself. Evaluate the
+    # frequency grid and transfer-function phase in float64/complex128, then cast
+    # the transfer function to the field dtype before the FFT multiply. MPS does
+    # not support float64, so retain its native dtype there.
+    phase_dtype = (
+        torch.float64
+        if real_dtype == torch.float32 and u.device.type != "mps"
+        else real_dtype
+    )
+    fx_1d = torch.fft.fftfreq(Wimg, d=ps, device=u.device, dtype=phase_dtype)
+    fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=phase_dtype)
     f2 = fx_1d.unsqueeze(0) ** 2 + fy_1d.unsqueeze(1) ** 2
     radicand = 1 - wvln_mm**2 * f2
-    complex_dtype = torch.complex128 if radicand.dtype == torch.float64 else torch.complex64
+    complex_dtype = torch.complex128 if phase_dtype == torch.float64 else torch.complex64
     square_root = torch.sqrt(radicand.to(complex_dtype))
 
     # H is defined on the unshifted frequency grid to match fft2(u)
-    H = torch.exp(1j * k * z * square_root)
+    H = torch.exp(1j * k * z * square_root).to(
+        torch.complex128 if real_dtype == torch.float64 else torch.complex64
+    )
 
     # https://pytorch.org/docs/stable/generated/torch.fft.fftshift.html#torch.fft.fftshift
     u = ifft2(fft2(u) * H)
 
     # Remove padding
     if padding:
-        u = u[..., Hpad:-Hpad, Wpad:-Wpad]
+        u = _crop_padding(u, Hpad, Wpad)
 
     return u
 
@@ -727,11 +745,16 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
 
     # Angular-spectrum transfer function on the unshifted frequency grid.
     real_dtype = u.real.dtype
-    fx_1d = torch.fft.fftfreq(Wimg, d=ps, device=u.device, dtype=real_dtype)
-    fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=real_dtype)
+    phase_dtype = (
+        torch.float64
+        if real_dtype == torch.float32 and u.device.type != "mps"
+        else real_dtype
+    )
+    fx_1d = torch.fft.fftfreq(Wimg, d=ps, device=u.device, dtype=phase_dtype)
+    fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=phase_dtype)
     f2 = fx_1d.unsqueeze(0) ** 2 + fy_1d.unsqueeze(1) ** 2
     radicand = 1 - wvln_mm**2 * f2
-    complex_dtype = torch.complex128 if radicand.dtype == torch.float64 else torch.complex64
+    complex_dtype = torch.complex128 if phase_dtype == torch.float64 else torch.complex64
     square_root = torch.sqrt(radicand.to(complex_dtype))
     H = torch.exp(1j * k * z * square_root)
 
@@ -750,13 +773,15 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     fx_limit = 1.0 / (wvln_mm * math.sqrt((2.0 * dfx * z_abs) ** 2 + 1.0))
     fy_limit = 1.0 / (wvln_mm * math.sqrt((2.0 * dfy * z_abs) ** 2 + 1.0))
     window = (fx_1d.abs().unsqueeze(0) < fx_limit) & (fy_1d.abs().unsqueeze(1) < fy_limit)
-    H = H * window.to(real_dtype)
+    H = (H * window.to(phase_dtype)).to(
+        torch.complex128 if real_dtype == torch.float64 else torch.complex64
+    )
 
     u = ifft2(fft2(u) * H)
 
     # Remove padding
     if padding:
-        u = u[..., Hpad:-Hpad, Wpad:-Wpad]
+        u = _crop_padding(u, Hpad, Wpad)
 
     return u
 
@@ -855,7 +880,7 @@ def FresnelDiffraction(u, z, wvln, ps, n=1.0, padding=True, TF=None):
 
     # Remove padding (H axis by Hpad, W axis by Wpad)
     if padding:
-        u = u[..., Hpad:-Hpad, Wpad:-Wpad]
+        u = _crop_padding(u, Hpad, Wpad)
 
     return u
 
@@ -913,7 +938,7 @@ def FraunhoferDiffraction(u, z, wvln, ps, n=1.0, padding=True):
 
     # Remove padding
     if padding:
-        u = u[..., Hpad:-Hpad, Wpad:-Wpad]
+        u = _crop_padding(u, Hpad, Wpad)
 
     return u
 
