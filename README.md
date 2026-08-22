@@ -9,7 +9,7 @@ DeepLens is a differentiable optical lens simulator for computational imaging, s
 DeepLens helps researchers and engineers rapidly prototype and design custom optical systems. DeepLens is also **AI-native**: ask your agent to call DeepLens directly, so that its optical reasoning is grounded in real simulation, for example, `use DeepLens to compute the MTF of this lens`.
 
 <p align="center">
-    <a href="https://ai4optics.github.io/docs/deeplens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
+    <a href="https://ai4optics.com/deeplens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
     <a href="https://github.com/singer-yang/DeepLens-tutorials"><img src="https://img.shields.io/badge/Tutorials-black?style=flat&logo=github&logoColor=white" alt="Tutorials"/></a>
     <a href="https://pypi.org/project/deeplens-core/"><img src="https://img.shields.io/pypi/v/deeplens-core?label=PyPI&color=orange&logo=pypi&logoColor=white" alt="PyPI"/></a>
     <a href="https://deepwiki.com/singer-yang/DeepLens"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
