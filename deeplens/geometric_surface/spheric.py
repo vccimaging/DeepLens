@@ -31,7 +31,7 @@ class Spheric(Surface):
         self,
         c,
         r,
-        d,
+        d_next,
         mat2,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
@@ -56,14 +56,14 @@ class Spheric(Surface):
         """
         super(Spheric, self).__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             pos_xy=pos_xy,
             vec_local=vec_local,
             is_square=is_square,
             device=device,
         )
-        self.c = torch.tensor(c)
+        self.c = torch.as_tensor(c, dtype=self.d_next.dtype, device=device)
         self.to(device)
 
     @classmethod
@@ -93,8 +93,12 @@ class Spheric(Surface):
         return cls(
             c=c,
             r=surf_dict["r"],
-            d=surf_dict["d"],
+            d_next=surf_dict["d_next"],
             mat2=surf_dict["mat2"],
+            pos_xy=surf_dict.get("pos_xy", [0.0, 0.0]),
+            vec_local=surf_dict.get("vec_local", [0.0, 0.0, 1.0]),
+            is_square=surf_dict.get("is_square", False),
+            device=surf_dict.get("device", "cpu"),
         )
 
     def _sag(self, x, y):
@@ -195,75 +199,116 @@ class Spheric(Surface):
                 float32, where OPL accumulation loses precision.
         """
         c = self.c
+        original_o = ray.o
+        working_o = original_o
+        pre_t = torch.zeros_like(ray.o[..., 2])
 
-        if torch.abs(c) < EPSILON:
-            # Handle flat surface as a plane
-            t = (0.0 - ray.o[..., 2]) / ray.d[..., 2]
-            new_o = ray.o + t.unsqueeze(-1) * ray.d
-            valid = (new_o[..., 0] ** 2 + new_o[..., 1] ** 2 < self.r**2) & (
-                ray.is_valid > 0
+        # A float32 origin far from a locally represented surface loses the
+        # low-order sag when the large origin and intersection distance cancel.
+        # Re-anchor only such stress rays near the vertex in float64, then solve
+        # the ordinary local intersection in the ray's native dtype.
+        if (
+            ray.o.dtype == torch.float32
+            and not getattr(ray, "_coordinates_conditioned", False)
+            and bool((ray.o[..., 2].abs() > 100.0).any().item())
+        ):
+            far = ray.o[..., 2].abs() > 100.0
+            o64 = ray.o.to(torch.float64)
+            d64 = ray.d.to(torch.float64)
+            anchor_z = torch.where(
+                o64[..., 2] < 0,
+                torch.full_like(o64[..., 2], -10.0),
+                torch.full_like(o64[..., 2], 10.0),
             )
-        else:
-            # Use the vertex-anchored sphere equation. The surface passes
-            # through the local origin, so
-            #
-            #   x² + y² + z² - 2 z R = 0,  R = 1 / c.
-            #
-            # Multiplying by c before substituting o + t*d gives a quadratic
-            # with no R² subtraction:
-            #
-            #   (c |d|²)t² + 2(c(o·d) - d_z)t + (c|o|² - 2o_z) = 0.
-            #
-            # The center-anchored textbook form loses R²*eps absolute
-            # precision in float32 for near-flat surfaces, which is especially
-            # damaging in the compiled HPC implementation.
-            od = torch.sum(ray.o * ray.d, dim=-1)
-            dd = torch.sum(ray.d * ray.d, dim=-1)
-            oo = torch.sum(ray.o * ray.o, dim=-1)
-
-            a = c * dd
-            b = 2.0 * (c * od - ray.d[..., 2])
-            c_coeff = c * oo - 2.0 * ray.o[..., 2]
-
-            discriminant = b * b - 4 * a * c_coeff
-            valid_intersect = discriminant >= 0
-
-            sqrt_discriminant = torch.sqrt(torch.clamp(discriminant, min=EPSILON))
-
-            # Stable root pair. q avoids subtracting nearly equal values;
-            # q/a and c_coeff/q are the two roots by Vieta's formula.
-            q = torch.where(
-                b >= 0,
-                -(b + sqrt_discriminant) / 2.0,
-                (sqrt_discriminant - b) / 2.0,
+            dz64 = torch.where(
+                d64[..., 2].abs() < EPSILON,
+                torch.full_like(d64[..., 2], EPSILON),
+                d64[..., 2],
             )
-            t1 = q / a
-            t2 = c_coeff / q
+            pre_t64 = (anchor_z - o64[..., 2]) / dz64
+            pre_o = (o64 + d64 * pre_t64.unsqueeze(-1)).to(ray.o.dtype)
+            working_o = torch.where(far.unsqueeze(-1), pre_o, ray.o)
+            pre_t = torch.where(far, pre_t64.to(ray.o.dtype), pre_t)
 
-            # Choose intersection closest to z=0 (surface vertex)
-            z1 = ray.o[..., 2] + t1 * ray.d[..., 2]
-            z2 = ray.o[..., 2] + t2 * ray.d[..., 2]
-            use_t1 = torch.abs(z1) < torch.abs(z2)
-            t = torch.where(use_t1, t1, t2)
+        # Use the vertex-anchored sphere equation. The surface passes through
+        # the local origin, so
+        #
+        #   x² + y² + z² - 2 z R = 0,  R = 1 / c.
+        #
+        # Multiplying by c before substituting o + t*d gives a quadratic with
+        # no R² subtraction. Flat surfaces are selected with tensor operations
+        # so tracing does not extract curvature to the host at every surface.
+        is_flat = torch.abs(c) < EPSILON
+        c_solve = torch.where(is_flat, torch.ones_like(c), c)
+        od = torch.sum(working_o * ray.d, dim=-1)
+        dd = torch.sum(ray.d * ray.d, dim=-1)
+        oo = torch.sum(working_o * working_o, dim=-1)
 
-            new_o = ray.o + t.unsqueeze(-1) * ray.d
+        a = c_solve * dd
+        b = 2.0 * (c_solve * od - ray.d[..., 2])
+        c_coeff = c_solve * oo - 2.0 * working_o[..., 2]
 
-            # Check aperture
-            r_squared = new_o[..., 0] ** 2 + new_o[..., 1] ** 2
-            within_aperture = r_squared <= (self.r**2 + EPSILON)
+        discriminant = b * b - 4 * a * c_coeff
+        sphere_valid = discriminant >= 0
+        sqrt_discriminant = torch.sqrt(torch.clamp(discriminant, min=EPSILON))
 
-            valid = valid_intersect & within_aperture & (ray.is_valid > 0)
+        # Stable root pair. q avoids subtracting nearly equal values; q/a and
+        # c_coeff/q are the two roots by Vieta's formula.
+        q = torch.where(
+            b >= 0,
+            -(b + sqrt_discriminant) / 2.0,
+            (sqrt_discriminant - b) / 2.0,
+        )
+        q_safe = torch.where(
+            q.abs() < EPSILON,
+            torch.where(
+                q < 0,
+                -torch.full_like(q, EPSILON),
+                torch.full_like(q, EPSILON),
+            ),
+            q,
+        )
+        t1 = q / a
+        t2 = c_coeff / q_safe
+
+        z1 = working_o[..., 2] + t1 * ray.d[..., 2]
+        z2 = working_o[..., 2] + t2 * ray.d[..., 2]
+        sphere_t = torch.where(torch.abs(z1) < torch.abs(z2), t1, t2)
+
+        dz_safe = torch.where(
+            ray.d[..., 2].abs() < EPSILON,
+            torch.where(
+                ray.d[..., 2] < 0,
+                -torch.full_like(ray.d[..., 2], EPSILON),
+                torch.full_like(ray.d[..., 2], EPSILON),
+            ),
+            ray.d[..., 2],
+        )
+        plane_t = -working_o[..., 2] / dz_safe
+        t = torch.where(is_flat, plane_t, sphere_t)
+        plane_valid = (ray.d[..., 2].abs() >= EPSILON) & torch.isfinite(plane_t)
+        valid_intersect = torch.where(is_flat, plane_valid, sphere_valid)
+
+        new_o = working_o + t.unsqueeze(-1) * ray.d
+        within_aperture = self.is_within_boundary(new_o[..., 0], new_o[..., 1])
+        valid = (
+            valid_intersect
+            & torch.isfinite(t)
+            & within_aperture
+            & (ray.is_valid > 0)
+        )
 
         # Update ray position
-        ray.o = torch.where(valid.unsqueeze(-1), new_o, ray.o)
+        ray.o = torch.where(valid.unsqueeze(-1), new_o, original_o)
         ray.is_valid = ray.is_valid * valid
 
         if ray.is_coherent:
-            if t.abs().max() > 100 and torch.get_default_dtype() == torch.float32:
-                raise Exception(
-                    "Using float32 may cause precision problem for OPL calculation."
+            total_t = pre_t + t
+            if ray.o.dtype == torch.float32 and total_t.abs().max() > 100:
+                raise ValueError(
+                    "Coherent ray tracing over long paths requires float64 rays."
                 )
-            new_opl = ray.opl + n * t.unsqueeze(-1)
+            new_opl = ray.opl + n * total_t.unsqueeze(-1)
             ray.opl = torch.where(valid.unsqueeze(-1), new_opl, ray.opl)
 
         return ray
@@ -315,10 +360,10 @@ class Spheric(Surface):
                 and `lr` keys.
         """
         self.c.requires_grad_(True)
-        self.d.requires_grad_(True)
+        self.d_next.requires_grad_(True)
 
         params = []
-        params.append({"params": [self.d], "lr": lrs[0]})
+        params.append({"params": [self.d_next], "lr": lrs[0]})
         params.append({"params": [self.c], "lr": lrs[1]})
 
         if optim_mat and self.mat2.get_name() != "air":
@@ -338,13 +383,17 @@ class Spheric(Surface):
                 Lengths are in [mm], curvature in
                 [1/mm], rounded to 4 decimals.
         """
-        roc = 1 / self.c.item() if self.c.item() != 0 else 0.0
+        c_value = self.c.item()
+        roc = 1 / c_value if c_value != 0 else 0.0
         surf_dict = {
             "type": "Spheric",
-            "r": round(self.r, 4),
-            "(c)": round(self.c.item(), 4),
-            "roc": round(roc, 4),
-            "(d)": round(self.d.item(), 4),
+            "r": self.r,
+            "(c)": c_value,
+            "roc": roc,
+            "d_next": self.d_next.item(),
+            "pos_xy": [self.pos_x.item(), self.pos_y.item()],
+            "vec_local": self.vec_local.tolist(),
+            "is_square": self.is_square,
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

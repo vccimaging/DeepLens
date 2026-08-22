@@ -308,14 +308,16 @@ class GeoLensOptim:
             #     surf1 = self.surfaces[i]
 
             #     # Penalize diameter to thickness ratio
-            #     diam2thick = 2 * max(surf2.r, surf1.r) / (surf2.d - surf1.d)
+            #     diam2thick = 2 * max(surf2.r, surf1.r) / surf1.d_next
             #     loss_diam2thick += torch.nn.functional.relu(diam2thick - diam2thick_max)
 
             #     # Penalize thick_max to thick_min ratio.
             #     # Use torch.maximum/minimum for differentiable max/min.
             #     r_edge = min(surf2.r, surf1.r)
-            #     thick_center = surf2.d - surf1.d
-            #     thick_edge = surf2.surface_with_offset(r_edge, 0.0) - surf1.surface_with_offset(r_edge, 0.0)
+            #     thick_center = surf1.d_next
+            #     thick_edge = surf2.surface_with_offset(
+            #         r_edge, 0.0, d=self.surf_d(i + 1)
+            #     ) - surf1.surface_with_offset(r_edge, 0.0, d=self.surf_d(i))
             #     thick_max = torch.maximum(thick_center, thick_edge)
             #     thick_min = torch.minimum(thick_center, thick_edge).clamp(min=0.01)
             #     tmax2tmin = thick_max / thick_min
@@ -370,17 +372,19 @@ class GeoLensOptim:
             # Sample surfaces once and reuse for both clearance and envelope
             r_center = torch.tensor(0.0, device=self.device) * current_surf.r
             z_prev_center = current_surf.surface_with_offset(
-                r_center, 0.0, valid_check=False
+                r_center, 0.0, valid_check=False, d=self.surf_d(i)
             )
             z_next_center = next_surf.surface_with_offset(
-                r_center, 0.0, valid_check=False
+                r_center, 0.0, valid_check=False, d=self.surf_d(i + 1)
             )
 
             r_edge = torch.linspace(0.5, 1.0, 16, device=self.device) * current_surf.r
             z_prev_edge = current_surf.surface_with_offset(
-                r_edge, 0.0, valid_check=False
+                r_edge, 0.0, valid_check=False, d=self.surf_d(i)
             )
-            z_next_edge = next_surf.surface_with_offset(r_edge, 0.0, valid_check=False)
+            z_next_edge = next_surf.surface_with_offset(
+                r_edge, 0.0, valid_check=False, d=self.surf_d(i + 1)
+            )
 
             dist_center = z_next_center - z_prev_center
             dist_edges = z_next_edge - z_prev_edge
@@ -401,14 +405,16 @@ class GeoLensOptim:
         # Back focal length
         last_surf = self.surfaces[-1]
         r = torch.linspace(0.0, 1.0, 32, device=self.device) * last_surf.r
-        z_last_surf = self.d_sensor - last_surf.surface_with_offset(r, 0.0)
+        z_last_surf = self.d_sensor - last_surf.surface_with_offset(
+            r, 0.0, d=self.surf_d(-1)
+        )
         bfl_lo = torch.min(z_last_surf)
         bfl_hi = torch.max(z_last_surf)
         loss_clearance += relu((bfl_min - bfl_lo) / bfl_range)
         loss_envelope += relu((bfl_hi - bfl_max) / bfl_range)
 
         # Total track length
-        ttl = self.d_sensor - self.surfaces[0].d
+        ttl = self.d_sensor
         loss_clearance += relu((ttl_min - ttl) / ttl_range)
         loss_envelope += relu((ttl - ttl_max) / ttl_range)
 
@@ -643,7 +649,7 @@ class GeoLensOptim:
         and optionally corrects surface shapes.
 
         Args:
-            lrs (list, optional): Learning rates for [d, c, k, a] parameter groups.
+            lrs (list, optional): Learning rates for [d_next, c, k, a] parameter groups.
                 Defaults to [1e-3, 1e-4, 1e-1, 1e-4].
             iterations (int, optional): Total training iterations. Defaults to 5000.
             test_per_iter (int, optional): Evaluate and save every N iterations.
@@ -741,6 +747,13 @@ class GeoLensOptim:
                     pinhole_ref = -self.psf_center(
                         points_obj=ray.o[:, :, 0, :], method="pinhole"
                     )
+
+            # Iteration 0 is the baseline state. Stop after evaluating iteration
+            # ``iterations`` so the public count equals the number of optimizer
+            # updates rather than performing one extra step.
+            if i == iterations:
+                pbar.update(1)
+                break
 
             # ===> Optimize lens by minimizing RMS
             # Green is traced first: its centroid sets center_ref and drives
@@ -851,11 +864,11 @@ class GeoLensOptim:
         type), plus the sensor distance, into a list of optimizer param groups.
 
         Recommendation:
-            For cellphone lens: [d, c, k, a], [1e-4, 1e-4, 1e-1, 1e-4].
-            For camera lens: [d, c, 0, 0], [1e-3, 1e-4, 0, 0].
+            For cellphone lens: [d_next, c, k, a], [1e-4, 1e-4, 1e-1, 1e-4].
+            For camera lens: [d_next, c, 0, 0], [1e-3, 1e-4, 0, 0].
 
         Args:
-            lrs (list, optional): Learning rates for the [d, c, k, a] parameter
+            lrs (list, optional): Learning rates for the [d_next, c, k, a] parameter
                 groups. Defaults to [1e-4, 1e-4, 1e-2, 1e-4].
             optim_mat (bool, optional): Whether to optimize material parameters.
                 Defaults to False.
@@ -918,10 +931,6 @@ class GeoLensOptim:
                     f"Surface type {surf.__class__.__name__} is not supported for optimization yet."
                 )
 
-        # Optimize sensor place
-        self.d_sensor.requires_grad = True
-        params += [{"params": self.d_sensor, "lr": lrs[0]}]
-
         return params
 
     def get_optimizer(
@@ -933,7 +942,7 @@ class GeoLensOptim:
         """Build an Adam optimizer over all trainable lens parameters.
 
         Args:
-            lrs (list, optional): Learning rates for the [d, c, k, ai] parameter
+            lrs (list, optional): Learning rates for the [d_next, c, k, ai] parameter
                 groups. Defaults to [1e-4, 1e-4, 1e-1, 1e-4].
             optim_surf_range (list or None, optional): Surface indices to
                 optimize. When None, all surfaces are included. Defaults to None.

@@ -44,7 +44,7 @@ class Rank1(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         rank=1,
         V=None,
         Q=None,
@@ -59,7 +59,7 @@ class Rank1(DiffractiveSurface):
         """Initialize a rank-`rank` DOE.
 
         Args:
-            d (float): Distance of the DOE surface. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             rank (int, optional): Rank of the height map. Defaults to 1.
             V (torch.Tensor or None, optional): Left factor, shape [res[0], rank].
                 If None, initialized to small random values. Defaults to None.
@@ -75,7 +75,7 @@ class Rank1(DiffractiveSurface):
             device (str, optional): Compute device. Defaults to "cpu".
         """
         super().__init__(
-            d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
+            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
             fab_step=fab_step, is_square=is_square, device=device,
         )
         self.rank = rank
@@ -91,7 +91,7 @@ class Rank1(DiffractiveSurface):
         from that checkpoint; otherwise they are randomly initialized.
 
         Args:
-            doe_dict (dict): Surface config. Requires keys "d" and "res"; optional
+            doe_dict (dict): Surface config. Requires keys "d_next" and "res"; optional
                 keys "rank", "weight_path", "mat", "wvln0", "fab_ps", "fab_step",
                 "is_square".
 
@@ -104,7 +104,7 @@ class Rank1(DiffractiveSurface):
             w = torch.load(weight_path, weights_only=True)
             V, Q = w["V"], w["Q"]
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             rank=doe_dict.get("rank", 1),
             V=V,
             Q=Q,

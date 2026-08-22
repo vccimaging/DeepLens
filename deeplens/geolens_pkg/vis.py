@@ -74,7 +74,7 @@ class GeoLensVis:
         if entrance_pupil:
             pupilz, pupilr = self.get_entrance_pupil()
         else:
-            pupilz, pupilr = self.surfaces[0].d.item(), self.surfaces[0].r
+            pupilz, pupilr = self.surf_d(0).item(), self.surfaces[0].r
 
         # Sample ray origins, shape [num_rays, 3]
         if plane == "sagittal":
@@ -161,7 +161,7 @@ class GeoLensVis:
         if entrance_pupil:
             pupilz, pupilr = self.calc_entrance_pupil()
         else:
-            pupilz, pupilr = self.surfaces[0].d.item(), self.surfaces[0].r
+            pupilz, pupilr = self.surf_d(0).item(), self.surfaces[0].r
 
         x2 = torch.linspace(-pupilr, pupilr, num_rays) * 0.99
         y2 = torch.zeros_like(x2)
@@ -356,7 +356,7 @@ class GeoLensVis:
 
         # Draw lens surfaces
         for i, s in enumerate(self.surfaces):
-            s.draw_widget(ax)
+            s.draw_widget(ax, d=self.surf_d(i).item())
 
         # Connect two surfaces
         for i in range(len(self.surfaces)):
@@ -367,10 +367,10 @@ class GeoLensVis:
                 r_prev = float(s_prev.draw_r())
                 r = float(s.draw_r())
                 sag_prev = s_prev.surface_with_offset(
-                    r_prev, 0.0, valid_check=False
+                    r_prev, 0.0, valid_check=False, d=self.surf_d(i)
                 ).item()
                 sag = s.surface_with_offset(
-                    r, 0.0, valid_check=False
+                    r, 0.0, valid_check=False, d=self.surf_d(i + 1)
                 ).item()
 
                 if r_prev >= r:
@@ -490,11 +490,11 @@ class GeoLensVis:
                 pass
             else:
                 # Extend the barrier till middle of the air space to the next surface
-                max_curr_surf_d = self.surfaces[i].d.item() + max(
+                max_curr_surf_d = self.surf_d(i).item() + max(
                     self.surfaces[i].surface_sag(0.0, self.surfaces[i].r), 0.0
                 )
                 if i < len(self.surfaces) - 1:
-                    min_next_surf_d = self.surfaces[i + 1].d.item() + min(
+                    min_next_surf_d = self.surf_d(i + 1).item() + min(
                         self.surfaces[i + 1].surface_sag(0.0, self.surfaces[i + 1].r),
                         0.0,
                     )
@@ -520,10 +520,10 @@ class GeoLensVis:
                 barrier_length = 0.0
 
         # # Create rings
-        # for i in range(len(geolens.surfaces)):
-        #     if geolens.surfaces[i].mat2.get_name() != "air":
+        # for i in range(len(self.surfaces)):
+        #     if self.surfaces[i].mat2.get_name() != "air":
         #         ring = {
-        #             "pos_z": geolens.surfaces[i].d.item(),
+        #             "pos_z": self.surf_d(i).item(),
 
         # Plot lens layout (keep the figure open so we can overlay the barrier)
         ax, fig = self.draw_layout(filename, return_fig=True)

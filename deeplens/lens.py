@@ -168,8 +168,8 @@ class Lens(DeepObj):
         if not hasattr(self, "foclen"):
             return
 
-        self.vfov = 2 * float(np.arctan(self.sensor_size[0] / 2 / self.foclen))
-        self.hfov = 2 * float(np.arctan(self.sensor_size[1] / 2 / self.foclen))
+        self.hfov = 2 * float(np.arctan(self.sensor_size[0] / 2 / self.foclen))
+        self.vfov = 2 * float(np.arctan(self.sensor_size[1] / 2 / self.foclen))
         self.dfov = 2 * float(np.arctan(self.r_sensor / self.foclen))
         self.rfov_eff = self.dfov / 2  # effective (paraxial) half-diagonal FoV
         self.rfov = self.rfov_eff  # default to effective; GeoLens overrides with ray-traced value
@@ -268,22 +268,23 @@ class Lens(DeepObj):
         """
         # Compute point source grid
         if grid[0] == 1:
-            x, y = torch.tensor([[0.0]], device=self.device), torch.tensor([[0.0]], device=self.device)
+            x = torch.tensor([[0.0]], device=self.device, dtype=self.dtype)
+            y = torch.tensor([[0.0]], device=self.device, dtype=self.dtype)
             assert not quater, "Quater should be False when grid is 1."
         else:
             if center:
                 # Use center of each patch
                 half_bin_size = 1 / 2 / (grid[0] - 1)
                 x, y = torch.meshgrid(
-                    torch.linspace(-1 + half_bin_size, 1 - half_bin_size, grid[0], device=self.device),
-                    torch.linspace(1 - half_bin_size, -1 + half_bin_size, grid[1], device=self.device),
+                    torch.linspace(-1 + half_bin_size, 1 - half_bin_size, grid[0], device=self.device, dtype=self.dtype),
+                    torch.linspace(1 - half_bin_size, -1 + half_bin_size, grid[1], device=self.device, dtype=self.dtype),
                     indexing="xy",
                 )
             else:
                 # Use corner of image sensor
                 x, y = torch.meshgrid(
-                    torch.linspace(-0.98, 0.98, grid[0], device=self.device),
-                    torch.linspace(0.98, -0.98, grid[1], device=self.device),
+                    torch.linspace(-0.98, 0.98, grid[0], device=self.device, dtype=self.dtype),
+                    torch.linspace(0.98, -0.98, grid[1], device=self.device, dtype=self.dtype),
                     indexing="xy",
                 )
 
@@ -485,14 +486,18 @@ class Lens(DeepObj):
             point_source (torch.Tensor): Point source positions, shape ``[grid, 3]``.
         """
         if grid == 1:
-            r = torch.tensor([0.0], device=self.device)
+            r = torch.tensor([0.0], device=self.device, dtype=self.dtype)
         else:
             # Select center of bin to calculate PSF
             if center:
                 half_bin_size = 1 / 2 / (grid - 1)
-                r = torch.linspace(0, 1 - half_bin_size, grid, device=self.device)
+                r = torch.linspace(
+                    0, 1 - half_bin_size, grid, device=self.device, dtype=self.dtype
+                )
             else:
-                r = torch.linspace(0, 0.98, grid, device=self.device)
+                r = torch.linspace(
+                    0, 0.98, grid, device=self.device, dtype=self.dtype
+                )
 
         # Map radial coordinate to (x, y) based on direction
         if direction == "diagonal":
@@ -535,8 +540,8 @@ class Lens(DeepObj):
         """
         from torchvision.utils import make_grid, save_image
         depth = self.obj_depth if depth is None else depth
-        x = torch.linspace(0, 1, M)
-        y = torch.linspace(0, 1, M)
+        x = torch.linspace(0, 1, M, device=self.device, dtype=self.dtype)
+        y = torch.linspace(0, 1, M, device=self.device, dtype=self.dtype)
         z = torch.full_like(x, depth)
         points = torch.stack((x, y, z), dim=-1)
 
@@ -641,7 +646,11 @@ class Lens(DeepObj):
             patch_center = kwargs.get("patch_center", (0.0, 0.0))
             psf_ks = kwargs.get("psf_ks", PSF_KS)
             img_render = self.render_psf_patch(
-                img_obj, depth=depth, patch_center=patch_center, psf_ks=psf_ks
+                img_obj,
+                depth=depth,
+                patch_center=patch_center,
+                psf_ks=psf_ks,
+                method=kwargs.get("conv_method", "conv"),
             )
 
         elif method == "psf_pixel":
@@ -654,7 +663,14 @@ class Lens(DeepObj):
 
         return img_render
 
-    def render_psf(self, img_obj, depth=None, patch_center=(0, 0), psf_ks=PSF_KS):
+    def render_psf(
+        self,
+        img_obj,
+        depth=None,
+        patch_center=(0, 0),
+        psf_ks=PSF_KS,
+        method="conv",
+    ):
         """Render an image patch using PSF convolution (deprecated alias).
 
         Thin wrapper around `render_psf_patch`. Prefer calling `render_psf_patch`
@@ -673,10 +689,21 @@ class Lens(DeepObj):
         """
         depth = self.obj_depth if depth is None else depth
         return self.render_psf_patch(
-            img_obj, depth=depth, patch_center=patch_center, psf_ks=psf_ks
+            img_obj,
+            depth=depth,
+            patch_center=patch_center,
+            psf_ks=psf_ks,
+            method=method,
         )
 
-    def render_psf_patch(self, img_obj, depth=None, patch_center=(0, 0), psf_ks=PSF_KS):
+    def render_psf_patch(
+        self,
+        img_obj,
+        depth=None,
+        patch_center=(0, 0),
+        psf_ks=PSF_KS,
+        method="conv",
+    ):
         """Render an image patch using a single PSF evaluated at the patch center.
 
         Computes the RGB PSF at `patch_center` and convolves it with the input
@@ -690,6 +717,8 @@ class Lens(DeepObj):
             patch_center (tuple or torch.Tensor): Patch center (x, y) in
                 normalized object coordinates, shape [2] or [B, 2].
             psf_ks (int, optional): PSF kernel size in pixels. Defaults to PSF_KS.
+            method (str, optional): Convolution backend, ``"conv"`` or
+                ``"fft"``. Defaults to ``"conv"``.
 
         Returns:
             img_render (torch.Tensor): Rendered image, shape [B, C, H, W].
@@ -698,8 +727,15 @@ class Lens(DeepObj):
         # Convert patch_center to tensor
         if isinstance(patch_center, (list, tuple)):
             points = (patch_center[0], patch_center[1], depth)
-            points = torch.tensor(points).unsqueeze(0)
+            points = torch.as_tensor(
+                points, device=self.device, dtype=self.dtype
+            ).unsqueeze(0)
         elif isinstance(patch_center, torch.Tensor):
+            patch_center = patch_center.to(device=self.device, dtype=self.dtype)
+            if patch_center.shape[-1] != 2 or patch_center.ndim not in (1, 2):
+                raise ValueError(
+                    "patch_center tensor must have shape [2] or [B, 2]."
+                )
             depth = torch.full_like(patch_center[..., 0], depth)
             points = torch.stack(
                 [patch_center[..., 0], patch_center[..., 1], depth], dim=-1
@@ -710,8 +746,15 @@ class Lens(DeepObj):
             )
 
         # Compute PSF and perform PSF convolution
-        psf = self.psf_rgb(points=points, ks=psf_ks).squeeze(0)
-        img_render = conv_psf(img_obj, psf=psf)
+        psf = self.psf_rgb(points=points, ks=psf_ks)
+        if psf.ndim == 4 and psf.shape[0] == 1:
+            psf = psf.squeeze(0)
+        elif psf.ndim == 4 and psf.shape[0] != img_obj.shape[0]:
+            raise ValueError(
+                f"Per-batch patch centers ({psf.shape[0]}) must match image "
+                f"batch size ({img_obj.shape[0]})."
+            )
+        img_render = conv_psf(img_obj, psf=psf, method=method)
         return img_render
 
     def render_psf_map(
@@ -786,7 +829,7 @@ class Lens(DeepObj):
         if focal_depth is not None:
             if num_layers == 1:
                 disp_ref = torch.tensor(
-                    [1.0 / focal_depth], device=self.device
+                    [1.0 / focal_depth], device=self.device, dtype=self.dtype
                 )
                 return disp_ref, -1.0 / disp_ref
 
@@ -804,17 +847,29 @@ class Lens(DeepObj):
             total_range = near_range + far_range
 
             if total_range < 1e-10:
-                disp_ref = torch.full((num_layers,), focal_disp, device=self.device)
+                disp_ref = torch.full(
+                    (num_layers,), focal_disp, device=self.device, dtype=self.dtype
+                )
             else:
                 n_far  = max(1, round((num_layers - 1) * far_range / total_range))
                 n_near = num_layers - 1 - n_far
 
-                far_disps  = torch.linspace(disp_far, focal_disp, n_far + 1, device=self.device)        # includes focal
-                near_disps = torch.linspace(focal_disp, disp_near, n_near + 1, device=self.device)[1:]   # exclude duplicate focal
+                far_disps = torch.linspace(
+                    disp_far, focal_disp, n_far + 1, device=self.device, dtype=self.dtype
+                )
+                near_disps = torch.linspace(
+                    focal_disp, disp_near, n_near + 1, device=self.device, dtype=self.dtype
+                )[1:]
                 disp_ref = torch.cat([far_disps, near_disps])
         else:
             # Fallback: uniform disparity sampling
-            disp_ref = torch.linspace(1.0 / float(depth_max), 1.0 / float(depth_min), num_layers, device=self.device)
+            disp_ref = torch.linspace(
+                1.0 / float(depth_max),
+                1.0 / float(depth_min),
+                num_layers,
+                device=self.device,
+                dtype=self.dtype,
+            )
 
         depths_ref = -1.0 / disp_ref
         return disp_ref, depths_ref
@@ -845,12 +900,17 @@ class Lens(DeepObj):
             [1] "Aberration-Aware Depth-from-Focus", TPAMI 2023.
             [2] "Efficient Depth- and Spatially-Varying Image Simulation for Defocus Deblur", ICCVW 2025.
         """
-        if depth_map.min() < 0:
-            raise ValueError("Depth map should be positive.")
-
         if len(depth_map.shape) == 3:
             # [B, H, W] -> [B, 1, H, W]
             depth_map = depth_map.unsqueeze(1)
+        elif len(depth_map.shape) != 4:
+            raise ValueError("Depth map must have shape [B, H, W] or [B, 1, H, W].")
+        if depth_map.shape[1] != 1:
+            raise ValueError("Depth map must have exactly one depth channel.")
+        if not bool(torch.isfinite(depth_map).all().item()):
+            raise ValueError("Depth map must contain only finite values.")
+        if bool((depth_map <= 0).any().item()):
+            raise ValueError("Depth map values must be strictly positive [mm].")
 
         if method == "psf_patch":
             # Render an image patch (same FoV, different depth)
@@ -912,8 +972,12 @@ class Lens(DeepObj):
 
             # Calculate points in the object space
             points_xy = torch.meshgrid(
-                torch.linspace(-1, 1, img_obj.shape[-1], device=self.device),
-                torch.linspace(1, -1, img_obj.shape[-2], device=self.device),
+                torch.linspace(
+                    -1, 1, img_obj.shape[-1], device=self.device, dtype=self.dtype
+                ),
+                torch.linspace(
+                    1, -1, img_obj.shape[-2], device=self.device, dtype=self.dtype
+                ),
                 indexing="xy",
             )
             points_xy = torch.stack(points_xy, dim=0).unsqueeze(0)

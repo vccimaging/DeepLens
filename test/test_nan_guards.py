@@ -57,7 +57,7 @@ def test_qtype_sag_finite_beyond_conic_boundary():
     """Beyond the conic boundary (1+k)c^2 r^2 > 1 the sqrt argument goes
     negative; clamping (not + EPSILON) keeps sag/derivatives finite."""
     # boundary at r = 1/c = 1 mm
-    surf = QTypeFreeform(r=5.0, d=0.0, c=1.0, k=0.0, qm=None, mat2="air")
+    surf = QTypeFreeform(r=5.0, d_next=0.0, c=1.0, k=0.0, qm=None, mat2="air")
     x = torch.tensor([2.0])  # r = 2 mm > 1 mm
     y = torch.tensor([0.0])
 

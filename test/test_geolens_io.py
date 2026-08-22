@@ -107,7 +107,7 @@ class TestZMXIO:
         """
         from deeplens.geometric_surface import Aperture
 
-        aperture = Aperture(r=2.5, d=0.0)
+        aperture = Aperture(r=2.5, d_next=0.0)
         surf_str = aperture.zmx_str(surf_idx=1, d_next=torch.tensor(5.0))
 
         assert "STOP" in surf_str

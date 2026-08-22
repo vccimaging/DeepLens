@@ -1,5 +1,7 @@
 """Tests for deeplens/optics/diffraclens.py — DiffractiveLens."""
 
+import json
+
 import pytest
 import torch
 
@@ -22,7 +24,32 @@ class TestDiffractiveLensInit:
         """sample_diffraclens fixture creates a valid lens."""
         lens = sample_diffraclens
         assert len(lens.surfaces) == 1
-        assert lens.d_sensor is not None
+        assert lens.d_sensor.item() == pytest.approx(50.0)
+        assert lens.surf_d(0).item() == pytest.approx(0.0)
+        assert lens.surfaces[0].d_next.item() == pytest.approx(50.0)
+
+    def test_sensor_setter_preserves_last_thickness_tensor(self, sample_diffraclens):
+        lens = sample_diffraclens
+        last_leaf = lens.surfaces[-1].d_next
+
+        lens.d_sensor = 52.5
+
+        assert lens.surfaces[-1].d_next is last_leaf
+        assert lens.d_sensor.item() == pytest.approx(52.5)
+
+    def test_json_read_ignores_legacy_absolute_d(self, sample_diffraclens, tmp_path):
+        from deeplens import DiffractiveLens
+
+        path = tmp_path / "diffractive.json"
+        sample_diffraclens.write_lens_json(str(path))
+        data = json.loads(path.read_text())
+        data["surfaces"][0]["d"] = 1234.0
+        path.write_text(json.dumps(data))
+
+        loaded = DiffractiveLens(str(path), device="cpu")
+
+        assert loaded.surfaces[0].d_next.item() == pytest.approx(50.0)
+        assert not hasattr(loaded.surfaces[0], "d")
 
 
 class TestDiffractiveLensPSF:
@@ -74,7 +101,7 @@ class TestDiffractiveLensOffAxisCentering:
 
         old = torch.get_default_dtype()
         lens = DiffractiveLens(device="cpu")
-        lens.surfaces = [Fresnel(f0=50, d=0, res=256, fab_ps=0.008)]
+        lens.surfaces = [Fresnel(f0=50, d_next=0, res=256, fab_ps=0.008)]
         lens.surfaces[0].to(torch.device("cpu"))
         lens.d_sensor = torch.tensor(50.0, dtype=torch.float64)
         lens.foclen = 50.0

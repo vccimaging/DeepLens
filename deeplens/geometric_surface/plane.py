@@ -16,7 +16,7 @@ class Plane(Surface):
     Attributes:
         r (float): Aperture radius [mm]. For a square aperture this is the
             circumscribed-circle radius (half-diagonal).
-        d (torch.Tensor): Axial vertex position [mm].
+        d_next (torch.Tensor): Axial thickness to the next vertex [mm].
         mat2 (Material): Material on the transmission side of the surface.
         is_square (bool): Whether the aperture is square rather than circular.
         w (float): Square-aperture width [mm], present only when `is_square`.
@@ -26,7 +26,7 @@ class Plane(Surface):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         mat2,
         pos_xy=[0.0, 0.0],
         vec_local=[0.0, 0.0, 1.0],
@@ -39,7 +39,7 @@ class Plane(Surface):
             r (float): Aperture radius [mm]. For a square aperture this is the
                 circumscribed-circle radius (half-diagonal), so the side length
                 is $r\\sqrt{2}$.
-            d (float): Axial position of the surface vertex [mm].
+            d_next (float): Axial thickness to the next vertex [mm].
             mat2 (str or Material): Material on the transmission side
                 (e.g. `"N-BK7"`, `"air"`).
             pos_xy (list[float], optional): Lateral offset $[x, y]$ [mm].
@@ -52,7 +52,7 @@ class Plane(Surface):
         Surface.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -66,12 +66,24 @@ class Plane(Surface):
 
         Args:
             surf_dict (dict): Surface parameters with keys "r" (radius [mm]),
-                "d" (axial position [mm]), and "mat2" (transmission material).
+                "d_next" (thickness [mm]), and "mat2" (transmission material).
+                Legacy prescriptions may provide the aperture extent as "l".
 
         Returns:
             plane (Plane): The reconstructed plane surface.
         """
-        return cls(surf_dict["r"], surf_dict["d"], surf_dict["mat2"])
+        radius = surf_dict.get("r", surf_dict.get("l"))
+        if radius is None:
+            raise KeyError("Plane surface requires 'r' (or legacy 'l').")
+        return cls(
+            r=radius,
+            d_next=surf_dict["d_next"],
+            mat2=surf_dict["mat2"],
+            is_square=surf_dict.get("is_square", False),
+            pos_xy=surf_dict.get("pos_xy", [0.0, 0.0]),
+            vec_local=surf_dict.get("vec_local", [0.0, 0.0, 1.0]),
+            device=surf_dict.get("device", "cpu"),
+        )
 
     def intersect(self, ray, n=1.0):
         """Solve the ray-plane intersection in local coordinates and update the ray.
@@ -95,7 +107,7 @@ class Plane(Surface):
         # Solve intersection
         t = (0.0 - ray.o[..., 2]) / ray.d[..., 2]
         new_o = ray.o + t.unsqueeze(-1) * ray.d
-        
+
         # Aperture mask
         if self.is_square:
             valid = (
@@ -183,11 +195,11 @@ class Plane(Surface):
     # Optimization
     # =========================================
     def get_optimizer_params(self, lrs=[1e-4], optim_mat=False):
-        """Enable gradients on the axial position `d` and return optimizer param groups.
+        """Enable gradients on `d_next` and return optimizer parameter groups.
 
         Args:
             lrs (list[float], optional): Learning rates; `lrs[0]` is applied to
-                the axial position `d`. Defaults to [1e-4].
+                `d_next`. Defaults to [1e-4].
             optim_mat (bool, optional): If True, also append the material's
                 optimizer parameters (skipped when the material is air).
                 Defaults to False.
@@ -198,9 +210,9 @@ class Plane(Surface):
         """
         params = []
 
-        # Optimize d
-        self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[0]})
+        # Optimize sequential thickness.
+        self.d_next.requires_grad_(True)
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         # Optimize material parameters
         if optim_mat and self.mat2.get_name() != "air":
@@ -216,13 +228,15 @@ class Plane(Surface):
 
         Returns:
             surf_dict (dict): Surface parameters with keys "type", "r" (radius
-                [mm]), "(d)" (axial position [mm], rounded), "is_square", and
+                [mm]), "d_next" (thickness [mm], rounded), "is_square", and
                 "mat2" (material name).
         """
         surf_dict = {
             "type": "Plane",
             "r": self.r,
-            "(d)": round(self.d.item(), 4),
+            "d_next": self.d_next.item(),
+            "pos_xy": [self.pos_x.item(), self.pos_y.item()],
+            "vec_local": self.vec_local.tolist(),
             "is_square": self.is_square,
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),

@@ -43,7 +43,7 @@ class RotationallySymmetric(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         f0=None,
         n_rings=None,
         init="fresnel",
@@ -65,7 +65,7 @@ class RotationallySymmetric(DiffractiveSurface):
         initializes a near-zero constant profile.
 
         Args:
-            d (float): Axial position of the DOE plane. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             f0 (float or None, optional): Focal length used by `init="fresnel"`.
                 [mm]. Required when `init="fresnel"` and `radial_phase` is None.
                 Defaults to None.
@@ -91,7 +91,7 @@ class RotationallySymmetric(DiffractiveSurface):
             ValueError: If `init` is not "fresnel" or "flat".
         """
         super().__init__(
-            d=d, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
+            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
             fab_step=fab_step, is_square=is_square, device=device,
         )
         self.n_rings = self.res[0] // 2 if n_rings is None else n_rings
@@ -129,7 +129,7 @@ class RotationallySymmetric(DiffractiveSurface):
         loaded and used directly, bypassing the `init` initialization.
 
         Args:
-            doe_dict (dict): Dictionary of DOE parameters. Must contain "d" and
+            doe_dict (dict): Dictionary of DOE parameters. Must contain "d_next" and
                 "res"; optionally "weight_path", "f0", "n_rings", "init", "mat",
                 "wvln0", "fab_ps", "fab_step", and "circular".
 
@@ -141,7 +141,7 @@ class RotationallySymmetric(DiffractiveSurface):
         if weight_path is not None:
             radial_phase = torch.load(weight_path, weights_only=True)
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             f0=doe_dict.get("f0", None),
             n_rings=doe_dict.get("n_rings", None),
             init=doe_dict.get("init", "fresnel"),

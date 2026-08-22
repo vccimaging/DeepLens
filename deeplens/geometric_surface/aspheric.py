@@ -49,7 +49,7 @@ class Aspheric(Surface):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         c,
         k,
         ai,
@@ -85,7 +85,7 @@ class Aspheric(Surface):
         Surface.__init__(
             self,
             r=r,
-            d=d,
+            d_next=d_next,
             mat2=mat2,
             pos_xy=pos_xy,
             vec_local=vec_local,
@@ -93,21 +93,22 @@ class Aspheric(Surface):
             device=device,
         )
 
-        self.c = torch.tensor(c)
-        self.k = torch.tensor(k)
+        tensor_kwargs = {"dtype": self.d_next.dtype, "device": device}
+        self.c = torch.as_tensor(c, **tensor_kwargs)
+        self.k = torch.as_tensor(k, **tensor_kwargs)
 
         # 2nd-order coefficient (legacy, not optimised)
         if ai2 is not None:
-            self.ai2 = torch.tensor(float(ai2))
+            self.ai2 = torch.as_tensor(ai2, **tensor_kwargs)
         else:
             self.ai2 = None
 
         if ai is not None and len(ai) > 0:
-            self.ai = torch.tensor(ai)
+            self.ai = torch.as_tensor(ai, **tensor_kwargs)
             self.ai_degree = len(ai)
             # ai[0] -> ai4, ai[1] -> ai6, ai[2] -> ai8, ...
             for i, a in enumerate(ai):
-                setattr(self, f"ai{2 * (i + 2)}", torch.tensor(a))
+                setattr(self, f"ai{2 * (i + 2)}", torch.as_tensor(a, **tensor_kwargs))
         else:
             self.ai = None
             self.ai_degree = 0
@@ -156,12 +157,16 @@ class Aspheric(Surface):
 
         return cls(
             r=surf_dict["r"],
-            d=surf_dict["d"],
+            d_next=surf_dict["d_next"],
             c=c,
             k=surf_dict["k"],
             ai=ai,
             ai2=ai2_val,
             mat2=surf_dict["mat2"],
+            pos_xy=surf_dict.get("pos_xy", [0.0, 0.0]),
+            vec_local=surf_dict.get("vec_local", [0.0, 0.0, 1.0]),
+            is_square=surf_dict.get("is_square", False),
+            device=surf_dict.get("device", "cpu"),
         )
 
     def _get_curvature_params(self):
@@ -294,6 +299,72 @@ class Aspheric(Surface):
         return 10e3
 
     # =======================================
+    # Intersection
+    # =======================================
+
+    def newton_initial_t(self, ray):
+        """Seed Newton's method with the base-sphere intersection.
+
+        The base sphere is defined by the asphere curvature ``c`` with
+        conic constant and polynomial coefficients set to zero. Its vertex is
+        at the local origin and its center is at ``(0, 0, 1/c)``. Of the two
+        analytic intersections, this method selects the point closest to the
+        vertex, matching the sag branch represented by :meth:`_sag`.
+
+        A repeated root is handled explicitly. A flat base, a ray that misses
+        the sphere, or a non-finite analytic result falls back safely to the
+        vertex-plane approximation supplied by :class:`Surface`.
+
+        Args:
+            ray (Ray): Input ray bundle in local surface coordinates.
+
+        Returns:
+            t (torch.Tensor): Initial intersection parameter [mm], shape [...]
+                matching the ray batch.
+        """
+        t_plane = super().newton_initial_t(ray)
+        c = self.c
+
+        if c.abs() < EPSILON:
+            return t_plane
+
+        # Vertex-anchored base-sphere equation:
+        #
+        #   c * (x^2 + y^2 + z^2) - 2z = 0.
+        #
+        # This form avoids the R^2 subtraction in the center-anchored
+        # equation and remains accurate for shallow curvatures in float32.
+        od = torch.sum(ray.o * ray.d, dim=-1)
+        dd = torch.sum(ray.d * ray.d, dim=-1)
+        oo = torch.sum(ray.o * ray.o, dim=-1)
+
+        a = c * dd
+        b = 2.0 * (c * od - ray.d[..., 2])
+        c_coeff = c * oo - 2.0 * ray.o[..., 2]
+        discriminant = b * b - 4.0 * a * c_coeff
+        sqrt_discriminant = torch.sqrt(torch.clamp(discriminant, min=0.0))
+
+        # Stable quadratic roots. For a repeated root q is zero, so use the
+        # standard repeated-root expression for the second candidate.
+        q = torch.where(
+            b >= 0,
+            -(b + sqrt_discriminant) / 2.0,
+            (sqrt_discriminant - b) / 2.0,
+        )
+        t1 = q / a
+        repeated_root = -b / (2.0 * a)
+        q_is_nonzero = q.abs() > EPSILON
+        q_safe = torch.where(q_is_nonzero, q, torch.ones_like(q))
+        t2 = torch.where(q_is_nonzero, c_coeff / q_safe, repeated_root)
+
+        z1 = ray.o[..., 2] + t1 * ray.d[..., 2]
+        z2 = ray.o[..., 2] + t2 * ray.d[..., 2]
+        t_sphere = torch.where(z1.abs() < z2.abs(), t1, t2)
+
+        has_real_finite_root = (discriminant >= 0) & torch.isfinite(t_sphere)
+        return torch.where(has_real_finite_root, t_sphere, t_plane)
+
+    # =======================================
     # Optimization
     # =======================================
 
@@ -320,8 +391,8 @@ class Aspheric(Surface):
         params = []
 
         # Optimize distance
-        self.d.requires_grad_(True)
-        params.append({"params": [self.d], "lr": lrs[0]})
+        self.d_next.requires_grad_(True)
+        params.append({"params": [self.d_next], "lr": lrs[0]})
 
         # Optimize curvature
         self.c.requires_grad_(True)
@@ -369,15 +440,19 @@ class Aspheric(Surface):
                 `(c)`/`(ai*)`/`(mat2_n)`/`(mat2_V)` entries). Lengths in [mm], `c` in [1/mm].
         """
         has_ai2 = self.ai2 is not None
+        c_value = self.c.item()
         surf_dict = {
             "type": "Aspheric",
-            "r": round(self.r, 4),
-            "(c)": round(self.c.item(), 4),
-            "roc": round(1 / self.c.item(), 4),
-            "d": round(self.d.item(), 4),
-            "k": round(self.k.item(), 4),
+            "r": self.r,
+            "(c)": c_value,
+            "roc": 0.0 if c_value == 0.0 else 1.0 / c_value,
+            "d_next": self.d_next.item(),
+            "k": self.k.item(),
             "ai": [],
             "use_ai2": has_ai2,
+            "pos_xy": [self.pos_x.item(), self.pos_y.item()],
+            "vec_local": self.vec_local.tolist(),
+            "is_square": self.is_square,
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),
@@ -386,14 +461,14 @@ class Aspheric(Surface):
         # Prepend a2 to ai list if present (ai2 key is informational;
         # deserialization reads ai[0] when use_ai2=True)
         if has_ai2:
-            surf_dict["ai2"] = float(format(self.ai2.item(), ".6e"))
-            surf_dict["ai"].append(float(format(self.ai2.item(), ".6e")))
+            surf_dict["ai2"] = self.ai2.item()
+            surf_dict["ai"].append(self.ai2.item())
 
         for i in range(self.ai_degree):
             order = i + 2
             coeff = getattr(self, f"ai{2 * order}")
-            surf_dict[f"(ai{2 * order})"] = float(format(coeff.item(), ".6e"))
-            surf_dict["ai"].append(float(format(coeff.item(), ".6e")))
+            surf_dict[f"(ai{2 * order})"] = coeff.item()
+            surf_dict["ai"].append(coeff.item())
 
         return surf_dict
 

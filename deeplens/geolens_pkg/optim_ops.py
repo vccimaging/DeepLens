@@ -161,6 +161,7 @@ class GeoLensSurfOps:
 
             other_idx = next_idx if cap_idx == prev_idx else prev_idx
             other_r = proposed_r[other_idx]
+            z_off = {prev_idx: 0.0, next_idx: float(prev_surf.d_next)}
 
             required_r = max(
                 float(surf_r_max[cap_idx].item()),
@@ -174,10 +175,16 @@ class GeoLensSurfOps:
             )
             r_grid = cand_overlap_r.unsqueeze(1) * r_frac.unsqueeze(0)
             z_prev_grid = prev_surf.surface_with_offset(
-                r_grid.reshape(-1), 0.0, valid_check=False
+                r_grid.reshape(-1),
+                0.0,
+                valid_check=False,
+                d=z_off[prev_idx],
             ).reshape(n_cand, n_edge)
             z_next_grid = next_surf.surface_with_offset(
-                r_grid.reshape(-1), 0.0, valid_check=False
+                r_grid.reshape(-1),
+                0.0,
+                valid_check=False,
+                d=z_off[next_idx],
             ).reshape(n_cand, n_edge)
             per_cand_gap = (z_next_grid - z_prev_grid).min(dim=-1).values
             overlap_ok = per_cand_gap >= edge_min
@@ -193,9 +200,13 @@ class GeoLensSurfOps:
                 torch.tensor(other_r, device=self.device),
                 torch.tensor(0.0, device=self.device),
                 valid_check=False,
+                d=z_off[other_idx],
             )
             z_cap_at_cand = cap_surf.surface_with_offset(
-                cand_r, torch.zeros_like(cand_r), valid_check=False
+                cand_r,
+                torch.zeros_like(cand_r),
+                valid_check=False,
+                d=z_off[cap_idx],
             )
             if cap_idx > other_idx:
                 # cap is later in light path — must stay axially after other
@@ -252,24 +263,14 @@ class GeoLensSurfOps:
     def correct_shape(self, mounting_margin=None):
         """Correct invalid lens shape during lens design optimization.
 
-        Applies two correction rules to restore valid lens geometry:
-
-        1. Shift all surfaces (and the sensor) so the first surface sits at
-           $z = 0$ mm.
-        2. Prune all surfaces to let all valid rays pass through.
+        The first surface is always at z=0 under sequential geometry, so shape
+        correction only needs to prune surfaces to let valid rays pass.
 
         Args:
             mounting_margin (float or None, optional): Absolute mounting margin
                 [mm] for surface pruning, passed through to `prune_surf`.
                 Defaults to None.
         """
-        # Rule 1: Move the first surface to z = 0.0
-        move_dist = self.surfaces[0].d.item()
-        for surf in self.surfaces:
-            surf.d -= move_dist
-        self.d_sensor -= move_dist
-
-        # Rule 2: Prune all surfaces
         self.prune_surf(mounting_margin=mounting_margin)
 
     @torch.no_grad()

@@ -24,7 +24,7 @@ class Pixel2D(DiffractiveSurface):
 
     def __init__(
         self,
-        d,
+        d_next,
         phase_map_path=None,
         res=(2000, 2000),
         mat="fused_silica",
@@ -39,7 +39,7 @@ class Pixel2D(DiffractiveSurface):
         values (`torch.randn * 1e-3`); otherwise it is loaded from the given path.
 
         Args:
-            d (float): Distance of the DOE surface along the optical axis. [mm]
+            d_next (float): Axial thickness to the next plane. [mm]
             phase_map_path (str or None, optional): Path to a saved phase-map
                 tensor to load. If None, the phase map is randomly initialized.
                 Defaults to None.
@@ -55,7 +55,7 @@ class Pixel2D(DiffractiveSurface):
         Raises:
             ValueError: If `phase_map_path` is neither None nor a string.
         """
-        super().__init__(d=d, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, wvln0=wvln0, device=device)
+        super().__init__(d_next=d_next, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, wvln0=wvln0, device=device)
 
         # Initialize phase map with random values
         if phase_map_path is None:
@@ -72,14 +72,14 @@ class Pixel2D(DiffractiveSurface):
         """Initialize a Pixel2D DOE from a dict.
 
         Args:
-            doe_dict (dict): Surface dict with keys "d" and "res" required and
+            doe_dict (dict): Surface dict with keys "d_next" and "res" required and
                 optional keys "mat", "fab_ps", "fab_step", "phase_map_path", "wvln0".
 
         Returns:
             doe (Pixel2D): The constructed Pixel2D DOE.
         """
         return cls(
-            d=doe_dict["d"],
+            d_next=doe_dict["d_next"],
             res=doe_dict["res"],
             mat=doe_dict.get("mat", "fused_silica"),
             fab_ps=doe_dict.get("fab_ps", 0.001),

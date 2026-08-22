@@ -163,7 +163,7 @@ class TestGradientFlow:
             if hasattr(s, "c") and isinstance(s.c, torch.Tensor) and s.c.grad is not None:
                 has_grad = True
                 break
-            if hasattr(s, "d") and isinstance(s.d, torch.Tensor) and s.d.grad is not None:
+            if hasattr(s, "d_next") and isinstance(s.d_next, torch.Tensor) and s.d_next.grad is not None:
                 has_grad = True
                 break
         assert has_grad, "No gradients found on lens parameters after backward()"

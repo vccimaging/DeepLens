@@ -141,7 +141,20 @@ class HybridLens(Lens):
         with open(filename, "r") as f:
             data = json.load(f)
 
-            doe_dict = data["DOE"]
+            doe_dict = dict(data["DOE"])
+            sensor_d = geolens.d_sensor.detach().clone()
+            if "d_next" in doe_dict:
+                doe_gap = torch.as_tensor(doe_dict["d_next"], device=self.device)
+                doe_vertex_d = sensor_d - doe_gap
+            elif "d" in doe_dict:
+                # Backward compatibility for legacy hybrid files whose DOE
+                # stored an absolute plane position.
+                doe_vertex_d = torch.as_tensor(doe_dict["d"], device=self.device)
+                doe_gap = sensor_d - doe_vertex_d
+                doe_dict["d_next"] = float(doe_gap)
+            else:
+                raise ValueError("Hybrid DOE must define d_next.")
+
             doe_param_model = doe_dict["type"].lower()
             if doe_param_model == "binary2":
                 doe = Binary2.init_from_dict(doe_dict)
@@ -160,11 +173,18 @@ class HybridLens(Lens):
         # Add a Plane/Phase surface to GeoLens (DOE placeholder).
         # Match the DOE's actual aperture (square vs circular) so that rays
         # outside the DOE region are correctly culled at the placeholder.
+        # Split the existing last-surface-to-sensor gap at the DOE plane. Both
+        # the geometric placeholder and wave-optics DOE use d_next.
+        last_vertex_d = geolens.surf_d(-1).detach().clone()
+        geolens.surfaces[-1].d_next = doe_vertex_d - last_vertex_d
         geolens.surfaces.append(
-            Plane(d=doe.d.item(), r=doe.r, mat2="air", is_square=doe.is_square)
+            Plane(
+                d_next=doe.d_next,
+                r=doe.r,
+                mat2="air",
+                is_square=doe.is_square,
+            )
         )
-        # r_doe = float(np.sqrt(doe.w**2 + doe.h**2) / 2)
-        # geolens.surfaces.append(Phase(r=r_doe, d=doe.d))
         self.geolens = geolens
         self.foclen = geolens.foclen
 
@@ -197,15 +217,12 @@ class HybridLens(Lens):
         for i, s in enumerate(geolens.surfaces[:-1]):
             surf_dict = s.surf_dict()
 
-            # To exclude the last surface (DOE)
-            if i < len(geolens.surfaces) - 2:
-                surf_dict["d_next"] = round(
-                    geolens.surfaces[i + 1].d.item() - geolens.surfaces[i].d.item(), 3
-                )
-            else:
-                surf_dict["d_next"] = round(
-                    geolens.d_sensor.item() - geolens.surfaces[i].d.item(), 3
-                )
+            # Exclude the DOE placeholder. Its sensor gap is folded back into
+            # the final serialized refractive surface for reload compatibility.
+            d_next = s.d_next
+            if i == len(geolens.surfaces) - 2:
+                d_next = d_next + geolens.surfaces[-1].d_next
+            surf_dict["d_next"] = round(float(d_next), 3)
 
             data["surfaces"].append(surf_dict)
 
@@ -239,6 +256,7 @@ class HybridLens(Lens):
         during coherent ray tracing and ASM propagation. Called automatically by
         `__init__`.
         """
+        self.dtype = torch.float64
         self.geolens.astype(torch.float64)
         self.doe.astype(torch.float64)
 
@@ -312,9 +330,10 @@ class HybridLens(Lens):
             "Coherent ray tracing spp is too small, "
             "which may lead to inaccurate simulation."
         )
-        assert torch.get_default_dtype() == torch.float64, (
-            "Default dtype must be set to float64 for accurate phase tracing."
-        )
+        if self.dtype != torch.float64 or self.geolens.dtype != torch.float64:
+            raise ValueError(
+                "Coherent phase tracing requires float64 lens state; call double()."
+            )
 
         geolens, doe = self.geolens, self.doe
 
@@ -343,7 +362,7 @@ class HybridLens(Lens):
         ray = geolens.sample_from_points(points=point_obj, num_rays=spp, wvln=wvln)
         ray.is_coherent = True
         ray, _ = geolens.trace(ray)
-        ray = ray.prop_to(doe.d)
+        ray = ray.prop_to(geolens.surf_d(-1))
 
         # Calculate full-resolution complex field for exit-pupil diffraction
         wavefront = forward_integral(
@@ -401,9 +420,9 @@ class HybridLens(Lens):
         upsample_factor = kwargs.get("upsample_factor", None)
         wvln = self.primary_wvln if wvln is None else wvln
         # Check double precision
-        if not torch.get_default_dtype() == torch.float64:
+        if self.dtype != torch.float64 or self.geolens.dtype != torch.float64:
             raise ValueError(
-                "Please call HybridLens.double() to set the default dtype to float64 for accurate phase tracing."
+                "Please call HybridLens.double() for accurate phase tracing."
             )
 
         # Check lens last surface
@@ -414,9 +433,11 @@ class HybridLens(Lens):
 
         # Compute pupil field by coherent ray tracing
         if isinstance(points, list):
-            point0 = torch.tensor(points)
+            point0 = torch.as_tensor(
+                points, device=self.device, dtype=self.dtype
+            )
         elif isinstance(points, torch.Tensor):
-            point0 = points
+            point0 = points.to(device=self.device, dtype=self.dtype)
         else:
             raise ValueError("point should be a list or a torch.Tensor.")
 
@@ -449,7 +470,7 @@ class HybridLens(Lens):
         )
         sensor_field = AngularSpectrumMethod(
             wavefront,
-            z=geolens.d_sensor - doe.d,
+            z=doe.d_next,
             wvln=wvln,
             ps=doe.ps / upsample_factor,
             padding=False,

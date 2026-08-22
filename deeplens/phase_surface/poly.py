@@ -35,7 +35,7 @@ class PolyPhase(Phase):
     def __init__(
         self,
         r,
-        d,
+        d_next,
         order2=0.0,
         order3=0.0,
         order4=0.0,
@@ -73,7 +73,7 @@ class PolyPhase(Phase):
         """
         super().__init__(
             r=r,
-            d=d,
+            d_next=d_next,
             norm_radii=norm_radii,
             mat2=mat2,
             pos_xy=pos_xy,
@@ -247,7 +247,7 @@ class PolyPhase(Phase):
             surf_dict (dict): Surface parameters, including the surface type,
                 aperture radius `r` [mm], `is_square`, `param_model`, the six
                 polynomial coefficients (rounded to 4 decimals), `norm_radii` [mm],
-                axial position `d` [mm], and the material name.
+                sequential thickness `d_next` [mm], and the material name.
         """
         surf_dict = {
             "type": self.__class__.__name__,
@@ -261,7 +261,7 @@ class PolyPhase(Phase):
             "order6": round(self.order6.item(), 4),
             "order7": round(self.order7.item(), 4),
             "norm_radii": round(self.norm_radii, 4),
-            "d": round(self.d.item(), 4),
+            "d_next": round(self.d_next.item(), 4),
             "mat2": self.mat2.get_name(),
             "(mat2_n)": round(float(self.mat2.n), 4),
             "(mat2_V)": round(float(self.mat2.V), 4),

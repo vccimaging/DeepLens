@@ -14,21 +14,19 @@ from deeplens.light import Ray
 from deeplens import utils
 
 
-def test_gpu_init_uses_supported_api():
-    """gpu_init used torch.set_default_tensor_type, removed in recent torch."""
+def test_gpu_init_uses_supported_api_without_global_dtype_mutation():
+    """Device selection must not mutate application-wide precision state."""
     old = torch.get_default_dtype()
-    try:
-        device = utils.gpu_init()
-        assert isinstance(device, torch.device)
-    finally:
-        torch.set_default_dtype(old)
+    device = utils.gpu_init()
+    assert isinstance(device, torch.device)
+    assert torch.get_default_dtype() == old
 
 
 def test_mirror_surf_dict_is_json_serializable():
     """Mirror.surf_dict stored a torch.Tensor for 'd' -> not JSON serializable."""
-    surf = Mirror(r=5.0, d=10.0)
+    surf = Mirror(r=5.0, d_next=10.0)
     sd = surf.surf_dict()
-    assert isinstance(sd["d"], float)
+    assert isinstance(sd["d_next"], float)
     json.dumps(sd)  # must not raise
 
 
@@ -48,7 +46,7 @@ def test_phase_plane_intersect_parallel_ray_grad_is_finite():
     (0 * inf through the masked where branch)."""
     o = torch.tensor([[0.5, 0.0, -1.0]], requires_grad=True)
     d = torch.tensor([[1.0, 0.0, 0.0]])  # parallel to the plane: d_z == 0
-    surf = Binary2Phase(r=2.0, d=0.0)
+    surf = Binary2Phase(r=2.0, d_next=0.0)
     ray = Ray(o, d, wvln=0.55)
     ray = surf.intersect(ray)
     ray.o.sum().backward()

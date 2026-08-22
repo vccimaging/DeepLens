@@ -24,7 +24,7 @@ def test_prism_init_from_dict_binds_material_and_device():
     slots, so the material name landed in the device slot and a float in the
     material slot -> AttributeError: 'float' object has no attribute 'lower'."""
     surf = Prism.init_from_dict(
-        {"r": 5.0, "d": 10.0, "mirror_angle": 45.0, "mat2": "N-BK7"}
+        {"r": 5.0, "d_next": 10.0, "mirror_angle": 45.0, "mat2": "N-BK7"}
     )
     # The material name must reach mat2 (not the device slot).
     assert surf.mat2.get_name() == "n-bk7"
@@ -35,10 +35,8 @@ def test_cubic_surf_dict_round_trips():
     """Cubic.surf_dict() must emit the 'b' list and 'mat2' that init_from_dict
     consumes; previously it only wrote scalar b3/b5/b7 and no mat2, so reloading
     raised KeyError('b')."""
-    surf = Cubic(r=2.0, d=5.0, b=[1e-3, 2e-4, 3e-5], mat2="air")
+    surf = Cubic(r=2.0, d_next=5.0, b=[1e-3, 2e-4, 3e-5], mat2="air")
     sd = surf.surf_dict()
-    # The JSON loader injects the resolved axial position under "d" (io.py).
-    sd["d"] = sd["(d)"]
 
     surf2 = Cubic.init_from_dict(sd)
     assert surf2.b3.item() == pytest.approx(surf.b3.item())
@@ -52,9 +50,8 @@ def test_geolens_get_optimizer_params_with_phase_surface(sample_cellphone_lens):
     IndexError: list index out of range (it indexed lrs[4] on the 4-element
     default lr list)."""
     lens = sample_cellphone_lens
-    d_last = float(lens.surfaces[-1].d.item())
     lens.surfaces.append(
-        Binary2Phase(r=1.0, d=d_last + 1.0, order2=1.0, device=str(lens.device))
+        Binary2Phase(r=1.0, d_next=1.0, order2=1.0, device=str(lens.device))
     )
 
     params = lens.get_optimizer_params()  # default 4-element lrs
