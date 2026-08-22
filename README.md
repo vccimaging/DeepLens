@@ -6,7 +6,7 @@
 
 DeepLens is a differentiable optical lens simulator for computational imaging, supporting multiple optical models (e.g., ray tracing, wave propagation, ray-wave model, surrogate PSF network). DeepLens can be used for (1) end-to-end optics-algorithm co-design, (2) automated optical design, and (3) image simulation for synthetic datasets.
 
-DeepLens helps researchers and engineers rapidly prototype and design custom optical systems. It is AI-native, and optimized for agentic use: ask your coding agent to call DeepLens directly, so that its optical reasoning is grounded in real simulation.
+DeepLens helps researchers and engineers rapidly prototype and design custom optical systems. DeepLens is also **AI-native**: ask your agent to call DeepLens directly, so that its optical reasoning is grounded in real simulation, for example, `use DeepLens to compute the MTF of this lens`.
 
 <p align="center">
     <a href="https://ai4optics.github.io/docs/deeplens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
@@ -21,19 +21,18 @@ DeepLens helps researchers and engineers rapidly prototype and design custom opt
 - **08/14/2025**: DeepLens joins OpenAI's "Codex for Open Source". We will build AI-native optical simulation and design tools.
 - **08/09/2025**: We released [DeepO](https://ai4optics.com/deepo/), an AI optical design platform.
 
-## Features
+## Why DeepLens
 
-1. **Differentiable Optics.** DeepLens leverages differentiable optical simulation to enable accurate, efficient gradient calculation for inverse optical design.
-2. **Automated Design.** DeepLens enables fully automated optical design via gradient-based and advanced optimization algorithms, shortening the development cycle for a wide range of optical systems (e.g., highly aspherical lenses, metasurfaces, and AR/VR displays).
-3. **Multiple Optical Models.** DeepLens supports geometric ray tracing alongside hybrid ray-wave models, neural lens representations, and interpolation-based models.
-4. **Image Simulation.** DeepLens delivers photorealistic image rendering with spatially varying, depth-dependent aberrations, closing the sim-to-real gap when combined with [End2end-Imaging](https://github.com/vccimaging/End2endImaging).
+Commercial optical design software (Zemax, Code V, etc.) is built for a human designer clicking through a GUI. DeepLens is built for optics that lives inside a PyTorch training loop, where the lens is a set of learnable parameters optimized jointly with a neural network, and gradients flow through the optics.
 
-Additional features (customizable upon request):
-
-1. **GPU Kernel Acceleration.** Achieves >10x speedup and >90% GPU memory reduction with custom GPU kernels across NVIDIA and AMD platforms, making deployment on local laptops practical.
-2. **Polarization Ray Tracing.** Supports polarization ray tracing and inverse design of thin films via [DiffTMM](https://github.com/AI4Optics/DiffTMM).
-3. **Non-Sequential Ray Tracing.** Supports a differentiable non-sequential ray tracing model for stray light analysis and optimization.
-4. **Distributed Optimization.** Supports distributed simulation and optimization for billion-scale ray tracing and high-resolution (>100k x 100k) diffractive propagation.
+|                        | DeepLens                                    | Zemax / Code V             |
+| ---------------------- | ------------------------------------------- | -------------------------- |
+| **Gradients**          | Analytic, via autograd                      | Finite differences         |
+| **Python**             | Native (tensors in, tensors out)            | External API bridge        |
+| **Hardware**           | GPU (CUDA / ROCm), batched                  | Mostly CPU-bound           |
+| **End-to-end co-design** | Optics + ISP + network in one graph        | Not supported              |
+| **Agent-scriptable**   | Plain Python, no GUI in the loop            | GUI-centric                |
+| **License**            | Free, Apache-2.0                            | Commercial                 |
 
 ## Applications
 
@@ -129,36 +128,18 @@ Run the demo code:
 python 0_hello_geolens.py
 ```
 
-DeepLens repo structure:
+## In-House Extensions
 
-```
-DeepLens/
-│
-├── deeplens/
-│   ├── lens.py             (base lens class)
-│   ├── geolens.py          (refractive lens)
-│   ├── hybridlens.py       (refractive + diffractive hybrid lens)
-│   ├── diffraclens.py      (diffractive lens)
-│   ├── defocuslens.py      (circle-of-confusion model)
-│   ├── psfnetlens.py       (surrogate lens PSF model)
-│   ├── ...
-│   ├── geometric_surface/  (refractive and reflective surfaces)
-│   ├── diffractive_surface/(diffractive surfaces)
-│   ├── phase_surface/      (phase surfaces)
-│   ├── light/              (Ray, Wave)
-│   ├── material/           (glass/plastic catalogs + refractiveindex.info data)
-│   ├── imgsim/             (PSF convolution, Monte Carlo image simulation)
-│   ├── geolens_pkg/        (eval, optim, vis, io mixins)
-│   └── surrogate/          (MLP, Siren neural surrogates)
-│
-├── 0_hello_geolens.py     (code tutorials)
-├── ...
-└── write_your_own_code.py
-```
+The modules below are implemented and working in house, but are not part of the public release yet. If your project needs one, get in touch and we are happy to grant access or collaborate.
+
+1. **GPU Kernel Acceleration.** Custom kernels for NVIDIA and AMD GPUs: >10x speedup and >90% less GPU memory, enough to run full designs on a laptop.
+2. **Polarization Ray Tracing.** Polarization-aware tracing with thin-film inverse design via [DiffTMM](https://github.com/AI4Optics/DiffTMM).
+3. **Non-Sequential Ray Tracing.** Differentiable non-sequential tracing for stray light analysis and optimization.
+4. **Distributed Optimization.** Multi-GPU simulation for billion-scale ray tracing and >100k x 100k diffractive propagation.
 
 ## Community
 
-Join our [Slack](https://join.slack.com/t/deeplens/shared_invite/zt-2wz3x2n3b-plRqN26eDhO2IY4r_gmjOw) workspace and WeChat Group (singeryang1999) to connect with our core contributors, receive the latest industry updates, and be part of our community. For any inquiries, contact Xinge Yang (xinge.yang@kaust.edu.sa).
+Join our [Slack](https://join.slack.com/t/deeplens/shared_invite/zt-2wz3x2n3b-plRqN26eDhO2IY4r_gmjOw) workspace and WeChat Group (singeryang1999) to connect with our core contributors, receive the latest industry updates, and be part of our community. For any inquiries, contact Xinge Yang (<xinge.yang@kaust.edu.sa>).
 
 ## Contribution
 
