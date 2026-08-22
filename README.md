@@ -4,21 +4,26 @@
 
 # DeepLens
 
-DeepLens is a differentiable optical lens simulator for end-to-end computational imaging, supporting multiple optical models (eg., geometric ray tracing, diffractive wave propagation, hybrid ray-wave model, surrogate PSF network).
+DeepLens is a differentiable optical lens simulator for computational imaging, supporting multiple optical models (e.g., ray tracing, wave propagation, ray-wave model, surrogate PSF network). DeepLens can be used for (1) end-to-end optics-algorithm co-design, (2) automated optical design, and (3) image simulation for synthetic datasets.
 
-DeepLens can be used for (1) end-to-end optics-algorithm co-design, (2) gradient-based automated optical design, and (3) synthetic dataset generation via image simulation. DeepLens enables researchers to rapidly prototype and optimize custom optical systems.
+DeepLens helps researchers and engineers rapidly prototype and design custom optical systems. It is AI-native, and optimized for agentic use: ask your coding agent to call DeepLens directly, so that its optical reasoning is grounded in real simulation.
 
 <p align="center">
-    <a href="https://vccimaging.org/DeepLens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
+    <a href="https://ai4optics.github.io/docs/deeplens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
     <a href="https://github.com/singer-yang/DeepLens-tutorials"><img src="https://img.shields.io/badge/Tutorials-black?style=flat&logo=github&logoColor=white" alt="Tutorials"/></a>
     <a href="#community"><img src="https://img.shields.io/badge/Community-Slack-4A154B?style=flat&logo=slack&logoColor=white" alt="Community"/></a>
     <a href="https://pypi.org/project/deeplens-core/"><img src="https://img.shields.io/pypi/v/deeplens-core?label=PyPI&color=orange&logo=pypi&logoColor=white" alt="PyPI"/></a>
     <a href="https://deepwiki.com/singer-yang/DeepLens"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
 </p>
 
+## News
+
+- **08/14/2025**: DeepLens joins OpenAI's "Codex for Open Source". We will build AI-native optical simulation and design tools.
+- **08/09/2025**: We released [DeepO](https://ai4optics.com/deepo/), an AI optical design platform.
+
 ## Features
 
-1. **Differentiable Optics.** DeepLens leverages differentiable optical simulation to enable accurate, efficient gradient calculation for lens inverse design.
+1. **Differentiable Optics.** DeepLens leverages differentiable optical simulation to enable accurate, efficient gradient calculation for inverse optical design.
 2. **Automated Design.** DeepLens enables fully automated optical design via gradient-based and advanced optimization algorithms, shortening the development cycle for a wide range of optical systems (e.g., highly aspherical lenses, metasurfaces, and AR/VR displays).
 3. **Multiple Optical Models.** DeepLens supports geometric ray tracing alongside hybrid ray-wave models, neural lens representations, and interpolation-based models.
 4. **Image Simulation.** DeepLens delivers photorealistic image rendering with spatially varying, depth-dependent aberrations, closing the sim-to-real gap when combined with [End2end-Imaging](https://github.com/vccimaging/End2endImaging).
@@ -34,13 +39,13 @@ Additional features (customizable upon request):
 
 #### 1. Lens Analysis and Image Simulation
 
-DeepLens supports comprehensive lens analysis (spot diagram, PSF, MTF, distortion, etc.) and photorealistic image simulation with spatially-varying, depth-dependent aberrations.
+DeepLens supports comprehensive lens analysis (spot diagram, PSF, MTF, distortion, etc.) and photorealistic image simulation with spatially varying, depth-dependent aberrations.
 
 <div align="center">
     <img src="assets/feature.png" alt="Lens Analysis and Image Simulation"/>
 </div>
 
-#### 2. Automated geometric lens design
+#### 2. Automated Geometric Lens Design
 
 Fully automated lens design from scratch with gradient-based optimization and advanced optimization algorithms.
 
@@ -55,7 +60,7 @@ Fully automated lens design from scratch with gradient-based optimization and ad
 
 #### 3. Neural Lens PSF Representation
 
-A surrogate network for efficient lens PSF representation, supporting fast and accurate image simulation with spatially-varying aberrations and defocus.
+A surrogate network for efficient lens PSF representation, supporting fast and accurate image simulation with spatially varying aberrations and defocus.
 
 [![paper](https://img.shields.io/badge/TPAMI-2023-orange)](https://ieeexplore.ieee.org/document/10209238) [![link](https://img.shields.io/badge/Project-green)](https://github.com/vccimaging/Aberration-Aware-Depth-from-Focus)
 
@@ -73,7 +78,7 @@ Differentiable ray-wave optical model for accurate lens aberration and diffracti
     <img src="assets/hybridlens.png" alt="Hybrid ray-wave optical model" height="200px"/>
 </div>
 
-#### 5. Non-sequential Model and Polarization Tracing
+#### 5. Non-Sequential Model and Polarization Tracing
 
 Non-sequential polarization tracing to accurately simulate the polarization state of light passing through a geometric waveguide AR display. End-to-end optimization for coating film inverse design targeting the out-coupling eyebox response.
 
@@ -142,7 +147,7 @@ DeepLens/
 │   ├── phase_surface/      (phase surfaces)
 │   ├── light/              (Ray, Wave)
 │   ├── material/           (glass/plastic catalogs + refractiveindex.info data)
-│   ├── imgsim/             (PSF convolution, monte carlo image simulation)
+│   ├── imgsim/             (PSF convolution, Monte Carlo image simulation)
 │   ├── geolens_pkg/        (eval, optim, vis, io mixins)
 │   └── surrogate/          (MLP, Siren neural surrogates)
 │
