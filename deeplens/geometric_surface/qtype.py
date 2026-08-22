@@ -180,17 +180,18 @@ class QTypeFreeform(Surface):
             device=device,
         )
 
-        self.c = torch.tensor(c)
-        self.k = torch.tensor(k)
+        tensor_kwargs = {"device": device, "dtype": self.d_next.dtype}
+        self.c = torch.as_tensor(c, **tensor_kwargs)
+        self.k = torch.as_tensor(k, **tensor_kwargs)
         self.r_norm = r_norm if r_norm is not None else r
 
         # Store Q polynomial coefficients
         if qm is not None and len(qm) > 0:
-            self.qm = torch.tensor(qm, dtype=torch.float64)
+            self.qm = torch.as_tensor(qm, **tensor_kwargs)
             self.n_qterms = len(qm)
             # Also store individual coefficients for optimization
             for i, coef in enumerate(qm):
-                setattr(self, f"q{i}", torch.tensor(coef))
+                setattr(self, f"q{i}", torch.as_tensor(coef, **tensor_kwargs))
         else:
             self.qm = None
             self.n_qterms = 0

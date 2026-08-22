@@ -282,9 +282,11 @@ class Aperture(Plane):
         """
         surf_dict = {
             "type": "Aperture",
-            "r": round(self.r, 4),
-            "d_next": round(self.d_next.item(), 4),
+            "r": self.r,
+            "d_next": self.d_next.item(),
             "mat2": "air",
+            "pos_xy": [self.pos_x.item(), self.pos_y.item()],
+            "vec_local": self.vec_local.tolist(),
             "is_square": self.is_square,
         }
         return surf_dict

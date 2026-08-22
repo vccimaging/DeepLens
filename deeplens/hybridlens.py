@@ -256,6 +256,7 @@ class HybridLens(Lens):
         during coherent ray tracing and ASM propagation. Called automatically by
         `__init__`.
         """
+        self.dtype = torch.float64
         self.geolens.astype(torch.float64)
         self.doe.astype(torch.float64)
 
@@ -329,9 +330,10 @@ class HybridLens(Lens):
             "Coherent ray tracing spp is too small, "
             "which may lead to inaccurate simulation."
         )
-        assert torch.get_default_dtype() == torch.float64, (
-            "Default dtype must be set to float64 for accurate phase tracing."
-        )
+        if self.dtype != torch.float64 or self.geolens.dtype != torch.float64:
+            raise ValueError(
+                "Coherent phase tracing requires float64 lens state; call double()."
+            )
 
         geolens, doe = self.geolens, self.doe
 
@@ -418,9 +420,9 @@ class HybridLens(Lens):
         upsample_factor = kwargs.get("upsample_factor", None)
         wvln = self.primary_wvln if wvln is None else wvln
         # Check double precision
-        if not torch.get_default_dtype() == torch.float64:
+        if self.dtype != torch.float64 or self.geolens.dtype != torch.float64:
             raise ValueError(
-                "Please call HybridLens.double() to set the default dtype to float64 for accurate phase tracing."
+                "Please call HybridLens.double() for accurate phase tracing."
             )
 
         # Check lens last surface
@@ -431,9 +433,11 @@ class HybridLens(Lens):
 
         # Compute pupil field by coherent ray tracing
         if isinstance(points, list):
-            point0 = torch.tensor(points)
+            point0 = torch.as_tensor(
+                points, device=self.device, dtype=self.dtype
+            )
         elif isinstance(points, torch.Tensor):
-            point0 = points
+            point0 = points.to(device=self.device, dtype=self.dtype)
         else:
             raise ValueError("point should be a list or a torch.Tensor.")
 

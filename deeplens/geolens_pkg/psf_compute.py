@@ -134,7 +134,9 @@ class GeoLensPSF:
 
         # Points shape of [N, 3]
         if not torch.is_tensor(points):
-            points = torch.tensor(points, device=device)
+            points = torch.as_tensor(points, device=device, dtype=self.dtype)
+        else:
+            points = points.to(device=device, dtype=self.dtype)
 
         if len(points.shape) == 1:
             single_point = True
@@ -317,18 +319,22 @@ class GeoLensPSF:
         assert spp >= 1_000_000, (
             f"Ray sampling {spp} is too small for coherent ray tracing, which may lead to inaccurate simulation."
         )
-        assert torch.get_default_dtype() == torch.float64, (
-            "Default dtype must be set to float64 for accurate phase calculation."
-        )
+        if self.dtype != torch.float64:
+            raise ValueError(
+                "Coherent pupil propagation requires a float64 lens; call lens.astype(torch.float64)."
+            )
 
         sensor_w, sensor_h = self.sensor_size
         device = self.device
 
         if isinstance(points, list):
-            points = torch.tensor(points, device=device).unsqueeze(0)  # [1, 3]
+            points = torch.as_tensor(
+                points, device=device, dtype=self.dtype
+            ).unsqueeze(0)
         elif torch.is_tensor(points) and len(points.shape) == 1:
-            points = points.unsqueeze(0).to(device)  # [1, 3]
+            points = points.unsqueeze(0).to(device=device, dtype=self.dtype)
         elif torch.is_tensor(points) and len(points.shape) == 2:
+            points = points.to(device=device, dtype=self.dtype)
             assert points.shape[0] == 1, (
                 f"pupil_field only supports single point input, got shape {points.shape}"
             )
@@ -412,9 +418,10 @@ class GeoLensPSF:
             plane and performs plane-wave integration.
         """
         wvln = self.primary_wvln if wvln is None else wvln
-        assert torch.get_default_dtype() == torch.float64, (
-            "Default dtype must be set to float64 for accurate phase calculation."
-        )
+        if self.dtype != torch.float64:
+            raise ValueError(
+                "Huygens propagation requires a float64 lens; call lens.astype(torch.float64)."
+            )
 
         sensor_w, sensor_h = self.sensor_size
         pixel_size = self.pixel_size
@@ -423,7 +430,9 @@ class GeoLensPSF:
 
         # Points shape of [N, 3]
         if not torch.is_tensor(points):
-            points = torch.tensor(points, device=device)
+            points = torch.as_tensor(points, device=device, dtype=self.dtype)
+        else:
+            points = points.to(device=device, dtype=self.dtype)
 
         if len(points.shape) == 1:
             single_point = True
@@ -461,12 +470,14 @@ class GeoLensPSF:
             psf_half_size - pixel_size / 2,
             ks,
             device=device,
+            dtype=self.dtype,
         )
         y_coords = torch.linspace(
             psf_half_size - pixel_size / 2,
             -psf_half_size + pixel_size / 2,
             ks,
             device=device,
+            dtype=self.dtype,
         )
         psf_x, psf_y = torch.meshgrid(
             pointc[0, 0] + x_coords, pointc[0, 1] + y_coords, indexing="xy"

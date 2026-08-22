@@ -45,7 +45,11 @@ class Prism(Surface):
         """
         Surface.__init__(self, r, d_next, mat2=mat2, is_square=True, device=device)
         
-        self.mirror_angle = torch.tensor(mirror_angle * torch.pi / 180.0)
+        self.mirror_angle = torch.as_tensor(
+            mirror_angle * torch.pi / 180.0,
+            device=device,
+            dtype=self.d_next.dtype,
+        )
         self._init_surfaces()
         
     def _init_surfaces(self):

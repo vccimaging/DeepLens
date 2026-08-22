@@ -48,8 +48,8 @@ class Spiral(Surface):
             device (str, optional): Device for torch tensors. Defaults to "cpu".
         """
         super().__init__(r, d_next, mat2, is_square=is_square, device=device)
-        self.c1 = torch.tensor(c1, dtype=torch.float32, device=device)
-        self.c2 = torch.tensor(c2, dtype=torch.float32, device=device)
+        self.c1 = torch.as_tensor(c1, dtype=self.d_next.dtype, device=device)
+        self.c2 = torch.as_tensor(c2, dtype=self.d_next.dtype, device=device)
         self.N = N
         self.eta = eta
         self.to(device)
