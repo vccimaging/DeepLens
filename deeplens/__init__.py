@@ -48,7 +48,7 @@ from .light import (
     Ray,
     RayleighSommerfeld,
     RayleighSommerfeldIntegral,
-    ScalableASM,
+    ScalableASM as ScalableASM,
 )
 
 # Lens classes
@@ -72,7 +72,6 @@ __all__ = [
     "Ray",
     "ComplexWave",
     "AngularSpectrumMethod",
-    "ScalableASM",
     "FresnelDiffraction",
     "FraunhoferDiffraction",
     "RayleighSommerfeld",

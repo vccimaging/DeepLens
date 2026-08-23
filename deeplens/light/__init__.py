@@ -9,7 +9,7 @@ from .wave import (
     Nyquist_ASM_zmax,
     RayleighSommerfeld,
     RayleighSommerfeldIntegral,
-    ScalableASM,
+    ScalableASM as ScalableASM,
 )
 
 __all__ = [
@@ -17,7 +17,6 @@ __all__ = [
     "ComplexWave",
     "AngularSpectrumMethod",
     "BandLimitedASM",
-    "ScalableASM",
     "FresnelDiffraction",
     "FraunhoferDiffraction",
     "RayleighSommerfeld",
