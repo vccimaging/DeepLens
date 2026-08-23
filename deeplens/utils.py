@@ -335,37 +335,75 @@ def set_seed(seed=0):
     torch.backends.cudnn.enabled = False
 
 
-def set_logger(dir="./"):
-    """Configure the root logger to stream to console and write to a file.
+def set_logger(output_dir="./"):
+    """Configure the root logger with one console and one DeepLens file handler.
 
-    Adds a stdout `StreamHandler` and a `FileHandler` writing to
-    `{dir}/output.log`, both at INFO level, with a timestamped format.
+    Repeated calls reuse the DeepLens console handler and replace the owned file
+    handler only when the target path changes. Handlers installed by the host
+    application or test runner are left untouched.
 
     Args:
-        dir (str, optional): Directory for the `output.log` file.
-            Defaults to "./".
+        output_dir (str or os.PathLike, optional): Directory for `output.log`.
+            It is created when needed. Defaults to "./".
+
+    Returns:
+        logger (logging.Logger): The configured root logger.
     """
+    output_dir = os.fspath(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.abspath(os.path.join(output_dir, "output.log"))
+
     logger = logging.getLogger()
-    logger.setLevel("DEBUG")
-    BASIC_FORMAT = "%(asctime)s:%(levelname)s:%(message)s"
-    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-    formatter = logging.Formatter(BASIC_FORMAT, DATE_FORMAT)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s:%(levelname)s:%(message)s", "%Y-%m-%d %H:%M:%S"
+    )
 
-    chlr = logging.StreamHandler()
-    chlr.setFormatter(formatter)
-    chlr.setLevel("INFO")
+    owned_handlers = [
+        handler
+        for handler in logger.handlers
+        if getattr(handler, "_deeplens_handler", False)
+    ]
+    console_handler = next(
+        (
+            handler
+            for handler in owned_handlers
+            if isinstance(handler, logging.StreamHandler)
+            and not isinstance(handler, logging.FileHandler)
+        ),
+        None,
+    )
+    file_handler = next(
+        (
+            handler
+            for handler in owned_handlers
+            if isinstance(handler, logging.FileHandler)
+            and os.path.abspath(handler.baseFilename) == output_path
+        ),
+        None,
+    )
 
-    fhlr = logging.FileHandler(f"{dir}/output.log")
-    fhlr.setFormatter(formatter)
-    fhlr.setLevel("INFO")
+    retained = {handler for handler in (console_handler, file_handler) if handler}
+    for handler in owned_handlers:
+        if handler not in retained:
+            logger.removeHandler(handler)
+            handler.close()
 
-    # fhlr2 = logging.FileHandler(f"{dir}/error.log")
-    # fhlr2.setFormatter(formatter)
-    # fhlr2.setLevel('WARNING')
+    if console_handler is None:
+        console_handler = logging.StreamHandler()
+        console_handler._deeplens_handler = True
+        logger.addHandler(console_handler)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
 
-    logger.addHandler(chlr)
-    logger.addHandler(fhlr)
-    # logger.addHandler(fhlr2)
+    if file_handler is None:
+        file_handler = logging.FileHandler(output_path)
+        file_handler._deeplens_handler = True
+        logger.addHandler(file_handler)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+
+    return logger
 
 
 # ==================================

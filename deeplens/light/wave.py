@@ -790,7 +790,8 @@ def ScalableASM(u, z, wvln, ps, n=1.0, padding=True):
     """Scalable angular spectrum method (not yet implemented).
 
     Intended to support propagation where the destination pixel pitch differs
-    from the source pixel pitch. Currently a placeholder that returns None.
+    from the source pixel pitch. The symbol is retained for import compatibility
+    but fails explicitly until a validated implementation is available.
 
     Args:
         u (torch.Tensor): Complex field, shape [H, W] or [B, 1, H, W].
@@ -800,10 +801,16 @@ def ScalableASM(u, z, wvln, ps, n=1.0, padding=True):
         n (float, optional): Refractive index. Defaults to 1.0.
         padding (bool, optional): Zero-pad before the FFT. Defaults to True.
 
+    Raises:
+        NotImplementedError: Always; scalable propagation is not implemented.
+
     Reference:
         [1] Scalable angular spectrum propagation. Optica 2023.
     """
-    pass
+    raise NotImplementedError(
+        "ScalableASM is not implemented. Use AngularSpectrumMethod or "
+        "BandLimitedASM when the source and destination pixel pitches match."
+    )
 
 
 def FresnelDiffraction(u, z, wvln, ps, n=1.0, padding=True, TF=None):

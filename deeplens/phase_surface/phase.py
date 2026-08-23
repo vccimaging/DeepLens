@@ -6,11 +6,10 @@ import torch
 import torch.nn.functional as F
 
 from ..config import EPSILON
-from ..base import DeepObj
-from ..material import Material
+from .._surface_base import _SequentialSurfaceBase
 
 
-class Phase(DeepObj):
+class Phase(_SequentialSurfaceBase):
     """Base phase profile for diffractive surfaces (metasurface or DOE).
 
     Represents a flat (zero-sag) substrate carrying a phase pattern $\\phi(x, y)$,
@@ -71,62 +70,23 @@ class Phase(DeepObj):
                 $r\\sqrt{2}$; otherwise a circle of radius $r$. Defaults to True.
             device (str, optional): Device for the tensor state. Defaults to "cpu".
         """
-        super().__init__()
-
-        # Global direction vector, always pointing to the positive z-axis
-        self.vec_global = torch.tensor([0.0, 0.0, 1.0])
-
-        # Sequential thickness (Zemax DISZ), kept as a differentiable tensor.
-        self.d_next = (
-            d_next.detach().clone()
-            if torch.is_tensor(d_next)
-            else torch.tensor(d_next, dtype=torch.get_default_dtype())
+        super().__init__(
+            r=r,
+            d_next=d_next,
+            mat2=mat2,
+            pos_xy=pos_xy,
+            vec_local=vec_local,
+            is_square=is_square,
+            device=device,
         )
-        if not self.d_next.is_floating_point():
-            self.d_next = self.d_next.to(torch.get_default_dtype())
-        self.pos_x = torch.tensor(pos_xy[0])
-        self.pos_y = torch.tensor(pos_xy[1])
 
-        # Surface direction vector in global coordinate system
-        self.vec_local = F.normalize(torch.tensor(vec_local), p=2, dim=-1)
-
-        # Material after the surface
-        self.mat2 = Material(mat2)
-
-        # DOE geometry
-        self.r = float(r)
-        self.is_square = is_square
+        # Phase surfaces retain rectangular extents even for circular apertures
+        # because phase-map visualization and fabrication helpers use them.
         self.w = self.r * float(np.sqrt(2))
         self.h = self.r * float(np.sqrt(2))
 
         self.diffraction_order = 1
         self.norm_radii = self.r if norm_radii is None else norm_radii
-
-        self.device = device if device is not None else torch.device("cpu")
-        self.to(self.device)
-
-        # Pre-compute rotation matrices (depends only on static vec_local/vec_global)
-        self._cache_rotation_matrices()
-
-    def _get_effective_d_next(self):
-        """Return the thickness used by the sequential lens tracer."""
-        return self.d_next
-
-    def _cache_rotation_matrices(self):
-        """Pre-compute and cache rotation matrices for local/global transforms."""
-        needs_rotation = (
-            torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON
-        )
-        if needs_rotation:
-            self._R_to_local = self._get_rotation_matrix(
-                self.vec_local, self.vec_global
-            )
-            self._R_to_global = self._get_rotation_matrix(
-                self.vec_global, self.vec_local
-            )
-        else:
-            self._R_to_local = None
-            self._R_to_global = None
 
     # ==============================
     # Abstract methods to be implemented by subclasses
@@ -273,36 +233,6 @@ class Phase(DeepObj):
 
         return ray
 
-    def refract(self, ray, eta):
-        """Calculate refracted ray according to Snell's law in local coordinate system.
-
-        Args:
-            ray (Ray): incident ray.
-            eta (float): ratio of indices of refraction, eta = n_i / n_t
-
-        Returns:
-            ray (Ray): refracted ray.
-        """
-        # Compute normal vectors
-        normal_vec = self.normal_vec(ray)
-
-        # Compute refraction according to Snell's law
-        dot_product = (-normal_vec * ray.d).sum(-1).unsqueeze(-1)
-        k = 1 - eta**2 * (1 - dot_product**2)
-
-        # Total internal reflection
-        valid = (k >= 0).squeeze(-1) & (ray.is_valid > 0)
-        k = k * valid.unsqueeze(-1)
-
-        # Update ray direction
-        new_d = eta * ray.d + (eta * dot_product - torch.sqrt(k + EPSILON)) * normal_vec
-        ray.d = torch.where(valid.unsqueeze(-1), new_d, ray.d)
-
-        # Update ray valid mask
-        ray.is_valid = ray.is_valid * valid
-
-        return ray
-
     def normal_vec(self, ray):
         """Calculate the surface normal vector at intersection points.
 
@@ -320,97 +250,6 @@ class Phase(DeepObj):
         is_forward = ray.d[..., 2].unsqueeze(-1) > 0
         normal_vec = torch.where(is_forward, normal_vec, -normal_vec)
         return normal_vec
-
-    def to_local_coord(self, ray):
-        """Transform ray to local coordinate system.
-
-        Args:
-            ray (Ray): input ray in global coordinate system.
-
-        Returns:
-            ray (Ray): transformed ray in local coordinate system.
-        """
-        # Axial position is represented by the lens reference frame. Only the
-        # phase surface's local lateral offset belongs here.
-        offset = torch.stack(
-            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
-        ).expand_as(ray.o)
-        ray.o = ray.o - offset
-
-        # Rotate using the matrix cached at init instead of rebuilding it every
-        # interaction. None means no rotation is needed (surface is on-axis).
-        if self._R_to_local is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_to_local)
-            ray.d = self._apply_rotation(ray.d, self._R_to_local)
-            ray.d = F.normalize(ray.d, p=2, dim=-1)
-
-        return ray
-
-    def to_global_coord(self, ray):
-        """Transform ray to global coordinate system.
-
-        Args:
-            ray (Ray): input ray in local coordinate system.
-
-        Returns:
-            ray (Ray): transformed ray in global coordinate system.
-        """
-        # Rotate using the cached inverse matrix (see to_local_coord).
-        if self._R_to_global is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_to_global)
-            ray.d = self._apply_rotation(ray.d, self._R_to_global)
-            ray.d = F.normalize(ray.d, p=2, dim=-1)
-
-        # Shift ray origin back to the surface reference frame.
-        offset = torch.stack(
-            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
-        ).expand_as(ray.o)
-        ray.o = ray.o + offset
-
-        return ray
-
-    def _get_rotation_matrix(self, vec_from, vec_to):
-        """Calculate rotation matrix to rotate vec_from to vec_to."""
-        vec_from = F.normalize(vec_from.to(self.device), p=2, dim=-1)
-        vec_to = F.normalize(vec_to.to(self.device), p=2, dim=-1)
-
-        dot_product = torch.dot(vec_from, vec_to)
-        if torch.abs(dot_product - 1.0) < EPSILON:
-            return torch.eye(3, device=self.device)
-
-        if torch.abs(dot_product + 1.0) < EPSILON:
-            if torch.abs(vec_from[0]) < 0.9:
-                perp = torch.tensor([1.0, 0.0, 0.0], device=self.device)
-            else:
-                perp = torch.tensor([0.0, 1.0, 0.0], device=self.device)
-            axis = torch.linalg.cross(vec_from, perp)
-            axis = F.normalize(axis, p=2, dim=-1)
-            R = 2.0 * torch.outer(axis, axis) - torch.eye(3, device=self.device)
-            return R
-
-        v_cross_u = torch.linalg.cross(vec_from, vec_to)
-        cos_angle = dot_product
-
-        K = torch.tensor(
-            [
-                [0, -v_cross_u[2], v_cross_u[1]],
-                [v_cross_u[2], 0, -v_cross_u[0]],
-                [-v_cross_u[1], v_cross_u[0], 0],
-            ],
-            device=self.device,
-        )
-
-        identity = torch.eye(3, device=self.device)
-        R = identity + K + torch.mm(K, K) / (1 + cos_angle)
-
-        return R
-
-    def _apply_rotation(self, vectors, R):
-        """Apply rotation matrix to vectors."""
-        original_shape = vectors.shape
-        vectors_flat = vectors.view(-1, 3)
-        rotated_flat = torch.mm(vectors_flat, R.t())
-        return rotated_flat.view(original_shape)
 
     # ==============================
     # Optimization
