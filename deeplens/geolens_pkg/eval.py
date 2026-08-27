@@ -64,6 +64,8 @@ Functions:
         draw_vignetting: Grayscale image of relative illumination.
 
     Chief Ray & Ray Aiming:
+        calc_chief_ray: Extract the real sampled ray closest to the physical
+            aperture-stop centre, from either object points or a traced bundle.
         calc_chief_ray_infinite: Batched chief-ray computation with optional
             iterative ray aiming for accurate distortion measurement.
 
@@ -76,6 +78,8 @@ Functions:
             analysis, and (optionally) full evaluation + rendering.
 """
 
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -83,6 +87,7 @@ import torch.nn.functional as F
 
 from PIL import Image
 from ..config import (
+    CENTROID_PUPIL_SIGMA,
     EPSILON,
     GEO_GRID,
     SPP_CALC,
@@ -127,6 +132,159 @@ class GeoLensEval:
         aper_idx (int): Index of the aperture stop surface.
         device (torch.device): Compute device (CPU / CUDA).
     """
+
+    # ================================================================
+    # Physical-stop chief ray
+    # ================================================================
+    @torch.no_grad()
+    def calc_chief_ray(
+        self,
+        points_obj=None,
+        *,
+        ray=None,
+        num_rays=SPP_CALC,
+        wvln=None,
+        scale_pupil=1.0,
+        record=False,
+    ):
+        """Calculate one real, physical-stop-centred chief ray per field.
+
+        DeepLens uses the classical physical definition: the chief ray is the
+        real ray through the centre of the aperture stop. Because the tracer
+        samples a finite bundle, this method returns the sampled ray with the
+        largest stop-proximity weight rather than a synthetic bundle centroid.
+
+        Exactly one input mode must be supplied:
+
+        1. ``points_obj`` samples and traces rays from object-space points to
+           the sensor before extracting the chief ray.
+        2. ``ray`` extracts from an already traced bundle that crossed the
+           aperture stop, avoiding duplicate tracing.
+
+        Selection happens before final validity is checked. If the closest
+        stop-centred ray is clipped after the stop, it remains the selected ray
+        and is returned as invalid rather than being replaced by a farther ray.
+        The result carries ``stop_residual_normalized``, ``stop_residual_mm``,
+        ``stop_weight``, ``stop_reached``, and ``chief_ray_sample_index``.
+
+        Args:
+            points_obj (torch.Tensor | list | None): Physical object points in
+                millimetres, shape ``[..., 3]``. Mutually exclusive with ``ray``.
+            ray (Ray | None): Already traced, stop-weighted ray bundle with
+                shape ``[..., num_rays, 3]``.
+            num_rays (int): Samples per point in ``points_obj`` mode. Defaults
+                to ``SPP_CALC``.
+            wvln (float | None): Wavelength in micrometres for object-point
+                mode. Defaults to the lens primary wavelength.
+            scale_pupil (float): Entrance-pupil sampling-radius multiplier in
+                object-point mode. Defaults to 1.0.
+            record (bool): Return ``(chief_ray, path)`` with a singleton ray
+                dimension in every path entry. Only valid in object-point mode.
+
+        Returns:
+            Ray | tuple[Ray, list[torch.Tensor]]: One selected chief ray per
+            field, with shape ``[..., 1, 3]``, and optionally its traced path.
+
+        Raises:
+            ValueError: If the input modes are invalid, sampling parameters are
+                invalid, the supplied bundle did not cross the stop, or path
+                recording is requested for a supplied bundle.
+            TypeError: If ``ray`` is not a :class:`Ray`.
+
+        Note:
+            This method is discrete and decorated with ``torch.no_grad()``. It
+            is intended for evaluation and PSF centring, not gradient losses.
+        """
+        has_points = points_obj is not None
+        has_ray = ray is not None
+        if has_points == has_ray:
+            raise ValueError("Provide exactly one of points_obj or ray.")
+        if not isinstance(num_rays, int) or num_rays < 1:
+            raise ValueError("num_rays must be a positive integer.")
+        if not math.isfinite(float(scale_pupil)) or float(scale_pupil) <= 0:
+            raise ValueError("scale_pupil must be a finite positive number.")
+
+        ray_path = None
+        if has_points:
+            wvln = self.primary_wvln if wvln is None else wvln
+            sampled_ray = self.sample_from_points(
+                points=points_obj,
+                num_rays=num_rays,
+                wvln=wvln,
+                scale_pupil=scale_pupil,
+            )
+            if record:
+                ray, ray_path = self.trace2sensor(sampled_ray, record=True)
+            else:
+                ray = self.trace2sensor(sampled_ray)
+        else:
+            if not isinstance(ray, Ray):
+                raise TypeError("ray must be a deeplens.light.Ray instance.")
+            if record:
+                raise ValueError(
+                    "record=True requires points_obj; a supplied traced bundle "
+                    "does not contain its earlier path."
+                )
+
+        if not getattr(ray, "centroid_weight_assigned", False):
+            raise ValueError(
+                "The ray bundle has no aperture-stop weights. Trace it across "
+                "the aperture stop before calling calc_chief_ray(ray=...)."
+            )
+        if ray.o.ndim < 2 or ray.o.shape[-2] < 1:
+            raise ValueError("ray must contain at least one sample ray.")
+
+        stop_weight = torch.nan_to_num(
+            ray.centroid_weight.detach(), nan=0.0, posinf=0.0, neginf=0.0
+        ).clamp_min(0.0)
+        stop_reached = stop_weight.gt(0).any(dim=-1, keepdim=True)
+        sample_index = stop_weight.argmax(dim=-1, keepdim=True)
+
+        def gather_scalar(value):
+            return torch.gather(value, dim=-1, index=sample_index)
+
+        def gather_vector(value):
+            index = sample_index.unsqueeze(-1).expand(
+                *sample_index.shape, value.shape[-1]
+            )
+            return torch.gather(value, dim=-2, index=index)
+
+        chief_ray = ray.clone()
+        chief_ray.o = gather_vector(ray.o)
+        chief_ray.d = gather_vector(ray.d)
+        chief_ray.en = gather_vector(ray.en)
+        chief_ray.bend_penalty = gather_vector(ray.bend_penalty)
+        chief_ray.opl = gather_vector(ray.opl)
+        chief_ray.is_valid = gather_scalar(ray.is_valid) * stop_reached.to(
+            dtype=ray.is_valid.dtype
+        )
+        chief_ray.centroid_weight = gather_scalar(stop_weight)
+        chief_ray.shape = chief_ray.o.shape[:-1]
+
+        selected_weight = chief_ray.centroid_weight
+        safe_weight = selected_weight.clamp_min(
+            torch.finfo(selected_weight.dtype).tiny
+        )
+        residual_normalized = CENTROID_PUPIL_SIGMA * torch.sqrt(
+            (-torch.log(safe_weight)).clamp_min(0.0)
+        )
+        residual_normalized = torch.where(
+            stop_reached,
+            residual_normalized,
+            torch.full_like(residual_normalized, float("inf")),
+        )
+        aperture_radius = float(self.surfaces[self.aper_idx].r)
+
+        chief_ray.stop_residual_normalized = residual_normalized
+        chief_ray.stop_residual_mm = residual_normalized * aperture_radius
+        chief_ray.stop_weight = selected_weight
+        chief_ray.stop_reached = stop_reached
+        chief_ray.chief_ray_sample_index = sample_index
+
+        if record:
+            chief_path = [gather_vector(path_entry) for path_entry in ray_path]
+            return chief_ray, chief_path
+        return chief_ray
 
     # ================================================================
     # Spot diagram

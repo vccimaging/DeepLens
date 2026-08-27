@@ -9,6 +9,182 @@ import numpy as np
 import pytest
 import torch
 
+from deeplens.config import CENTROID_PUPIL_SIGMA
+from deeplens.light import Ray
+
+
+class TestChiefRay:
+    """Tests for physical-stop chief-ray extraction and PSF integration."""
+
+    def test_extracts_closest_stop_sample_even_if_later_invalid(
+        self, sample_cellphone_lens
+    ):
+        lens = sample_cellphone_lens
+        device = lens.device
+        o = torch.tensor(
+            [
+                [[0.0, 0.0, 1.0], [1.0, 2.0, 1.0], [2.0, 4.0, 1.0]],
+                [[3.0, 6.0, 1.0], [4.0, 8.0, 1.0], [5.0, 10.0, 1.0]],
+            ],
+            device=device,
+            dtype=lens.dtype,
+        )
+        d = torch.tensor(
+            [
+                [[0.0, 0.0, 1.0], [0.1, 0.2, 1.0], [0.2, 0.4, 1.0]],
+                [[0.3, 0.6, 1.0], [0.4, 0.8, 1.0], [0.5, 1.0, 1.0]],
+            ],
+            device=device,
+            dtype=lens.dtype,
+        )
+        ray = Ray(o, d, wvln=lens.primary_wvln, device=device)
+        ray.centroid_weight = torch.tensor(
+            [[0.2, 0.99, 0.6], [0.5, 0.95, 0.8]],
+            device=device,
+            dtype=lens.dtype,
+        )
+        ray.centroid_weight_assigned = True
+        ray.is_valid = torch.tensor(
+            [[1.0, 1.0, 1.0], [1.0, 0.0, 1.0]],
+            device=device,
+            dtype=lens.dtype,
+        )
+
+        chief = lens.calc_chief_ray(ray=ray)
+
+        assert chief.o.shape == (2, 1, 3)
+        torch.testing.assert_close(chief.o[:, 0], ray.o[:, 1])
+        torch.testing.assert_close(
+            chief.chief_ray_sample_index,
+            torch.tensor([[1], [1]], device=device),
+        )
+        torch.testing.assert_close(
+            chief.is_valid,
+            torch.tensor([[1.0], [0.0]], device=device, dtype=lens.dtype),
+        )
+        expected_residual = CENTROID_PUPIL_SIGMA * torch.sqrt(
+            -torch.log(
+                torch.tensor(
+                    [[0.99], [0.95]], device=device, dtype=lens.dtype
+                )
+            )
+        )
+        torch.testing.assert_close(chief.stop_residual_normalized, expected_residual)
+        torch.testing.assert_close(
+            chief.stop_residual_mm,
+            expected_residual * lens.surfaces[lens.aper_idx].r,
+        )
+        assert chief.stop_reached.all()
+
+    def test_requires_one_input_mode_and_stop_weight(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        device = lens.device
+        points = torch.tensor(
+            [[0.0, 0.0, lens.obj_depth]], device=device, dtype=lens.dtype
+        )
+        bare_ray = Ray(
+            torch.zeros(4, 3, device=device, dtype=lens.dtype),
+            torch.tensor(
+                [[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype
+            ).repeat(4, 1),
+            wvln=lens.primary_wvln,
+            device=device,
+        )
+
+        with pytest.raises(ValueError, match="exactly one"):
+            lens.calc_chief_ray()
+        with pytest.raises(ValueError, match="exactly one"):
+            lens.calc_chief_ray(points, ray=bare_ray)
+        with pytest.raises(ValueError, match="no aperture-stop weights"):
+            lens.calc_chief_ray(ray=bare_ray)
+        with pytest.raises(ValueError, match="does not contain its earlier path"):
+            bare_ray.centroid_weight_assigned = True
+            lens.calc_chief_ray(ray=bare_ray, record=True)
+
+    def test_reports_when_no_sample_reaches_stop(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        device = lens.device
+        ray = Ray(
+            torch.zeros(3, 3, device=device, dtype=lens.dtype),
+            torch.tensor(
+                [[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype
+            ).repeat(3, 1),
+            wvln=lens.primary_wvln,
+            device=device,
+        )
+        ray.centroid_weight.zero_()
+        ray.centroid_weight_assigned = True
+
+        chief = lens.calc_chief_ray(ray=ray)
+
+        assert not chief.stop_reached.any()
+        assert not chief.is_valid.any()
+        assert torch.isinf(chief.stop_residual_normalized).all()
+        assert torch.isinf(chief.stop_residual_mm).all()
+
+    def test_samples_points_and_returns_selected_path(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        torch.manual_seed(11)
+        points = torch.tensor(
+            [[0.0, 0.0, lens.obj_depth]],
+            device=lens.device,
+            dtype=lens.dtype,
+        )
+
+        chief, path = lens.calc_chief_ray(points, num_rays=256, record=True)
+
+        assert chief.o.shape == (1, 1, 3)
+        assert chief.is_valid.shape == (1, 1)
+        assert chief.is_valid.all()
+        assert chief.stop_reached.all()
+        assert torch.isfinite(chief.stop_residual_mm).all()
+        assert (chief.stop_residual_normalized < 0.25).all()
+        assert int(chief.chief_ray_sample_index.max()) < 256
+        assert len(path) == len(lens.surfaces) + 2
+        assert all(p.shape == (1, 1, 3) for p in path)
+        torch.testing.assert_close(path[-1], chief.o)
+
+    def test_psf_center_uses_chief_ray_and_falls_back_per_field(
+        self, sample_cellphone_lens, monkeypatch, caplog
+    ):
+        lens = sample_cellphone_lens
+        device = lens.device
+        points = torch.tensor(
+            [[0.0, 0.0, lens.obj_depth], [0.0, 100.0, lens.obj_depth]],
+            device=device,
+            dtype=lens.dtype,
+        )
+        fake = Ray(
+            torch.tensor(
+                [[[1.25, -0.75, 0.0]], [[9.0, 9.0, 0.0]]],
+                device=device,
+                dtype=lens.dtype,
+            ),
+            torch.tensor(
+                [[[0.0, 0.0, 1.0]], [[0.0, 0.0, 1.0]]],
+                device=device,
+                dtype=lens.dtype,
+            ),
+            wvln=lens.primary_wvln,
+            device=device,
+        )
+        fake.is_valid = torch.tensor(
+            [[1.0], [0.0]], device=device, dtype=lens.dtype
+        )
+
+        def fake_calc_chief_ray(points_obj, num_rays):
+            assert points_obj is points
+            assert num_rays > 0
+            return fake
+
+        monkeypatch.setattr(lens, "calc_chief_ray", fake_calc_chief_ray)
+        pinhole = lens.psf_center(points, method="pinhole")
+        center = lens.psf_center(points, method="chief_ray")
+
+        torch.testing.assert_close(center[0], -fake.o[0, 0, :2])
+        torch.testing.assert_close(center[1], pinhole[1])
+        assert "1 of 2 chief rays are invalid" in caplog.text
+
 
 class TestRMSMap:
     """Tests for rms_map and rms_map_rgb."""

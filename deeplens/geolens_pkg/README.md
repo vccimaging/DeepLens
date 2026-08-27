@@ -7,6 +7,7 @@ The `geolens_pkg` is a sub-package of DeepLens (under `optics/`) that provides a
 This package offers a wide range of optical performance evaluation capabilities:
 
 -   **Spot Diagram Analysis:** Generate and visualize spot diagrams at various field angles to assess aberrations.
+-   **Chief-Ray Analysis:** Extract the real ray sampled closest to the physical aperture-stop center, including stop-residual and validity diagnostics.
 -   **RMS Spot Error:** Calculate RMS spot size maps across different wavelengths and field points.
 -   **Distortion Analysis:** Compute and plot distortion maps and curves to quantify image deformation.
 -   **Modulation Transfer Function (MTF):** Evaluate the spatial frequency response of the lens system to determine its resolution and contrast performance.

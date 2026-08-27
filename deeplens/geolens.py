@@ -18,6 +18,7 @@ import torch
 import torch.nn.functional as F
 
 from .config import (
+    CENTROID_PUPIL_SIGMA,
     DEFAULT_WAVE,
     DELTA_PARAXIAL,
     DEPTH,
@@ -123,6 +124,10 @@ class GeoLens(
             wvln_rgb=wvln_rgb,
             obj_depth=obj_depth,
         )
+        # Some derived-property traces run before calc_pupil() identifies the
+        # physical stop. Keep that initialization phase explicit so stop
+        # bookkeeping remains dormant until the aperture index is available.
+        self.aper_idx = None
 
         # Load lens file
         if filename is not None:
@@ -463,7 +468,8 @@ class GeoLens(
         else:
             raise Exception("The shape of input object positions is not supported.")
 
-        # Calculate rays
+        # The physical-stop chief-ray weight is assigned only when tracing
+        # crosses the aperture; entrance-pupil sampling is not the definition.
         rays = Ray(ray_o, ray_d, wvln, device=self.device)
         return rays
 
@@ -774,6 +780,27 @@ class GeoLens(
             )
         return surf_indices
 
+    def _assign_centroid_weight(self, ray):
+        """Record each ray's proximity to the physical aperture-stop centre.
+
+        The tracing loops call this immediately after the aperture reaction,
+        while `ray.o` is on the stop plane. Invalid rays receive zero weight;
+        valid rays receive a detached Gaussian weight whose maximum identifies
+        the sampled real ray closest to the stop centre.
+        """
+        aper = self.surfaces[self.aper_idx]
+        dx = ray.o[..., 0] - aper.pos_x
+        dy = ray.o[..., 1] - aper.pos_y
+        rho = torch.sqrt(dx**2 + dy**2) / max(float(aper.r), EPSILON)
+        weight = torch.exp(-((rho / CENTROID_PUPIL_SIGMA) ** 2))
+        weight = torch.where(
+            torch.isfinite(weight) & (ray.is_valid > 0),
+            weight,
+            torch.zeros_like(weight),
+        )
+        ray.centroid_weight = weight.detach()
+        ray.centroid_weight_assigned = True
+
     def forward_tracing(self, ray, surf_range, record):
         """Trace forward using sequential per-surface reference frames.
 
@@ -846,6 +873,9 @@ class GeoLens(
                 ray = surf.ray_reaction(ray, n1, n2)
                 mat1 = surf.mat2
 
+                if i == self.aper_idx:
+                    self._assign_centroid_weight(ray)
+
                 if record:
                     ray_out_o = ray.o.clone().detach()
                     ray_out_o[..., 2] += z_frame.detach()
@@ -905,6 +935,9 @@ class GeoLens(
                 n2 = mat2.ior(ray.wvln)
                 ray = surf.ray_reaction(ray, n1, n2)
                 mat1 = mat2
+
+                if i == self.aper_idx:
+                    self._assign_centroid_weight(ray)
 
                 if record:
                     ray_out_o = ray.o.clone().detach()
