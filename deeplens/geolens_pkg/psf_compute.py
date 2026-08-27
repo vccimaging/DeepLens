@@ -24,19 +24,22 @@ Functions:
     - psf_center(): Reference PSF centre via chief ray or pinhole projection.
 """
 
+import logging
+
 import torch
 import torch.nn.functional as F
 
 from ..config import (
     EPSILON,
     PSF_KS,
-    SPP_CALC,
     SPP_COHERENT,
     SPP_PSF,
 )
 from ..imgsim import forward_integral
 from ..light import AngularSpectrumMethod
 from ..utils import diff_float
+
+logger = logging.getLogger(__name__)
 
 
 class GeoLensPSF:
@@ -592,11 +595,10 @@ class GeoLensPSF:
     def psf_center(self, points_obj, method="chief_ray"):
         """Compute the reference PSF center on the sensor for a given point source.
 
-        With method "chief_ray" it traces a half-aperture ray bundle and takes
-        the negated sensor centroid (falling back to "pinhole" if no ray is
-        valid); with "pinhole" it uses an ideal perspective projection (no
-        distortion). Both methods return a center whose sign matches the
-        original object point.
+        With method "chief_ray" it returns the negated sensor intercept of the
+        sampled real ray closest to the physical aperture-stop centre. Invalid
+        chief rays fall back to the pinhole model independently per field. With
+        "pinhole" it uses an ideal perspective projection (no distortion).
 
         Args:
             points_obj (torch.Tensor): Un-normalized object-plane point(s), shape
@@ -611,15 +613,22 @@ class GeoLensPSF:
             ValueError: If `method` is neither "chief_ray" nor "pinhole".
         """
         if method == "chief_ray":
-            # Shrink the pupil and calculate centroid ray as the chief ray
-            ray = self.sample_from_points(points_obj, scale_pupil=0.5, num_rays=SPP_CALC)
-            ray = self.trace2sensor(ray)
-            if ray.is_valid.any():
-                psf_center = ray.centroid()
-                psf_center = -psf_center[..., :2]  # shape [..., 2]
-            else:
-                # Fallback to pinhole when chief ray fails (can happen during optimization)
-                return self.psf_center(points_obj, method="pinhole")
+            chief_ray = self.calc_chief_ray(points_obj, num_rays=SPP_PSF)
+            psf_center = -chief_ray.o[..., 0, :2]
+
+            valid = chief_ray.is_valid[..., 0].bool()
+            if not valid.all():
+                failed = int((~valid).sum().item())
+                logger.warning(
+                    "%d of %d chief rays are invalid; using the pinhole model "
+                    "for those PSF centers.",
+                    failed,
+                    valid.numel(),
+                )
+                pinhole_center = self.psf_center(points_obj, method="pinhole")
+                psf_center = torch.where(
+                    valid.unsqueeze(-1), psf_center, pinhole_center
+                )
 
         elif method == "pinhole":
             # Pinhole camera perspective projection, distortion not considered
