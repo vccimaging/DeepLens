@@ -28,11 +28,12 @@ class Ray(DeepObj):
         shape (torch.Size): Batch shape `(..., num_rays)` shared by the ray tensors.
         is_valid (torch.Tensor): Binary validity mask, shape `(..., num_rays)`.
         en (torch.Tensor): Energy weight, shape `(..., num_rays, 1)`.
-        centroid_weight (torch.Tensor): Per-ray physical-stop proximity weight,
+        stop_weight (torch.Tensor): Per-ray physical-stop proximity weight,
             shape `(..., num_rays)`. It remains uniform until a trace crosses
-            the aperture stop.
-        centroid_weight_assigned (bool): Whether `centroid_weight` was stamped
-            at the physical aperture stop.
+            the aperture stop; stamped in float32 when the ray dtype is a
+            half precision so small weights do not underflow.
+        stop_weight_assigned (bool): Whether `stop_weight` was stamped at the
+            physical aperture stop.
         bend_penalty (torch.Tensor): Accumulated per-surface bend penalty, shape `(..., num_rays, 1)`.
         opl (torch.Tensor): Optical path length, shape `(..., num_rays, 1)` [mm].
             Only accumulated when `is_coherent` is True.
@@ -78,10 +79,10 @@ class Ray(DeepObj):
         self.bend_penalty = torch.zeros(
             (*self.shape, 1), device=device, dtype=self.o.dtype
         )
-        self.centroid_weight = torch.ones(
+        self.stop_weight = torch.ones(
             self.shape, device=device, dtype=self.o.dtype
         )
-        self.centroid_weight_assigned = False
+        self.stop_weight_assigned = False
 
         # Coherent ray tracing
         self.is_coherent = is_coherent  # bool
@@ -211,11 +212,11 @@ class Ray(DeepObj):
         ray.is_valid = self.is_valid.clone().to(target_device)
         ray.en = self.en.clone().to(target_device)
         ray.bend_penalty = self.bend_penalty.clone().to(target_device)
-        ray.centroid_weight = self.centroid_weight.clone().to(target_device)
+        ray.stop_weight = self.stop_weight.clone().to(target_device)
         ray.opl = self.opl.clone().to(target_device)
 
         ray.is_coherent = self.is_coherent
-        ray.centroid_weight_assigned = self.centroid_weight_assigned
+        ray.stop_weight_assigned = self.stop_weight_assigned
         ray.device = torch.device(target_device)
         ray.dtype = ray.o.dtype
         ray.shape = ray.o.shape[:-1]
@@ -224,7 +225,6 @@ class Ray(DeepObj):
         for name in (
             "stop_residual_normalized",
             "stop_residual_mm",
-            "stop_weight",
             "stop_reached",
             "chief_ray_sample_index",
         ):
@@ -252,11 +252,10 @@ class Ray(DeepObj):
         self.en = self.en.squeeze(dim)
         self.opl = self.opl.squeeze(dim)
         self.bend_penalty = self.bend_penalty.squeeze(dim)
-        self.centroid_weight = self.centroid_weight.squeeze(dim)
+        self.stop_weight = self.stop_weight.squeeze(dim)
         for name in (
             "stop_residual_normalized",
             "stop_residual_mm",
-            "stop_weight",
             "stop_reached",
             "chief_ray_sample_index",
         ):
@@ -284,11 +283,10 @@ class Ray(DeepObj):
         self.en = self.en.unsqueeze(dim)
         self.opl = self.opl.unsqueeze(dim)
         self.bend_penalty = self.bend_penalty.unsqueeze(dim)
-        self.centroid_weight = self.centroid_weight.unsqueeze(dim)
+        self.stop_weight = self.stop_weight.unsqueeze(dim)
         for name in (
             "stop_residual_normalized",
             "stop_residual_mm",
-            "stop_weight",
             "stop_reached",
             "chief_ray_sample_index",
         ):

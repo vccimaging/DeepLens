@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import torch
 
-from deeplens.config import CENTROID_PUPIL_SIGMA
+from deeplens.config import STOP_WEIGHT_SIGMA
 from deeplens.light import Ray
 
 
@@ -38,12 +38,12 @@ class TestChiefRay:
             dtype=lens.dtype,
         )
         ray = Ray(o, d, wvln=lens.primary_wvln, device=device)
-        ray.centroid_weight = torch.tensor(
+        ray.stop_weight = torch.tensor(
             [[0.2, 0.99, 0.6], [0.5, 0.95, 0.8]],
             device=device,
             dtype=lens.dtype,
         )
-        ray.centroid_weight_assigned = True
+        ray.stop_weight_assigned = True
         ray.is_valid = torch.tensor(
             [[1.0, 1.0, 1.0], [1.0, 0.0, 1.0]],
             device=device,
@@ -62,7 +62,7 @@ class TestChiefRay:
             chief.is_valid,
             torch.tensor([[1.0], [0.0]], device=device, dtype=lens.dtype),
         )
-        expected_residual = CENTROID_PUPIL_SIGMA * torch.sqrt(
+        expected_residual = STOP_WEIGHT_SIGMA * torch.sqrt(
             -torch.log(
                 torch.tensor(
                     [[0.99], [0.95]], device=device, dtype=lens.dtype
@@ -98,7 +98,7 @@ class TestChiefRay:
         with pytest.raises(ValueError, match="no aperture-stop weights"):
             lens.calc_chief_ray(ray=bare_ray)
         with pytest.raises(ValueError, match="does not contain its earlier path"):
-            bare_ray.centroid_weight_assigned = True
+            bare_ray.stop_weight_assigned = True
             lens.calc_chief_ray(ray=bare_ray, record=True)
 
     def test_reports_when_no_sample_reaches_stop(self, sample_cellphone_lens):
@@ -112,8 +112,8 @@ class TestChiefRay:
             wvln=lens.primary_wvln,
             device=device,
         )
-        ray.centroid_weight.zero_()
-        ray.centroid_weight_assigned = True
+        ray.stop_weight.zero_()
+        ray.stop_weight_assigned = True
 
         chief = lens.calc_chief_ray(ray=ray)
 
@@ -184,6 +184,130 @@ class TestChiefRay:
         torch.testing.assert_close(center[0], -fake.o[0, 0, :2])
         torch.testing.assert_close(center[1], pinhole[1])
         assert "1 of 2 chief rays are invalid" in caplog.text
+
+    def test_psf_center_reuses_traced_bundle(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        points = torch.tensor(
+            [[0.0, 0.5, lens.obj_depth], [0.3, -0.8, lens.obj_depth]],
+            device=lens.device,
+            dtype=lens.dtype,
+        )
+        torch.manual_seed(3)
+        traced = lens.trace2sensor(
+            lens.sample_from_points(points=points, num_rays=2048)
+        )
+
+        center = lens.psf_center(points, method="chief_ray", ray=traced)
+
+        chief = lens.calc_chief_ray(ray=traced)
+        assert chief.is_valid.all()
+        torch.testing.assert_close(center, -chief.o[..., 0, :2])
+
+    def test_psf_center_no_stop_falls_back_to_pinhole(
+        self, sample_cellphone_lens, caplog
+    ):
+        lens = sample_cellphone_lens
+        points = torch.tensor(
+            [[0.0, 20.0, lens.obj_depth]], device=lens.device, dtype=lens.dtype
+        )
+        pinhole = lens.psf_center(points, method="pinhole")
+
+        lens.aper_idx = None
+        center = lens.psf_center(points, method="chief_ray")
+
+        torch.testing.assert_close(center, pinhole)
+        assert "no aperture stop" in caplog.text
+
+    def test_chief_or_centroid_falls_back_per_field(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        device = lens.device
+        o = torch.rand(2, 4, 3, device=device, dtype=lens.dtype)
+        d = torch.tensor(
+            [[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype
+        ).expand(2, 4, 3)
+        ray = Ray(o.clone(), d, wvln=lens.primary_wvln, device=device)
+        ray.stop_weight = torch.tensor(
+            [[0.1, 0.9, 0.3, 0.2], [0.0, 0.0, 0.0, 0.0]],
+            device=device,
+            dtype=lens.dtype,
+        )
+        ray.stop_weight_assigned = True
+
+        xy = lens._chief_or_centroid_xy(ray)
+
+        # Field 0: chief-ray sample (index 1). Field 1: no sample reached the
+        # stop, so the valid-ray centroid is used instead.
+        torch.testing.assert_close(xy[0], ray.o[0, 1, :2])
+        torch.testing.assert_close(xy[1], ray.o[1].mean(dim=0)[:2])
+
+    def test_fov_mode_full_field_camera_lens(self, sample_camera_lens):
+        # Regression for the removed fan-based ray aiming: the discrete
+        # selection must stay close to the stop centre at full field, where
+        # the old single-pass fan missed by ~0.12 stop radii on this lens.
+        lens = sample_camera_lens
+        rfov_deg = float(lens.rfov * 180.0 / torch.pi)
+        angles = torch.tensor(
+            [0.5 * rfov_deg, rfov_deg], device=lens.device, dtype=torch.float32
+        )
+
+        torch.manual_seed(5)
+        chief = lens.calc_chief_ray(fov=angles)
+
+        assert chief.o.shape == (2, 1, 3)
+        assert chief.is_valid.all()
+        assert chief.stop_reached.all()
+        assert (chief.stop_residual_normalized < 0.1).all()
+
+    def test_fov_mode_heights_increase_and_record_path(
+        self, sample_cellphone_lens
+    ):
+        lens = sample_cellphone_lens
+        rfov_deg = float(lens.rfov * 180.0 / torch.pi)
+        angles = torch.linspace(0.2 * rfov_deg, rfov_deg, 4, device=lens.device)
+
+        torch.manual_seed(5)
+        chief, path = lens.calc_chief_ray(fov=angles, record=True)
+
+        assert chief.o.shape == (4, 1, 3)
+        assert chief.is_valid.all()
+        heights = chief.o[:, 0, 1].abs()
+        assert (heights[1:] > heights[:-1]).all()
+        assert len(path) == len(lens.surfaces) + 2
+        assert all(p.shape == (4, 1, 3) for p in path)
+        torch.testing.assert_close(path[-1], chief.o)
+
+    def test_fov_mode_rejects_bad_inputs(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        with pytest.raises(ValueError, match="Invalid plane"):
+            lens.calc_chief_ray(fov=[0.0, 5.0], plane="diagonal")
+        with pytest.raises(ValueError, match="1-D"):
+            lens.calc_chief_ray(fov=[[0.0, 5.0]])
+        points = torch.tensor(
+            [[0.0, 0.0, lens.obj_depth]], device=lens.device, dtype=lens.dtype
+        )
+        with pytest.raises(ValueError, match="exactly one"):
+            lens.calc_chief_ray(points, fov=[5.0])
+
+    def test_stop_weight_survives_half_precision(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        aper = lens.surfaces[lens.aper_idx]
+        # A ray at 0.8 of the stop radius: exp(-(0.8/0.2)^2) ~ 1.1e-7, which
+        # underflows to zero in float16 but must stay positive.
+        o = torch.tensor(
+            [[float(aper.pos_x) + 0.8 * float(aper.r), float(aper.pos_y), 0.0]],
+            device=lens.device,
+            dtype=torch.float16,
+        )
+        d = torch.tensor(
+            [[0.0, 0.0, 1.0]], device=lens.device, dtype=torch.float16
+        )
+        ray = Ray(o, d, wvln=lens.primary_wvln, device=lens.device)
+
+        lens._assign_stop_weight(ray)
+
+        assert ray.stop_weight_assigned
+        assert ray.stop_weight.dtype == torch.float32
+        assert (ray.stop_weight > 0).all()
 
 
 class TestRMSMap:

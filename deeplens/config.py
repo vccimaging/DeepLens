@@ -23,7 +23,7 @@ GEO_GRID = 21  # spatial grid size for spatially-varying PSF map
 # Gaussian sigma in normalized physical-stop radius for chief-ray sample
 # bookkeeping. The maximum weight identifies the sampled real ray closest to
 # the stop centre without making the discrete selection differentiable.
-CENTROID_PUPIL_SIGMA = 0.2
+STOP_WEIGHT_SIGMA = 0.2
 
 DEFAULT_WAVE = 0.587  # [µm] default design wavelength (green, Fraunhofer d)
 
