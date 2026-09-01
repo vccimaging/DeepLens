@@ -194,10 +194,7 @@ class TestSEQIO:
         """A truncated Code V file names the missing SI image surface."""
         output = Path(test_output_dir) / "missing_image.seq"
         output.write_text(
-            "RDM\nEPD 10.0\nYAN 0 10\n"
-            "SO 0.0 1e10\n"
-            "S 50.0 3.0 SK16\n"
-            "S -50.0 5.0\n",
+            "RDM\nEPD 10.0\nYAN 0 10\nSO 0.0 1e10\nS 50.0 3.0 SK16\nS -50.0 5.0\n",
             encoding="utf-8",
         )
 

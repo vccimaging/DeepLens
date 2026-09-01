@@ -74,9 +74,7 @@ class GeoLensSurfOps:
 
         # Ray record, shape [num_rays, num_surfaces + 2, 3]
         ray_o_record = torch.stack(ray_o_record, dim=-2)
-        ray_o_record = torch.nan_to_num(
-            ray_o_record, nan=0.0, posinf=0.0, neginf=0.0
-        )
+        ray_o_record = torch.nan_to_num(ray_o_record, nan=0.0, posinf=0.0, neginf=0.0)
         ray_o_record = ray_o_record.reshape(-1, ray_o_record.shape[-2], 3)
 
         # Compute the maximum ray height for each surface
@@ -109,7 +107,7 @@ class GeoLensSurfOps:
         # constraint holds. The grid is dense enough for typical aspheric sag
         # profiles; non-monotonic extremes are handled conservatively.
         # ------------------------------------------------------------------
-        sag_factor=0.4
+        sag_factor = 0.4
         for i in surface_range:
             if not isinstance(self.surfaces[i], Aperture):
                 r_prop = proposed_r[i]
@@ -156,7 +154,7 @@ class GeoLensSurfOps:
             if isinstance(self.surfaces[cap_idx], Aperture):
                 return
 
-            edge_min = 0.1 # mm
+            edge_min = 0.1  # mm
             r_check = proposed_r[cap_idx]
 
             other_idx = next_idx if cap_idx == prev_idx else prev_idx

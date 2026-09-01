@@ -7,8 +7,8 @@ import torch
 
 from deeplens.imgsim import (
     conv_psf,
-    conv_psf_map,
     conv_psf_depth_interp,
+    conv_psf_map,
     conv_psf_map_depth_interp,
     interp_psf_map,
     rotate_psf,
@@ -24,9 +24,9 @@ class TestConvPSF:
         img = torch.rand(1, 3, 64, 64, device=device_auto)
         psf = torch.rand(3, 11, 11, device=device_auto)
         psf = psf / psf.sum(dim=(-1, -2), keepdim=True)  # Normalize
-        
+
         result = conv_psf(img, psf)
-        
+
         assert result.shape == img.shape
 
     def test_conv_psf_normalized(self, device_auto):
@@ -34,9 +34,9 @@ class TestConvPSF:
         img = torch.rand(1, 3, 64, 64, device=device_auto)
         psf = torch.ones(3, 11, 11, device=device_auto)
         psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
-        
+
         result = conv_psf(img, psf)
-        
+
         # Total energy should be approximately preserved
         energy_in = img.sum()
         energy_out = result.sum()
@@ -45,13 +45,13 @@ class TestConvPSF:
     def test_conv_psf_delta(self, device_auto):
         """Delta function PSF should return original image."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
-        
+
         # Create delta PSF
         psf = torch.zeros(3, 11, 11, device=device_auto)
         psf[:, 5, 5] = 1.0
-        
+
         result = conv_psf(img, psf)
-        
+
         # Should be very close to original
         assert torch.allclose(result, img, atol=1e-5)
 
@@ -111,28 +111,28 @@ class TestConvPSFMap:
     def test_conv_psf_map_shape(self, device_auto):
         """Output should have same shape as input."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
-        
+
         # PSF map: [grid_h, grid_w, C, ks, ks]
         psf_map = torch.rand(4, 4, 3, 11, 11, device=device_auto)
         psf_map = psf_map / psf_map.sum(dim=(-1, -2), keepdim=True)
-        
+
         result = conv_psf_map(img, psf_map)
-        
+
         assert result.shape == img.shape
 
     def test_conv_psf_map_uniform(self, device_auto):
         """Uniform PSF map should give same result as single PSF."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
-        
+
         # Create uniform PSF (same at all grid points)
         single_psf = torch.rand(3, 11, 11, device=device_auto)
         single_psf = single_psf / single_psf.sum(dim=(-1, -2), keepdim=True)
-        
+
         psf_map = single_psf.unsqueeze(0).unsqueeze(0).expand(4, 4, -1, -1, -1).clone()
-        
+
         result_map = conv_psf_map(img, psf_map)
         result_single = conv_psf(img, single_psf)
-        
+
         # Results should be similar
         assert torch.allclose(result_map, result_single, atol=0.1)
 
@@ -143,13 +143,13 @@ class TestSplatPSFPerPixel:
     def test_splat_psf_per_pixel_shape(self, device_auto):
         """Output should have same shape as input."""
         img = torch.rand(1, 3, 32, 32, device=device_auto)
-        
+
         # Per-pixel PSF: [H, W, C, ks, ks]
         psf = torch.rand(32, 32, 3, 5, 5, device=device_auto)
         psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
-        
+
         result = splat_psf_per_pixel(img, psf)
-        
+
         assert result.shape == img.shape
 
     @pytest.mark.parametrize("ks", [5, 6])
@@ -173,44 +173,48 @@ class TestConvPSFDepthInterp:
         """Output should have same shape as input."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
         depth = -torch.rand(1, 1, 64, 64, device=device_auto) - 0.01
-        
+
         # PSF kernels at different depths
         psf_kernels = torch.rand(5, 3, 11, 11, device=device_auto)
         psf_kernels = psf_kernels / psf_kernels.sum(dim=(-1, -2), keepdim=True)
-        
+
         # Depth values for each PSF
         psf_depths = torch.linspace(-2, -0.01, 5, device=device_auto)
-        
+
         result = conv_psf_depth_interp(img, depth, psf_kernels, psf_depths)
-        
+
         assert result.shape == img.shape
 
     def test_conv_psf_depth_interp_extreme_depths(self, device_auto):
         """Should handle depth at boundaries."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
-        
+
         # Depth at boundary value
         depth = torch.full((1, 1, 64, 64), -0.5, device=device_auto)
-        
+
         psf_kernels = torch.rand(5, 3, 11, 11, device=device_auto)
         psf_kernels = psf_kernels / psf_kernels.sum(dim=(-1, -2), keepdim=True)
         psf_depths = torch.linspace(-2, -0.01, 5, device=device_auto)
-        
+
         result = conv_psf_depth_interp(img, depth, psf_kernels, psf_depths)
-        
+
         assert not torch.isnan(result).any()
 
     def test_conv_psf_depth_interp_disparity(self, device_auto):
         """Should handle disparity interpolation mode."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
-        depth = -(torch.rand(1, 1, 64, 64, device=device_auto) + 1.0)  # Negative depth, avoid near-zero for disparity
-        
+        depth = -(
+            torch.rand(1, 1, 64, 64, device=device_auto) + 1.0
+        )  # Negative depth, avoid near-zero for disparity
+
         psf_kernels = torch.rand(5, 3, 11, 11, device=device_auto)
         psf_kernels = psf_kernels / psf_kernels.sum(dim=(-1, -2), keepdim=True)
         psf_depths = torch.linspace(-3.0, -1.0, 5, device=device_auto)
-        
-        result = conv_psf_depth_interp(img, depth, psf_kernels, psf_depths, interp_mode="disparity")
-        
+
+        result = conv_psf_depth_interp(
+            img, depth, psf_kernels, psf_depths, interp_mode="disparity"
+        )
+
         assert result.shape == img.shape
         assert not torch.isnan(result).any()
 
@@ -236,9 +240,11 @@ class TestConvPSFDepthInterp:
         depth = torch.rand(1, 1, 64, 64, device=device_auto)
         psf_kernels = torch.rand(5, 3, 11, 11, device=device_auto)
         psf_depths = torch.linspace(0, 1, 5, device=device_auto)
-        
+
         with pytest.raises(AssertionError):
-            conv_psf_depth_interp(img, depth, psf_kernels, psf_depths, interp_mode="invalid")
+            conv_psf_depth_interp(
+                img, depth, psf_kernels, psf_depths, interp_mode="invalid"
+            )
 
 
 class TestConvPSFMapDepthInterp:
@@ -248,27 +254,29 @@ class TestConvPSFMapDepthInterp:
         """Output should have same shape as input."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
         depth = -torch.rand(1, 1, 64, 64, device=device_auto) - 0.01
-        
+
         # PSF map: [grid_h, grid_w, num_depth, C, ks, ks]
         psf_map = torch.rand(4, 4, 5, 3, 11, 11, device=device_auto)
         psf_map = psf_map / psf_map.sum(dim=(-1, -2), keepdim=True)
         psf_depths = torch.linspace(-2, -0.01, 5, device=device_auto)
-        
+
         result = conv_psf_map_depth_interp(img, depth, psf_map, psf_depths)
-        
+
         assert result.shape == img.shape
 
     def test_conv_psf_map_depth_interp_disparity(self, device_auto):
         """Should handle disparity interpolation mode."""
         img = torch.rand(1, 3, 64, 64, device=device_auto)
         depth = -(torch.rand(1, 1, 64, 64, device=device_auto) + 1.0)
-        
+
         psf_map = torch.rand(4, 4, 5, 3, 11, 11, device=device_auto)
         psf_map = psf_map / psf_map.sum(dim=(-1, -2), keepdim=True)
         psf_depths = torch.linspace(-3.0, -1.0, 5, device=device_auto)
-        
-        result = conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="disparity")
-        
+
+        result = conv_psf_map_depth_interp(
+            img, depth, psf_map, psf_depths, interp_mode="disparity"
+        )
+
         assert result.shape == img.shape
         assert not torch.isnan(result).any()
 
@@ -285,8 +293,12 @@ class TestConvPSFMapDepthInterp:
         result_far = conv_psf_map_depth_interp(img, far_depth, psf_map, psf_depths)
         result_near = conv_psf_map_depth_interp(img, near_depth, psf_map, psf_depths)
 
-        assert torch.allclose(result_far, conv_psf_map(img, psf_map[:, :, 0]), atol=1e-6)
-        assert torch.allclose(result_near, conv_psf_map(img, psf_map[:, :, 1]), atol=1e-6)
+        assert torch.allclose(
+            result_far, conv_psf_map(img, psf_map[:, :, 0]), atol=1e-6
+        )
+        assert torch.allclose(
+            result_near, conv_psf_map(img, psf_map[:, :, 1]), atol=1e-6
+        )
 
 
 class TestInterpPSFMap:
@@ -297,22 +309,22 @@ class TestInterpPSFMap:
         grid_old = 3
         grid_new = 6
         ks = 11
-        
+
         psf_map = torch.rand(3, grid_old * ks, grid_old * ks, device=device_auto)
-        
+
         interpolated = interp_psf_map(psf_map, grid_old=grid_old, grid_new=grid_new)
-        
+
         assert interpolated.shape == (3, grid_new * ks, grid_new * ks)
 
     def test_interp_psf_map_identity(self, device_auto):
         """Same grid size should return similar map."""
         grid = 4
         ks = 11
-        
+
         psf_map = torch.rand(3, grid * ks, grid * ks, device=device_auto)
-        
+
         interpolated = interp_psf_map(psf_map, grid_old=grid, grid_new=grid)
-        
+
         assert torch.allclose(interpolated, psf_map, atol=0.01)
 
 
@@ -323,18 +335,18 @@ class TestRotatePSF:
         """Rotation should preserve shape."""
         psf = torch.rand(4, 3, 21, 21, device=device_auto)
         theta = torch.tensor([0.0, 0.5, 1.0, 1.5], device=device_auto)
-        
+
         rotated = rotate_psf(psf, theta)
-        
+
         assert rotated.shape == psf.shape
 
     def test_rotate_psf_zero(self, device_auto):
         """Zero rotation should return same PSF."""
         psf = torch.rand(1, 3, 21, 21, device=device_auto)
         theta = torch.tensor([0.0], device=device_auto)
-        
+
         rotated = rotate_psf(psf, theta)
-        
+
         assert torch.allclose(rotated, psf, atol=1e-4)
 
     def test_rotate_psf_symmetric(self, device_auto):
@@ -343,15 +355,15 @@ class TestRotatePSF:
         ks = 21
         center = ks // 2
         y, x = torch.meshgrid(torch.arange(ks), torch.arange(ks), indexing="ij")
-        r = torch.sqrt((x - center).float()**2 + (y - center).float()**2)
-        psf_single = torch.exp(-r**2 / 10)
+        r = torch.sqrt((x - center).float() ** 2 + (y - center).float() ** 2)
+        psf_single = torch.exp(-(r**2) / 10)
         psf_single = psf_single / psf_single.sum()
-        
+
         psf = psf_single.unsqueeze(0).unsqueeze(0).expand(1, 3, -1, -1).to(device_auto)
         theta = torch.tensor([1.57], device=device_auto)  # 90 degrees
-        
+
         rotated = rotate_psf(psf, theta)
-        
+
         # Should be approximately the same due to symmetry
         assert torch.allclose(rotated, psf, atol=0.05)
 
@@ -365,9 +377,9 @@ class TestPSFGPUPerformance:
         img = torch.rand(batch_size, 3, 128, 128, device=device_auto)
         psf = torch.rand(3, 21, 21, device=device_auto)
         psf = psf / psf.sum(dim=(-1, -2), keepdim=True)
-        
+
         result = conv_psf(img, psf)
-        
+
         assert result.shape == img.shape
         assert result.device.type == device_auto.type
 
@@ -376,7 +388,7 @@ class TestPSFGPUPerformance:
         img = torch.rand(1, 3, 128, 128, device=device_auto)
         psf_map = torch.rand(8, 8, 3, 15, 15, device=device_auto)
         psf_map = psf_map / psf_map.sum(dim=(-1, -2), keepdim=True)
-        
+
         result = conv_psf_map(img, psf_map)
-        
+
         assert result.device.type == device_auto.type

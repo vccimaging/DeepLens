@@ -55,7 +55,16 @@ WVLN_C = 0.6562725  # H  C-line  [um]
 # Manufacturer catalogs to vendor (specs/<maker>/optical/*.yml). These are the
 # standard optical-glass catalogs; crystran additionally provides substrate
 # crystals as tabulated n.
-GLASS_MAKERS = ["schott", "ohara", "hoya", "hikari", "sumita", "cdgm", "lzos", "crystran"]
+GLASS_MAKERS = [
+    "schott",
+    "ohara",
+    "hoya",
+    "hikari",
+    "sumita",
+    "cdgm",
+    "lzos",
+    "crystran",
+]
 
 # Tie-break order when the same bare material name appears in more than one
 # catalog (rare; mostly substrate crystals). Earlier wins.
@@ -68,13 +77,13 @@ MAKER_PRIORITY = {m: i for i, m in enumerate(GLASS_MAKERS)}
 # used as a sanity oracle (these crystals carry no nd/Vd).
 SUBSTRATES = [
     # name        main-shelf path             aliases               (wvln_um, n_expected, tol)
-    ("sio2",      "SiO2/nk/Malitson.yml",      ["fused_silica"],     (0.5875618, 1.4585, 0.002)),
-    ("al2o3",     "Al2O3/nk/Malitson-o.yml",   ["sapphire"],         (0.5875618, 1.7681, 0.003)),
-    ("mgf2",      "MgF2/nk/Li-o.yml",          [],                   (0.5875618, 1.3777, 0.003)),
-    ("caf2",      "CaF2/nk/Malitson.yml",      ["fluorite"],         (0.5875618, 1.4338, 0.002)),
-    ("znse",      "ZnSe/nk/Connolly.yml",      [],                   (0.6328000, 2.5934, 0.02)),
-    ("si",        "Si/nk/Salzberg.yml",        ["silicon"],          (2.0000000, 3.4487, 0.02)),
-    ("ge",        "Ge/nk/Burnett.yml",         ["germanium"],        (4.0000000, 4.0240, 0.05)),
+    ("sio2", "SiO2/nk/Malitson.yml", ["fused_silica"], (0.5875618, 1.4585, 0.002)),
+    ("al2o3", "Al2O3/nk/Malitson-o.yml", ["sapphire"], (0.5875618, 1.7681, 0.003)),
+    ("mgf2", "MgF2/nk/Li-o.yml", [], (0.5875618, 1.3777, 0.003)),
+    ("caf2", "CaF2/nk/Malitson.yml", ["fluorite"], (0.5875618, 1.4338, 0.002)),
+    ("znse", "ZnSe/nk/Connolly.yml", [], (0.6328000, 2.5934, 0.02)),
+    ("si", "Si/nk/Salzberg.yml", ["silicon"], (2.0000000, 3.4487, 0.02)),
+    ("ge", "Ge/nk/Burnett.yml", ["germanium"], (4.0000000, 4.0240, 0.05)),
 ]
 
 SUPPORTED_FORMULAS = {1, 2, 3}
@@ -133,7 +142,9 @@ def _parse_data_block(doc):
         if t.startswith("formula"):
             num = int(t.split()[1])
             coeffs = [float(x) for x in str(entry["coefficients"]).split()]
-            wr = [float(x) for x in str(entry.get("wavelength_range", "")).split()] or None
+            wr = [
+                float(x) for x in str(entry.get("wavelength_range", "")).split()
+            ] or None
             return ("formula", num, coeffs, wr)
 
     # Fall back to a tabulated refractive index (n, or the n column of nk).
@@ -169,8 +180,10 @@ def _get_props(doc):
     props = doc.get("PROPERTIES") or {}
     nd = props.get("nd")
     vd = props.get("Vd")
-    return (float(nd) if nd is not None else None,
-            float(vd) if vd is not None else None)
+    return (
+        float(nd) if nd is not None else None,
+        float(vd) if vd is not None else None,
+    )
 
 
 def _load_agf_names(material_dir):
@@ -207,7 +220,10 @@ def build(db_root, material_dir):
         if prev is not None:
             report["collisions"].append((name, prev["maker"], maker))
             # Lower priority value wins; substrates carry priority -1.
-            if (priority, MAKER_PRIORITY.get(maker, 99)) >= (prev["priority"], MAKER_PRIORITY.get(prev["maker"], 99)):
+            if (priority, MAKER_PRIORITY.get(maker, 99)) >= (
+                prev["priority"],
+                MAKER_PRIORITY.get(prev["maker"], 99),
+            ):
                 return
             formula_table.pop(name, None)
             interp_table.pop(name, None)
@@ -238,16 +254,24 @@ def build(db_root, material_dir):
             if parsed[0] == "formula":
                 _, num, coeffs, wr = parsed
                 if num not in SUPPORTED_FORMULAS:
-                    raise ValueError(f"{maker}/{fn}: unsupported formula {num} in scope")
+                    raise ValueError(
+                        f"{maker}/{fn}: unsupported formula {num} in scope"
+                    )
                 nd_calc, vd_calc = _abbe(num, coeffs)
                 # nd/Vd oracle: validate parsing, formula choice, unit handling.
                 if nd_cat is not None and abs(nd_calc - nd_cat) > 1.5e-3:
                     report["oracle_fail"].append(
-                        f"{maker}/{name}: nd calc={nd_calc:.5f} cat={nd_cat:.5f}")
+                        f"{maker}/{name}: nd calc={nd_calc:.5f} cat={nd_cat:.5f}"
+                    )
                     continue
-                if vd_cat is not None and vd_cat > 0 and abs(vd_calc - vd_cat) / vd_cat > 0.01:
+                if (
+                    vd_cat is not None
+                    and vd_cat > 0
+                    and abs(vd_calc - vd_cat) / vd_cat > 0.01
+                ):
                     report["oracle_fail"].append(
-                        f"{maker}/{name}: Vd calc={vd_calc:.3f} cat={vd_cat:.3f}")
+                        f"{maker}/{name}: Vd calc={vd_calc:.3f} cat={vd_cat:.3f}"
+                    )
                     continue
                 payload = {
                     "formula": num,
@@ -281,7 +305,8 @@ def build(db_root, material_dir):
         n_got = float(_eval_formula(num, coeffs, w_chk))
         if abs(n_got - n_chk) > tol:
             report["oracle_fail"].append(
-                f"substrate {name}: n({w_chk})={n_got:.4f} expected {n_chk:.4f}")
+                f"substrate {name}: n({w_chk})={n_got:.4f} expected {n_chk:.4f}"
+            )
             continue
         # nd/Vd are defined at the visible He/H lines. For IR-only crystals
         # (e.g. Si, Ge) those lines fall outside the fit's validity range, so a
@@ -304,15 +329,19 @@ def build(db_root, material_dir):
             "source_page": rel,
         }
         for nm in [name] + aliases:
-            _consider(nm, "refractiveindex.info (main)", "formula", payload, priority=-1)
+            _consider(
+                nm, "refractiveindex.info (main)", "formula", payload, priority=-1
+            )
 
     # --- Provenance / commit ------------------------------------------------
     commit, commit_date = "unknown", "unknown"
     try:
         commit = subprocess.check_output(
-            ["git", "-C", db_root, "rev-parse", "HEAD"], text=True).strip()
+            ["git", "-C", db_root, "rev-parse", "HEAD"], text=True
+        ).strip()
         commit_date = subprocess.check_output(
-            ["git", "-C", db_root, "log", "-1", "--format=%ci"], text=True).strip()
+            ["git", "-C", db_root, "log", "-1", "--format=%ci"], text=True
+        ).strip()
     except Exception:
         pass
 
@@ -355,7 +384,9 @@ def build(db_root, material_dir):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--db", required=True, help="Path to refractiveindex.info-database clone")
+    ap.add_argument(
+        "--db", required=True, help="Path to refractiveindex.info-database clone"
+    )
     ap.add_argument("--out", required=True, help="Output JSON path")
     args = ap.parse_args()
 
@@ -368,19 +399,23 @@ def main():
 
     print("=" * 60)
     print(f"refractiveindex.info -> {args.out}")
-    print(f"  upstream commit : {catalog['_meta']['commit'][:12]} ({catalog['_meta']['commit_date']})")
+    print(
+        f"  upstream commit : {catalog['_meta']['commit'][:12]} ({catalog['_meta']['commit_date']})"
+    )
     print(f"  formula entries : {report['formula']}")
     print(f"  interp entries  : {report['interp']}")
     print(f"  total names     : {report['total']}")
     print(f"  new vs AGF      : {report['new_vs_agf']}")
-    print(f"  shadowed by AGF : {report['shadowed_by_agf']} (existing names keep precedence)")
+    print(
+        f"  shadowed by AGF : {report['shadowed_by_agf']} (existing names keep precedence)"
+    )
     print(f"  skipped (no n)  : {report['skipped_no_n']}")
     print(f"  collisions      : {len(report['collisions'])}")
     print(f"  oracle failures : {len(report['oracle_fail'])}")
     for msg in report["oracle_fail"][:40]:
         print(f"      ! {msg}")
     sz = os.path.getsize(args.out)
-    print(f"  output size     : {sz/1024:.1f} KiB")
+    print(f"  output size     : {sz / 1024:.1f} KiB")
     print("=" * 60)
 
 

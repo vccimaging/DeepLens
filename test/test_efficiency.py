@@ -77,17 +77,21 @@ def test_nurbs_phi_vectorized_matches_per_point():
     cp = torch.randn(ncp, ncp, 3) * 0.3  # only z (phase) matters for phi
     weights = torch.rand(ncp, ncp) + 0.5  # positive weights
     surf = NURBSPhase(
-        r=2.0, d_next=0.0,
-        control_points_u=ncp, control_points_v=ncp,
-        degree_u=3, degree_v=3,
-        control_points=cp, weights=weights,
+        r=2.0,
+        d_next=0.0,
+        control_points_u=ncp,
+        control_points_v=ncp,
+        degree_u=3,
+        degree_v=3,
+        control_points=cp,
+        weights=weights,
     )
 
     xs = torch.linspace(-1.8, 1.8, 7)
     ys = torch.linspace(-1.8, 1.8, 5)
     X, Y = torch.meshgrid(xs, ys, indexing="ij")
 
-    out = surf.phi(X, Y)                     # vectorized
-    ref = _nurbs_phi_per_point(surf, X, Y)   # per-point reference
+    out = surf.phi(X, Y)  # vectorized
+    ref = _nurbs_phi_per_point(surf, X, Y)  # per-point reference
     assert out.shape == X.shape
     assert torch.allclose(out, ref, atol=1e-4)

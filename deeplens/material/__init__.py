@@ -1,4 +1,4 @@
-from .materials import MATERIAL_data, RII_data, Material
+from .materials import Material, MATERIAL_data, RII_data
 
 __all__ = [
     "Material",

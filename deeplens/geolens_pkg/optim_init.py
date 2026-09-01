@@ -17,14 +17,26 @@ import random
 import numpy as np
 import torch
 
-from ..geometric_surface import Aperture, Aspheric, Spheric, ThinLens, Plane
+from ..geometric_surface import Aperture, Aspheric, Plane, Spheric, ThinLens
 from ..material import MATERIAL_data
 
 # Common optical glasses for random material selection
 COMMON_GLASSES = [
-    "n-bk7", "n-sk16", "h-k9l", "n-lak14", "n-sk2", "bk7", "n-lak7",
-    "f2", "n-f2", "n-sf5", "n-sf11", "n-sf1",
-    "pmma", "coc", "okp4",
+    "n-bk7",
+    "n-sk16",
+    "h-k9l",
+    "n-lak14",
+    "n-sk2",
+    "bk7",
+    "n-lak7",
+    "f2",
+    "n-f2",
+    "n-sf5",
+    "n-sf11",
+    "n-sf1",
+    "pmma",
+    "coc",
+    "okp4",
 ]
 
 
@@ -173,6 +185,7 @@ def create_lens(
 
     return lens
 
+
 def create_surface(surface_type, d_next, aper_r, imgh, mat):
     """Create a surface object based on the surface type.
 
@@ -212,4 +225,3 @@ def create_surface(surface_type, d_next, aper_r, imgh, mat):
 
     else:
         raise Exception("Surface type not supported yet.")
-

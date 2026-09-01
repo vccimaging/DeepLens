@@ -35,8 +35,8 @@ from deeplens import (
     HybridLens,
     PSFNetLens,
 )
-from deeplens.lens import Lens
 from deeplens.config import PSF_KS
+from deeplens.lens import Lens
 
 LENS_CLASSES = [GeoLens, HybridLens, DiffractiveLens, DefocusLens, PSFNetLens]
 

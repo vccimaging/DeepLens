@@ -7,6 +7,7 @@
 """Binary2 DOE parameterization."""
 
 import torch
+
 from .diffractive import DiffractiveSurface
 
 
@@ -54,8 +55,14 @@ class Binary2(DiffractiveSurface):
             device (str, optional): Device to store tensors on. Defaults to "cpu".
         """
         super().__init__(
-            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step,
-            is_square=is_square, device=device,
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            wvln0=wvln0,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            is_square=is_square,
+            device=device,
         )
 
         # Initialize with random small values
@@ -110,9 +117,17 @@ class Binary2(DiffractiveSurface):
         """
         # Horner's method: r2*(a2 + r2*(a4 + r2*(a6 + r2*(a8 + r2*a10))))
         r2 = self.r2
-        phase = torch.pi * r2 * (
-            self.alpha2
-            + r2 * (self.alpha4 + r2 * (self.alpha6 + r2 * (self.alpha8 + r2 * self.alpha10)))
+        phase = (
+            torch.pi
+            * r2
+            * (
+                self.alpha2
+                + r2
+                * (
+                    self.alpha4
+                    + r2 * (self.alpha6 + r2 * (self.alpha8 + r2 * self.alpha10))
+                )
+            )
         )
         return phase
 

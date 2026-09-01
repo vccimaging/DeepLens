@@ -85,9 +85,10 @@ class Surface(_SequentialSurfaceBase):
 
         # Newton method parameters
         self.newton_maxiter = 8  # [int], maximum number of Newton iterations
-        self.newton_convergence = 50.0 * 1e-6  # [mm], Newton method convergence threshold
+        self.newton_convergence = (
+            50.0 * 1e-6
+        )  # [mm], Newton method convergence threshold
         self.newton_step_bound = 5.0  # [mm], maximum step size in each iteration
-
 
     @classmethod
     def init_from_dict(cls, surf_dict):
@@ -296,7 +297,9 @@ class Surface(_SequentialSurfaceBase):
         cos_bend = torch.sum(ray.d * old_d, dim=-1).unsqueeze(-1)
         per_surf_penalty = F.relu(cos_bend_min - cos_bend)
         valid = ray.is_valid > 0
-        ray.bend_penalty = ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
+        ray.bend_penalty = (
+            ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
+        )
         return ray
 
     def reflect(self, ray):
@@ -692,9 +695,7 @@ class Surface(_SequentialSurfaceBase):
             linestyle (str, optional): Matplotlib line style. Defaults to "solid".
         """
         r_eff = self.draw_r()
-        r = torch.linspace(
-            -r_eff, r_eff, 128, device=self.device, dtype=self.dtype
-        )
+        r = torch.linspace(-r_eff, r_eff, 128, device=self.device, dtype=self.dtype)
         z = self.surface_with_offset(
             r,
             torch.zeros(len(r), device=self.device, dtype=self.dtype),
@@ -709,9 +710,7 @@ class Surface(_SequentialSurfaceBase):
             linewidth=0.75,
         )
 
-    def create_mesh(
-        self, n_rings=32, n_arms=128, color=[0.06, 0.3, 0.6], d=0.0
-    ):
+    def create_mesh(self, n_rings=32, n_arms=128, color=[0.06, 0.3, 0.6], d=0.0):
         """Create a triangulated mesh of the surface for 3D visualization.
 
         Populates `self.vertices`, `self.faces`, `self.rim`, and `self.mesh_color`.

@@ -7,11 +7,11 @@ import json
 
 import torch
 
+from deeplens import utils
 from deeplens.geometric_surface import Mirror
+from deeplens.light import Ray
 from deeplens.material import Material
 from deeplens.phase_surface import Binary2Phase
-from deeplens.light import Ray
-from deeplens import utils
 
 
 def test_gpu_init_uses_supported_api_without_global_dtype_mutation():

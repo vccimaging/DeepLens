@@ -20,7 +20,6 @@ import torch.nn.functional as F
 from torchvision.utils import save_image
 
 from .config import DEFAULT_WAVE, DEPTH, EPSILON, PSF_KS, WAVE_RGB
-from .lens import Lens
 from .diffractive_surface import (
     Binary2,
     DiffractedRotation,
@@ -32,8 +31,9 @@ from .diffractive_surface import (
     Zernike,
 )
 from .imgsim import conv_psf
-from .utils import diff_float
+from .lens import Lens
 from .light import ComplexWave
+from .utils import diff_float
 
 
 class DiffractiveLens(Lens):
@@ -303,9 +303,7 @@ class DiffractiveLens(Lens):
         wvln = self.primary_wvln if wvln is None else wvln
         # On-axis PSF for an object at infinity. psf() returns [ks, ks] for a
         # single point; add a leading channel dim for conv_psf -> (1, ks, ks).
-        psf = self.psf(
-            points=[0.0, 0.0, float("-inf")], wvln=wvln, ks=ks
-        ).unsqueeze(0)
+        psf = self.psf(points=[0.0, 0.0, float("-inf")], wvln=wvln, ks=ks).unsqueeze(0)
         img_render = conv_psf(img, psf, method=method)
         return img_render
 
@@ -496,11 +494,19 @@ class DiffractiveLens(Lens):
             d = float(self.surf_d(i))
             surf_l = float(getattr(surf, "w", default_l))
             ax.plot(
-                [d, d], [-surf_l / 2, surf_l / 2], "orange", linestyle="--", dashes=[1, 1]
+                [d, d],
+                [-surf_l / 2, surf_l / 2],
+                "orange",
+                linestyle="--",
+                dashes=[1, 1],
             )
             ax.text(
-                d, surf_l / 2 * 1.08, f"{type(surf).__name__}\n(z={d:.1f} mm)",
-                ha="center", va="bottom", fontsize=8,
+                d,
+                surf_l / 2 * 1.08,
+                f"{type(surf).__name__}\n(z={d:.1f} mm)",
+                ha="center",
+                va="bottom",
+                fontsize=8,
             )
 
         # Draw the sensor plane as a thin rectangle.
@@ -508,13 +514,21 @@ class DiffractiveLens(Lens):
         sensor_l = float(self.sensor_size[1])
         width = max(0.01 * d_sensor, 0.2)
         rect = plt.Rectangle(
-            (d_sensor - width / 2, -sensor_l / 2), width, sensor_l,
-            facecolor="none", edgecolor="black", linewidth=1,
+            (d_sensor - width / 2, -sensor_l / 2),
+            width,
+            sensor_l,
+            facecolor="none",
+            edgecolor="black",
+            linewidth=1,
         )
         ax.add_patch(rect)
         ax.text(
-            d_sensor, sensor_l / 2 * 1.08, f"Sensor\n(z={d_sensor:.1f} mm)",
-            ha="center", va="bottom", fontsize=8,
+            d_sensor,
+            sensor_l / 2 * 1.08,
+            f"Sensor\n(z={d_sensor:.1f} mm)",
+            ha="center",
+            va="bottom",
+            fontsize=8,
         )
 
         # Optical axis.

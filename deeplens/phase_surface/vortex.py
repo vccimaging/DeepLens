@@ -166,7 +166,9 @@ class VortexPhase(Phase):
         Returns:
             params (list): Optimizer parameter groups, one dict per optimized tensor.
         """
-        assert not optim_mat, "Material parameters are not optimized for phase surfaces."
+        assert not optim_mat, (
+            "Material parameters are not optimized for phase surfaces."
+        )
         params = []
         if self.f0 is not None:
             self.f0.requires_grad_(True)

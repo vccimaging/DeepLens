@@ -3,6 +3,7 @@
 import pytest
 import torch
 
+from deeplens.light import Ray
 from deeplens.phase_surface import (
     Binary2Phase,
     FresnelPhase,
@@ -11,7 +12,6 @@ from deeplens.phase_surface import (
     PolyPhase,
     ZernikePhase,
 )
-from deeplens.light import Ray
 
 
 class TestFresnelPhase:
@@ -60,7 +60,16 @@ class TestBinary2Phase:
 
     def test_phi_zero_coeffs(self):
         """Zero coefficients produce near-zero phase."""
-        s = Binary2Phase(r=5.0, d_next=0.0, order2=0.0, order4=0.0, order6=0.0, order8=0.0, order10=0.0, order12=0.0)
+        s = Binary2Phase(
+            r=5.0,
+            d_next=0.0,
+            order2=0.0,
+            order4=0.0,
+            order6=0.0,
+            order8=0.0,
+            order10=0.0,
+            order12=0.0,
+        )
         x = torch.linspace(-2, 2, 50)
         y = torch.zeros(50)
         phase = s.phi(x, y)

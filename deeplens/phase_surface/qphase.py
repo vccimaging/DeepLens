@@ -176,7 +176,9 @@ class QuarticPhase(Phase):
         return dphidx, dphidy
 
     def get_optimizer_params(
-        self, lrs=[1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-5, 1e-5, 1e-5, 1e-5], optim_mat=False
+        self,
+        lrs=[1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-5, 1e-5, 1e-5, 1e-5],
+        optim_mat=False,
     ):
         """Build per-coefficient optimizer parameter groups.
 

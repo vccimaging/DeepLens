@@ -5,8 +5,7 @@ Tests for deeplens/optics/wave.py - Wave optics and propagation.
 import pytest
 import torch
 
-
-from deeplens.light import ComplexWave, AngularSpectrumMethod
+from deeplens.light import AngularSpectrumMethod, ComplexWave
 
 
 class TestComplexWaveInit:
@@ -20,7 +19,7 @@ class TestComplexWaveInit:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         assert wave.wvln == 0.55
         assert (wave.z == 0.0).all().item()
         assert wave.phy_size == (4.0, 4.0)
@@ -29,13 +28,13 @@ class TestComplexWaveInit:
     def test_complex_wave_init_with_field(self, device_auto):
         """Should initialize with custom field."""
         u = torch.ones(256, 256, dtype=torch.complex64, device=device_auto)
-        
+
         wave = ComplexWave(
             u=u,
             wvln=0.55,
             phy_size=(4.0, 4.0),
         )
-        
+
         assert wave.u.shape[-2:] == (256, 256)
 
 
@@ -50,10 +49,10 @@ class TestComplexWavePointWave:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         assert wave.u.shape[-2:] == (256, 256)
         # Check approximate symmetry
-        irr = torch.abs(wave.u)**2
+        irr = torch.abs(wave.u) ** 2
         assert torch.allclose(irr[0, 0, 128, 64], irr[0, 0, 128, 192], rtol=0.1)
 
     def test_point_wave_intensity(self, device_auto):
@@ -64,9 +63,9 @@ class TestComplexWavePointWave:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
-        irr = torch.abs(wave.u)**2
-        irr = torch.abs(wave.u)**2
+
+        irr = torch.abs(wave.u) ** 2
+        irr = torch.abs(wave.u) ** 2
         assert irr.sum().item() > 0
 
 
@@ -80,7 +79,7 @@ class TestComplexWavePlaneWave:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         amp = torch.abs(wave.u)
         # All amplitudes should be equal (within numerical precision)
         # All amplitudes should be equal (within numerical precision)
@@ -94,7 +93,7 @@ class TestComplexWavePlaneWave:
             res=(256, 256),
             valid_r=1.0,
         )
-        
+
         # Corners should be zero (outside valid radius)
         # Corners should be zero (outside valid radius)
         assert wave.u[0, 0, 0, 0].abs().item() == pytest.approx(0.0, abs=1e-5)
@@ -106,13 +105,13 @@ class TestComplexWaveImageWave:
     def test_image_wave(self, device_auto):
         """Should create wave from image."""
         img = torch.rand(256, 256, device=device_auto)
-        
+
         wave = ComplexWave.image_wave(
             img=img,
             wvln=0.55,
             phy_size=(4.0, 4.0),
         )
-        
+
         # Amplitude should match sqrt(image)
         amp = torch.abs(wave.u)
         expected = torch.sqrt(img)
@@ -130,9 +129,9 @@ class TestComplexWavePropagation:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         wave.prop(prop_dist=10.0)
-        
+
         assert (wave.z == 10.0).all().item()
 
     def test_wave_prop_to(self, device_auto):
@@ -143,9 +142,9 @@ class TestComplexWavePropagation:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         wave.prop_to(z=10.0)
-        
+
         assert (wave.z == 10.0).all().item()
 
     def test_wave_prop_energy_conservation(self, device_auto):
@@ -156,11 +155,11 @@ class TestComplexWavePropagation:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
-        energy_before = (torch.abs(wave.u)**2).sum()
+
+        energy_before = (torch.abs(wave.u) ** 2).sum()
         wave.prop(prop_dist=10.0)
-        energy_after = (torch.abs(wave.u)**2).sum()
-        
+        energy_after = (torch.abs(wave.u) ** 2).sum()
+
         assert torch.allclose(energy_before, energy_after, rtol=0.1)
 
     def test_wave_prop_with_refractive_index(self, device_auto):
@@ -171,10 +170,10 @@ class TestComplexWavePropagation:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         # Propagate in medium with n=1.5
         wave.prop(prop_dist=10.0, n=1.5)
-        
+
         assert (wave.z == 10.0).all().item()
 
 
@@ -184,33 +183,33 @@ class TestAngularSpectrumMethod:
     def test_asm_basic(self, device_auto):
         """ASM should propagate field."""
         u = torch.ones(256, 256, dtype=torch.complex64, device=device_auto)
-        
+
         u_prop = AngularSpectrumMethod(
             u=u,
             z=10.0,
             wvln=0.55,
             ps=0.01,  # pixel size [mm]
         )
-        
+
         assert u_prop.shape == u.shape
 
     def test_asm_zero_distance(self, device_auto):
         """Zero propagation should return same field."""
         u = torch.rand(256, 256, dtype=torch.complex64, device=device_auto)
-        
+
         u_prop = AngularSpectrumMethod(
             u=u,
             z=0.0,
             wvln=0.55,
             ps=0.01,
         )
-        
+
         assert torch.allclose(u_prop, u, atol=1e-5)
 
     def test_asm_with_padding(self, device_auto):
         """ASM with padding should avoid aliasing."""
         u = torch.ones(128, 128, dtype=torch.complex64, device=device_auto)
-        
+
         u_prop = AngularSpectrumMethod(
             u=u,
             z=10.0,
@@ -218,20 +217,20 @@ class TestAngularSpectrumMethod:
             ps=0.01,
             padding=True,
         )
-        
+
         assert u_prop.shape == u.shape
 
     def test_asm_batch(self, device_auto):
         """ASM should support batch dimension."""
         u = torch.ones(1, 1, 256, 256, dtype=torch.complex64, device=device_auto)
-        
+
         u_prop = AngularSpectrumMethod(
             u=u,
             z=10.0,
             wvln=0.55,
             ps=0.01,
         )
-        
+
         assert u_prop.shape == u.shape
 
 
@@ -307,9 +306,9 @@ class TestComplexWaveGrids:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         wave.gen_xy_grid()
-        
+
         assert hasattr(wave, "x")
         assert hasattr(wave, "y")
         assert wave.x.shape == (256, 256)
@@ -322,9 +321,9 @@ class TestComplexWaveGrids:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         fx, fy = wave.gen_freq_grid()
-        
+
         assert fx is not None
         assert fy is not None
 
@@ -339,10 +338,10 @@ class TestComplexWaveOperations:
             phy_size=(4.0, 4.0),
             res=(256, 256),
         )
-        
+
         original_size = wave.phy_size
         wave.pad(Hpad=64, Wpad=64)
-        
+
         assert wave.u.shape[-2:] == (256 + 128, 256 + 128)
         assert wave.phy_size[0] > original_size[0]
 
@@ -353,10 +352,10 @@ class TestComplexWaveOperations:
             wvln=0.55,
             phy_size=(4.0, 4.0),
         )
-        
+
         original_u = wave.u.clone()
         wave.flip()
-        
+
         # Check that corners swapped
         # Check that corners swapped
         assert wave.u[0, 0, 0, 0] == original_u[0, 0, -1, -1]
@@ -368,18 +367,18 @@ class TestComplexWaveIO:
     def test_wave_save_load(self, device_auto, test_output_dir):
         """Should save and load wave."""
         import os
-        
+
         wave = ComplexWave.plane_wave(
             wvln=0.55,
             phy_size=(4.0, 4.0),
             res=(128, 128),
         )
-        
+
         filepath = os.path.join(test_output_dir, "test_wave.npz")
         wave.save(filepath)
-        
+
         assert os.path.exists(filepath)
-        
+
         # Load back
         wave2 = ComplexWave(
             wvln=0.55,
@@ -387,7 +386,7 @@ class TestComplexWaveIO:
             res=(128, 128),
         )
         wave2.load(filepath)
-        
+
         assert wave2.u.shape == wave.u.shape
 
 
@@ -397,14 +396,14 @@ class TestComplexWaveVisualization:
     def test_wave_show_irradiance(self, device_auto, test_output_dir):
         """Should save irradiance image."""
         import os
-        
+
         wave = ComplexWave.plane_wave(
             wvln=0.55,
             phy_size=(4.0, 4.0),
             res=(128, 128),
         )
-        
+
         save_path = os.path.join(test_output_dir, "wave_irr.png")
         wave.show(save_name=save_path, data="irr")
-        
+
         assert os.path.exists(save_path)

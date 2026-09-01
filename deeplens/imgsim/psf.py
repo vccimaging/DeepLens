@@ -45,6 +45,7 @@ import torch.nn.functional as F
 # PSF rendering for image simulation
 # ================================================
 
+
 def conv_psf(img, psf, method="conv"):
     """Render an image batch with one spatially invariant PSF.
 
@@ -95,18 +96,16 @@ def conv_psf(img, psf, method="conv"):
             f"psf must have shape [C, K, K] or [B, C, K, K], got {tuple(psf.shape)}."
         )
     if C_psf != C:
-        raise ValueError(
-            f"psf channels ({C_psf}) must match image channels ({C})."
-        )
+        raise ValueError(f"psf channels ({C_psf}) must match image channels ({C}).")
     if ks != kw:
         raise ValueError("psf kernels must be square.")
 
     # Size-preserving ("same") padding that totals ks - 1, split so both odd and
     # even kernels keep the output shape equal to the input (symmetric ks // 2
     # only preserves size for odd ks; even ks would output N + 1).
-    pad_top  = (ks - 1) // 2
+    pad_top = (ks - 1) // 2
     pad_bottom = ks // 2
-    pad_left  = (ks - 1) // 2
+    pad_left = (ks - 1) // 2
     pad_right = ks // 2
     img_pad = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
@@ -137,6 +136,7 @@ def conv_psf(img, psf, method="conv"):
 
     raise ValueError(f"Unknown conv_psf method: {method!r} (expected 'conv' or 'fft').")
 
+
 def conv_psf_map(img, psf_map):
     """Render an image batch with a spatially varying PSF map.
 
@@ -155,11 +155,11 @@ def conv_psf_map(img, psf_map):
     B, C, H, W = img.shape
     grid_h, grid_w, C_psf, ks, _ = psf_map.shape
     assert C_psf == C, f"PSF map channels ({C_psf}) must match image channels ({C})."
-    
+
     # Padding
-    pad_top  = (ks - 1) // 2
+    pad_top = (ks - 1) // 2
     pad_bottom = ks // 2
-    pad_left  = (ks - 1) // 2
+    pad_left = (ks - 1) // 2
     pad_right = ks // 2
     img_pad = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
@@ -169,11 +169,11 @@ def conv_psf_map(img, psf_map):
     # Render image patch by patch
     img_render = torch.zeros_like(img)
     for i in range(grid_h):
-        h_low  = (i * H) // grid_h
+        h_low = (i * H) // grid_h
         h_high = ((i + 1) * H) // grid_h
 
         for j in range(grid_w):
-            w_low  = (j * W) // grid_w
+            w_low = (j * W) // grid_w
             w_high = ((j + 1) * W) // grid_w
 
             # PSF, [C, 1, ks, ks]
@@ -188,10 +188,11 @@ def conv_psf_map(img, psf_map):
             ]
 
             # Convolution, [B, C, h_high-h_low, w_high-w_low]
-            render_patch = F.conv2d(img_pad_patch, psf, groups=C)  
+            render_patch = F.conv2d(img_pad_patch, psf, groups=C)
             img_render[:, :, h_low:h_high, w_low:w_high] = render_patch
 
     return img_render
+
 
 def splat_psf_per_pixel(img, psf, chunk_size=None):
     """Render an image batch by splatting each pixel through its own PSF.
@@ -214,8 +215,8 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
     """
     B, C, H, W = img.shape
     H_psf, W_psf, C_psf, ks, _ = psf.shape
-    assert C == C_psf, ("Image and PSF channels mismatch.")
-    assert H == H_psf and W == W_psf, ("Image and PSF size mismatch.")
+    assert C == C_psf, "Image and PSF channels mismatch."
+    assert H == H_psf and W == W_psf, "Image and PSF size mismatch."
 
     pad_top = (ks - 1) // 2
     pad_bottom = ks // 2
@@ -226,12 +227,8 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
         img_expand = img.unsqueeze(-1).unsqueeze(-1)  # [B, C, H, W, 1, 1]
         kernels = psf.permute(2, 0, 1, 3, 4).unsqueeze(0)  # [1, C, H, W, ks, ks]
         img_render = img_expand * kernels  # [B, C, H, W, ks, ks]
-        img_render = img_render.permute(0, 1, 4, 5, 2, 3).reshape(
-            B, C * ks * ks, H * W
-        )
-        img_render = F.fold(
-            img_render, (H + ks - 1, W + ks - 1), (ks, ks), padding=0
-        )
+        img_render = img_render.permute(0, 1, 4, 5, 2, 3).reshape(B, C * ks * ks, H * W)
+        img_render = F.fold(img_render, (H + ks - 1, W + ks - 1), (ks, ks), padding=0)
     else:
         assert chunk_size > 0, "chunk_size must be positive."
 
@@ -275,6 +272,7 @@ def splat_psf_per_pixel(img, psf, chunk_size=None):
 # Depth varying PSF convolution for image simulation
 # ====================================================
 
+
 def conv_psf_depth_interp(
     img, depth, psf_kernels, psf_depths, interp_mode="depth", padding_mode="reflect"
 ):
@@ -308,10 +306,16 @@ def conv_psf_depth_interp(
         AssertionError: If `depth` or `psf_depths` contain non-negative values,
             or if `interp_mode` is not ``"depth"`` or ``"disparity"``.
     """
-    assert interp_mode in ["depth", "disparity"], f"interp_mode must be 'depth' or 'disparity', got {interp_mode}"
-    assert depth.min() < 0 and depth.max() < 0, f"depth must be negative, got {depth.min()} and {depth.max()}"
-    assert psf_depths.min() < 0 and psf_depths.max() < 0, f"psf_depths must be negative, got {psf_depths.min()} and {psf_depths.max()}"
-    
+    assert interp_mode in ["depth", "disparity"], (
+        f"interp_mode must be 'depth' or 'disparity', got {interp_mode}"
+    )
+    assert depth.min() < 0 and depth.max() < 0, (
+        f"depth must be negative, got {depth.min()} and {depth.max()}"
+    )
+    assert psf_depths.min() < 0 and psf_depths.max() < 0, (
+        f"psf_depths must be negative, got {psf_depths.min()} and {psf_depths.max()}"
+    )
+
     num_depths, C_psf, ks, _ = psf_kernels.shape
     psf_depths = psf_depths.to(device=depth.device, dtype=depth.dtype)
 
@@ -323,7 +327,7 @@ def conv_psf_depth_interp(
     assert psf_depths.numel() == num_depths, (
         f"psf_depths length ({psf_depths.numel()}) must match PSF depth count ({num_depths})."
     )
-    
+
     # Prepare PSF kernel: [num_depths, C, ks, ks] -> [num_depths*C, 1, ks, ks]
     # Flip the PSF because F.conv2d uses cross-correlation
     psf_stacked = torch.flip(psf_kernels, [-2, -1]).reshape(num_depths * C, 1, ks, ks)
@@ -333,9 +337,9 @@ def conv_psf_depth_interp(
     else:
         # Pad before expand: pad [B, C, H, W] first (C channels), then expand to num_depths*C
         # This reduces padding work by a factor of num_depths
-        pad_top  = (ks - 1) // 2
+        pad_top = (ks - 1) // 2
         pad_bottom = ks // 2
-        pad_left  = (ks - 1) // 2
+        pad_left = (ks - 1) // 2
         pad_right = ks // 2
         img_padded_small = F.pad(
             img, (pad_left, pad_right, pad_top, pad_bottom), mode=padding_mode
@@ -343,11 +347,13 @@ def conv_psf_depth_interp(
 
     # Expand padded img: [B, C, Hpad, Wpad] -> [B, num_depths*C, Hpad, Wpad]
     img_padded = img_padded_small.repeat(1, num_depths, 1, 1)
-    
+
     # Grouped convolution: each of the num_depths*C channels is convolved with its own kernel
-    imgs_blur = F.conv2d(img_padded, psf_stacked, groups=num_depths * C)  # [B, num_depths*C, Hout, Wout]
+    imgs_blur = F.conv2d(
+        img_padded, psf_stacked, groups=num_depths * C
+    )  # [B, num_depths*C, Hout, Wout]
     H, W = imgs_blur.shape[-2:]
-    
+
     # Reshape to [num_depths, B, C, H, W]
     imgs_blur = imgs_blur.reshape(B, num_depths, C, H, W).permute(1, 0, 2, 3, 4)
 
@@ -355,7 +361,9 @@ def conv_psf_depth_interp(
     # Depth/Disparity interpolation
     # =================================
     B_depth, _, H_depth, W_depth = depth.shape
-    assert B_depth == B, f"Depth batch size ({B_depth}) must match image batch size ({B})."
+    assert B_depth == B, (
+        f"Depth batch size ({B_depth}) must match image batch size ({B})."
+    )
     assert H_depth == H and W_depth == W, (
         f"Depth shape ({H_depth}, {W_depth}) must match rendered shape ({H}, {W})."
     )
@@ -369,7 +377,7 @@ def conv_psf_depth_interp(
     # Calculate weights for depth interpolation
     d0 = psf_depths[idx0]  # shape [B, H*W]
     d1 = psf_depths[idx1]
-    
+
     if interp_mode == "depth":
         # Interpolate in depth space
         denom = d1 - d0
@@ -383,7 +391,7 @@ def conv_psf_depth_interp(
         denom = disp1 - disp0
         denom[denom == 0] = 1e-6  # Avoid division by zero
         w1 = (disp_flat - disp0) / denom  # shape [B, H*W]
-    
+
     w0 = 1 - w1
 
     # Create a weight tensor
@@ -427,25 +435,26 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
     # Pad the full image once to avoid boundary artifacts at patch seams.
     # Without this, each patch would be padded independently (reflecting within
     # its own boundary), producing visible seams at grid boundaries.
-    pad_top  = (ks - 1) // 2
+    pad_top = (ks - 1) // 2
     pad_bottom = ks // 2
-    pad_left  = (ks - 1) // 2
+    pad_left = (ks - 1) // 2
     pad_right = ks // 2
     img_pad = F.pad(img, (pad_left, pad_right, pad_top, pad_bottom), mode="reflect")
 
     # Render image patch by patch
     img_render = torch.zeros_like(img)
     for i in range(grid_h):
-        h_low  = (i * H) // grid_h
+        h_low = (i * H) // grid_h
         h_high = ((i + 1) * H) // grid_h
 
         for j in range(grid_w):
-            w_low  = (j * W) // grid_w
+            w_low = (j * W) // grid_w
             w_high = ((j + 1) * W) // grid_w
 
             # Extract overlapping patch from pre-padded image (no per-patch padding needed)
             img_pad_patch = img_pad[
-                :, :,
+                :,
+                :,
                 h_low : h_high + pad_top + pad_bottom,
                 w_low : w_high + pad_left + pad_right,
             ]
@@ -461,6 +470,7 @@ def conv_psf_map_depth_interp(img, depth, psf_map, psf_depths, interp_mode="dept
             img_render[:, :, h_low:h_high, w_low:w_high] = render_patch
 
     return img_render
+
 
 def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
     """Occlusion-aware bokeh rendering using back-to-front layered compositing.
@@ -532,13 +542,20 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
 
         # Convolve layer RGB with this layer's PSF
         psf_i = psf_flipped[i].unsqueeze(1)  # [C, 1, ks, ks]
-        layer_rgb_pad = F.pad(layer_rgb, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0)
+        layer_rgb_pad = F.pad(
+            layer_rgb,
+            (pad_left, pad_right, pad_top, pad_bottom),
+            mode="constant",
+            value=0,
+        )
         blurred_rgb = F.conv2d(layer_rgb_pad, psf_i, groups=C)  # [B, C, H, W]
 
         # Convolve mask with the same PSF (use one channel of PSF, since PSF sums to 1 per channel)
         # Average across channels for mask blurring (PSF is same across channels for paraxial)
         psf_i_mono = psf_flipped[i, 0:1].unsqueeze(1)  # [1, 1, ks, ks]
-        mask_pad = F.pad(mask, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0)
+        mask_pad = F.pad(
+            mask, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0
+        )
         blurred_mask = F.conv2d(mask_pad, psf_i_mono, groups=1)  # [B, 1, H, W]
         blurred_mask = blurred_mask.clamp(0, 1)
 
@@ -547,8 +564,6 @@ def conv_psf_occlusion(img, depth, psf_kernels, psf_depths):
         result = blurred_rgb + result * (1 - blurred_mask)
 
     return result
-
-
 
 
 def interp_psf_map(psf_map, grid_old, grid_new):

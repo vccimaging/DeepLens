@@ -27,9 +27,9 @@ Reference:
 import numpy as np
 import torch
 
-from .lens import Lens
 from .config import EPSILON, PSF_KS
 from .imgsim import conv_psf_depth_interp, conv_psf_occlusion
+from .lens import Lens
 
 
 class DefocusLens(Lens):
@@ -151,7 +151,9 @@ class DefocusLens(Lens):
         coc_pixel = torch.clamp(
             coc_values / self.pixel_size, min=0.5
         )  # Shape [N], minimum 0.5 pixels
-        coc_pixel = coc_pixel.unsqueeze(-1).unsqueeze(-1)  # Shape [N, 1, 1], broadcasts with [ks, ks]
+        coc_pixel = coc_pixel.unsqueeze(-1).unsqueeze(
+            -1
+        )  # Shape [N, 1, 1], broadcasts with [ks, ks]
         coc_pixel_radius = coc_pixel / 2
 
         # Create an integer-centered coordinate grid. In particular, an even
@@ -434,7 +436,9 @@ class DefocusLens(Lens):
         depth_max = depth_map.max()
 
         # Sample depth layers
-        disp_ref, depths_ref = self._sample_depth_layers(depth_min, depth_max, num_layers)
+        disp_ref, depths_ref = self._sample_depth_layers(
+            depth_min, depth_max, num_layers
+        )
 
         # Compute PSF at each depth layer (spatially invariant, so patch_center=(0,0))
         points = torch.stack(
@@ -483,7 +487,9 @@ class DefocusLens(Lens):
         patch_center = (0.0, 0.0)
 
         # Calculate dual-pixel PSF at reference depths
-        depths_ref = torch.linspace(depth_min, depth_max, num_layers, device=self.device)
+        depths_ref = torch.linspace(
+            depth_min, depth_max, num_layers, device=self.device
+        )
         points = torch.stack(
             [
                 torch.full_like(depths_ref, patch_center[0]),

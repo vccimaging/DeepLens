@@ -11,6 +11,7 @@ Reference:
 """
 
 import torch
+
 from .diffractive import DiffractiveSurface
 
 
@@ -57,7 +58,13 @@ class Fresnel(DiffractiveSurface):
             device (str, optional): Device to run the DOE. Defaults to "cpu".
         """
         super().__init__(
-            d_next=d_next, res=res, wvln0=wvln0, mat=mat, fab_ps=fab_ps, fab_step=fab_step, device=device
+            d_next=d_next,
+            res=res,
+            wvln0=wvln0,
+            mat=mat,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            device=device,
         )
 
         # Initial focal length

@@ -294,8 +294,7 @@ class GeoLensOptim:
             # Sag
             sag_ls = self.surfaces[i].sag(x_ls, y_ls)
             sag2diam = sag_ls.abs().max() / self.surfaces[i].r / 2
-            loss_sag2diam += relu(
-                (sag2diam - sag2diam_max) / sag2diam_max)
+            loss_sag2diam += relu((sag2diam - sag2diam_max) / sag2diam_max)
 
             # 1st-order derivative
             grad_ls = self.surfaces[i].dfdxyz(x_ls, y_ls)[0]
@@ -432,7 +431,9 @@ class GeoLensOptim:
         """
         cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
 
-        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=0.2)
+        ray = self.sample_ring_arm_rays(
+            num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=0.2
+        )
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
         valid = ray.is_valid > 0
@@ -450,7 +451,9 @@ class GeoLensOptim:
         Returns:
             loss (torch.Tensor): Scalar bend penalty (at least 0).
         """
-        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=1.0)
+        ray = self.sample_ring_arm_rays(
+            num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=1.0
+        )
         ray = self.trace2sensor(ray)
         bend_penalty = ray.bend_penalty.squeeze(-1)
         valid = ray.is_valid > 0

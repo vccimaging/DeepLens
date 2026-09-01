@@ -36,8 +36,10 @@ torch.set_default_dtype(torch.float64)
 # =====================================================================
 # Load an example hybrid lens (an A489 refractive design + a Binary2 DOE).
 lens = HybridLens(filename="./datasets/lenses/hybridlens/a489_doe.json")
-print(f"HybridLens: {len(lens.geolens.surfaces)} refractive surface(s) + "
-      f"a {type(lens.doe).__name__} DOE.")
+print(
+    f"HybridLens: {len(lens.geolens.surfaces)} refractive surface(s) + "
+    f"a {type(lens.doe).__name__} DOE."
+)
 
 # Focus the lens at 1 m (depths are negative, in mm).
 lens.refocus(foc_dist=-1000.0)
@@ -65,10 +67,15 @@ print(f"On-axis PSF: shape {tuple(psf.shape)}, sum {psf.sum():.3f}")
 # Match the sensor to the input image instead of resizing the image.
 img = read_image("./datasets/charts/Cam_acc_chart_6MP.png").float()[:3] / 255.0
 img = img.unsqueeze(0)  # [1, 3, H, W]
-lens.geolens.set_sensor_res((img.shape[-1], img.shape[-2]))  # (W, H); PSF samples geolens sensor
+lens.geolens.set_sensor_res(
+    (img.shape[-1], img.shape[-2])
+)  # (W, H); PSF samples geolens sensor
 
 psf_rgb = torch.stack(
-    [lens.psf(points=[0.0, 0.0, -10000.0], ks=128, wvln=w, spp=1_000_000) for w in WAVE_RGB],
+    [
+        lens.psf(points=[0.0, 0.0, -10000.0], ks=128, wvln=w, spp=1_000_000)
+        for w in WAVE_RGB
+    ],
     dim=0,
 ).float()  # [3, ks, ks], fp32 for rendering
 img = img.to(psf_rgb)  # match PSF dtype and device

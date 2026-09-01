@@ -7,7 +7,9 @@
 """Zernike DOE parameterization."""
 
 import math
+
 import torch
+
 from .diffractive import DiffractiveSurface
 
 
@@ -57,7 +59,13 @@ class Zernike(DiffractiveSurface):
             AssertionError: If zernike_order is not 37.
         """
         super().__init__(
-            d_next=d_next, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, wvln0=wvln0, device=device
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            wvln0=wvln0,
+            device=device,
         )
 
         # Initialize Zernike coefficients with random values

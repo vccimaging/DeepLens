@@ -5,8 +5,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from ..config import EPSILON
 from .._surface_base import _SequentialSurfaceBase
+from ..config import EPSILON
 
 
 class Phase(_SequentialSurfaceBase):

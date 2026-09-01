@@ -26,8 +26,6 @@ from .config import (
     SPP_COHERENT,
     WAVE_RGB,
 )
-from .geolens import GeoLens
-from .lens import Lens
 from .diffractive_surface import (
     Binary2,
     Fresnel,
@@ -35,11 +33,13 @@ from .diffractive_surface import (
     Pixel2D,
     Zernike,
 )
+from .geolens import GeoLens
 from .geometric_surface import Plane
 from .imgsim import forward_integral
+from .lens import Lens
+from .light import AngularSpectrumMethod
 from .phase_surface import Phase
 from .utils import diff_float
-from .light import AngularSpectrumMethod
 
 
 class HybridLens(Lens):
@@ -433,9 +433,7 @@ class HybridLens(Lens):
 
         # Compute pupil field by coherent ray tracing
         if isinstance(points, list):
-            point0 = torch.as_tensor(
-                points, device=self.device, dtype=self.dtype
-            )
+            point0 = torch.as_tensor(points, device=self.device, dtype=self.dtype)
         elif isinstance(points, torch.Tensor):
             point0 = points.to(device=self.device, dtype=self.dtype)
         else:
@@ -641,9 +639,7 @@ class HybridLens(Lens):
     # =====================================================================
     # Optimization
     # =====================================================================
-    def get_optimizer(
-        self, doe_lr=1e-4, lens_lr=[1e-4, 1e-4, 1e-2, 1e-5]
-    ):
+    def get_optimizer(self, doe_lr=1e-4, lens_lr=[1e-4, 1e-4, 1e-2, 1e-5]):
         """Build an Adam optimiser for joint lens + DOE design.
 
         Collects trainable parameters from both the `GeoLens` (surface

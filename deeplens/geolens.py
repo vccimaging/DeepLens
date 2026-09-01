@@ -32,15 +32,15 @@ from .config import (
 from .geolens_pkg.eval import GeoLensEval
 from .geolens_pkg.io import GeoLensIO
 from .geolens_pkg.optim import GeoLensOptim
-from .geolens_pkg.psf_compute import GeoLensPSF
 from .geolens_pkg.optim_ops import GeoLensSurfOps
-from .geolens_pkg.vis3d import GeoLensVis3D
+from .geolens_pkg.psf_compute import GeoLensPSF
 from .geolens_pkg.vis import GeoLensVis
+from .geolens_pkg.vis3d import GeoLensVis3D
+from .geometric_surface import Aperture
 from .imgsim import backward_integral
 from .lens import Lens
-from .geometric_surface import Aperture
-from .material import Material
 from .light import Ray
+from .material import Material
 
 
 class GeoLens(
@@ -520,12 +520,12 @@ class GeoLens(
         if y_scalar:
             fov_y = [float(fov_y)]
 
-        fov_x_rad = torch.as_tensor(
-            fov_x, device=self.device, dtype=self.dtype
-        ) * (math.pi / 180.0)
-        fov_y_rad = torch.as_tensor(
-            fov_y, device=self.device, dtype=self.dtype
-        ) * (math.pi / 180.0)
+        fov_x_rad = torch.as_tensor(fov_x, device=self.device, dtype=self.dtype) * (
+            math.pi / 180.0
+        )
+        fov_y_rad = torch.as_tensor(fov_y, device=self.device, dtype=self.dtype) * (
+            math.pi / 180.0
+        )
         fov_x_grid, fov_y_grid = torch.meshgrid(fov_x_rad, fov_y_rad, indexing="xy")
 
         # Pupil position and radius
@@ -623,12 +623,14 @@ class GeoLens(
 
         # Sub-pixel sampling for more realistic rendering
         if sub_pixel:
-            delta_ox = torch.rand(
-                ray_o.shape[:-1], device=device, dtype=self.dtype
-            ) * self.pixel_size
-            delta_oy = -torch.rand(
-                ray_o.shape[:-1], device=device, dtype=self.dtype
-            ) * self.pixel_size
+            delta_ox = (
+                torch.rand(ray_o.shape[:-1], device=device, dtype=self.dtype)
+                * self.pixel_size
+            )
+            delta_oy = (
+                -torch.rand(ray_o.shape[:-1], device=device, dtype=self.dtype)
+                * self.pixel_size
+            )
             delta_oz = torch.zeros_like(delta_ox)
             delta_o = torch.stack((delta_ox, delta_oy, delta_oz), -1)
             ray_o = ray_o + delta_o
@@ -841,9 +843,7 @@ class GeoLens(
         # local geometry at large coordinates.
         far = (ray.o[..., 2] < -100.0) & (ray.is_valid > 0)
         if bool(far.any().item()):
-            work_dtype = (
-                torch.float64 if ray.o.dtype == torch.float32 else ray.o.dtype
-            )
+            work_dtype = torch.float64 if ray.o.dtype == torch.float32 else ray.o.dtype
             o_work = ray.o.to(work_dtype)
             d_work = ray.d.to(work_dtype)
             dz = torch.where(
@@ -1662,9 +1662,7 @@ class GeoLens(
             ray_o = torch.tensor(
                 [[DELTA_PARAXIAL, 0, aper_z]], device=self.device, dtype=self.dtype
             ).repeat(32, 1)
-            phi = torch.linspace(
-                -0.01, 0.01, 32, device=self.device, dtype=self.dtype
-            )
+            phi = torch.linspace(-0.01, 0.01, 32, device=self.device, dtype=self.dtype)
         else:
             ray_o = torch.tensor(
                 [[aper_r, 0, aper_z]], device=self.device, dtype=self.dtype

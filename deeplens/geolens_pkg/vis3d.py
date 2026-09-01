@@ -18,8 +18,8 @@ from typing import List, Optional
 import numpy as np
 import torch
 
-from ..light import Ray
 from ..geometric_surface import Aperture
+from ..light import Ray
 
 
 # ==========================================================
