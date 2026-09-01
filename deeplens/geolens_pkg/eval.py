@@ -84,8 +84,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 from PIL import Image
+
 from ..config import (
     CENTROID_PUPIL_SIGMA,
     EPSILON,
@@ -262,9 +262,7 @@ class GeoLensEval:
         chief_ray.shape = chief_ray.o.shape[:-1]
 
         selected_weight = chief_ray.centroid_weight
-        safe_weight = selected_weight.clamp_min(
-            torch.finfo(selected_weight.dtype).tiny
-        )
+        safe_weight = selected_weight.clamp_min(torch.finfo(selected_weight.dtype).tiny)
         residual_normalized = CENTROID_PUPIL_SIGMA * torch.sqrt(
             (-torch.log(safe_weight)).clamp_min(0.0)
         )
@@ -485,9 +483,7 @@ class GeoLensEval:
             num_grid = (num_grid, num_grid)
 
         grid_w, grid_h = num_grid
-        fig, axs = plt.subplots(
-            grid_h, grid_w, figsize=(grid_w * 3, grid_h * 3)
-        )
+        fig, axs = plt.subplots(grid_h, grid_w, figsize=(grid_w * 3, grid_h * 3))
         axs = np.atleast_2d(axs)
 
         # Loop wavelengths and overlay scatters
@@ -866,7 +862,9 @@ class GeoLensEval:
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
         # Sample and trace rays, shape (grid_size, grid_size, num_rays, 3)
-        ray = self.sample_grid_rays(depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False)
+        ray = self.sample_grid_rays(
+            depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False
+        )
         ray = self.trace2sensor(ray)
 
         # Calculate centroid of the rays, shape (grid_size, grid_size, 2).
@@ -922,7 +920,9 @@ class GeoLensEval:
         z = torch.full_like(x, self.d_sensor.item())
 
         pupilz, pupilr = self.get_exit_pupil()
-        ray_o2 = self.sample_circle(r=pupilr, z=pupilz, shape=(grid_h, grid_w, SPP_CALC))
+        ray_o2 = self.sample_circle(
+            r=pupilr, z=pupilz, shape=(grid_h, grid_w, SPP_CALC)
+        )
         ray_o = torch.stack((x, y, z), dim=-1).unsqueeze(2).repeat(1, 1, SPP_CALC, 1)
         ray = Ray(ray_o, ray_o2 - ray_o, wvln, device=device)
 
@@ -979,7 +979,9 @@ class GeoLensEval:
         ray_center = -ray.centroid()  # shape [..., 3]
         distortion_center_x = ray_center[..., 0] / (sensor_w / 2)
         distortion_center_y = ray_center[..., 1] / (sensor_h / 2)
-        distortion_center = torch.stack((distortion_center_x, distortion_center_y), dim=-1)
+        distortion_center = torch.stack(
+            (distortion_center_x, distortion_center_y), dim=-1
+        )
         return distortion_center
 
     @torch.no_grad()
@@ -1006,7 +1008,9 @@ class GeoLensEval:
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
         # Ray tracing to calculate distortion map
-        distortion_grid = self.calc_distortion_map(num_grid=num_grid, depth=depth, wvln=wvln)
+        distortion_grid = self.calc_distortion_map(
+            num_grid=num_grid, depth=depth, wvln=wvln
+        )
         # Scale axes so the plot preserves the physical sensor aspect ratio:
         # longer side → ±1, shorter side → ±(shorter/longer).
         sensor_w, sensor_h = self.sensor_size
@@ -1194,7 +1198,9 @@ class GeoLensEval:
         nyquist_freq = 0.5 / pixel_size
         num_fovs = len(relative_fov_list)
         if float("inf") in depth_list:
-            depth_list = [self.obj_depth if x == float("inf") else x for x in depth_list]
+            depth_list = [
+                self.obj_depth if x == float("inf") else x for x in depth_list
+            ]
         num_depths = len(depth_list)
 
         # Create figure and subplots (num_depths * num_fovs subplots)
@@ -1603,11 +1609,14 @@ class GeoLensEval:
         """
         from skimage.metrics import peak_signal_noise_ratio, structural_similarity
         from torchvision.utils import save_image
+
         depth = self.obj_depth if depth is None else depth
         # Change sensor resolution to match the image
         sensor_res_original = self.sensor_res
         if isinstance(img_org, np.ndarray):
-            img = torch.from_numpy(img_org).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+            img = (
+                torch.from_numpy(img_org).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+            )
         elif torch.is_tensor(img_org):
             img = img_org.permute(2, 0, 1).unsqueeze(0).float()
             if img.max() > 1.0:
@@ -1620,9 +1629,15 @@ class GeoLensEval:
 
         # Compute PSNR and SSIM
         img_np = img.squeeze(0).permute(1, 2, 0).cpu().numpy()
-        render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
-        render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
-        render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
+        render_np = (
+            img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
+        )
+        render_psnr = round(
+            peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3
+        )
+        render_ssim = round(
+            structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4
+        )
         print(f"Rendered image: PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}")
 
         # Save image
@@ -1634,9 +1649,23 @@ class GeoLensEval:
             img_render = self.unwarp(img_render, depth)
 
             # Compute PSNR and SSIM
-            render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
-            render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
-            render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
+            render_np = (
+                img_render.squeeze(0)
+                .permute(1, 2, 0)
+                .clamp(0, 1)
+                .cpu()
+                .detach()
+                .numpy()
+            )
+            render_psnr = round(
+                peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3
+            )
+            render_ssim = round(
+                structural_similarity(
+                    img_np, render_np, channel_axis=2, data_range=1.0
+                ),
+                4,
+            )
             print(
                 f"Rendered image (unwarped): PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}"
             )

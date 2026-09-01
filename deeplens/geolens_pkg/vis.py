@@ -247,7 +247,7 @@ class GeoLensVis:
         colors_list = ["#CC0000", "#006600", "#0066CC"]
         rfov_deg = float(np.rad2deg(self.rfov))
         fov_ls = np.linspace(0, rfov_deg * 0.99, num=num_views)
-        
+
         if not multi_plot:
             ax, fig = self.draw_lens_2d(zmx_format=zmx_format)
             fig.suptitle(lens_title, fontsize=10, fontfamily="Nimbus Sans")

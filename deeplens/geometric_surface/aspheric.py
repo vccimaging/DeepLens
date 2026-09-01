@@ -153,7 +153,7 @@ class Aspheric(Surface):
                     "2nd-order coefficient (legacy format)."
                 )
             ai2_val = ai[0]  # Extract the a2 coefficient
-            ai = ai[1:]      # Remaining: [a4, a6, a8, ...]
+            ai = ai[1:]  # Remaining: [a4, a6, a8, ...]
 
         return cls(
             r=surf_dict["r"],
@@ -275,9 +275,7 @@ class Aspheric(Surface):
         one_plus_k = 1 + k
         # Avoid division by zero / negative when computing the limit; the
         # bogus value is masked out by the where below.
-        safe = torch.where(
-            one_plus_k > 0, one_plus_k, torch.ones_like(one_plus_k)
-        )
+        safe = torch.where(one_plus_k > 0, one_plus_k, torch.ones_like(one_plus_k))
         limit_sq = 1.0 / (c * c * safe)
         inside = (x * x + y * y) < limit_sq
         return torch.where(one_plus_k > 0, inside, torch.ones_like(inside))

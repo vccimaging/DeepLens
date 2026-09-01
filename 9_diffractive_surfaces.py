@@ -69,8 +69,10 @@ def demo_rank1():
     r1.draw_phase_map(save_name=f"{OUT}/rank1_phase.png")
     psf = lens.psf(points=[0.0, 0.0, float("-inf")], ks=96)
     save_image(psf[None].clamp(min=0), f"{OUT}/rank1_psf.png", normalize=True)
-    print(f"[Rank1] PSF axis_ratio={_axis_ratio(psf):.2f}  (anisotropic streak; "
-          "strong HDR cross needs end-to-end training)")
+    print(
+        f"[Rank1] PSF axis_ratio={_axis_ratio(psf):.2f}  (anisotropic streak; "
+        "strong HDR cross needs end-to-end training)"
+    )
 
 
 def demo_diffracted_rotation():
@@ -85,17 +87,27 @@ def demo_diffracted_rotation():
     for wvln in [0.45, 0.50, 0.55, 0.60, 0.65]:
         psf = lens.psf(points=[0.0, 0.0, float("-inf")], ks=128, wvln=wvln)
         frames.append(psf.clamp(min=0))
-        print(f"[DiffractedRotation] wvln={wvln:.2f}um  axis_ratio={_axis_ratio(psf):.2f}")
+        print(
+            f"[DiffractedRotation] wvln={wvln:.2f}um  axis_ratio={_axis_ratio(psf):.2f}"
+        )
     montage = torch.stack(frames, dim=0)[:, None]
-    save_image(montage, f"{OUT}/diffracted_rotation_sweep.png", nrow=len(frames), normalize=True)
-    print("[DiffractedRotation] saved spiral phase map + wavelength sweep "
-          "(N-fold structure; rotation needs the paper's focal-plane pipeline)")
+    save_image(
+        montage,
+        f"{OUT}/diffracted_rotation_sweep.png",
+        nrow=len(frames),
+        normalize=True,
+    )
+    print(
+        "[DiffractedRotation] saved spiral phase map + wavelength sweep "
+        "(N-fold structure; rotation needs the paper's focal-plane pipeline)"
+    )
 
 
 def demo_rotational_symmetric():
     """Rotationally-symmetric PSF at several wavelengths."""
     lens = DiffractiveLens(
-        filename="./datasets/lenses/diffraclens/rotational_symmetric.json", device=DEVICE
+        filename="./datasets/lenses/diffraclens/rotational_symmetric.json",
+        device=DEVICE,
     )
     doe = lens.surfaces[0]
     doe.draw_phase_map(save_name=f"{OUT}/rotational_symmetric_phase.png")
@@ -107,9 +119,13 @@ def demo_rotational_symmetric():
         frames.append(psf.clamp(min=0))
         print(f"[RotationallySymmetric] wvln={wvln:.2f}um  rot90_err={rot_err:.4f}")
     montage = torch.stack(frames, dim=0)[:, None]
-    save_image(montage, f"{OUT}/rotational_symmetric_psf.png", nrow=len(frames), normalize=True)
-    print("[RotationallySymmetric] saved phase map + multi-wavelength PSF "
-          "(rotationally symmetric; achromaticity requires end-to-end training)")
+    save_image(
+        montage, f"{OUT}/rotational_symmetric_psf.png", nrow=len(frames), normalize=True
+    )
+    print(
+        "[RotationallySymmetric] saved phase map + multi-wavelength PSF "
+        "(rotationally symmetric; achromaticity requires end-to-end training)"
+    )
 
 
 if __name__ == "__main__":

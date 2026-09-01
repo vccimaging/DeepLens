@@ -85,6 +85,7 @@ def compare_psf(lens):
     plt.close()
     print("Saved PSF center line comparison to ./psf_center_line_compare.png")
 
+
 def main():
     # Better to use a high sensor resolution (4000x4000 is roughly acceptable, but higher is better)
     lens = GeoLens(

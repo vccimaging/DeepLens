@@ -17,8 +17,8 @@ import yaml
 from tqdm import tqdm
 
 from deeplens import GeoLens
-from deeplens.geolens_pkg import create_lens
 from deeplens.config import DEPTH, EPSILON, WAVE_RGB
+from deeplens.geolens_pkg import create_lens
 from deeplens.utils import create_video_from_images, set_logger, set_seed
 
 
@@ -140,7 +140,9 @@ def curriculum_design(
                     )
                     rays_backup.append(ray)
 
-                center_ref = -self.psf_center(points_obj=ray.o[:, :, 0, :], method="pinhole")
+                center_ref = -self.psf_center(
+                    points_obj=ray.o[:, :, 0, :], method="pinhole"
+                )
                 center_ref = center_ref.unsqueeze(-2).repeat(1, 1, spp, 1)
 
         # =======================================

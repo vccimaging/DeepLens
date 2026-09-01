@@ -1,7 +1,6 @@
-from .base import Surface
-
 from .aperture import Aperture
 from .aspheric import Aspheric
+from .base import Surface
 from .cubic import Cubic
 from .mirror import Mirror
 from .plane import Plane

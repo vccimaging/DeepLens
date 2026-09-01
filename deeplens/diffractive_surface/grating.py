@@ -12,6 +12,7 @@ diffracts light into multiple diffraction orders.
 """
 
 import torch
+
 from .diffractive import DiffractiveSurface
 
 
@@ -64,7 +65,13 @@ class Grating(DiffractiveSurface):
             device (str, optional): Device to place the DOE tensors on. Defaults to "cpu".
         """
         super().__init__(
-            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step, device=device
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            wvln0=wvln0,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            device=device,
         )
 
         # Grating parameters

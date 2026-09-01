@@ -75,8 +75,14 @@ class Rank1(DiffractiveSurface):
             device (str, optional): Compute device. Defaults to "cpu".
         """
         super().__init__(
-            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
-            fab_step=fab_step, is_square=is_square, device=device,
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            wvln0=wvln0,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            is_square=is_square,
+            device=device,
         )
         self.rank = rank
         self.V = torch.randn(self.res[0], rank) * 1e-3 if V is None else V

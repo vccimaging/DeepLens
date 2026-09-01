@@ -63,11 +63,7 @@ class TestChiefRay:
             torch.tensor([[1.0], [0.0]], device=device, dtype=lens.dtype),
         )
         expected_residual = CENTROID_PUPIL_SIGMA * torch.sqrt(
-            -torch.log(
-                torch.tensor(
-                    [[0.99], [0.95]], device=device, dtype=lens.dtype
-                )
-            )
+            -torch.log(torch.tensor([[0.99], [0.95]], device=device, dtype=lens.dtype))
         )
         torch.testing.assert_close(chief.stop_residual_normalized, expected_residual)
         torch.testing.assert_close(
@@ -84,9 +80,9 @@ class TestChiefRay:
         )
         bare_ray = Ray(
             torch.zeros(4, 3, device=device, dtype=lens.dtype),
-            torch.tensor(
-                [[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype
-            ).repeat(4, 1),
+            torch.tensor([[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype).repeat(
+                4, 1
+            ),
             wvln=lens.primary_wvln,
             device=device,
         )
@@ -106,9 +102,9 @@ class TestChiefRay:
         device = lens.device
         ray = Ray(
             torch.zeros(3, 3, device=device, dtype=lens.dtype),
-            torch.tensor(
-                [[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype
-            ).repeat(3, 1),
+            torch.tensor([[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype).repeat(
+                3, 1
+            ),
             wvln=lens.primary_wvln,
             device=device,
         )
@@ -168,9 +164,7 @@ class TestChiefRay:
             wvln=lens.primary_wvln,
             device=device,
         )
-        fake.is_valid = torch.tensor(
-            [[1.0], [0.0]], device=device, dtype=lens.dtype
-        )
+        fake.is_valid = torch.tensor([[1.0], [0.0]], device=device, dtype=lens.dtype)
 
         def fake_calc_chief_ray(points_obj, num_rays):
             assert points_obj is points
@@ -311,7 +305,9 @@ class TestSpotSampling:
         field_angles = torch.atan2(ray.d[..., 1], ray.d[..., 2])
         full_fov = torch.as_tensor(lens.rfov, device=field_angles.device)
 
-        assert torch.allclose(field_angles[0], torch.zeros_like(field_angles[0]), atol=1e-6)
+        assert torch.allclose(
+            field_angles[0], torch.zeros_like(field_angles[0]), atol=1e-6
+        )
         assert torch.allclose(
             field_angles[-1],
             torch.full_like(field_angles[-1], full_fov),

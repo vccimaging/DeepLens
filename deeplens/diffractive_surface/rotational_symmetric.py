@@ -91,8 +91,14 @@ class RotationallySymmetric(DiffractiveSurface):
             ValueError: If `init` is not "fresnel" or "flat".
         """
         super().__init__(
-            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
-            fab_step=fab_step, is_square=is_square, device=device,
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            wvln0=wvln0,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            is_square=is_square,
+            device=device,
         )
         self.n_rings = self.res[0] // 2 if n_rings is None else n_rings
         self.circular = circular

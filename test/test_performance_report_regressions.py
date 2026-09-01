@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 import torch
 
+import deeplens.psfnetlens as psfnetlens_module
 from deeplens import GeoLens
 from deeplens.base import DeepObj
 from deeplens.geometric_surface import Aspheric, Spheric
@@ -18,7 +19,6 @@ from deeplens.imgsim import conv_psf
 from deeplens.lens import Lens
 from deeplens.light import AngularSpectrumMethod, Ray
 from deeplens.material import Material
-import deeplens.psfnetlens as psfnetlens_module
 
 
 class _DeltaPSFLens(Lens):

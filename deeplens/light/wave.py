@@ -18,8 +18,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.fft import fft2, fftshift, ifft2, ifftshift
-from ..config import DELTA, EPSILON
+
 from ..base import DeepObj
+from ..config import DELTA, EPSILON
 
 
 def _crop_padding(u, hpad, wpad):
@@ -81,7 +82,7 @@ class ComplexWave(DeepObj):
         if u is not None:
             if not u.dtype == torch.complex128:
                 print(
-                    "A complex wave field is created with single precision. " \
+                    "A complex wave field is created with single precision. "
                     "In the future, we want to always use double precision."
                 )
 
@@ -126,8 +127,12 @@ class ComplexWave(DeepObj):
         # plain_asm_dist_max: Nyquist limit of plain ASM. prop() uses band-limited
         #   ASM, which stays valid past this, so it is kept only for reference.
         # fresnel_dist_min: distance above which single-FFT Fresnel is well-sampled.
-        self.plain_asm_dist_max = Nyquist_ASM_zmax(wvln=self.wvln, ps=self.ps, side_length=self.phy_size[0])
-        self.fresnel_dist_min = Fresnel_zmin(wvln=self.wvln, ps=self.ps, side_length=self.phy_size[0])
+        self.plain_asm_dist_max = Nyquist_ASM_zmax(
+            wvln=self.wvln, ps=self.ps, side_length=self.phy_size[0]
+        )
+        self.fresnel_dist_min = Fresnel_zmin(
+            wvln=self.wvln, ps=self.ps, side_length=self.phy_size[0]
+        )
 
     @classmethod
     def point_wave(
@@ -331,7 +336,7 @@ class ComplexWave(DeepObj):
         elif prop_dist < wvln_mm:
             # Sub-wavelength distance: full wave method (e.g., FDTD)
             raise Exception(
-                "The propagation distance in sub-wavelength range is not implemented yet. " \
+                "The propagation distance in sub-wavelength range is not implemented yet. "
                 "Have to use full wave method (e.g., FDTD)."
             )
 
@@ -340,12 +345,16 @@ class ComplexWave(DeepObj):
             # spectrum with a band-limit that suppresses aliasing. Valid across
             # the near and intermediate fields, so it covers the former gap
             # between the Nyquist-ASM and Fresnel regimes.
-            self.u = BandLimitedASM(self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n)
+            self.u = BandLimitedASM(
+                self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n
+            )
 
         else:
             # Fresnel diffraction (far field)
-            self.u = FresnelDiffraction(self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n)
-        
+            self.u = FresnelDiffraction(
+                self.u, z=prop_dist, wvln=self.wvln, ps=self.ps, n=n
+            )
+
         # Update z grid
         self.z += prop_dist
         return self
@@ -385,8 +394,12 @@ class ComplexWave(DeepObj):
             y (torch.Tensor): y coordinate grid, shape [H, W] [mm].
         """
         x, y = torch.meshgrid(
-            torch.linspace(-0.5 * self.phy_size[0], 0.5 * self.phy_size[0], self.res[1]),
-            torch.linspace(0.5 * self.phy_size[1], -0.5 * self.phy_size[1], self.res[0]),
+            torch.linspace(
+                -0.5 * self.phy_size[0], 0.5 * self.phy_size[0], self.res[1]
+            ),
+            torch.linspace(
+                0.5 * self.phy_size[1], -0.5 * self.phy_size[1], self.res[0]
+            ),
             indexing="xy",
         )
         return x, y
@@ -460,6 +473,7 @@ class ComplexWave(DeepObj):
                 "./wavefield.npz".
         """
         from torchvision.utils import save_image
+
         # Save data
         np.savez_compressed(
             filepath,
@@ -502,6 +516,7 @@ class ComplexWave(DeepObj):
                 unsupported.
         """
         from torchvision.utils import save_image
+
         cmap = "gray"
         if data == "irr":
             value = self.u.detach().abs() ** 2
@@ -635,7 +650,7 @@ def AngularSpectrumMethod(u, z, wvln, ps, n=1.0, padding=True):
         [2] https://blog.csdn.net/zhenpixiaoyang/article/details/111569495
     """
     assert wvln > 0.1 and wvln < 10.0, "wvln unit should be [um]."
-    wvln_mm = wvln * 1e-3 / n # [um] to [mm]
+    wvln_mm = wvln * 1e-3 / n  # [um] to [mm]
     k = 2 * torch.pi / wvln_mm  # [mm]-1
 
     # Shape
@@ -670,7 +685,9 @@ def AngularSpectrumMethod(u, z, wvln, ps, n=1.0, padding=True):
     fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=phase_dtype)
     f2 = fx_1d.unsqueeze(0) ** 2 + fy_1d.unsqueeze(1) ** 2
     radicand = 1 - wvln_mm**2 * f2
-    complex_dtype = torch.complex128 if phase_dtype == torch.float64 else torch.complex64
+    complex_dtype = (
+        torch.complex128 if phase_dtype == torch.float64 else torch.complex64
+    )
     square_root = torch.sqrt(radicand.to(complex_dtype))
 
     # H is defined on the unshifted frequency grid to match fft2(u)
@@ -754,7 +771,9 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     fy_1d = torch.fft.fftfreq(Himg, d=ps, device=u.device, dtype=phase_dtype)
     f2 = fx_1d.unsqueeze(0) ** 2 + fy_1d.unsqueeze(1) ** 2
     radicand = 1 - wvln_mm**2 * f2
-    complex_dtype = torch.complex128 if phase_dtype == torch.float64 else torch.complex64
+    complex_dtype = (
+        torch.complex128 if phase_dtype == torch.float64 else torch.complex64
+    )
     square_root = torch.sqrt(radicand.to(complex_dtype))
     H = torch.exp(1j * k * z * square_root)
 
@@ -772,7 +791,9 @@ def BandLimitedASM(u, z, wvln, ps, n=1.0, padding=True):
     dfy = 1.0 / (Himg * ps)
     fx_limit = 1.0 / (wvln_mm * math.sqrt((2.0 * dfx * z_abs) ** 2 + 1.0))
     fy_limit = 1.0 / (wvln_mm * math.sqrt((2.0 * dfy * z_abs) ** 2 + 1.0))
-    window = (fx_1d.abs().unsqueeze(0) < fx_limit) & (fy_1d.abs().unsqueeze(1) < fy_limit)
+    window = (fx_1d.abs().unsqueeze(0) < fx_limit) & (
+        fy_1d.abs().unsqueeze(1) < fy_limit
+    )
     H = (H * window.to(phase_dtype)).to(
         torch.complex128 if real_dtype == torch.float64 else torch.complex64
     )
@@ -1048,9 +1069,7 @@ def RayleighSommerfeldIntegral(
     # Nyquist sampling criterion
     max_side_dist = max(abs(x1.max() - x2.min()), abs(x2.max() - x1.min()))
     ps = (x1.max() - x1.min()) / x1.shape[-1]
-    zmin = Fresnel_zmin(
-        wvln=wvln, ps=ps.item(), side_length=max_side_dist.item(), n=n
-    )
+    zmin = Fresnel_zmin(wvln=wvln, ps=ps.item(), side_length=max_side_dist.item(), n=n)
     assert zmin < z, (
         f"Propagation distance is too short, minimum distance is {zmin} mm."
     )
@@ -1087,6 +1106,7 @@ def RayleighSommerfeldIntegral(
 
         # Patch computation
         from tqdm import tqdm
+
         for i in tqdm(range(0, x2.shape[0], patch_size)):
             for j in range(0, x2.shape[1], patch_size):
                 # Target patch
@@ -1132,6 +1152,7 @@ def Nyquist_ASM_zmax(wvln, ps, side_length, n=1.0):
     wvln_mm = wvln * 1e-3
     zmax = side_length * ps * n / wvln_mm
     return zmax
+
 
 def Fresnel_zmin(wvln, ps, side_length, n=1.0):
     """Compute the min Fresnel propagation distance from the Nyquist criterion.

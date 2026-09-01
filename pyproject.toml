@@ -52,6 +52,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "ruff==0.16.5",
     "jupyter>=1.0.0",
     "notebook>=7.0.0",
     "ipywidgets>=8.0.0",
@@ -88,3 +89,22 @@ markers = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["deeplens*"]
+
+[tool.ruff]
+required-version = "==0.16.5"
+target-version = "py312"
+line-length = 88
+indent-width = 4
+include = ["*.py", "*.pyi", "pyproject.toml"]
+preview = false
+respect-gitignore = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+docstring-code-format = false
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "I"]

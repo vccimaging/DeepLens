@@ -33,9 +33,9 @@ def test_gen_xy_grid_matches_field_shape_and_orientation():
     assert field.x.shape == (H, W)
     assert field.y.shape == (H, W)
     # x varies along the width (columns), y varies along the height (rows).
-    assert torch.allclose(field.x[0, :], field.x[-1, :])      # x constant down rows
+    assert torch.allclose(field.x[0, :], field.x[-1, :])  # x constant down rows
     assert not torch.allclose(field.x[:, 0], field.x[:, -1])  # x changes across cols
-    assert torch.allclose(field.y[:, 0], field.y[:, -1])      # y constant across cols
+    assert torch.allclose(field.y[:, 0], field.y[:, -1])  # y constant across cols
     assert not torch.allclose(field.y[0, :], field.y[-1, :])  # y changes down rows
 
 

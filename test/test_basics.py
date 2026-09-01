@@ -5,17 +5,17 @@ Tests for deeplens core utilities - init_device, optics config constants, and De
 import pytest
 import torch
 
-
 from deeplens import init_device
 from deeplens.base import DeepObj
 from deeplens.config import (
-    DEPTH,
     DEFAULT_WAVE,
+    DEPTH,
     EPSILON,
     PSF_KS,
     SPP_PSF,
     WAVE_RGB,
 )
+
 
 class TestConstants:
     """Test default constants are properly defined."""
@@ -104,10 +104,10 @@ class TestDeepObj:
         obj = DeepObj()
         obj.test_attr = torch.tensor([1.0, 2.0, 3.0])
         cloned = obj.clone()
-        
+
         # Modify original
         obj.test_attr[0] = 999.0
-        
+
         # Clone should be unchanged
         assert cloned.test_attr[0] != 999.0
 
@@ -115,9 +115,9 @@ class TestDeepObj:
         """DeepObj.to() should move tensors to device."""
         obj = DeepObj()
         obj.tensor_attr = torch.tensor([1.0, 2.0, 3.0])
-        
+
         obj.to(device_auto)
-        
+
         assert obj.device.type == device_auto.type
         assert obj.tensor_attr.device.type == device_auto.type
 
@@ -127,18 +127,18 @@ class TestDeepObj:
         inner = DeepObj()
         inner.data = torch.tensor([1.0, 2.0])
         outer.child = inner
-        
+
         outer.to(device_auto)
-        
+
         assert inner.data.device.type == device_auto.type
 
     def test_deep_obj_to_device_list(self, device_auto):
         """DeepObj.to() should handle tensor lists."""
         obj = DeepObj()
         obj.tensor_list = [torch.tensor([1.0]), torch.tensor([2.0])]
-        
+
         obj.to(device_auto)
-        
+
         for t in obj.tensor_list:
             assert t.device.type == device_auto.type
 
@@ -146,9 +146,9 @@ class TestDeepObj:
         """DeepObj.astype() should convert to float32."""
         obj = DeepObj(dtype=torch.float64)
         obj.data = torch.tensor([1.0, 2.0], dtype=torch.float64)
-        
+
         obj.astype(torch.float32)
-        
+
         assert obj.dtype == torch.float32
         assert obj.data.dtype == torch.float32
 
@@ -156,9 +156,9 @@ class TestDeepObj:
         """DeepObj.astype() should convert to float64."""
         obj = DeepObj(dtype=torch.float32)
         obj.data = torch.tensor([1.0, 2.0], dtype=torch.float32)
-        
+
         obj.astype(torch.float64)
-        
+
         assert obj.dtype == torch.float64
         assert obj.data.dtype == torch.float64
 
@@ -166,22 +166,22 @@ class TestDeepObj:
         """DeepObj.astype(None) should be no-op."""
         obj = DeepObj(dtype=torch.float32)
         original_dtype = obj.dtype
-        
+
         result = obj.astype(None)
-        
+
         assert obj.dtype == original_dtype
         assert result is obj
 
     def test_deep_obj_astype_invalid(self):
         """DeepObj.astype() should reject invalid dtypes."""
         obj = DeepObj()
-        
+
         with pytest.raises(AssertionError):
             obj.astype(torch.int32)
 
     def test_deep_obj_call_raises(self):
         """DeepObj.__call__() should raise if forward not implemented."""
         obj = DeepObj()
-        
+
         with pytest.raises(AttributeError):
             obj(torch.tensor([1.0]))

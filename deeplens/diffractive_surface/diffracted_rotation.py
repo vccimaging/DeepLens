@@ -87,8 +87,14 @@ class DiffractedRotation(DiffractiveSurface):
         if wvln0 is None:
             wvln0 = wvln_max
         super().__init__(
-            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
-            fab_step=fab_step, is_square=is_square, device=device,
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            wvln0=wvln0,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            is_square=is_square,
+            device=device,
         )
         self.f0 = f0 if torch.is_tensor(f0) else torch.tensor(float(f0))
         self.num_wings = num_wings
@@ -149,9 +155,7 @@ class DiffractedRotation(DiffractiveSurface):
         phase = (2 * torch.pi / wvln0_mm) * torch.remainder(opd, lam_m_mm)
         if self.circular:
             r_max = min(self.w, self.h) / 2
-            phase = torch.where(
-                self.r2 <= r_max**2, phase, torch.zeros_like(phase)
-            )
+            phase = torch.where(self.r2 <= r_max**2, phase, torch.zeros_like(phase))
         return phase
 
     # =======================================

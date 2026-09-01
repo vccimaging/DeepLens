@@ -9,8 +9,8 @@
 import torch
 import torch.nn.functional as F
 
-from ..config import EPSILON
 from ..base import DeepObj
+from ..config import EPSILON
 
 
 class Ray(DeepObj):
@@ -78,9 +78,7 @@ class Ray(DeepObj):
         self.bend_penalty = torch.zeros(
             (*self.shape, 1), device=device, dtype=self.o.dtype
         )
-        self.centroid_weight = torch.ones(
-            self.shape, device=device, dtype=self.o.dtype
-        )
+        self.centroid_weight = torch.ones(self.shape, device=device, dtype=self.o.dtype)
         self.centroid_weight_assigned = False
 
         # Coherent ray tracing
@@ -161,7 +159,9 @@ class Ray(DeepObj):
         # Calculate RMS error for each region
         squared_radius = ((self.o[..., :2] - center_ref[..., :2]) ** 2).sum(-1)
         valid_count = self.is_valid.sum(-1)
-        mean_squared_radius = (squared_radius * self.is_valid).sum(-1) / valid_count.clamp_min(1)
+        mean_squared_radius = (squared_radius * self.is_valid).sum(
+            -1
+        ) / valid_count.clamp_min(1)
 
         # ``sqrt(0)`` has an infinite derivative and yielded NaN gradients for
         # coincident or all-invalid bundles. The shifted safe square root keeps

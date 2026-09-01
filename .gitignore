@@ -1,5 +1,6 @@
 .vscode/
 __pycache__/
+.ruff_cache/
 .DS_Store
 CLAUDE.md
 deeplens.egg-info/

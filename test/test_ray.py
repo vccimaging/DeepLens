@@ -5,8 +5,8 @@ Tests for deeplens/optics/ray.py - Ray class operations.
 import pytest
 import torch
 
-from deeplens.light import Ray
 from deeplens.config import DEFAULT_WAVE
+from deeplens.light import Ray
 
 
 class TestRayInit:
@@ -16,9 +16,9 @@ class TestRayInit:
         """Ray should initialize with origin and direction."""
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
-        
+
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         assert ray.o.shape == (1, 3)
         assert ray.d.shape == (1, 3)
         assert ray.wvln.shape == ()  # 0D scalar tensor
@@ -29,9 +29,9 @@ class TestRayInit:
         o = torch.zeros(batch_size, 3, device=device_auto)
         d = torch.zeros(batch_size, 3, device=device_auto)
         d[:, 2] = 1.0
-        
+
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         assert ray.o.shape == (batch_size, 3)
         assert ray.shape == (batch_size,)
 
@@ -40,9 +40,9 @@ class TestRayInit:
         o = torch.zeros(5, 10, 3, device=device_auto)
         d = torch.zeros(5, 10, 3, device=device_auto)
         d[..., 2] = 1.0
-        
+
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         assert ray.o.shape == (5, 10, 3)
         assert ray.shape == (5, 10)
 
@@ -50,9 +50,9 @@ class TestRayInit:
         """Ray direction should be normalized."""
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
         d = torch.tensor([[3.0, 4.0, 0.0]], device=device_auto)  # Not normalized
-        
+
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         norm = torch.norm(ray.d, dim=-1)
         assert torch.allclose(norm, torch.ones_like(norm), atol=1e-6)
 
@@ -60,11 +60,11 @@ class TestRayInit:
         """Ray should validate wavelength is in micrometers."""
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
-        
+
         # Valid wavelength (0.55 um = 550 nm)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
         assert torch.isclose(ray.wvln, torch.tensor(0.55, device=device_auto)).item()
-        
+
         # Wavelength out of range should raise
         with pytest.raises(AssertionError):
             Ray(o, d, wvln=550.0, device=device_auto)  # nm instead of um
@@ -74,9 +74,9 @@ class TestRayInit:
         o = torch.zeros(10, 3, device=device_auto)
         d = torch.zeros(10, 3, device=device_auto)
         d[:, 2] = 1.0
-        
+
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         assert torch.all(ray.is_valid == 1.0)
 
     def test_ray_init_opl_zero(self, device_auto):
@@ -84,9 +84,9 @@ class TestRayInit:
         o = torch.zeros(10, 3, device=device_auto)
         d = torch.zeros(10, 3, device=device_auto)
         d[:, 2] = 1.0
-        
+
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         assert torch.all(ray.opl == 0.0)
 
 
@@ -98,9 +98,9 @@ class TestRayPropTo:
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         ray.prop_to(z=10.0)
-        
+
         assert torch.allclose(ray.o[0, 2], torch.tensor(10.0, device=device_auto))
 
     def test_ray_prop_to_angled(self, device_auto):
@@ -110,20 +110,24 @@ class TestRayPropTo:
         d = torch.tensor([[1.0, 0.0, 1.0]], device=device_auto)
         d = d / torch.norm(d)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         ray.prop_to(z=10.0)
-        
-        assert torch.allclose(ray.o[0, 0], torch.tensor(10.0, device=device_auto), atol=1e-5)
-        assert torch.allclose(ray.o[0, 2], torch.tensor(10.0, device=device_auto), atol=1e-5)
+
+        assert torch.allclose(
+            ray.o[0, 0], torch.tensor(10.0, device=device_auto), atol=1e-5
+        )
+        assert torch.allclose(
+            ray.o[0, 2], torch.tensor(10.0, device=device_auto), atol=1e-5
+        )
 
     def test_ray_prop_to_backward(self, device_auto):
         """Ray should propagate backward."""
         o = torch.tensor([[0.0, 0.0, 10.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, -1.0]], device=device_auto)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         ray.prop_to(z=0.0)
-        
+
         assert torch.allclose(ray.o[0, 2], torch.tensor(0.0, device=device_auto))
 
     def test_ray_prop_to_respects_valid(self, device_auto):
@@ -132,12 +136,12 @@ class TestRayPropTo:
         d = torch.zeros(2, 3, device=device_auto)
         d[:, 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         ray.is_valid[1] = 0.0  # Invalidate second ray
         original_o = ray.o.clone()
-        
+
         ray.prop_to(z=10.0)
-        
+
         assert torch.allclose(ray.o[0, 2], torch.tensor(10.0, device=device_auto))
         assert torch.allclose(ray.o[1], original_o[1])  # Invalid ray unchanged
 
@@ -146,12 +150,15 @@ class TestRayPropTo:
         o = torch.tensor([[0.0, 0.0, 0.0]], device=device_auto, dtype=torch.float64)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto, dtype=torch.float64)
         ray = Ray(o, d, wvln=0.55, is_coherent=True, device=device_auto)
-        
+
         ray.prop_to(z=10.0, n=1.5)
-        
+
         # OPL = n * distance
         expected_opl = 1.5 * 10.0
-        assert torch.allclose(ray.opl[0, 0], torch.tensor(expected_opl, device=device_auto, dtype=torch.float64))
+        assert torch.allclose(
+            ray.opl[0, 0],
+            torch.tensor(expected_opl, device=device_auto, dtype=torch.float64),
+        )
 
 
 class TestRayCentroid:
@@ -162,9 +169,9 @@ class TestRayCentroid:
         o = torch.tensor([[1.0, 2.0, 3.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         centroid = ray.centroid()
-        
+
         assert torch.allclose(centroid, o.squeeze(0))
 
     def test_ray_centroid_batch(self, device_auto):
@@ -173,9 +180,9 @@ class TestRayCentroid:
         d = torch.zeros(2, 3, device=device_auto)
         d[:, 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         centroid = ray.centroid()
-        
+
         expected = torch.tensor([1.0, 2.0, 0.0], device=device_auto)
         assert torch.allclose(centroid, expected)
 
@@ -185,11 +192,11 @@ class TestRayCentroid:
         d = torch.zeros(2, 3, device=device_auto)
         d[:, 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         ray.is_valid[1] = 0.0  # Invalidate second ray
-        
+
         centroid = ray.centroid()
-        
+
         expected = torch.tensor([0.0, 0.0, 0.0], device=device_auto)
         assert torch.allclose(centroid, expected, atol=1e-5)
 
@@ -203,9 +210,9 @@ class TestRayRmsError:
         d = torch.zeros(10, 3, device=device_auto)
         d[:, 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         rms = ray.rms_error()
-        
+
         assert torch.allclose(rms, torch.tensor(0.0, device=device_auto), atol=1e-5)
 
     def test_ray_rms_error_nonzero(self, device_auto):
@@ -213,13 +220,16 @@ class TestRayRmsError:
         # Rays forming a circle of radius 1
         n = 100
         theta = torch.linspace(0, 2 * 3.14159, n, device=device_auto)
-        o = torch.stack([torch.cos(theta), torch.sin(theta), torch.zeros(n, device=device_auto)], dim=-1)
+        o = torch.stack(
+            [torch.cos(theta), torch.sin(theta), torch.zeros(n, device=device_auto)],
+            dim=-1,
+        )
         d = torch.zeros(n, 3, device=device_auto)
         d[:, 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         rms = ray.rms_error()
-        
+
         # RMS of unit circle should be ~1
         assert rms > 0.9 and rms < 1.1
 
@@ -229,10 +239,10 @@ class TestRayRmsError:
         d = torch.zeros(2, 3, device=device_auto)
         d[:, 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         center_ref = torch.tensor([0.0, 0.0, 0.0], device=device_auto)
         rms = ray.rms_error(center_ref=center_ref)
-        
+
         # RMS from origin: sqrt((1^2 + 3^2) / 2) = sqrt(5)
         expected = torch.sqrt(torch.tensor(5.0, device=device_auto))
         assert torch.allclose(rms, expected, atol=1e-4)
@@ -246,12 +256,12 @@ class TestRayClone:
         o = torch.tensor([[1.0, 2.0, 3.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         cloned = ray.clone()
-        
+
         # Modify original
         ray.o[0, 0] = 999.0
-        
+
         # Clone should be unchanged
         assert cloned.o[0, 0] != 999.0
 
@@ -260,9 +270,9 @@ class TestRayClone:
         o = torch.tensor([[1.0, 2.0, 3.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         cloned = ray.clone(device="cpu")
-        
+
         assert cloned.o.device == torch.device("cpu")
 
     def test_ray_clone_copies_all_tensor_attributes(self, device_auto):
@@ -293,9 +303,9 @@ class TestRaySqueezeUnsqueeze:
         d = torch.zeros(1, 10, 3, device=device_auto)
         d[..., 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         ray.squeeze(dim=0)
-        
+
         assert ray.o.shape == (10, 3)
         assert ray.d.shape == (10, 3)
 
@@ -305,9 +315,9 @@ class TestRaySqueezeUnsqueeze:
         d = torch.zeros(10, 3, device=device_auto)
         d[:, 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         ray.unsqueeze(dim=0)
-        
+
         assert ray.o.shape == (1, 10, 3)
         assert ray.d.shape == (1, 10, 3)
 
@@ -317,9 +327,9 @@ class TestRaySqueezeUnsqueeze:
         d = torch.zeros(1, 10, 3, device=device_auto)
         d[..., 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
-        
+
         original_shape = ray.o.shape
         ray.squeeze(dim=0)
         ray.unsqueeze(dim=0)
-        
+
         assert ray.o.shape == original_shape

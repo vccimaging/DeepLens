@@ -102,15 +102,19 @@ class NURBSPhase(Phase):
         # double precision.
         if control_points is None:
             # Initialize with small random phase values
-            cp = torch.randn(control_points_u, control_points_v, 3, device=device) * 1e-3
+            cp = (
+                torch.randn(control_points_u, control_points_v, 3, device=device) * 1e-3
+            )
             # Set x,y coordinates to be evenly spaced in [-1, 1] range
             u_coords = torch.linspace(0, 1, control_points_u, device=device)
             v_coords = torch.linspace(0, 1, control_points_v, device=device)
-            u_grid, v_grid = torch.meshgrid(u_coords, v_coords, indexing='ij')
+            u_grid, v_grid = torch.meshgrid(u_coords, v_coords, indexing="ij")
             cp[..., 0] = u_grid * 2 - 1  # x coordinates
             cp[..., 1] = v_grid * 2 - 1  # y coordinates
         else:
-            cp = torch.as_tensor(control_points, dtype=torch.get_default_dtype(), device=device)
+            cp = torch.as_tensor(
+                control_points, dtype=torch.get_default_dtype(), device=device
+            )
             assert cp.shape == (control_points_u, control_points_v, 3), (
                 f"control_points must have shape ({control_points_u}, {control_points_v}, 3)"
             )
@@ -146,8 +150,8 @@ class NURBSPhase(Phase):
         knots = torch.zeros(n_knots)
 
         # Clamped knots: degree+1 zeros at start and end
-        knots[:degree+1] = 0.0
-        knots[-degree-1:] = 1.0
+        knots[: degree + 1] = 0.0
+        knots[-degree - 1 :] = 1.0
 
         # Interior knots evenly spaced
         if n_control_points > degree + 1:
@@ -266,7 +270,12 @@ class NURBSPhase(Phase):
                 cp_j = span_v - self.degree_v + j
 
                 # Skip if indices are out of bounds
-                if cp_i < 0 or cp_i >= self.control_points_u or cp_j < 0 or cp_j >= self.control_points_v:
+                if (
+                    cp_i < 0
+                    or cp_i >= self.control_points_u
+                    or cp_j < 0
+                    or cp_j >= self.control_points_v
+                ):
                     continue
 
                 # B-spline basis function value
@@ -335,9 +344,7 @@ class NURBSPhase(Phase):
             for r in range(j):
                 denom = right[:, r + 1] + left[:, j - r]
                 safe = torch.where(denom != 0, denom, torch.ones_like(denom))
-                temp = torch.where(
-                    denom != 0, Nb[:, r] / safe, torch.zeros_like(denom)
-                )
+                temp = torch.where(denom != 0, Nb[:, r] / safe, torch.zeros_like(denom))
                 Nb[:, r] = saved + right[:, r + 1] * temp
                 saved = left[:, j - r] * temp
             Nb[:, j] = saved
@@ -449,7 +456,7 @@ class NURBSPhase(Phase):
         )
 
         # Apply circular aperture mask (set phase to 0 outside unit circle)
-        r_squared = (x / self.norm_radii)**2 + (y / self.norm_radii)**2
+        r_squared = (x / self.norm_radii) ** 2 + (y / self.norm_radii) ** 2
         mask = r_squared > 1
         phi = torch.where(mask, torch.zeros_like(phi), phi)
 
@@ -486,7 +493,7 @@ class NURBSPhase(Phase):
         dphidy = (phi_y_plus - phi_y_minus) / (2 * eps)
 
         # Apply circular mask
-        r_squared = (x / self.norm_radii)**2 + (y / self.norm_radii)**2
+        r_squared = (x / self.norm_radii) ** 2 + (y / self.norm_radii) ** 2
         mask = r_squared > 1
         dphidx = torch.where(mask, torch.zeros_like(dphidx), dphidx)
         dphidy = torch.where(mask, torch.zeros_like(dphidy), dphidy)

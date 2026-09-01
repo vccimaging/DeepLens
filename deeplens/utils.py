@@ -52,7 +52,7 @@ def img2batch(img):
                 # Assume (H, W, C) -> (1, C, H, W)
                 img = img.permute(2, 0, 1).unsqueeze(0)
             else:
-                 raise ValueError("Image channel should be 1 or 3.")
+                raise ValueError("Image channel should be 1 or 3.")
         else:
             raise ValueError("Image should be numpy array or torch tensor.")
 
@@ -85,6 +85,7 @@ def batch_PSNR(img_clean, img):
         img_clean.mul(255).add_(0.5).clamp_(0, 255).to("cpu", torch.uint8).numpy()
     )
     from skimage.metrics import peak_signal_noise_ratio
+
     PSNR = 0.0
     for i in range(Img.shape[0]):
         PSNR += peak_signal_noise_ratio(Img_clean[i, :, :, :], Img[i, :, :, :])
@@ -153,6 +154,7 @@ def batch_ssim(img, img_clean):
     )
 
     from skimage.metrics import structural_similarity
+
     SSIM = 0.0
     for i in range(Img.shape[0]):
         # Auto detect if multichannel based on number of dimensions
@@ -287,6 +289,7 @@ def create_video_from_images(image_folder, output_video_path, fps=30):
 
     # Iterate through images and write them to the video
     from tqdm import tqdm
+
     for image_path in tqdm(images):
         img = cv.imread(image_path)
         video_writer.write(img)

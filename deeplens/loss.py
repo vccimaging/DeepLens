@@ -9,6 +9,7 @@
 import torch
 import torch.nn as nn
 
+
 class PSFLoss(nn.Module):
     """PSF compactness and achromaticity loss.
 
@@ -99,6 +100,7 @@ class PSFLoss(nn.Module):
             self.w_psf_size * concentration_loss + self.w_achromatic * channel_diff
         )
         return total_loss
+
 
 class PSFStrehlLoss(nn.Module):
     """Strehl-like PSF sharpness score.

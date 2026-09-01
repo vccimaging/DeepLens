@@ -6,7 +6,7 @@
 
 import torch
 
-from .base import Surface, EPSILON
+from .base import EPSILON, Surface
 
 
 class Spiral(Surface):
@@ -33,7 +33,9 @@ class Spiral(Surface):
         Spiral diopter: freeform lenses with enhanced multifocal behavior, Optica 2024.
     """
 
-    def __init__(self, r, d_next, c1, c2, mat2, N=1, eta=5, is_square=False, device="cpu"):
+    def __init__(
+        self, r, d_next, c1, c2, mat2, N=1, eta=5, is_square=False, device="cpu"
+    ):
         """Initialize a Spiral surface.
 
         Args:
@@ -175,7 +177,9 @@ class Spiral(Surface):
 
         # We do not optimize material parameters for spiral surface.
         if optim_mat:
-            raise ValueError("Material parameters are not optimized for spiral surface.")
+            raise ValueError(
+                "Material parameters are not optimized for spiral surface."
+            )
 
         return params
 

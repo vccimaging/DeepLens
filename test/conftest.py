@@ -113,7 +113,7 @@ def sample_image(device_auto):
     x = torch.linspace(0, 1, W, device=device_auto)
     y = torch.linspace(0, 1, H, device=device_auto)
     yy, xx = torch.meshgrid(y, x, indexing="ij")
-    
+
     img = torch.stack([xx, yy, (xx + yy) / 2], dim=0)  # [3, H, W]
     img = img.unsqueeze(0)  # [1, 3, H, W]
     return img
@@ -151,11 +151,14 @@ def sample_rays_batch(device_auto):
     x = torch.linspace(-1, 1, n, device=device_auto)
     y = torch.linspace(-1, 1, n, device=device_auto)
     yy, xx = torch.meshgrid(y, x, indexing="ij")
-    
-    o = torch.stack([xx.flatten(), yy.flatten(), torch.full((n*n,), -100.0, device=device_auto)], dim=-1)
+
+    o = torch.stack(
+        [xx.flatten(), yy.flatten(), torch.full((n * n,), -100.0, device=device_auto)],
+        dim=-1,
+    )
     d = torch.zeros_like(o)
     d[..., 2] = 1.0
-    
+
     ray = Ray(o, d, wvln=0.55, device=device_auto)
     return ray
 

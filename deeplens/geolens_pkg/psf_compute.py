@@ -104,9 +104,7 @@ class GeoLensPSF:
         else:
             raise ValueError(f"Unknown PSF model: {model}")
 
-    def psf_geometric(
-        self, points, ks=PSF_KS, wvln=None, spp=SPP_PSF, recenter=True
-    ):
+    def psf_geometric(self, points, ks=PSF_KS, wvln=None, spp=SPP_PSF, recenter=True):
         """Compute the single-wavelength geometric PSF by incoherent ray binning.
 
         Samples rays from each object point, traces them incoherently to the
@@ -331,9 +329,9 @@ class GeoLensPSF:
         device = self.device
 
         if isinstance(points, list):
-            points = torch.as_tensor(
-                points, device=device, dtype=self.dtype
-            ).unsqueeze(0)
+            points = torch.as_tensor(points, device=device, dtype=self.dtype).unsqueeze(
+                0
+            )
         elif torch.is_tensor(points) and len(points.shape) == 1:
             points = points.unsqueeze(0).to(device=device, dtype=self.dtype)
         elif torch.is_tensor(points) and len(points.shape) == 2:

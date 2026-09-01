@@ -406,10 +406,18 @@ class ZernikePhase(Phase):
         dZdy += c[10] * dR11dr * drdy
 
         # Z12/Z13: sqrt(10) * (4r^4 - 3r^2) * cos/sin(2a)
-        dZdx += c[11] * (dR_sqrt10_4r4_3r2 * drdx * c2 + R_sqrt10_4r4_3r2 * (-2 * s2) * dthetadx)
-        dZdy += c[11] * (dR_sqrt10_4r4_3r2 * drdy * c2 + R_sqrt10_4r4_3r2 * (-2 * s2) * dthetady)
-        dZdx += c[12] * (dR_sqrt10_4r4_3r2 * drdx * s2 + R_sqrt10_4r4_3r2 * 2 * c2 * dthetadx)
-        dZdy += c[12] * (dR_sqrt10_4r4_3r2 * drdy * s2 + R_sqrt10_4r4_3r2 * 2 * c2 * dthetady)
+        dZdx += c[11] * (
+            dR_sqrt10_4r4_3r2 * drdx * c2 + R_sqrt10_4r4_3r2 * (-2 * s2) * dthetadx
+        )
+        dZdy += c[11] * (
+            dR_sqrt10_4r4_3r2 * drdy * c2 + R_sqrt10_4r4_3r2 * (-2 * s2) * dthetady
+        )
+        dZdx += c[12] * (
+            dR_sqrt10_4r4_3r2 * drdx * s2 + R_sqrt10_4r4_3r2 * 2 * c2 * dthetadx
+        )
+        dZdy += c[12] * (
+            dR_sqrt10_4r4_3r2 * drdy * s2 + R_sqrt10_4r4_3r2 * 2 * c2 * dthetady
+        )
 
         # Z14/Z15: sqrt(10) * r^4 * cos/sin(4a)
         dZdx += c[13] * (dR_sqrt10_r4 * drdx * c4 + R_sqrt10_r4 * (-4 * s4) * dthetadx)
@@ -424,8 +432,12 @@ class ZernikePhase(Phase):
         dZdy += c[16] * (dR_sqrt12_10r5 * drdy * s1 + R_sqrt12_10r5 * c1 * dthetady)
 
         # Z18/Z19: sqrt(12) * (5r^5 - 4r^3) * cos/sin(3a)
-        dZdx += c[17] * (dR_sqrt12_5r5 * drdx * c3 + R_sqrt12_5r5 * (-3 * s3) * dthetadx)
-        dZdy += c[17] * (dR_sqrt12_5r5 * drdy * c3 + R_sqrt12_5r5 * (-3 * s3) * dthetady)
+        dZdx += c[17] * (
+            dR_sqrt12_5r5 * drdx * c3 + R_sqrt12_5r5 * (-3 * s3) * dthetadx
+        )
+        dZdy += c[17] * (
+            dR_sqrt12_5r5 * drdy * c3 + R_sqrt12_5r5 * (-3 * s3) * dthetady
+        )
         dZdx += c[18] * (dR_sqrt12_5r5 * drdx * s3 + R_sqrt12_5r5 * 3 * c3 * dthetadx)
         dZdy += c[18] * (dR_sqrt12_5r5 * drdy * s3 + R_sqrt12_5r5 * 3 * c3 * dthetady)
 
@@ -443,14 +455,22 @@ class ZernikePhase(Phase):
         # Z23/Z24: sqrt(14) * (15r^6 - 20r^4 + 6r^2) * sin/cos(2a)
         dZdx += c[22] * (dR_sqrt14_15r6 * drdx * s2 + R_sqrt14_15r6 * 2 * c2 * dthetadx)
         dZdy += c[22] * (dR_sqrt14_15r6 * drdy * s2 + R_sqrt14_15r6 * 2 * c2 * dthetady)
-        dZdx += c[23] * (dR_sqrt14_15r6 * drdx * c2 + R_sqrt14_15r6 * (-2 * s2) * dthetadx)
-        dZdy += c[23] * (dR_sqrt14_15r6 * drdy * c2 + R_sqrt14_15r6 * (-2 * s2) * dthetady)
+        dZdx += c[23] * (
+            dR_sqrt14_15r6 * drdx * c2 + R_sqrt14_15r6 * (-2 * s2) * dthetadx
+        )
+        dZdy += c[23] * (
+            dR_sqrt14_15r6 * drdy * c2 + R_sqrt14_15r6 * (-2 * s2) * dthetady
+        )
 
         # Z25/Z26: sqrt(14) * (6r^6 - 5r^4) * sin/cos(4a)
         dZdx += c[24] * (dR_sqrt14_6r6 * drdx * s4 + R_sqrt14_6r6 * 4 * c4 * dthetadx)
         dZdy += c[24] * (dR_sqrt14_6r6 * drdy * s4 + R_sqrt14_6r6 * 4 * c4 * dthetady)
-        dZdx += c[25] * (dR_sqrt14_6r6 * drdx * c4 + R_sqrt14_6r6 * (-4 * s4) * dthetadx)
-        dZdy += c[25] * (dR_sqrt14_6r6 * drdy * c4 + R_sqrt14_6r6 * (-4 * s4) * dthetady)
+        dZdx += c[25] * (
+            dR_sqrt14_6r6 * drdx * c4 + R_sqrt14_6r6 * (-4 * s4) * dthetadx
+        )
+        dZdy += c[25] * (
+            dR_sqrt14_6r6 * drdy * c4 + R_sqrt14_6r6 * (-4 * s4) * dthetady
+        )
 
         # Z27/Z28: sqrt(14) * r^6 * sin/cos(6a)
         dZdx += c[26] * (dR_sqrt14_r6 * drdx * s6 + R_sqrt14_r6 * 6 * c6 * dthetadx)

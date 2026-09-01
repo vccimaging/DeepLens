@@ -292,10 +292,7 @@ class Spheric(Surface):
         new_o = working_o + t.unsqueeze(-1) * ray.d
         within_aperture = self.is_within_boundary(new_o[..., 0], new_o[..., 1])
         valid = (
-            valid_intersect
-            & torch.isfinite(t)
-            & within_aperture
-            & (ray.is_valid > 0)
+            valid_intersect & torch.isfinite(t) & within_aperture & (ray.is_valid > 0)
         )
 
         # Update ray position

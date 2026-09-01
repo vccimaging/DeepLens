@@ -169,12 +169,12 @@ class DeepObj:
         if preserve_identity and converted is not tensor:
             tensor.data = converted.data
             if tensor.grad is not None:
-                grad_dtype = target_dtype if (
-                    tensor.grad.is_floating_point() or tensor.grad.is_complex()
-                ) else None
-                tensor.grad.data = tensor.grad.data.to(
-                    device=device, dtype=grad_dtype
+                grad_dtype = (
+                    target_dtype
+                    if (tensor.grad.is_floating_point() or tensor.grad.is_complex())
+                    else None
                 )
+                tensor.grad.data = tensor.grad.data.to(device=device, dtype=grad_dtype)
             return tensor
         return converted
 
