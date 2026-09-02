@@ -157,9 +157,14 @@ class GeoLensPSF:
         ray.is_coherent = False
         ray = self.trace2sensor(ray)
 
-        # Calculate PSF center, shape [N, 2]
+        # Calculate PSF center, shape [N, 2]. At the primary wavelength the
+        # bundle just traced is reused for the chief ray instead of tracing a
+        # second one. Other wavelengths still trace at the primary wavelength so
+        # every channel shares one reference center and lateral color stays in
+        # the kernels.
         if recenter:
-            pointc = self.psf_center(point_obj, method="chief_ray")
+            reuse_ray = ray if wvln == self.primary_wvln else None
+            pointc = self.psf_center(point_obj, method="chief_ray", ray=reuse_ray)
         else:
             pointc = self.psf_center(point_obj, method="pinhole")
 
@@ -590,7 +595,7 @@ class GeoLensPSF:
         return psf_map
 
     @torch.no_grad()
-    def psf_center(self, points_obj, method="chief_ray"):
+    def psf_center(self, points_obj, method="chief_ray", ray=None):
         """Compute the reference PSF center on the sensor for a given point source.
 
         With method "chief_ray" it returns the negated sensor intercept of the
@@ -602,6 +607,10 @@ class GeoLensPSF:
             points_obj (torch.Tensor): Un-normalized object-plane point(s), shape
                 [..., 3] [mm], spanning [-Inf, Inf] x [-Inf, Inf] x [-Inf, 0].
             method (str, optional): "chief_ray" or "pinhole". Defaults to "chief_ray".
+            ray (Ray, optional): Bundle already traced to the sensor from
+                `points_obj` at the primary wavelength, shape [..., num_rays, 3].
+                When given, the chief ray is extracted from it instead of
+                tracing a new bundle. Ignored for "pinhole".
 
         Returns:
             psf_center (torch.Tensor): Un-normalized PSF center on the sensor
@@ -611,13 +620,18 @@ class GeoLensPSF:
             ValueError: If `method` is neither "chief_ray" nor "pinhole".
         """
         if method == "chief_ray":
-            chief_ray = self.calc_chief_ray(points_obj, num_rays=SPP_PSF)
+            if ray is None:
+                chief_ray = self.calc_chief_ray(points_obj, num_rays=SPP_PSF)
+            else:
+                chief_ray = self.calc_chief_ray(ray=ray)
             psf_center = -chief_ray.o[..., 0, :2]
 
+            # Info level: a vignetted chief ray is routine mid-optimization, and
+            # psf()/psf_map() run every iteration, so a warning would flood logs.
             valid = chief_ray.is_valid[..., 0].bool()
             if not valid.all():
                 failed = int((~valid).sum().item())
-                logger.warning(
+                logger.info(
                     "%d of %d chief rays are invalid; using the pinhole model "
                     "for those PSF centers.",
                     failed,

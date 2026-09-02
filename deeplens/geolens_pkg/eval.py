@@ -87,7 +87,6 @@ import torch.nn.functional as F
 from PIL import Image
 
 from ..config import (
-    CENTROID_PUPIL_SIGMA,
     EPSILON,
     GEO_GRID,
     SPP_CALC,
@@ -151,8 +150,8 @@ class GeoLensEval:
 
         DeepLens uses the classical physical definition: the chief ray is the
         real ray through the centre of the aperture stop. Because the tracer
-        samples a finite bundle, this method returns the sampled ray with the
-        largest stop-proximity weight rather than a synthetic bundle centroid.
+        samples a finite bundle, this method returns the sampled ray closest to
+        the stop centre rather than a synthetic bundle centroid.
 
         Exactly one input mode must be supplied:
 
@@ -164,14 +163,15 @@ class GeoLensEval:
         Selection happens before final validity is checked. If the closest
         stop-centred ray is clipped after the stop, it remains the selected ray
         and is returned as invalid rather than being replaced by a farther ray.
-        The result carries ``stop_residual_normalized``, ``stop_residual_mm``,
-        ``stop_weight``, ``stop_reached``, and ``chief_ray_sample_index``.
+        The result carries ``stop_residual_normalized`` (distance from the
+        stop centre in stop radii), ``stop_residual_mm``, ``stop_reached``,
+        and ``chief_ray_sample_index``.
 
         Args:
             points_obj (torch.Tensor | list | None): Physical object points in
                 millimetres, shape ``[..., 3]``. Mutually exclusive with ``ray``.
-            ray (Ray | None): Already traced, stop-weighted ray bundle with
-                shape ``[..., num_rays, 3]``.
+            ray (Ray | None): Already traced ray bundle that crossed the
+                aperture stop, shape ``[..., num_rays, 3]``.
             num_rays (int): Samples per point in ``points_obj`` mode. Defaults
                 to ``SPP_CALC``.
             wvln (float | None): Wavelength in micrometres for object-point
@@ -226,19 +226,19 @@ class GeoLensEval:
                     "does not contain its earlier path."
                 )
 
-        if not getattr(ray, "centroid_weight_assigned", False):
+        if getattr(ray, "stop_dist", None) is None:
             raise ValueError(
-                "The ray bundle has no aperture-stop weights. Trace it across "
+                "The ray bundle has no aperture-stop distances. Trace it across "
                 "the aperture stop before calling calc_chief_ray(ray=...)."
             )
         if ray.o.ndim < 2 or ray.o.shape[-2] < 1:
             raise ValueError("ray must contain at least one sample ray.")
 
-        stop_weight = torch.nan_to_num(
-            ray.centroid_weight.detach(), nan=0.0, posinf=0.0, neginf=0.0
-        ).clamp_min(0.0)
-        stop_reached = stop_weight.gt(0).any(dim=-1, keepdim=True)
-        sample_index = stop_weight.argmax(dim=-1, keepdim=True)
+        # Rays invalid at the stop carry inf, so the minimum is the closest
+        # valid sample and a finite minimum means the field reached the stop.
+        stop_dist = ray.stop_dist.masked_fill(ray.stop_dist.isnan(), float("inf"))
+        residual_normalized, sample_index = stop_dist.min(dim=-1, keepdim=True)
+        stop_reached = torch.isfinite(residual_normalized)
 
         def gather_scalar(value):
             return torch.gather(value, dim=-1, index=sample_index)
@@ -258,24 +258,12 @@ class GeoLensEval:
         chief_ray.is_valid = gather_scalar(ray.is_valid) * stop_reached.to(
             dtype=ray.is_valid.dtype
         )
-        chief_ray.centroid_weight = gather_scalar(stop_weight)
+        chief_ray.stop_dist = residual_normalized
         chief_ray.shape = chief_ray.o.shape[:-1]
 
-        selected_weight = chief_ray.centroid_weight
-        safe_weight = selected_weight.clamp_min(torch.finfo(selected_weight.dtype).tiny)
-        residual_normalized = CENTROID_PUPIL_SIGMA * torch.sqrt(
-            (-torch.log(safe_weight)).clamp_min(0.0)
-        )
-        residual_normalized = torch.where(
-            stop_reached,
-            residual_normalized,
-            torch.full_like(residual_normalized, float("inf")),
-        )
         aperture_radius = float(self.surfaces[self.aper_idx].r)
-
         chief_ray.stop_residual_normalized = residual_normalized
         chief_ray.stop_residual_mm = residual_normalized * aperture_radius
-        chief_ray.stop_weight = selected_weight
         chief_ray.stop_reached = stop_reached
         chief_ray.chief_ray_sample_index = sample_index
 

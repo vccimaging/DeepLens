@@ -3,13 +3,14 @@
 All methods are tested via GeoLens instances (mixin architecture).
 """
 
+import logging
 import os
 
 import numpy as np
 import pytest
 import torch
 
-from deeplens.config import CENTROID_PUPIL_SIGMA
+from deeplens.config import SPP_PSF
 from deeplens.light import Ray
 
 
@@ -38,12 +39,11 @@ class TestChiefRay:
             dtype=lens.dtype,
         )
         ray = Ray(o, d, wvln=lens.primary_wvln, device=device)
-        ray.centroid_weight = torch.tensor(
-            [[0.2, 0.99, 0.6], [0.5, 0.95, 0.8]],
+        ray.stop_dist = torch.tensor(
+            [[0.8, 0.05, 0.4], [0.5, 0.1, 0.2]],
             device=device,
             dtype=lens.dtype,
         )
-        ray.centroid_weight_assigned = True
         ray.is_valid = torch.tensor(
             [[1.0, 1.0, 1.0], [1.0, 0.0, 1.0]],
             device=device,
@@ -62,8 +62,8 @@ class TestChiefRay:
             chief.is_valid,
             torch.tensor([[1.0], [0.0]], device=device, dtype=lens.dtype),
         )
-        expected_residual = CENTROID_PUPIL_SIGMA * torch.sqrt(
-            -torch.log(torch.tensor([[0.99], [0.95]], device=device, dtype=lens.dtype))
+        expected_residual = torch.tensor(
+            [[0.05], [0.1]], device=device, dtype=lens.dtype
         )
         torch.testing.assert_close(chief.stop_residual_normalized, expected_residual)
         torch.testing.assert_close(
@@ -91,10 +91,10 @@ class TestChiefRay:
             lens.calc_chief_ray()
         with pytest.raises(ValueError, match="exactly one"):
             lens.calc_chief_ray(points, ray=bare_ray)
-        with pytest.raises(ValueError, match="no aperture-stop weights"):
+        with pytest.raises(ValueError, match="no aperture-stop distances"):
             lens.calc_chief_ray(ray=bare_ray)
         with pytest.raises(ValueError, match="does not contain its earlier path"):
-            bare_ray.centroid_weight_assigned = True
+            bare_ray.stop_dist = torch.zeros(4, device=device, dtype=lens.dtype)
             lens.calc_chief_ray(ray=bare_ray, record=True)
 
     def test_reports_when_no_sample_reaches_stop(self, sample_cellphone_lens):
@@ -108,8 +108,7 @@ class TestChiefRay:
             wvln=lens.primary_wvln,
             device=device,
         )
-        ray.centroid_weight.zero_()
-        ray.centroid_weight_assigned = True
+        ray.stop_dist = torch.full((3,), float("inf"), device=device, dtype=lens.dtype)
 
         chief = lens.calc_chief_ray(ray=ray)
 
@@ -172,12 +171,50 @@ class TestChiefRay:
             return fake
 
         monkeypatch.setattr(lens, "calc_chief_ray", fake_calc_chief_ray)
+        caplog.set_level(logging.INFO, logger="deeplens.geolens_pkg.psf_compute")
         pinhole = lens.psf_center(points, method="pinhole")
         center = lens.psf_center(points, method="chief_ray")
 
         torch.testing.assert_close(center[0], -fake.o[0, 0, :2])
         torch.testing.assert_close(center[1], pinhole[1])
         assert "1 of 2 chief rays are invalid" in caplog.text
+
+    def test_psf_center_extracts_from_supplied_bundle(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        torch.manual_seed(3)
+        points = torch.tensor(
+            [[0.0, 0.0, lens.obj_depth], [0.0, 100.0, lens.obj_depth]],
+            device=lens.device,
+            dtype=lens.dtype,
+        )
+        ray = lens.trace2sensor(lens.sample_from_points(points, num_rays=512))
+
+        center = lens.psf_center(points, method="chief_ray", ray=ray)
+        chief = lens.calc_chief_ray(ray=ray)
+
+        assert center.shape == (2, 2)
+        torch.testing.assert_close(center, -chief.o[:, 0, :2])
+        assert chief.is_valid.all()
+
+    def test_psf_reuses_traced_bundle_at_primary_wavelength(
+        self, sample_cellphone_lens, monkeypatch
+    ):
+        lens = sample_cellphone_lens
+        calls = []
+        real_psf_center = lens.psf_center
+
+        def spy_psf_center(points_obj, method="chief_ray", ray=None):
+            calls.append((method, ray is not None))
+            return real_psf_center(points_obj, method=method, ray=ray)
+
+        monkeypatch.setattr(lens, "psf_center", spy_psf_center)
+        point = torch.tensor([0.0, 0.3, -10000.0], device=lens.device)
+
+        lens.psf(point, ks=16, spp=SPP_PSF)
+        lens.psf(point, ks=16, spp=SPP_PSF, wvln=lens.primary_wvln + 0.05)
+        lens.psf(point, ks=16, spp=SPP_PSF, recenter=False)
+
+        assert calls == [("chief_ray", True), ("chief_ray", False), ("pinhole", False)]
 
 
 class TestRMSMap:
