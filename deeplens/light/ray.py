@@ -28,17 +28,27 @@ class Ray(DeepObj):
         shape (torch.Size): Batch shape `(..., num_rays)` shared by the ray tensors.
         is_valid (torch.Tensor): Binary validity mask, shape `(..., num_rays)`.
         en (torch.Tensor): Energy weight, shape `(..., num_rays, 1)`.
-        centroid_weight (torch.Tensor): Per-ray physical-stop proximity weight,
-            shape `(..., num_rays)`. It remains uniform until a trace crosses
-            the aperture stop.
-        centroid_weight_assigned (bool): Whether `centroid_weight` was stamped
-            at the physical aperture stop.
+        stop_dist (torch.Tensor | None): Per-ray distance from the physical
+            aperture-stop centre in units of the stop radius, shape
+            `(..., num_rays)`. None until a trace crosses the aperture stop;
+            rays invalid at the stop carry `inf`.
         bend_penalty (torch.Tensor): Accumulated per-surface bend penalty, shape `(..., num_rays, 1)`.
         opl (torch.Tensor): Optical path length, shape `(..., num_rays, 1)` [mm].
             Only accumulated when `is_coherent` is True.
         is_coherent (bool): Whether optical path length tracking is enabled.
         device (str): Compute device holding the ray tensors.
     """
+
+    # Physical-stop bookkeeping: `stop_dist` is stamped by tracing at the
+    # aperture stop, the rest by `calc_chief_ray`. Each is present only once
+    # computed, and all follow the ray through clone/squeeze/unsqueeze.
+    _STOP_ATTRS = (
+        "stop_dist",
+        "stop_residual_normalized",
+        "stop_residual_mm",
+        "stop_reached",
+        "chief_ray_sample_index",
+    )
 
     def __init__(self, o, d, wvln, is_coherent=False, device="cpu"):
         """Initialize a ray object.
@@ -78,8 +88,7 @@ class Ray(DeepObj):
         self.bend_penalty = torch.zeros(
             (*self.shape, 1), device=device, dtype=self.o.dtype
         )
-        self.centroid_weight = torch.ones(self.shape, device=device, dtype=self.o.dtype)
-        self.centroid_weight_assigned = False
+        self.stop_dist = None
 
         # Coherent ray tracing
         self.is_coherent = is_coherent  # bool
@@ -87,6 +96,13 @@ class Ray(DeepObj):
 
         self.device = device
         self.d = F.normalize(self.d, p=2, dim=-1)
+
+    def _stop_tensors(self):
+        """Yield `(name, tensor)` for each stop-bookkeeping tensor present."""
+        for name in self._STOP_ATTRS:
+            value = getattr(self, name, None)
+            if value is not None:
+                yield name, value
 
     def prop_to(self, z, n=1.0):
         """Propagate the ray to a given depth plane in place.
@@ -211,25 +227,17 @@ class Ray(DeepObj):
         ray.is_valid = self.is_valid.clone().to(target_device)
         ray.en = self.en.clone().to(target_device)
         ray.bend_penalty = self.bend_penalty.clone().to(target_device)
-        ray.centroid_weight = self.centroid_weight.clone().to(target_device)
         ray.opl = self.opl.clone().to(target_device)
 
         ray.is_coherent = self.is_coherent
-        ray.centroid_weight_assigned = self.centroid_weight_assigned
         ray.device = torch.device(target_device)
         ray.dtype = ray.o.dtype
         ray.shape = ray.o.shape[:-1]
         if hasattr(self, "_coordinates_conditioned"):
             ray._coordinates_conditioned = self._coordinates_conditioned
-        for name in (
-            "stop_residual_normalized",
-            "stop_residual_mm",
-            "stop_weight",
-            "stop_reached",
-            "chief_ray_sample_index",
-        ):
-            if hasattr(self, name):
-                setattr(ray, name, getattr(self, name).clone().to(target_device))
+        ray.stop_dist = None
+        for name, value in self._stop_tensors():
+            setattr(ray, name, value.clone().to(target_device))
 
         return ray
 
@@ -252,16 +260,8 @@ class Ray(DeepObj):
         self.en = self.en.squeeze(dim)
         self.opl = self.opl.squeeze(dim)
         self.bend_penalty = self.bend_penalty.squeeze(dim)
-        self.centroid_weight = self.centroid_weight.squeeze(dim)
-        for name in (
-            "stop_residual_normalized",
-            "stop_residual_mm",
-            "stop_weight",
-            "stop_reached",
-            "chief_ray_sample_index",
-        ):
-            if hasattr(self, name):
-                setattr(self, name, getattr(self, name).squeeze(dim))
+        for name, value in self._stop_tensors():
+            setattr(self, name, value.squeeze(dim))
         return self
 
     def unsqueeze(self, dim=None):
@@ -284,14 +284,6 @@ class Ray(DeepObj):
         self.en = self.en.unsqueeze(dim)
         self.opl = self.opl.unsqueeze(dim)
         self.bend_penalty = self.bend_penalty.unsqueeze(dim)
-        self.centroid_weight = self.centroid_weight.unsqueeze(dim)
-        for name in (
-            "stop_residual_normalized",
-            "stop_residual_mm",
-            "stop_weight",
-            "stop_reached",
-            "chief_ray_sample_index",
-        ):
-            if hasattr(self, name):
-                setattr(self, name, getattr(self, name).unsqueeze(dim))
+        for name, value in self._stop_tensors():
+            setattr(self, name, value.unsqueeze(dim))
         return self
