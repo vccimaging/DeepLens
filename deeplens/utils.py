@@ -1,3 +1,11 @@
+"""Shared utilities for DeepLens.
+
+Image IO and video export, image-quality metrics (PSNR, SSIM, LPIPS),
+ImageNet normalization, experiment setup (device, random seed, logger),
+differentiable 1D interpolation and grid sampling, and straight-through
+estimators for rounding and quantization.
+"""
+
 import logging
 import os
 import random

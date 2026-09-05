@@ -181,6 +181,21 @@ class ThinLens(Plane):
 
         return ray
 
+    def paraxial_power(self, n1, n2):
+        """Return the paraxial optical power of this thin lens [1/mm].
+
+        A thin lens is defined by its focal length, so its power is `1 / f`
+        regardless of the surrounding media.
+
+        Args:
+            n1 (torch.Tensor): Refractive index of the incident medium.
+            n2 (torch.Tensor): Refractive index of the transmission medium.
+
+        Returns:
+            power (torch.Tensor): Surface power `1 / f` [1/mm], scalar.
+        """
+        return 1.0 / self.f
+
     def _sag(self, x, y):
         """Return the surface sag, which is identically zero for a thin lens.
 

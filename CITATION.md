@@ -28,7 +28,7 @@ Later, Dr. Congli Wang implemented the first PyTorch version of differentiable r
 }
 ```
 
-Currently, [Xinge Yang](https://singer-yang.github.io/) is building and maintaining [**DeepLens**](https://github.com/singer-yang/DeepLens/). The automated lens design work demonstrates the outstanding capability of differentiable optics compared to classical optical design in the following paper:
+Currently, [Xinge Yang](https://singer-yang.github.io/) is building and maintaining [**DeepLens**](https://github.com/vccimaging/DeepLens/). The automated lens design work demonstrates the outstanding capability of differentiable optics compared to classical optical design in the following paper:
 
 ```bibtex
 @article{yang2024curriculum,

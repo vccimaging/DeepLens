@@ -10,7 +10,7 @@ Common manufacturing methods for diffractive surfaces include:
 - **Nanoimprint Lithography (NIL)**: A cost-effective replication method suitable for mass production.
 - **Single Point Diamond Turning (SPDT)**: Capable of creating diffractive structures on curved substrates (though simulation support is pending).
 
-The core of this module is the `DiffractiveSurface` class in `diffractive.py`, which defines the common interface for all DOEs. It handles the propagation of a wavefront to the surface and applies the phase modulation.
+The core of this module is the `DiffractiveSurface` class in `base_diffractive.py`, which defines the common interface for all DOEs. It handles the propagation of a wavefront to the surface and applies the phase modulation.
 
 **Note:** The current wave propagation simulation method only supports **planar** diffractive surfaces. Curved diffractive surfaces are not yet supported in this module.
 

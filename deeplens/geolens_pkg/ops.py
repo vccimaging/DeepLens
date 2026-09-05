@@ -1,14 +1,15 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
-"""Surface operations mixin for GeoLens.
+"""Lens operations mixin for GeoLens.
 
-Provides methods for managing optical surface geometry:
+Provides methods that operate on a lens in place:
     - Surface pruning (clear aperture sizing)
     - Lens shape correction
+    - Glass-catalog material matching
 """
 
 import logging
@@ -18,8 +19,8 @@ import torch
 from ..geometric_surface import Aperture
 
 
-class GeoLensSurfOps:
-    """Mixin providing surface geometry operations for GeoLens.
+class GeoLensOps:
+    """Mixin providing in-place lens operations for GeoLens.
 
     Bundles methods that modify a lens during design optimization: sizing
     clear apertures by ray tracing (pruning) and correcting lens geometry.

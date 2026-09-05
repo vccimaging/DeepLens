@@ -1,6 +1,6 @@
 """Mirror surface."""
 
-from .base import Surface
+from .base_surface import Surface
 from .plane import Plane
 
 

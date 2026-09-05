@@ -1,10 +1,16 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
-"""Glass and plastic materials for optical lenses."""
+"""Optical materials for lens surfaces.
+
+Dispersion models (Sellmeier, Schott, Cauchy, tabulated, the
+refractiveindex.info formulas, and an optimizable Cauchy form with learnable
+n/V) for glasses, plastics and substrate crystals, plus readers for Zemax AGF
+and custom material files.
+"""
 
 import json
 import math

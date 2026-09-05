@@ -1,10 +1,12 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
 """Base class for optical lens. When creating a new lens (geolens, diffractivelens, etc.), it should inherit from the Lens class and rewrite core functions."""
+
+import math
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -165,6 +167,45 @@ class Lens(DeepObj):
         )
         self.pixel_size = self.sensor_size[0] / self.sensor_res[0]
         self.calc_fov()
+
+    def create_dummy_sensor(self):
+        """Fill in any sensor geometry the lens file did not provide.
+
+        A lens file may omit part of the sensor description. The sensor radius
+        is derived from `sensor_size` when absent, and defaults are supplied for
+        `sensor_size` and `sensor_res` so the lens is usable without an explicit
+        `set_sensor()` call.
+
+        Raises:
+            ValueError: If neither `r_sensor` nor a two-element `sensor_size`
+                is available, or if `r_sensor` is not finite and positive.
+        """
+        if not hasattr(self, "r_sensor"):
+            if hasattr(self, "sensor_size") and len(self.sensor_size) == 2:
+                self.r_sensor = math.hypot(*self.sensor_size) / 2.0
+            else:
+                raise ValueError(
+                    "Lens file is missing sensor geometry; provide an image surface "
+                    "or r_sensor/sensor_size."
+                )
+        if not math.isfinite(float(self.r_sensor)) or float(self.r_sensor) <= 0:
+            raise ValueError("Lens sensor radius must be a finite positive number.")
+
+        # Complete sensor size and resolution if not set from lens file
+        if not hasattr(self, "sensor_size"):
+            self.sensor_size = (8.0, 8.0)
+            print(
+                f"Sensor_size not found in lens file. Using default: {self.sensor_size} mm. "
+                "Consider specifying sensor_size in the lens file or using set_sensor()."
+            )
+
+        if not hasattr(self, "sensor_res"):
+            self.sensor_res = (2000, 2000)
+            print(
+                f"Sensor_res not found in lens file. Using default: {self.sensor_res} pixels. "
+                "Consider specifying sensor_res in the lens file or using set_sensor()."
+            )
+            self.set_sensor_res(self.sensor_res)
 
     @torch.no_grad()
     def calc_fov(self):

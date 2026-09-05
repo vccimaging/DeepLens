@@ -112,6 +112,23 @@ class TestGeoLensRaySampling:
 
         assert ray.o.shape[0] == 2
 
+    def test_geolens_sample_entrance_pupil_flag(self):
+        """entrance_pupil=False must aim at surface 0 at finite depth too."""
+        lens = GeoLens(filename="datasets/lenses/camera/ef100mm_f2.8.json")
+        # This lens has its stop behind surface 0, so the two targets differ.
+        assert lens.get_entrance_pupil() != (lens.surf_d(0).item(), lens.surfaces[0].r)
+
+        for depth in (float("inf"), -1000.0):
+            kw = dict(fov_x=0.0, fov_y=0.0, depth=depth, num_rays=2048)
+            on = lens.sample_from_fov(entrance_pupil=True, **kw)
+            off = lens.sample_from_fov(entrance_pupil=False, **kw)
+
+            # Footprint radius where each bundle crosses surface 0.
+            def footprint(ray):
+                return ray.clone().prop_to(lens.surf_d(0).item()).o[..., :2].norm(-1).max()
+
+            assert not torch.allclose(footprint(on), footprint(off))
+
     def test_geolens_sample_sensor(self, sample_cellphone_lens):
         """Should sample backward rays from sensor."""
         lens = sample_cellphone_lens  # Has aperture stop
@@ -377,23 +394,89 @@ class TestGeoLensRendering:
 class TestGeoLensProperties:
     """Test lens property calculations."""
 
+    def test_calc_foclen_matches_thick_lens_equation(self, sample_singlet_lens):
+        """Paraxial EFL of a singlet must equal the analytic thick-lens value."""
+        lens = sample_singlet_lens
+        front, back = lens.surfaces[0], lens.surfaces[1]
+        n = float(front.mat2.ior(lens.primary_wvln))
+        c1, c2 = float(front.c), float(back.c)
+        d = float(front._get_effective_d_next())
+
+        # 1/f = (n - 1) * [c1 - c2 + (n - 1) * d * c1 * c2 / n]
+        expected = 1.0 / ((n - 1) * (c1 - c2 + (n - 1) * d * c1 * c2 / n))
+
+        assert lens.calc_foclen() == pytest.approx(expected, rel=1e-9)
+
+    def test_calc_foclen_ignores_aspheric_and_conic_terms(self, sample_cellphone_lens):
+        """First-order EFL depends on vertex curvature only, as in Zemax/CODE V."""
+        lens = sample_cellphone_lens
+        surf = next(s for s in lens.surfaces if getattr(s, "ai", None) is not None)
+        before = lens.calc_foclen()
+
+        surf.ai = surf.ai * 2.0
+        surf.k = surf.k + 1.0
+
+        assert lens.calc_foclen() == pytest.approx(before, rel=1e-12)
+
+    def test_calc_foclen_rejects_afocal_system(self, sample_singlet_lens):
+        """An afocal stack has no focal length and must fail loudly."""
+        lens = sample_singlet_lens
+        for surf in lens.surfaces:
+            surf.c = torch.zeros_like(surf.c)
+
+        with pytest.raises(ValueError, match="afocal"):
+            lens.calc_foclen()
+
     def test_calc_pupil_rejects_zero_entrance_radius(
         self, sample_cellphone_lens, monkeypatch
     ):
         """A failed pupil fallback raises a domain error before F/# division."""
         monkeypatch.setattr(
             sample_cellphone_lens,
-            "calc_exit_pupil",
-            lambda paraxial=False: (0.0, 1.0),
+            "calc_exit_pupil_rayaiming",
+            lambda: (0.0, 1.0),
         )
         monkeypatch.setattr(
             sample_cellphone_lens,
-            "calc_entrance_pupil",
-            lambda paraxial=False: (0.0, 0.0),
+            "calc_entrance_pupil_rayaiming",
+            lambda: (0.0, 0.0),
         )
 
         with pytest.raises(ValueError, match="entrance pupil radius"):
             sample_cellphone_lens.calc_pupil()
+
+    def test_paraxial_pupil_matches_thin_lens_conjugate(self):
+        """The first-order pupil is the analytic image of the stop.
+
+        Stop and thin lens f=10 mm separated by t=5 mm: the stop images to
+        m = 1/(1 - t/f) = 2x at t/(1 - t/f) = 10 mm past the lens, on the
+        side the light came from.
+        """
+        from deeplens.geometric_surface import Aperture, ThinLens
+
+        f, t, aper_r = 10.0, 5.0, 1.0
+
+        # Exit pupil: stop first, lens 5 mm behind it (lens vertex at z=5).
+        lens = GeoLens()
+        lens.surfaces = [
+            Aperture(r=aper_r, d_next=t, device="cpu"),
+            ThinLens(r=5.0, d_next=5.0, f=f, device="cpu"),
+        ]
+        lens.aper_idx = 0
+        z, r = lens.calc_pupil_paraxial(reverse=False)
+        assert z == pytest.approx(t - 10.0)
+        assert r == pytest.approx(2.0 * aper_r)
+
+        # Entrance pupil: same pair reversed (lens vertex at z=0).
+        lens = GeoLens()
+        lens.surfaces = [
+            ThinLens(r=5.0, d_next=t, f=f, device="cpu"),
+            Aperture(r=aper_r, d_next=5.0, device="cpu"),
+        ]
+        lens.aper_idx = 1
+        z, r = lens.calc_pupil_paraxial(reverse=True)
+        assert z == pytest.approx(10.0)
+        assert r == pytest.approx(2.0 * aper_r)
 
     def test_geolens_refocus(self, sample_singlet_lens):
         """Should refocus lens to new distance."""

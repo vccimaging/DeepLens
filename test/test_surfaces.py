@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from deeplens.geometric_surface import Aperture, Aspheric, Plane, Spheric
-from deeplens.geometric_surface.base import Surface
+from deeplens.geometric_surface.base_surface import Surface
 from deeplens.light import Ray
 
 

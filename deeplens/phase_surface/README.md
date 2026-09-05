@@ -11,7 +11,7 @@ Common manufacturing methods for phase surfaces include:
 - **Nanoimprint Lithography (NIL)**: A cost-effective replication method.
 - **Single Point Diamond Turning (SPDT)**: Only suitable for DOE fabrication for long wavelengths (e.g., >10µm).
 
-The core of this module is the `Phase` base class in `phase.py`, which defines the common interface for all phase surfaces. It handles the ray tracing logic, coordinate transformations, and diffraction simulation.
+The core of this module is the `Phase` base class in `base_phase.py`, which defines the common interface for all phase surfaces. It handles the ray tracing logic, coordinate transformations, and diffraction simulation.
 
 ## Available Surfaces
 

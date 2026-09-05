@@ -1,3 +1,5 @@
+"""MLP encoder plus convolutional decoder for high-resolution PSF prediction."""
+
 import math
 
 import torch

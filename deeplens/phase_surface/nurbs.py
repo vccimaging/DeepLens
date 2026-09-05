@@ -3,7 +3,7 @@
 import torch
 
 from ..config import EPSILON
-from .phase import Phase
+from .base_phase import Phase
 
 
 class NURBSPhase(Phase):

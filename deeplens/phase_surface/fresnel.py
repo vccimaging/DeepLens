@@ -2,7 +2,7 @@
 
 import torch
 
-from .phase import Phase
+from .base_phase import Phase
 
 
 class FresnelPhase(Phase):

@@ -185,6 +185,7 @@ class TestRayCentroid:
 
         expected = torch.tensor([1.0, 2.0, 0.0], device=device_auto)
         assert torch.allclose(centroid, expected)
+        torch.testing.assert_close(ray.centroid(mode="geometric"), expected)
 
     def test_ray_centroid_respects_valid(self, device_auto):
         """Centroid should only consider valid rays."""
@@ -199,6 +200,82 @@ class TestRayCentroid:
 
         expected = torch.tensor([0.0, 0.0, 0.0], device=device_auto)
         assert torch.allclose(centroid, expected, atol=1e-5)
+
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_ray_centroid_chief_ray_uses_stop_dist(self, device_auto, dtype):
+        """Select the closest stop sample independently across batch dimensions."""
+        o = torch.arange(36, device=device_auto, dtype=dtype).reshape(2, 2, 3, 3)
+        d = torch.zeros_like(o)
+        d[..., 2] = 1.0
+        ray = Ray(o, d, wvln=0.55, device=device_auto)
+        ray.stop_dist = o.new_tensor(
+            [
+                [[0.8, 0.02, 0.3], [float("nan"), 0.5, 0.0]],
+                [[0.01, 0.2, 0.5], [0.1, 0.2, 0.1]],
+            ]
+        )
+
+        centroid = ray.centroid(mode="chief_ray")
+
+        expected = o.new_tensor(
+            [
+                [[3.0, 4.0, 5.0], [15.0, 16.0, 17.0]],
+                [[18.0, 19.0, 20.0], [27.0, 28.0, 29.0]],
+            ]
+        )
+        torch.testing.assert_close(centroid, expected)
+
+    def test_ray_centroid_chief_ray_falls_back_per_field(self, device_auto):
+        """Missing or later-clipped chief rays fall back to the geometric mean."""
+        o = torch.tensor(
+            [
+                [[0.0, 0.0, 2.0], [100.0, 0.0, 2.0], [8.0, 0.0, 2.0]],
+                [[1.0, 2.0, 3.0], [5.0, 6.0, 7.0], [9.0, 10.0, 11.0]],
+                [[2.0, 4.0, 6.0], [6.0, 8.0, 10.0], [10.0, 12.0, 14.0]],
+            ],
+            device=device_auto,
+        )
+        d = torch.zeros_like(o)
+        d[..., 2] = 1.0
+        ray = Ray(o, d, wvln=0.55, device=device_auto)
+        ray.stop_dist[0] = o.new_tensor([0.8, 0.01, 0.2])
+        ray.stop_dist[2] = o.new_tensor([0.01, 0.5, 0.8])
+        ray.is_valid = o.new_tensor([[1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0]])
+
+        centroid = ray.centroid(mode="chief_ray")
+
+        expected = o.new_tensor([[4.0, 0.0, 2.0], [3.0, 4.0, 5.0], [2.0, 4.0, 6.0]])
+        torch.testing.assert_close(centroid, expected)
+
+    def test_ray_centroid_chief_ray_preserves_position_gradients(self, device_auto):
+        o = torch.tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+            device=device_auto,
+            requires_grad=True,
+        )
+        d = torch.zeros_like(o)
+        d[..., 2] = 1.0
+        ray = Ray(o, d, wvln=0.55, device=device_auto)
+        ray.stop_dist = o.new_tensor([0.1, 0.5])
+
+        centroid = ray.centroid(mode="chief_ray")
+        torch.testing.assert_close(centroid, o.new_tensor([1.0, 2.0, 3.0]))
+        centroid.sum().backward()
+
+        torch.testing.assert_close(
+            o.grad, o.new_tensor([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0]])
+        )
+
+    @pytest.mark.parametrize("mode", ["geometric", "chief_ray"])
+    def test_ray_centroid_empty_bundle(self, device_auto, mode):
+        o = torch.zeros(2, 0, 3, device=device_auto)
+        ray = Ray(o, o.clone(), wvln=0.55, device=device_auto)
+
+        torch.testing.assert_close(ray.centroid(mode=mode), o.new_zeros(2, 3))
+
+    def test_ray_centroid_rejects_unknown_mode(self, sample_ray):
+        with pytest.raises(ValueError, match="Unsupported centroid mode"):
+            sample_ray.centroid(mode="unknown")
 
 
 class TestRayRmsError:
@@ -264,26 +341,42 @@ class TestRayClone:
 
         # Clone should be unchanged
         assert cloned.o[0, 0] != 999.0
+        torch.testing.assert_close(cloned.stop_dist, o.new_tensor([float("inf")]))
+        assert cloned.stop_dist.data_ptr() != ray.stop_dist.data_ptr()
 
     def test_ray_clone_to_cpu(self, device_auto):
         """Clone should allow device specification."""
         o = torch.tensor([[1.0, 2.0, 3.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
         ray = Ray(o, d, wvln=0.55, device=device_auto)
+        ray.stop_dist = o.new_tensor([0.25])
 
         cloned = ray.clone(device="cpu")
 
         assert cloned.o.device == torch.device("cpu")
+        torch.testing.assert_close(
+            cloned.stop_dist, torch.tensor([0.25], dtype=o.dtype)
+        )
 
     def test_ray_clone_copies_all_tensor_attributes(self, device_auto):
         """Clone should duplicate all tensor attributes without shared storage."""
         o = torch.tensor([[1.0, 2.0, 3.0]], device=device_auto)
         d = torch.tensor([[0.0, 0.0, 1.0]], device=device_auto)
         ray = Ray(o, d, wvln=0.55, is_coherent=True, device=device_auto)
+        ray.stop_dist = o.new_tensor([0.25])
 
         cloned = ray.clone()
 
-        for attr in ("o", "d", "wvln", "is_valid", "en", "bend_penalty", "opl"):
+        for attr in (
+            "o",
+            "d",
+            "wvln",
+            "is_valid",
+            "en",
+            "bend_penalty",
+            "opl",
+            "stop_dist",
+        ):
             src = getattr(ray, attr)
             dst = getattr(cloned, attr)
             assert torch.allclose(src, dst)
@@ -321,15 +414,33 @@ class TestRaySqueezeUnsqueeze:
         assert ray.o.shape == (1, 10, 3)
         assert ray.d.shape == (1, 10, 3)
 
-    def test_ray_squeeze_unsqueeze_roundtrip(self, device_auto):
+    @pytest.mark.parametrize("recorded_stop", [False, True])
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_ray_squeeze_unsqueeze_roundtrip(self, device_auto, recorded_stop, dtype):
         """Squeeze then unsqueeze should restore shape."""
-        o = torch.zeros(1, 10, 3, device=device_auto)
-        d = torch.zeros(1, 10, 3, device=device_auto)
+        o = torch.zeros(1, 10, 3, device=device_auto, dtype=dtype)
+        d = torch.zeros(1, 10, 3, device=device_auto, dtype=dtype)
         d[..., 2] = 1.0
         ray = Ray(o, d, wvln=0.55, device=device_auto)
+        if recorded_stop:
+            ray.stop_dist = o.new_tensor([[0.25] * 9 + [float("inf")]])
 
         original_shape = ray.o.shape
         ray.squeeze(dim=0)
+        if recorded_stop:
+            torch.testing.assert_close(
+                ray.stop_dist, o.new_tensor([0.25] * 9 + [float("inf")])
+            )
+        else:
+            torch.testing.assert_close(ray.stop_dist, o.new_tensor([float("inf")] * 10))
         ray.unsqueeze(dim=0)
 
         assert ray.o.shape == original_shape
+        if recorded_stop:
+            torch.testing.assert_close(
+                ray.stop_dist, o.new_tensor([[0.25] * 9 + [float("inf")]])
+            )
+        else:
+            torch.testing.assert_close(
+                ray.stop_dist, o.new_tensor([[float("inf")] * 10])
+            )

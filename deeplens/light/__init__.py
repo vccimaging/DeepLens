@@ -1,3 +1,5 @@
+"""Light representations: geometric rays and complex wave fields with propagation."""
+
 from .ray import Ray
 from .wave import (
     AngularSpectrumMethod,

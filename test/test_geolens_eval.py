@@ -55,24 +55,41 @@ class TestChiefRay:
         assert chief.o.shape == (2, 1, 3)
         torch.testing.assert_close(chief.o[:, 0], ray.o[:, 1])
         torch.testing.assert_close(
-            chief.chief_ray_sample_index,
-            torch.tensor([[1], [1]], device=device),
-        )
-        torch.testing.assert_close(
             chief.is_valid,
             torch.tensor([[1.0], [0.0]], device=device, dtype=lens.dtype),
         )
         expected_residual = torch.tensor(
             [[0.05], [0.1]], device=device, dtype=lens.dtype
         )
-        torch.testing.assert_close(chief.stop_residual_normalized, expected_residual)
-        torch.testing.assert_close(
-            chief.stop_residual_mm,
-            expected_residual * lens.surfaces[lens.aper_idx].r,
-        )
-        assert chief.stop_reached.all()
+        torch.testing.assert_close(chief.stop_dist, expected_residual)
+        assert torch.isfinite(chief.stop_dist).all()
 
-    def test_requires_one_input_mode_and_stop_weight(self, sample_cellphone_lens):
+    def test_extracts_from_recorded_distances_without_stop_geometry(
+        self, sample_cellphone_lens
+    ):
+        lens = sample_cellphone_lens
+        ray = Ray(
+            torch.tensor(
+                [[0.0, 0.0, 1.0], [1.0, 2.0, 1.0]],
+                device=lens.device,
+                dtype=lens.dtype,
+            ),
+            torch.tensor([[0.0, 0.0, 1.0]], device=lens.device).expand(2, 3),
+            wvln=lens.primary_wvln,
+            device=lens.device,
+        )
+        ray.stop_dist = ray.o.new_tensor([0.8, 0.05])
+
+        # A traced bundle already contains everything needed for selection.
+        lens.surfaces = []
+        lens.aper_idx = None
+        chief = lens.calc_chief_ray(ray=ray)
+
+        torch.testing.assert_close(chief.o, ray.o[1:2])
+        torch.testing.assert_close(chief.stop_dist, ray.o.new_tensor([0.05]))
+        assert chief.is_valid.all()
+
+    def test_requires_one_input_mode_and_sampling_for_path(self, sample_cellphone_lens):
         lens = sample_cellphone_lens
         device = lens.device
         points = torch.tensor(
@@ -91,13 +108,13 @@ class TestChiefRay:
             lens.calc_chief_ray()
         with pytest.raises(ValueError, match="exactly one"):
             lens.calc_chief_ray(points, ray=bare_ray)
-        with pytest.raises(ValueError, match="no aperture-stop distances"):
-            lens.calc_chief_ray(ray=bare_ray)
         with pytest.raises(ValueError, match="does not contain its earlier path"):
-            bare_ray.stop_dist = torch.zeros(4, device=device, dtype=lens.dtype)
             lens.calc_chief_ray(ray=bare_ray, record=True)
 
-    def test_reports_when_no_sample_reaches_stop(self, sample_cellphone_lens):
+    @pytest.mark.parametrize("recorded_dist", [None, float("inf"), float("nan")])
+    def test_reports_when_no_sample_reaches_stop(
+        self, sample_cellphone_lens, recorded_dist
+    ):
         lens = sample_cellphone_lens
         device = lens.device
         ray = Ray(
@@ -108,14 +125,16 @@ class TestChiefRay:
             wvln=lens.primary_wvln,
             device=device,
         )
-        ray.stop_dist = torch.full((3,), float("inf"), device=device, dtype=lens.dtype)
+        if recorded_dist is not None:
+            ray.stop_dist = torch.full(
+                (3,), recorded_dist, device=device, dtype=lens.dtype
+            )
 
         chief = lens.calc_chief_ray(ray=ray)
 
-        assert not chief.stop_reached.any()
         assert not chief.is_valid.any()
-        assert torch.isinf(chief.stop_residual_normalized).all()
-        assert torch.isinf(chief.stop_residual_mm).all()
+        assert torch.isinf(chief.stop_dist).all()
+        assert ray.is_valid.all()
 
     def test_samples_points_and_returns_selected_path(self, sample_cellphone_lens):
         lens = sample_cellphone_lens
@@ -131,10 +150,8 @@ class TestChiefRay:
         assert chief.o.shape == (1, 1, 3)
         assert chief.is_valid.shape == (1, 1)
         assert chief.is_valid.all()
-        assert chief.stop_reached.all()
-        assert torch.isfinite(chief.stop_residual_mm).all()
-        assert (chief.stop_residual_normalized < 0.25).all()
-        assert int(chief.chief_ray_sample_index.max()) < 256
+        assert torch.isfinite(chief.stop_dist).all()
+        assert (chief.stop_dist < 0.25).all()
         assert len(path) == len(lens.surfaces) + 2
         assert all(p.shape == (1, 1, 3) for p in path)
         torch.testing.assert_close(path[-1], chief.o)
@@ -268,8 +285,8 @@ class TestChiefRay:
 
         assert chief.o.shape == (2, 1, 3)
         assert chief.is_valid.all()
-        assert chief.stop_reached.all()
-        assert (chief.stop_residual_normalized < 0.1).all()
+        assert torch.isfinite(chief.stop_dist).all()
+        assert (chief.stop_dist < 0.1).all()
 
     def test_fov_mode_heights_increase_and_record_path(self, sample_cellphone_lens):
         lens = sample_cellphone_lens
@@ -412,27 +429,49 @@ class TestMTF:
 class TestSpotSampling:
     """Regression tests for field-angle spot diagram sampling."""
 
-    def test_radial_sampling_reaches_full_rfov(self, sample_singlet_lens):
-        """The final radial sample reaches the lens half-diagonal FoV."""
+    def test_radial_sampling_defaults_to_rfov_eff(self, sample_singlet_lens):
+        """The final radial sample reaches rfov_eff by default, rfov on request."""
+        lens = sample_singlet_lens
+
+        for fov_max, expected in ((None, lens.rfov_eff), (lens.rfov, lens.rfov)):
+            ray = lens.sample_radial_rays(
+                num_field=3,
+                depth=float("inf"),
+                num_rays=8,
+                direction="y",
+                fov_max=fov_max,
+            )
+            field_angles = torch.atan2(ray.d[..., 1], ray.d[..., 2])
+
+            assert torch.allclose(
+                field_angles[0], torch.zeros_like(field_angles[0]), atol=1e-6
+            )
+            assert torch.allclose(
+                field_angles[-1],
+                torch.full_like(field_angles[-1], expected),
+                atol=1e-5,
+            )
+
+    def test_radial_diagonal_lands_at_radial_fov(self, sample_singlet_lens):
+        """Diagonal fields sit at the requested radial angle, not sqrt(2) beyond."""
         lens = sample_singlet_lens
         ray = lens.sample_radial_rays(
             num_field=3,
             depth=float("inf"),
             num_rays=8,
-            direction="y",
+            direction="diagonal",
         )
 
-        field_angles = torch.atan2(ray.d[..., 1], ray.d[..., 2])
-        full_fov = torch.as_tensor(lens.rfov, device=field_angles.device)
+        # Radial angle of the chief direction: atan(hypot(dx, dy) / dz)
+        radial = torch.atan2(ray.d[..., :2].norm(dim=-1), ray.d[..., 2])
 
         assert torch.allclose(
-            field_angles[0], torch.zeros_like(field_angles[0]), atol=1e-6
-        )
-        assert torch.allclose(
-            field_angles[-1],
-            torch.full_like(field_angles[-1], full_fov),
+            radial[-1],
+            torch.full_like(radial[-1], lens.rfov_eff),
             atol=1e-5,
         )
+        # 45 degree azimuth: the two components stay equal
+        assert torch.allclose(ray.d[-1, :, 0], ray.d[-1, :, 1], atol=1e-6)
 
 
 class TestVignetting:

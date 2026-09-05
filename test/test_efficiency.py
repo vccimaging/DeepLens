@@ -52,7 +52,7 @@ def test_set_fnum_still_hits_target_with_reduced_pupil_sampling(sample_cellphone
     estimator). set_fnum must still converge to the requested F-number."""
     lens = sample_cellphone_lens
     lens.set_fnum(4.0)
-    _, pupil_r = lens.calc_entrance_pupil()
+    _, pupil_r = lens.calc_entrance_pupil_rayaiming()
     achieved = lens.foclen / (2.0 * pupil_r)
     assert abs(achieved - 4.0) / 4.0 < 0.01  # within 1% of target
 

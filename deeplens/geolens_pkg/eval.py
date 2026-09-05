@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -7,9 +7,12 @@
 """Classical optical performance evaluation for geometric lens systems.
 
 This module provides a mixin class ``GeoLensEval`` that adds Zemax-equivalent
-optical evaluation capabilities to ``GeoLens``.  Every metric is computed via
-geometric ray tracing: rays are sampled from object space, propagated through
-all lens surfaces (refraction + clipping), and analyzed at the sensor plane.
+optical evaluation capabilities to ``GeoLens``.  Spot, distortion and
+vignetting metrics are computed purely by geometric ray tracing: rays are
+sampled from object space, propagated through all lens surfaces (refraction +
+clipping), and analyzed at the sensor plane.  ``mtf`` goes through ``psf()``,
+so it follows whichever PSF model that dispatches to, and ``analysis_rendering``
+reports PSNR/SSIM from a rendered image.
 
 Coordinate convention (shared with the rest of DeepLens):
     - **z-axis**: optical axis, light travels in +z direction.
@@ -173,9 +176,11 @@ class GeoLensEval:
         Selection happens before final validity is checked. If the closest
         stop-centred ray is clipped after the stop, it remains the selected ray
         and is returned as invalid rather than being replaced by a farther ray.
-        The result carries ``stop_residual_normalized`` (distance from the
-        stop centre in stop radii), ``stop_residual_mm``, ``stop_reached``,
-        and ``chief_ray_sample_index``.
+        The result's ``stop_dist`` is its distance from the stop centre in
+        stop radii. If no sample has a finite recorded distance, including an
+        untraced bundle, the result is invalid with ``stop_dist=inf``. Multiply
+        a recorded distance by the stop radius used for tracing to obtain
+        the distance in millimetres.
 
         Args:
             points_obj (torch.Tensor | list | None): Physical object points in
@@ -202,7 +207,7 @@ class GeoLensEval:
 
         Raises:
             ValueError: If the input modes are invalid, sampling parameters are
-                invalid, the supplied bundle did not cross the stop, or path
+                invalid, the supplied bundle is empty, or path
                 recording is requested for a supplied bundle.
             TypeError: If ``ray`` is not a :class:`Ray`.
 
@@ -266,11 +271,6 @@ class GeoLensEval:
                     "bundle does not contain its earlier path."
                 )
 
-        if getattr(ray, "stop_dist", None) is None:
-            raise ValueError(
-                "The ray bundle has no aperture-stop distances. Trace it across "
-                "the aperture stop before calling calc_chief_ray(ray=...)."
-            )
         if ray.o.ndim < 2 or ray.o.shape[-2] < 1:
             raise ValueError("ray must contain at least one sample ray.")
 
@@ -301,12 +301,6 @@ class GeoLensEval:
         chief_ray.stop_dist = residual_normalized
         chief_ray.shape = chief_ray.o.shape[:-1]
 
-        aperture_radius = float(self.surfaces[self.aper_idx].r)
-        chief_ray.stop_residual_normalized = residual_normalized
-        chief_ray.stop_residual_mm = residual_normalized * aperture_radius
-        chief_ray.stop_reached = stop_reached
-        chief_ray.chief_ray_sample_index = sample_index
-
         if record:
             chief_path = [gather_vector(path_entry) for path_entry in ray_path]
             return chief_ray, chief_path
@@ -328,7 +322,7 @@ class GeoLensEval:
             xy (torch.Tensor): Reference positions, shape ``[..., 2]``.
         """
         centroid_xy = ray.centroid()[..., :2]
-        if self.aper_idx is None or getattr(ray, "stop_dist", None) is None:
+        if self.aper_idx is None:
             return centroid_xy
 
         chief = self.calc_chief_ray(ray=ray)
@@ -461,6 +455,7 @@ class GeoLensEval:
                 num_rays=num_rays,
                 wvln=wvln,
                 direction=direction,
+                fov_max=self.rfov,
             )
             ray = self.trace2sensor(ray)
             ray_o = ray.o[..., :2].cpu().numpy()
@@ -1592,7 +1587,11 @@ class GeoLensEval:
         valid_list = []
         for wvln in self.wvln_rgb:
             ray = self.sample_radial_rays(
-                num_field=num_field, depth=depth, num_rays=SPP_PSF, wvln=wvln
+                num_field=num_field,
+                depth=depth,
+                num_rays=SPP_PSF,
+                wvln=wvln,
+                fov_max=self.rfov,
             )
             ray = self.trace2sensor(ray)
             xy_list.append(ray.o[..., :2])

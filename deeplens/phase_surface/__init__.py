@@ -5,7 +5,7 @@ from .cubic import CubicPhase
 from .fresnel import FresnelPhase
 from .grating import GratingPhase
 from .nurbs import NURBSPhase
-from .phase import Phase
+from .base_phase import Phase
 from .poly import PolyPhase
 from .vortex import VortexPhase
 from .zernike import ZernikePhase
