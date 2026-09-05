@@ -27,8 +27,8 @@ from .config import (
 )
 from .geolens_pkg.eval import GeoLensEval
 from .geolens_pkg.io import GeoLensIO
-from .geolens_pkg.optim import GeoLensOptim
 from .geolens_pkg.ops import GeoLensOps
+from .geolens_pkg.optim import GeoLensOptim
 from .geolens_pkg.psf_compute import GeoLensPSF
 from .geolens_pkg.render import GeoLensRender
 from .geolens_pkg.vis import GeoLensVis

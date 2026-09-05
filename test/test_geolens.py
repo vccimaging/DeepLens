@@ -125,7 +125,9 @@ class TestGeoLensRaySampling:
 
             # Footprint radius where each bundle crosses surface 0.
             def footprint(ray):
-                return ray.clone().prop_to(lens.surf_d(0).item()).o[..., :2].norm(-1).max()
+                return (
+                    ray.clone().prop_to(lens.surf_d(0).item()).o[..., :2].norm(-1).max()
+                )
 
             assert not torch.allclose(footprint(on), footprint(off))
 

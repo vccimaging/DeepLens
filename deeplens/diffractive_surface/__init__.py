@@ -1,8 +1,8 @@
 """Diffractive surface module."""
 
+from .base_diffractive import DiffractiveSurface
 from .binary2 import Binary2
 from .diffracted_rotation import DiffractedRotation
-from .base_diffractive import DiffractiveSurface
 from .fresnel import Fresnel
 from .grating import Grating
 from .pixel2d import Pixel2D

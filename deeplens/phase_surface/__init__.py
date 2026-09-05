@@ -1,11 +1,11 @@
 """Phase surface implementations for diffractive optics."""
 
+from .base_phase import Phase
 from .binary2 import Binary2Phase
 from .cubic import CubicPhase
 from .fresnel import FresnelPhase
 from .grating import GratingPhase
 from .nurbs import NURBSPhase
-from .base_phase import Phase
 from .poly import PolyPhase
 from .vortex import VortexPhase
 from .zernike import ZernikePhase
