@@ -3,8 +3,8 @@ title: DeepLens
 message: "If you use DeepLens in your research, please cite the following paper."
 type: software
 license: Apache-2.0
-url: "https://github.com/singer-yang/DeepLens"
-repository-code: "https://github.com/singer-yang/DeepLens"
+url: "https://github.com/vccimaging/DeepLens"
+repository-code: "https://github.com/vccimaging/DeepLens"
 authors:
   - family-names: Yang
     given-names: Xinge

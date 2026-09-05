@@ -1,7 +1,8 @@
-from .base import Surface
+"""Geometric surface implementations for ray tracing."""
 
 from .aperture import Aperture
 from .aspheric import Aspheric
+from .base_surface import Surface
 from .cubic import Cubic
 from .mirror import Mirror
 from .plane import Plane

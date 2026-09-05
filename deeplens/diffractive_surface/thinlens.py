@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -8,7 +8,8 @@
 
 import torch
 import torch.nn.functional as F
-from .diffractive import DiffractiveSurface
+
+from .base_diffractive import DiffractiveSurface
 
 
 class ThinLens(DiffractiveSurface):
@@ -48,7 +49,14 @@ class ThinLens(DiffractiveSurface):
                 Defaults to 16.
             device (str, optional): Device to run the lens on. Defaults to "cpu".
         """
-        super().__init__(d_next=d_next, res=res, mat=mat, fab_ps=fab_ps, fab_step=fab_step, device=device)
+        super().__init__(
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            device=device,
+        )
 
         # Initial focal length
         if f0 is None:

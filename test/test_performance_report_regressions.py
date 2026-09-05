@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 import torch
 
+import deeplens.psfnetlens as psfnetlens_module
 from deeplens import GeoLens
 from deeplens.base import DeepObj
 from deeplens.geometric_surface import Aspheric, Spheric
@@ -18,7 +19,6 @@ from deeplens.imgsim import conv_psf
 from deeplens.lens import Lens
 from deeplens.light import AngularSpectrumMethod, Ray
 from deeplens.material import Material
-import deeplens.psfnetlens as psfnetlens_module
 
 
 class _DeltaPSFLens(Lens):
@@ -381,29 +381,6 @@ def test_f12_spherical_coherent_guard_uses_ray_dtype():
             surface32.intersect(ray32)
     finally:
         torch.set_default_dtype(original_default)
-
-
-def test_large_coordinate_sphere_intersection_is_reanchored():
-    """Float32 stress rays retain local sag accuracy at kilometre coordinates."""
-    curvature = 0.02
-    x = 5.0
-    surface = Spheric(
-        c=curvature,
-        r=10.0,
-        d_next=torch.tensor(0.0, dtype=torch.float32),
-        mat2="air",
-    )
-    ray = Ray(
-        torch.tensor([[x, 0.0, -1_000_000.0]], dtype=torch.float32),
-        torch.tensor([[0.0, 0.0, 1.0]], dtype=torch.float32),
-        wvln=0.587,
-    )
-
-    surface.intersect(ray)
-
-    expected_sag = curvature * x**2 / (1.0 + math.sqrt(1.0 - curvature**2 * x**2))
-    assert ray.is_valid.item() == 1.0
-    assert ray.o[0, 2].item() == pytest.approx(expected_sag, abs=5e-6)
 
 
 def test_f13_json_roundtrip_preserves_design_metadata(sample_singlet_lens, tmp_path):

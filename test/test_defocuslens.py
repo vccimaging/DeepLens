@@ -21,7 +21,7 @@ class TestDefocusLensInit:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         assert lens.foclen == 50.0
         assert lens.fnum == 1.8
 
@@ -29,7 +29,7 @@ class TestDefocusLensInit:
         """Aperture radius calculation check."""
         foclen = 50.0
         fnum = 2.0
-        
+
         lens = DefocusLens(
             foclen=foclen,
             fnum=fnum,
@@ -37,7 +37,7 @@ class TestDefocusLensInit:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         # DefocusLens doesn't expose 'r' directly, so we just verify parameters
         assert lens.foclen == foclen
         assert lens.fnum == fnum
@@ -55,10 +55,10 @@ class TestDefocusLensRefocus:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         original_foc = lens.foc_dist
         lens.refocus(-1000.0)
-        
+
         assert lens.foc_dist != original_foc
         assert lens.foc_dist == -1000.0
 
@@ -71,9 +71,9 @@ class TestDefocusLensRefocus:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(DEPTH)
-        
+
         assert lens.foc_dist == DEPTH
 
 
@@ -89,11 +89,11 @@ class TestDefocusLensCoC:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         depth = torch.tensor([-1000.0], device=device_auto)
         coc = lens.coc(depth)
-        
+
         assert coc.item() == pytest.approx(0.0, abs=0.01)
 
     def test_paraxial_coc_out_of_focus(self, device_auto):
@@ -105,15 +105,15 @@ class TestDefocusLensCoC:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
-        
+
         depth_near = torch.tensor([-500.0], device=device_auto)
         depth_far = torch.tensor([-2000.0], device=device_auto)
-        
+
         coc_near = lens.coc(depth_near)
         coc_far = lens.coc(depth_far)
-        
+
         assert coc_near.abs().item() > 0
         assert coc_far.abs().item() > 0
 
@@ -126,11 +126,11 @@ class TestDefocusLensCoC:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         depths = torch.tensor([-500.0, -1000.0, -2000.0], device=device_auto)
         cocs = lens.coc(depths)
-        
+
         assert cocs.shape == depths.shape
 
 
@@ -146,13 +146,13 @@ class TestDefocusLensDoF:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         # DoF should be positive. Note standard DoF is undefined at focus where CoC=0 in this implementation?
         # Check DoF at slightly defocused distance.
         depth = torch.tensor([-500.0], device=device_auto)
         dof = lens.dof(depth)
-        
+
         assert dof.item() > 0
 
     def test_paraxial_coc_fnum_dependence(self, device_auto):
@@ -171,14 +171,14 @@ class TestDefocusLensDoF:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens1.refocus(-1000.0)
         lens2.refocus(-1000.0)
-        
+
         depth = torch.tensor([-500.0], device=device_auto)
         coc1 = lens1.coc(depth)
         coc2 = lens2.coc(depth)
-        
+
         assert coc2.item() < coc1.item()
 
 
@@ -194,13 +194,13 @@ class TestDefocusLensPSF:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         points = torch.tensor([[-500.0]], device=device_auto)  # Out of focus
         points = torch.cat([torch.zeros(1, 2, device=device_auto), points], dim=-1)
-        
+
         psf = lens.psf(points, ks=31, psf_type="gaussian")
-        
+
         # PSF is [N, ks, ks]
         assert psf.shape[-2:] == (31, 31)
         assert psf.sum().item() == pytest.approx(1.0, abs=0.1)
@@ -214,10 +214,10 @@ class TestDefocusLensPSF:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         points = torch.tensor([[0.0, 0.0, -500.0]], device=device_auto)
-        
+
         psf = lens.psf(points, ks=31, psf_type="pillbox")
 
         assert psf.shape[-2:] == (31, 31)
@@ -232,14 +232,14 @@ class TestDefocusLensPSF:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         points_focus = torch.tensor([[0.0, 0.0, -1000.0]], device=device_auto)
         points_defocus = torch.tensor([[0.0, 0.0, -500.0]], device=device_auto)
-        
+
         psf_focus = lens.psf(points_focus, ks=31, psf_type="gaussian")
         psf_defocus = lens.psf(points_defocus, ks=31, psf_type="gaussian")
-        
+
         # In-focus PSF should be more concentrated (higher peak)
         assert psf_focus.max() > psf_defocus.max()
 
@@ -270,12 +270,12 @@ class TestDefocusLensPSF:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         points = torch.tensor([[0.0, 0.0, -500.0]], device=device_auto)
-        
+
         psf_rgb = lens.psf_rgb(points, ks=31)
-        
+
         # Expect [N, 3, ks, ks] or [3, ks, ks]
         assert psf_rgb.shape[-3:] == (3, 31, 31)
 
@@ -288,16 +288,19 @@ class TestDefocusLensPSF:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
-        points = torch.tensor([
-            [0.0, 0.0, -500.0],
-            [0.0, 0.0, -1000.0],
-            [0.0, 0.0, -2000.0],
-        ], device=device_auto)
-        
+        points = torch.tensor(
+            [
+                [0.0, 0.0, -500.0],
+                [0.0, 0.0, -1000.0],
+                [0.0, 0.0, -2000.0],
+            ],
+            device=device_auto,
+        )
+
         psf = lens.psf(points, ks=31, psf_type="gaussian")
-        
+
         # Expect [3, ks, ks]
         assert psf.shape[-3:] == (3, 31, 31)
 
@@ -314,12 +317,12 @@ class TestDefocusLensDualPixel:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         points = torch.tensor([[0.0, 0.0, -500.0]], device=device_auto)
-        
+
         psf_left, psf_right = lens.psf_dp(points, ks=31)
-        
+
         assert psf_left.shape[-2:] == (31, 31)
         assert psf_right.shape[-2:] == (31, 31)
 
@@ -332,12 +335,12 @@ class TestDefocusLensDualPixel:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         points = torch.tensor([[0.0, 0.0, -500.0]], device=device_auto)  # Out of focus
-        
+
         psf_left, psf_right = lens.psf_dp(points, ks=31)
-        
+
         # Left and right should be different
         diff = (psf_left - psf_right).abs().sum()
         assert diff.item() > 0.01
@@ -351,12 +354,12 @@ class TestDefocusLensDualPixel:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         points = torch.tensor([[0.0, 0.0, -500.0]], device=device_auto)
-        
+
         psf_left, psf_right = lens.psf_rgb_dp(points, ks=31)
-        
+
         assert psf_left.shape[-3:] == (3, 31, 31)
         assert psf_right.shape[-3:] == (3, 31, 31)
 
@@ -373,10 +376,10 @@ class TestDefocusLensPSFMap:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         psf_map = lens.psf_map(grid=(3, 3), ks=31, depth=-500.0)
-        
+
         # psf_map: [grid_y, grid_x, 1, ks, ks]
         assert psf_map.shape == (3, 3, 1, 31, 31)
 
@@ -389,10 +392,10 @@ class TestDefocusLensPSFMap:
             sensor_res=(1000, 1000),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
         psf_map_left, psf_map_right = lens.psf_map_dp(grid=(3, 3), ks=31, depth=-500.0)
-        
+
         assert psf_map_left.shape == (3, 3, 1, 31, 31)
         assert psf_map_right.shape == (3, 3, 1, 31, 31)
 
@@ -409,14 +412,14 @@ class TestDefocusLensRendering:
             sensor_res=(64, 64),
             device=device_auto,
         )
-        
+
         lens.refocus(-1000.0)
-        
+
         rgb = torch.rand(1, 3, 64, 64, device=device_auto)
         depth = torch.full((1, 1, 64, 64), -500.0, device=device_auto)
-        
+
         img_left, img_right = lens.render_rgbd_dp(rgb, depth)
-        
+
         assert img_left.shape == rgb.shape
         assert img_right.shape == rgb.shape
 

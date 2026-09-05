@@ -1,4 +1,4 @@
-"""Optics configuration constants and utilities for DeepLens."""
+"""Optics configuration constants for DeepLens."""
 
 import numpy as np
 
@@ -32,7 +32,6 @@ DEFAULT_WAVE = 0.587  # [µm] default design wavelength (green, Fraunhofer d)
 
 # Tolerance deltas for finite-difference / paraxial approximations
 DELTA = 1e-6
-DELTA_PARAXIAL = 0.01
 EPSILON = 1e-12  # numerical zero guard (replaces 0 in divisions / sqrts)
 
 # Primary RGB wavelengths [µm] — used for polychromatic ray tracing and

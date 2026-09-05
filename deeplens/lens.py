@@ -1,15 +1,20 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
 """Base class for optical lens. When creating a new lens (geolens, diffractivelens, etc.), it should inherit from the Lens class and rewrite core functions."""
 
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
 from deeplens import init_device
+
+from .base import DeepObj
 from .config import (
     DEFAULT_WAVE,
     DEPTH,
@@ -18,7 +23,6 @@ from .config import (
     SPP_PSF,
     WAVE_RGB,
 )
-from .base import DeepObj
 from .imgsim import (
     conv_psf,
     conv_psf_depth_interp,
@@ -89,11 +93,17 @@ class Lens(DeepObj):
             raise ValueError("obj_depth must be a scalar depth in [mm].")
 
         if not (primary_wvln.item() > 0.1 and primary_wvln.item() < 10.0):
-            raise ValueError("primary_wvln must be in [µm] and satisfy 0.1 < primary_wvln < 10.")
+            raise ValueError(
+                "primary_wvln must be in [µm] and satisfy 0.1 < primary_wvln < 10."
+            )
         if not torch.all((wvln_rgb > 0.1) & (wvln_rgb < 10.0)):
-            raise ValueError("wvln_rgb must be in [µm] and every value must satisfy 0.1 < wvln < 10.")
+            raise ValueError(
+                "wvln_rgb must be in [µm] and every value must satisfy 0.1 < wvln < 10."
+            )
         if not obj_depth.item() < 0.0:
-            raise ValueError("obj_depth must be negative [mm], with the object in front of the lens.")
+            raise ValueError(
+                "obj_depth must be negative [mm], with the object in front of the lens."
+            )
 
         # Design wavelengths [µm].  IO may override.
         self.primary_wvln = float(primary_wvln.item())
@@ -158,6 +168,45 @@ class Lens(DeepObj):
         self.pixel_size = self.sensor_size[0] / self.sensor_res[0]
         self.calc_fov()
 
+    def create_dummy_sensor(self):
+        """Fill in any sensor geometry the lens file did not provide.
+
+        A lens file may omit part of the sensor description. The sensor radius
+        is derived from `sensor_size` when absent, and defaults are supplied for
+        `sensor_size` and `sensor_res` so the lens is usable without an explicit
+        `set_sensor()` call.
+
+        Raises:
+            ValueError: If neither `r_sensor` nor a two-element `sensor_size`
+                is available, or if `r_sensor` is not finite and positive.
+        """
+        if not hasattr(self, "r_sensor"):
+            if hasattr(self, "sensor_size") and len(self.sensor_size) == 2:
+                self.r_sensor = math.hypot(*self.sensor_size) / 2.0
+            else:
+                raise ValueError(
+                    "Lens file is missing sensor geometry; provide an image surface "
+                    "or r_sensor/sensor_size."
+                )
+        if not math.isfinite(float(self.r_sensor)) or float(self.r_sensor) <= 0:
+            raise ValueError("Lens sensor radius must be a finite positive number.")
+
+        # Complete sensor size and resolution if not set from lens file
+        if not hasattr(self, "sensor_size"):
+            self.sensor_size = (8.0, 8.0)
+            print(
+                f"Sensor_size not found in lens file. Using default: {self.sensor_size} mm. "
+                "Consider specifying sensor_size in the lens file or using set_sensor()."
+            )
+
+        if not hasattr(self, "sensor_res"):
+            self.sensor_res = (2000, 2000)
+            print(
+                f"Sensor_res not found in lens file. Using default: {self.sensor_res} pixels. "
+                "Consider specifying sensor_res in the lens file or using set_sensor()."
+            )
+            self.set_sensor_res(self.sensor_res)
+
     @torch.no_grad()
     def calc_fov(self):
         """Compute FoV (radian) of the lens.
@@ -172,7 +221,9 @@ class Lens(DeepObj):
         self.vfov = 2 * float(np.arctan(self.sensor_size[1] / 2 / self.foclen))
         self.dfov = 2 * float(np.arctan(self.r_sensor / self.foclen))
         self.rfov_eff = self.dfov / 2  # effective (paraxial) half-diagonal FoV
-        self.rfov = self.rfov_eff  # default to effective; GeoLens overrides with ray-traced value
+        self.rfov = (
+            self.rfov_eff
+        )  # default to effective; GeoLens overrides with ray-traced value
 
     # ===========================================
     # PSF-ralated functions
@@ -276,15 +327,31 @@ class Lens(DeepObj):
                 # Use center of each patch
                 half_bin_size = 1 / 2 / (grid[0] - 1)
                 x, y = torch.meshgrid(
-                    torch.linspace(-1 + half_bin_size, 1 - half_bin_size, grid[0], device=self.device, dtype=self.dtype),
-                    torch.linspace(1 - half_bin_size, -1 + half_bin_size, grid[1], device=self.device, dtype=self.dtype),
+                    torch.linspace(
+                        -1 + half_bin_size,
+                        1 - half_bin_size,
+                        grid[0],
+                        device=self.device,
+                        dtype=self.dtype,
+                    ),
+                    torch.linspace(
+                        1 - half_bin_size,
+                        -1 + half_bin_size,
+                        grid[1],
+                        device=self.device,
+                        dtype=self.dtype,
+                    ),
                     indexing="xy",
                 )
             else:
                 # Use corner of image sensor
                 x, y = torch.meshgrid(
-                    torch.linspace(-0.98, 0.98, grid[0], device=self.device, dtype=self.dtype),
-                    torch.linspace(0.98, -0.98, grid[1], device=self.device, dtype=self.dtype),
+                    torch.linspace(
+                        -0.98, 0.98, grid[0], device=self.device, dtype=self.dtype
+                    ),
+                    torch.linspace(
+                        0.98, -0.98, grid[1], device=self.device, dtype=self.dtype
+                    ),
                     indexing="xy",
                 )
 
@@ -462,7 +529,9 @@ class Lens(DeepObj):
             plt.savefig(save_name, dpi=300, bbox_inches="tight", pad_inches=0)
             plt.close(fig)
 
-    def point_source_radial(self, depth, grid=9, center=False, direction="diagonal", normalized=True):
+    def point_source_radial(
+        self, depth, grid=9, center=False, direction="diagonal", normalized=True
+    ):
         """Generate radial point sources from center to edge of the field.
 
         Produces ``grid`` evenly-spaced points along a chosen radial direction
@@ -495,9 +564,7 @@ class Lens(DeepObj):
                     0, 1 - half_bin_size, grid, device=self.device, dtype=self.dtype
                 )
             else:
-                r = torch.linspace(
-                    0, 0.98, grid, device=self.device, dtype=self.dtype
-                )
+                r = torch.linspace(0, 0.98, grid, device=self.device, dtype=self.dtype)
 
         # Map radial coordinate to (x, y) based on direction
         if direction == "diagonal":
@@ -507,15 +574,21 @@ class Lens(DeepObj):
         elif direction == "x":
             px, py = r, torch.zeros_like(r)
         else:
-            raise ValueError(f"Invalid direction: {direction!r}. Use 'diagonal', 'x', or 'y'.")
+            raise ValueError(
+                f"Invalid direction: {direction!r}. Use 'diagonal', 'x', or 'y'."
+            )
 
         z = torch.full_like(px, depth)
         point_source = torch.stack([px, py, z], dim=-1)
 
         if not normalized:
             scale = self.calc_scale(depth)
-            point_source[..., 0] = point_source[..., 0] * scale * self.sensor_size[0] / 2
-            point_source[..., 1] = point_source[..., 1] * scale * self.sensor_size[1] / 2
+            point_source[..., 0] = (
+                point_source[..., 0] * scale * self.sensor_size[0] / 2
+            )
+            point_source[..., 1] = (
+                point_source[..., 1] * scale * self.sensor_size[1] / 2
+            )
 
         return point_source
 
@@ -539,6 +612,7 @@ class Lens(DeepObj):
                 "./psf_radial.png".
         """
         from torchvision.utils import make_grid, save_image
+
         depth = self.obj_depth if depth is None else depth
         x = torch.linspace(0, 1, M, device=self.device, dtype=self.dtype)
         y = torch.linspace(0, 1, M, device=self.device, dtype=self.dtype)
@@ -733,9 +807,7 @@ class Lens(DeepObj):
         elif isinstance(patch_center, torch.Tensor):
             patch_center = patch_center.to(device=self.device, dtype=self.dtype)
             if patch_center.shape[-1] != 2 or patch_center.ndim not in (1, 2):
-                raise ValueError(
-                    "patch_center tensor must have shape [2] or [B, 2]."
-                )
+                raise ValueError("patch_center tensor must have shape [2] or [B, 2].")
             depth = torch.full_like(patch_center[..., 0], depth)
             points = torch.stack(
                 [patch_center[..., 0], patch_center[..., 1], depth], dim=-1
@@ -837,13 +909,13 @@ class Lens(DeepObj):
             depth_min_ext = min(float(depth_min), focal_depth)
             depth_max_ext = max(float(depth_max), focal_depth)
 
-            disp_near = 1.0 / depth_min_ext   # large disparity = near
-            disp_far  = 1.0 / depth_max_ext   # small disparity = far
+            disp_near = 1.0 / depth_min_ext  # large disparity = near
+            disp_far = 1.0 / depth_max_ext  # small disparity = far
             focal_disp = 1.0 / focal_depth
 
             # Allocate samples proportionally to range on each side
             near_range = disp_near - focal_disp
-            far_range  = focal_disp - disp_far
+            far_range = focal_disp - disp_far
             total_range = near_range + far_range
 
             if total_range < 1e-10:
@@ -851,14 +923,22 @@ class Lens(DeepObj):
                     (num_layers,), focal_disp, device=self.device, dtype=self.dtype
                 )
             else:
-                n_far  = max(1, round((num_layers - 1) * far_range / total_range))
+                n_far = max(1, round((num_layers - 1) * far_range / total_range))
                 n_near = num_layers - 1 - n_far
 
                 far_disps = torch.linspace(
-                    disp_far, focal_disp, n_far + 1, device=self.device, dtype=self.dtype
+                    disp_far,
+                    focal_disp,
+                    n_far + 1,
+                    device=self.device,
+                    dtype=self.dtype,
                 )
                 near_disps = torch.linspace(
-                    focal_disp, disp_near, n_near + 1, device=self.device, dtype=self.dtype
+                    focal_disp,
+                    disp_near,
+                    n_near + 1,
+                    device=self.device,
+                    dtype=self.dtype,
                 )[1:]
                 disp_ref = torch.cat([far_disps, near_disps])
         else:
@@ -922,7 +1002,9 @@ class Lens(DeepObj):
             interp_mode = kwargs.get("interp_mode", "disparity")
 
             # Calculate PSF at different depths, (num_layers, 3, ks, ks)
-            disp_ref, depths_ref = self._sample_depth_layers(depth_min, depth_max, num_layers)
+            disp_ref, depths_ref = self._sample_depth_layers(
+                depth_min, depth_max, num_layers
+            )
 
             points = torch.stack(
                 [
@@ -932,10 +1014,12 @@ class Lens(DeepObj):
                 ],
                 dim=-1,
             )
-            psfs = self.psf_rgb(points=points, ks=psf_ks) # (num_layers, 3, ks, ks)
+            psfs = self.psf_rgb(points=points, ks=psf_ks)  # (num_layers, 3, ks, ks)
 
             # Image simulation
-            img_render = conv_psf_depth_interp(img_obj, -depth_map, psfs, depths_ref, interp_mode=interp_mode)
+            img_render = conv_psf_depth_interp(
+                img_obj, -depth_map, psfs, depths_ref, interp_mode=interp_mode
+            )
             return img_render
 
         elif method == "psf_map":
@@ -948,10 +1032,13 @@ class Lens(DeepObj):
             interp_mode = kwargs.get("interp_mode", "disparity")
 
             # Calculate PSF map at different depths (convert to negative for PSF calculation)
-            disp_ref, depths_ref = self._sample_depth_layers(depth_min, depth_max, num_layers)
+            disp_ref, depths_ref = self._sample_depth_layers(
+                depth_min, depth_max, num_layers
+            )
 
             psf_maps = []
             from tqdm import tqdm
+
             for depth in tqdm(depths_ref):
                 psf_map = self.psf_map_rgb(grid=psf_grid, ks=psf_ks, depth=depth)
                 psf_maps.append(psf_map)

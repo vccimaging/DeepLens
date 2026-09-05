@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -8,6 +8,7 @@
 
 import torch
 import torch.nn as nn
+
 
 class PSFLoss(nn.Module):
     """PSF compactness and achromaticity loss.
@@ -99,6 +100,7 @@ class PSFLoss(nn.Module):
             self.w_psf_size * concentration_loss + self.w_achromatic * channel_diff
         )
         return total_loss
+
 
 class PSFStrehlLoss(nn.Module):
     """Strehl-like PSF sharpness score.

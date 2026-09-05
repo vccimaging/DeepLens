@@ -8,10 +8,10 @@ these previously emitted NaN/inf that silently poisoned gradient-based design.
 
 import torch
 
-from deeplens.utils import interp1d
+from deeplens.geometric_surface.qtype import QTypeFreeform
 from deeplens.light import Ray
 from deeplens.material import Material
-from deeplens.geometric_surface.qtype import QTypeFreeform
+from deeplens.utils import interp1d
 
 
 def test_interp1d_finite_grad_with_duplicate_keys():

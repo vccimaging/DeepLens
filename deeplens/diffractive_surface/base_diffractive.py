@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -14,8 +14,8 @@ import torch
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
-from ..config import EPSILON
 from ..base import DeepObj
+from ..config import EPSILON
 from ..material import Material
 from ..utils import diff_quantize
 
@@ -464,7 +464,7 @@ class DiffractiveSurface(DeepObj):
             pmap = self.quantize_phase_map(bits)
         else:
             pmap = self.get_phase_map0()
-        
+
         pmap = pmap / 20.0
         x = np.linspace(-self.w / 2, self.w / 2, self.res[0])
         y = np.linspace(-self.h / 2, self.h / 2, self.res[1])

@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -103,7 +103,9 @@ class GeoLensIO:
         try:
             r_sensor = float(r_sensor)
         except (TypeError, ValueError) as exc:
-            raise ValueError("Lens data r_sensor must be a finite positive number.") from exc
+            raise ValueError(
+                "Lens data r_sensor must be a finite positive number."
+            ) from exc
         if not math.isfinite(r_sensor) or r_sensor <= 0:
             raise ValueError("Lens data r_sensor must be a finite positive number.")
 
@@ -155,7 +157,7 @@ class GeoLensIO:
         for line in lines:
             # Strip leading/trailing whitespace for consistent parsing
             stripped_line = line.strip()
-            
+
             if stripped_line.startswith("SURF"):
                 current_surf = int(stripped_line.split()[1])
                 surfs_dict[current_surf] = {}
@@ -947,7 +949,6 @@ SURF 0
             After loading, the lens is moved to `self.device`.
         """
         self.surfaces = []
-        self.materials = []
         with open(filename, "r") as f:
             data = json.load(f)
             for idx, surf_dict in enumerate(data["surfaces"]):
@@ -1014,7 +1015,9 @@ SURF 0
             data.get("obj_depth", self.obj_depth), dtype=torch.float64
         )
         if primary_wvln.numel() != 1 or not (0.1 < primary_wvln.item() < 10.0):
-            raise ValueError("primary_wvln must be a scalar satisfying 0.1 < wavelength < 10 µm.")
+            raise ValueError(
+                "primary_wvln must be a scalar satisfying 0.1 < wavelength < 10 µm."
+            )
         if wvln_rgb.numel() != 3 or not bool(
             ((wvln_rgb > 0.1) & (wvln_rgb < 10.0)).all().item()
         ):

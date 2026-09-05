@@ -1,3 +1,5 @@
+"""Fully-connected network for low-frequency PSF prediction."""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

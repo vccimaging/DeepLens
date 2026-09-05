@@ -30,19 +30,34 @@ conda activate deeplens_env
 ```
 or
 ```
-conda create --name deeplens_env python=3.9
+conda create --name deeplens_env python=3.12
 conda activate deeplens_env
 pip install -r requirements.txt
 ```
 
 ## Code Formatting
 
-We encourage contributors to format their code with [ruff](https://docs.astral.sh/ruff/) to maintain consistent code style across the project. You can install ruff and format your code with:
+Ruff is the canonical Python formatter and linter. Install the development tools with:
 
+```bash
+python -m pip install -e ".[dev]"
 ```
-pip install ruff
-ruff format .
+
+Apply safe lint fixes before formatting only the Python files you changed:
+
+```bash
+ruff check --fix path/to/changed.py test/test_changed.py
+ruff format path/to/changed.py test/test_changed.py
 ```
+
+Before submitting a change, run the repository-wide read-only gates:
+
+```bash
+ruff check .
+ruff format --check .
+```
+
+Do not use `--unsafe-fixes` without reviewing the behavior change it proposes.
 
 ## Contribution Opportunities
 

@@ -67,7 +67,9 @@ class Aperture(Plane):
             d_next=surf_dict["d_next"],
             is_square=surf_dict["is_square"] if "is_square" in surf_dict else False,
             pos_xy=surf_dict["pos_xy"] if "pos_xy" in surf_dict else [0.0, 0.0],
-            vec_local=surf_dict["vec_local"] if "vec_local" in surf_dict else [0.0, 0.0, 1.0],
+            vec_local=surf_dict["vec_local"]
+            if "vec_local" in surf_dict
+            else [0.0, 0.0, 1.0],
             device=surf_dict["device"] if "device" in surf_dict else "cpu",
         )
 
@@ -143,9 +145,7 @@ class Aperture(Plane):
 
         return line
 
-    def create_mesh(
-        self, n_rings=32, n_arms=128, color=[0.0, 0.0, 0.0], d=0.0
-    ):
+    def create_mesh(self, n_rings=32, n_arms=128, color=[0.0, 0.0, 0.0], d=0.0):
         """Create a triangulated surface mesh for the aperture.
 
         Builds vertices, faces, and rim, then stores them on the surface.
@@ -244,7 +244,7 @@ class Aperture(Plane):
             rim (RimCurve): Closed-loop rim curve built from the outer ring vertices.
         """
         # Import RimCurve from base module
-        from .base import RimCurve
+        from .base_surface import RimCurve
 
         # Get outer ring vertices (second half of vertices array)
         start_idx = n_arms  # Start of outer ring

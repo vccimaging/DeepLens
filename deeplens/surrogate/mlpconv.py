@@ -1,3 +1,5 @@
+"""MLP encoder plus convolutional decoder for high-resolution PSF prediction."""
+
 import math
 
 import torch
@@ -140,5 +142,3 @@ if __name__ == "__main__":
     # Expected shape: [batch_size, channels, ks, ks]
     assert output_tensor.shape == (1, 3, 64, 64)
     print("Test passed!")
-
-

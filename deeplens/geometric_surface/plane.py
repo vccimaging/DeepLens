@@ -1,8 +1,8 @@
-"""Plane surface, typically rectangle. Working as IR filter, lens cover glass or DOE base."""
+"""Flat plane surface with a circular (or square) aperture. Working as IR filter, lens cover glass or DOE base."""
 
 import torch
 
-from .base import Surface
+from .base_surface import Surface
 
 
 class Plane(Surface):

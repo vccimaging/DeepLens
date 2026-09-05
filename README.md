@@ -12,7 +12,7 @@ DeepLens helps researchers and engineers rapidly prototype and design custom opt
     <a href="https://ai4optics.com/deeplens/"><img src="https://img.shields.io/badge/Docs-blue?style=flat&logo=readthedocs&logoColor=white" alt="Docs"/></a>
     <a href="https://github.com/singer-yang/DeepLens-tutorials"><img src="https://img.shields.io/badge/Tutorials-black?style=flat&logo=github&logoColor=white" alt="Tutorials"/></a>
     <a href="https://pypi.org/project/deeplens-core/"><img src="https://img.shields.io/pypi/v/deeplens-core?label=PyPI&color=orange&logo=pypi&logoColor=white" alt="PyPI"/></a>
-    <a href="https://deepwiki.com/singer-yang/DeepLens"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
+    <a href="https://deepwiki.com/vccimaging/DeepLens"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
 </p>
 
 ## News
@@ -97,7 +97,7 @@ DeepLens serves as the differentiable optics engine in [**End2endImaging**](http
 Clone this repo:
 
 ```
-git clone https://github.com/singer-yang/DeepLens
+git clone https://github.com/vccimaging/DeepLens
 cd DeepLens
 ```
 
@@ -144,8 +144,8 @@ Join our [Slack](https://join.slack.com/t/deeplens/shared_invite/zt-2wz3x2n3b-pl
 
 We welcome all contributions. To get started, please read our [Contributing Guide](./CONTRIBUTING.md) or check out [open questions](https://github.com/users/singer-yang/projects/2). All project participants are expected to adhere to our [Code of Conduct](./CODE_OF_CONDUCT.md). A list of contributors can be viewed in [Contributors](./CONTRIBUTORS.md) and below:
 
-<a href="https://github.com/singer-yang/DeepLens/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=singer-yang/DeepLens" />
+<a href="https://github.com/vccimaging/DeepLens/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=vccimaging/DeepLens" />
 </a>
 
 ## Citation

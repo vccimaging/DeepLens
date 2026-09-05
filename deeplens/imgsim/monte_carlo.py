@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -45,8 +45,8 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
     else:
         single_point = False
 
-    points = ray.o[..., :2]      # [N, spp, 2]
-    valid = ray.is_valid         # [N, spp]
+    points = ray.o[..., :2]  # [N, spp, 2]
+    valid = ray.is_valid  # [N, spp]
     N, spp = valid.shape
     device = valid.device
 
@@ -55,13 +55,12 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
         pointc = (points * valid.unsqueeze(-1)).sum(-2) / valid.unsqueeze(-1).sum(
             -2
         ).add(EPSILON)
-    points_shift = points - pointc.unsqueeze(-2)    # [N, spp, 2]
+    points_shift = points - pointc.unsqueeze(-2)  # [N, spp, 2]
 
     # Reject points that fall outside the grid window.
     field_max = (ks / 2 - 0.5) * ps
-    in_window = (
-        (points_shift[..., 0].abs() < (field_max - 0.001 * ps))
-        & (points_shift[..., 1].abs() < (field_max - 0.001 * ps))
+    in_window = (points_shift[..., 0].abs() < (field_max - 0.001 * ps)) & (
+        points_shift[..., 1].abs() < (field_max - 0.001 * ps)
     )
     valid = valid * in_window.to(valid.dtype)
 
@@ -69,7 +68,7 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
     if ray.is_coherent:
         # Add EPSILON: sqrt'(0) is infinite -> NaN gradient for steep rays (dz~0).
         amp = torch.sqrt(ray.d[..., 2].abs() + EPSILON)  # sqrt(|dz|)
-        opl = ray.opl.squeeze(-1)                       # [N, spp]
+        opl = ray.opl.squeeze(-1)  # [N, spp]
         opl_min = opl.min(dim=-1, keepdim=True).values
         wvln_mm = ray.wvln * 1e-3
         phase = torch.fmod((opl - opl_min) / wvln_mm, 1) * (2 * torch.pi)
@@ -101,18 +100,25 @@ def forward_integral(ray, ps, ks, pointc=None, interpolate=True):
         w_c = pix_col - c_floor
         r1 = (r0 + 1).clamp(0, ks - 1)
         c1 = (c0 + 1).clamp(0, ks - 1)
-        grid.index_put_((batch_idx, r0, c0), (1 - w_r) * (1 - w_c) * masked_value, accumulate=True)
-        grid.index_put_((batch_idx, r0, c1), (1 - w_r) * w_c * masked_value, accumulate=True)
-        grid.index_put_((batch_idx, r1, c0), w_r * (1 - w_c) * masked_value, accumulate=True)
+        grid.index_put_(
+            (batch_idx, r0, c0), (1 - w_r) * (1 - w_c) * masked_value, accumulate=True
+        )
+        grid.index_put_(
+            (batch_idx, r0, c1), (1 - w_r) * w_c * masked_value, accumulate=True
+        )
+        grid.index_put_(
+            (batch_idx, r1, c0), w_r * (1 - w_c) * masked_value, accumulate=True
+        )
         grid.index_put_((batch_idx, r1, c1), w_r * w_c * masked_value, accumulate=True)
     else:
         grid.index_put_((batch_idx, r0, c0), masked_value, accumulate=True)
 
     if single_point:
         grid = grid.squeeze(0)
-        ray = ray.squeeze(0)    # restore caller's ray shape (unsqueeze mutates)
+        ray = ray.squeeze(0)  # restore caller's ray shape (unsqueeze mutates)
 
     return grid
+
 
 def backward_integral(
     ray,
@@ -201,6 +207,7 @@ def backward_integral(
         output = torch.sum(out_img * weight, -1) / (torch.sum(weight, -1) + EPSILON)
 
     return output
+
 
 def assign_points_to_pixels(
     points,

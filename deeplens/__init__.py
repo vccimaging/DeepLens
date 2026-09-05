@@ -36,31 +36,32 @@ def init_device():
 
 
 from .base import DeepObj
+from .defocuslens import DefocusLens
+from .diffraclens import DiffractiveLens
+from .geolens import GeoLens
 
-from .material import Material
+# geolens extras
+from .geolens_pkg import *
+from .hybridlens import HybridLens
+
+# Lens classes
+from .lens import Lens
 from .light import (
     AngularSpectrumMethod,
     ComplexWave,
-    FresnelDiffraction,
-    Fresnel_zmin,
     FraunhoferDiffraction,
+    Fresnel_zmin,
+    FresnelDiffraction,
     Nyquist_ASM_zmax,
     Ray,
     RayleighSommerfeld,
     RayleighSommerfeldIntegral,
-    ScalableASM,
 )
-
-# Lens classes
-from .lens import Lens
-from .geolens import GeoLens
-from .hybridlens import HybridLens
-from .diffraclens import DiffractiveLens
-from .defocuslens import DefocusLens
+from .light import (
+    ScalableASM as ScalableASM,
+)
+from .material import Material
 from .psfnetlens import PSFNetLens
-
-# geolens extras
-from .geolens_pkg import *
 
 # utilities
 from .utils import *
@@ -72,7 +73,6 @@ __all__ = [
     "Ray",
     "ComplexWave",
     "AngularSpectrumMethod",
-    "ScalableASM",
     "FresnelDiffraction",
     "FraunhoferDiffraction",
     "RayleighSommerfeld",

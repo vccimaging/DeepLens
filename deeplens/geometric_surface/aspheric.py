@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -18,7 +18,7 @@ Reference:
 
 import torch
 
-from .base import EPSILON, Surface
+from .base_surface import EPSILON, Surface
 
 
 class Aspheric(Surface):
@@ -153,7 +153,7 @@ class Aspheric(Surface):
                     "2nd-order coefficient (legacy format)."
                 )
             ai2_val = ai[0]  # Extract the a2 coefficient
-            ai = ai[1:]      # Remaining: [a4, a6, a8, ...]
+            ai = ai[1:]  # Remaining: [a4, a6, a8, ...]
 
         return cls(
             r=surf_dict["r"],
@@ -177,6 +177,26 @@ class Aspheric(Surface):
             k (torch.Tensor): Conic constant.
         """
         return self.c, self.k
+
+    def paraxial_power(self, n1, n2):
+        """Return the paraxial optical power of this surface [1/mm].
+
+        Only the vertex curvature contributes, so the conic constant and the
+        4th- and higher-order coefficients do not affect first-order
+        properties. The legacy $a_2\\rho^2$ term is the exception: near the
+        vertex the sag is $(c/2 + a_2)\\rho^2$, so it shifts the vertex
+        curvature to $c + 2 a_2$ and must be included.
+
+        Args:
+            n1 (torch.Tensor): Refractive index of the incident medium.
+            n2 (torch.Tensor): Refractive index of the transmission medium.
+
+        Returns:
+            power (torch.Tensor): Surface power `(n2 - n1) * (c + 2 * a2)`
+                [1/mm], scalar.
+        """
+        c = self.c if self.ai2 is None else self.c + 2.0 * self.ai2
+        return (n2 - n1) * c
 
     def _sag(self, x, y):
         """Compute surface sag (axial height) $z = \\mathrm{sag}(x, y)$.
@@ -275,9 +295,7 @@ class Aspheric(Surface):
         one_plus_k = 1 + k
         # Avoid division by zero / negative when computing the limit; the
         # bogus value is masked out by the where below.
-        safe = torch.where(
-            one_plus_k > 0, one_plus_k, torch.ones_like(one_plus_k)
-        )
+        safe = torch.where(one_plus_k > 0, one_plus_k, torch.ones_like(one_plus_k))
         limit_sq = 1.0 / (c * c * safe)
         inside = (x * x + y * y) < limit_sq
         return torch.where(one_plus_k > 0, inside, torch.ones_like(inside))

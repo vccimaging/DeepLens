@@ -1,15 +1,19 @@
+"""Light representations: geometric rays and complex wave fields with propagation."""
+
 from .ray import Ray
 from .wave import (
     AngularSpectrumMethod,
     BandLimitedASM,
     ComplexWave,
-    FresnelDiffraction,
-    Fresnel_zmin,
     FraunhoferDiffraction,
+    Fresnel_zmin,
+    FresnelDiffraction,
     Nyquist_ASM_zmax,
     RayleighSommerfeld,
     RayleighSommerfeldIntegral,
-    ScalableASM,
+)
+from .wave import (
+    ScalableASM as ScalableASM,
 )
 
 __all__ = [
@@ -17,7 +21,6 @@ __all__ = [
     "ComplexWave",
     "AngularSpectrumMethod",
     "BandLimitedASM",
-    "ScalableASM",
     "FresnelDiffraction",
     "FraunhoferDiffraction",
     "RayleighSommerfeld",

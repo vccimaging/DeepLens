@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Ziqing Zhao, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -10,6 +10,15 @@ GeoLensVis3D class:
     - create_mesh(): Create all lens/bridge/sensor/aperture meshes
     - draw_lens_3d(): Draw lens 3D layout with rays using pyvista
     - save_lens_obj(): Save lens geometry and rays as .obj files
+
+Mesh toolkit (module level, usable without PyVista installed):
+    - PolyData: Minimal stand-in for `pyvista.PolyData` holding vertices plus
+      line or triangle connectivity, with Wavefront .obj export.
+    - LineMesh, Curve, Circle: Line geometry for rays and surface rims.
+    - FaceMesh, RectangleMesh: Triangulated surface geometry.
+    - merge(), bridge(), line_translate(), surf_to_face_mesh(),
+      curve_list_to_polydata(), geolens_ray_poly(), sample_parallel_3D(),
+      curve_from_trace(): Mesh construction helpers.
 """
 
 import os
@@ -18,8 +27,8 @@ from typing import List, Optional
 import numpy as np
 import torch
 
-from ..light import Ray
 from ..geometric_surface import Aperture
+from ..light import Ray
 
 
 # ==========================================================
@@ -688,7 +697,7 @@ def sample_parallel_3D(
     wvln = lens.primary_wvln if wvln is None else wvln
     if entrance_pupil:
         # Sample 2nd points on the pupil
-        pupilz, pupilx = lens.calc_entrance_pupil()
+        pupilz, pupilx = lens.calc_entrance_pupil_rayaiming()
     else:
         pupilz, pupilx = 0, lens.surfaces[0].r
 

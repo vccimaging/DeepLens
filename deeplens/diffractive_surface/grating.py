@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -12,7 +12,8 @@ diffracts light into multiple diffraction orders.
 """
 
 import torch
-from .diffractive import DiffractiveSurface
+
+from .base_diffractive import DiffractiveSurface
 
 
 class Grating(DiffractiveSurface):
@@ -64,7 +65,13 @@ class Grating(DiffractiveSurface):
             device (str, optional): Device to place the DOE tensors on. Defaults to "cpu".
         """
         super().__init__(
-            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps, fab_step=fab_step, device=device
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            wvln0=wvln0,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            device=device,
         )
 
         # Grating parameters

@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -7,9 +7,12 @@
 """Classical optical performance evaluation for geometric lens systems.
 
 This module provides a mixin class ``GeoLensEval`` that adds Zemax-equivalent
-optical evaluation capabilities to ``GeoLens``.  Every metric is computed via
-geometric ray tracing: rays are sampled from object space, propagated through
-all lens surfaces (refraction + clipping), and analyzed at the sensor plane.
+optical evaluation capabilities to ``GeoLens``.  Spot, distortion and
+vignetting metrics are computed purely by geometric ray tracing: rays are
+sampled from object space, propagated through all lens surfaces (refraction +
+clipping), and analyzed at the sensor plane.  ``mtf`` goes through ``psf()``,
+so it follows whichever PSF model that dispatches to, and ``analysis_rendering``
+reports PSNR/SSIM from a rendered image.
 
 Coordinate convention (shared with the rest of DeepLens):
     - **z-axis**: optical axis, light travels in +z direction.
@@ -48,8 +51,8 @@ Functions:
         calc_inv_distortion_map: Inverse grid for applying distortion with
             ``grid_sample``.
         draw_distortion_map: Scatter plot of the distortion grid.
-        distortion_center: Normalized centroid positions for arbitrary object
-            points (used for warp/unwarp).
+        distortion_center: Normalized chief-ray image positions for arbitrary
+            object points (used for warp/unwarp).
 
     MTF (Modulation Transfer Function):
         mtf: Geometric MTF (tangential + sagittal) at a single field position
@@ -63,9 +66,10 @@ Functions:
         vignetting: Fractional ray-throughput map across the field.
         draw_vignetting: Grayscale image of relative illumination.
 
-    Chief Ray & Ray Aiming:
-        calc_chief_ray_infinite: Batched chief-ray computation with optional
-            iterative ray aiming for accurate distortion measurement.
+    Chief Ray:
+        calc_chief_ray: Extract the real sampled ray closest to the physical
+            aperture-stop centre — from object points (finite conjugates),
+            field angles (infinite conjugates), or a traced bundle.
 
     Comprehensive Analysis:
         analysis_spot: RMS and geometric spot radii averaged over RGB at
@@ -76,12 +80,15 @@ Functions:
             analysis, and (optionally) full evaluation + rendering.
 """
 
+import logging
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 from PIL import Image
+
 from ..config import (
     EPSILON,
     GEO_GRID,
@@ -90,6 +97,8 @@ from ..config import (
     SPP_RENDER,
 )
 from ..light import Ray
+
+logger = logging.getLogger(__name__)
 
 # RGB color definitions for wavelength visualization
 RGB_RED = "#CC0000"
@@ -127,6 +136,206 @@ class GeoLensEval:
         aper_idx (int): Index of the aperture stop surface.
         device (torch.device): Compute device (CPU / CUDA).
     """
+
+    # ================================================================
+    # Physical-stop chief ray
+    # ================================================================
+    @torch.no_grad()
+    def calc_chief_ray(
+        self,
+        points_obj=None,
+        *,
+        ray=None,
+        fov=None,
+        plane="meridional",
+        num_rays=SPP_CALC,
+        wvln=None,
+        scale_pupil=1.0,
+        record=False,
+    ):
+        """Calculate one real, physical-stop-centred chief ray per field.
+
+        DeepLens uses the classical physical definition: the chief ray is the
+        real ray through the centre of the aperture stop. Because the tracer
+        samples a finite bundle, this method returns the sampled ray closest to
+        the stop centre rather than a synthetic bundle centroid. The selection
+        residual scales as ``~1/sqrt(num_rays)`` of the stop radius; raise
+        ``num_rays`` when tighter stop centring is needed (e.g. relative
+        distortion at small field angles, where the residual is amplified by
+        the small ideal image height).
+
+        Exactly one input mode must be supplied:
+
+        1. ``points_obj`` samples and traces rays from object-space points to
+           the sensor before extracting the chief ray (finite conjugates).
+        2. ``fov`` traces a collimated bundle at the given field angles
+           (infinite conjugates) in the ``plane`` direction.
+        3. ``ray`` extracts from an already traced bundle that crossed the
+           aperture stop, avoiding duplicate tracing.
+
+        Selection happens before final validity is checked. If the closest
+        stop-centred ray is clipped after the stop, it remains the selected ray
+        and is returned as invalid rather than being replaced by a farther ray.
+        The result's ``stop_dist`` is its distance from the stop centre in
+        stop radii. If no sample has a finite recorded distance, including an
+        untraced bundle, the result is invalid with ``stop_dist=inf``. Multiply
+        a recorded distance by the stop radius used for tracing to obtain
+        the distance in millimetres.
+
+        Args:
+            points_obj (torch.Tensor | list | None): Physical object points in
+                millimetres, shape ``[..., 3]``.
+            ray (Ray | None): Already traced ray bundle that crossed the
+                aperture stop, shape ``[..., num_rays, 3]``.
+            fov (float | list | torch.Tensor | None): Field angle(s) in
+                degrees for infinite-conjugate chief rays, shape ``[N]`` (a
+                scalar becomes ``[1]``).
+            plane (str): ``'meridional'`` (y-axis) or ``'sagittal'`` (x-axis);
+                used by ``fov`` mode only. Defaults to ``'meridional'``.
+            num_rays (int): Samples per field in ``points_obj`` / ``fov``
+                mode. Defaults to ``SPP_CALC``.
+            wvln (float | None): Wavelength in micrometres for the sampling
+                modes. Defaults to the lens primary wavelength.
+            scale_pupil (float): Entrance-pupil sampling-radius multiplier in
+                the sampling modes. Defaults to 1.0.
+            record (bool): Return ``(chief_ray, path)`` with a singleton ray
+                dimension in every path entry. Not valid in ``ray`` mode.
+
+        Returns:
+            Ray | tuple[Ray, list[torch.Tensor]]: One selected chief ray per
+            field, with shape ``[..., 1, 3]``, and optionally its traced path.
+
+        Raises:
+            ValueError: If the input modes are invalid, sampling parameters are
+                invalid, the supplied bundle is empty, or path
+                recording is requested for a supplied bundle.
+            TypeError: If ``ray`` is not a :class:`Ray`.
+
+        Note:
+            This method is discrete and decorated with ``torch.no_grad()``. It
+            is intended for evaluation and PSF centring, not gradient losses.
+        """
+        has_points = points_obj is not None
+        has_ray = ray is not None
+        has_fov = fov is not None
+        if int(has_points) + int(has_ray) + int(has_fov) != 1:
+            raise ValueError("Provide exactly one of points_obj, fov, or ray.")
+        if not isinstance(num_rays, int) or num_rays < 1:
+            raise ValueError("num_rays must be a positive integer.")
+        if not math.isfinite(float(scale_pupil)) or float(scale_pupil) <= 0:
+            raise ValueError("scale_pupil must be a finite positive number.")
+        if plane not in ("meridional", "sagittal"):
+            raise ValueError(f"Invalid plane: {plane}")
+        wvln = self.primary_wvln if wvln is None else wvln
+
+        ray_path = None
+        if has_points:
+            sampled_ray = self.sample_from_points(
+                points=points_obj,
+                num_rays=num_rays,
+                wvln=wvln,
+                scale_pupil=scale_pupil,
+            )
+            if record:
+                ray, ray_path = self.trace2sensor(sampled_ray, record=True)
+            else:
+                ray = self.trace2sensor(sampled_ray)
+        elif has_fov:
+            fov_t = torch.as_tensor(fov, device=self.device, dtype=self.dtype)
+            if fov_t.ndim == 0:
+                fov_t = fov_t.unsqueeze(0)
+            if fov_t.ndim != 1:
+                raise ValueError("fov must be a scalar or a 1-D sequence.")
+            if plane == "sagittal":
+                fov_x, fov_y = fov_t.tolist(), 0.0
+            else:
+                fov_x, fov_y = 0.0, fov_t.tolist()
+            sampled_ray = self.sample_from_fov(
+                fov_x=fov_x,
+                fov_y=fov_y,
+                depth=float("inf"),
+                num_rays=num_rays,
+                wvln=wvln,
+                scale_pupil=scale_pupil,
+            )
+            if record:
+                ray, ray_path = self.trace2sensor(sampled_ray, record=True)
+            else:
+                ray = self.trace2sensor(sampled_ray)
+        else:
+            if not isinstance(ray, Ray):
+                raise TypeError("ray must be a deeplens.light.Ray instance.")
+            if record:
+                raise ValueError(
+                    "record=True requires a sampling mode; a supplied traced "
+                    "bundle does not contain its earlier path."
+                )
+
+        if ray.o.ndim < 2 or ray.o.shape[-2] < 1:
+            raise ValueError("ray must contain at least one sample ray.")
+
+        # Rays invalid at the stop carry inf, so the minimum is the closest
+        # valid sample and a finite minimum means the field reached the stop.
+        stop_dist = ray.stop_dist.masked_fill(ray.stop_dist.isnan(), float("inf"))
+        residual_normalized, sample_index = stop_dist.min(dim=-1, keepdim=True)
+        stop_reached = torch.isfinite(residual_normalized)
+
+        def gather_scalar(value):
+            return torch.gather(value, dim=-1, index=sample_index)
+
+        def gather_vector(value):
+            index = sample_index.unsqueeze(-1).expand(
+                *sample_index.shape, value.shape[-1]
+            )
+            return torch.gather(value, dim=-2, index=index)
+
+        chief_ray = ray.clone()
+        chief_ray.o = gather_vector(ray.o)
+        chief_ray.d = gather_vector(ray.d)
+        chief_ray.en = gather_vector(ray.en)
+        chief_ray.bend_penalty = gather_vector(ray.bend_penalty)
+        chief_ray.opl = gather_vector(ray.opl)
+        chief_ray.is_valid = gather_scalar(ray.is_valid) * stop_reached.to(
+            dtype=ray.is_valid.dtype
+        )
+        chief_ray.stop_dist = residual_normalized
+        chief_ray.shape = chief_ray.o.shape[:-1]
+
+        if record:
+            chief_path = [gather_vector(path_entry) for path_entry in ray_path]
+            return chief_ray, chief_path
+        return chief_ray
+
+    @torch.no_grad()
+    def _chief_or_centroid_xy(self, ray):
+        """Per-field transverse reference position from a traced bundle.
+
+        Returns the physical-stop chief-ray position where a valid chief ray
+        exists, and the valid-ray centroid elsewhere. The centroid carries a
+        coma-induced bias (up to ~0.7% distortion on the sample lenses), so
+        the chief ray is preferred whenever it is available.
+
+        Args:
+            ray (Ray): Traced bundle with shape ``[..., num_rays, 3]``.
+
+        Returns:
+            xy (torch.Tensor): Reference positions, shape ``[..., 2]``.
+        """
+        centroid_xy = ray.centroid()[..., :2]
+        if self.aper_idx is None:
+            return centroid_xy
+
+        chief = self.calc_chief_ray(ray=ray)
+        chief_xy = chief.o[..., 0, :2]
+        valid = chief.is_valid[..., 0] > 0
+        if not valid.all():
+            logger.warning(
+                "%d of %d chief rays are invalid; using the bundle centroid "
+                "for those fields.",
+                int((~valid).sum().item()),
+                valid.numel(),
+            )
+        return torch.where(valid.unsqueeze(-1), chief_xy, centroid_xy)
 
     # ================================================================
     # Spot diagram
@@ -246,6 +455,7 @@ class GeoLensEval:
                 num_rays=num_rays,
                 wvln=wvln,
                 direction=direction,
+                fov_max=self.rfov,
             )
             ray = self.trace2sensor(ray)
             ray_o = ray.o[..., :2].cpu().numpy()
@@ -327,9 +537,7 @@ class GeoLensEval:
             num_grid = (num_grid, num_grid)
 
         grid_w, grid_h = num_grid
-        fig, axs = plt.subplots(
-            grid_h, grid_w, figsize=(grid_w * 3, grid_h * 3)
-        )
+        fig, axs = plt.subplots(grid_h, grid_w, figsize=(grid_w * 3, grid_h * 3))
         axs = np.atleast_2d(axs)
 
         # Loop wavelengths and overlay scatters
@@ -492,7 +700,7 @@ class GeoLensEval:
         num_points=GEO_GRID,
         wvln=None,
         plane="meridional",
-        ray_aiming=True,
+        num_rays=SPP_CALC,
     ):
         """Compute fractional distortion at evenly-spaced field angles along the meridional direction.
 
@@ -512,8 +720,8 @@ class GeoLensEval:
                ``[0, rfov_deg]``.  The on-axis sample (0°) is replaced by a
                tiny positive angle to avoid 0/0.
             3. Compute ``h_ideal = foclen * tan(angle)`` for each sample.
-            4. Trace the chief ray (via ``calc_chief_ray_infinite``) through the
-               full lens to the sensor plane.
+            4. Compute the physical-stop chief ray at the sensor via
+               ``calc_chief_ray(fov=...)``.
             5. Extract ``h_actual`` from the appropriate transverse coordinate
                (x for sagittal, y for meridional).
             6. Return ``(h_actual - h_ideal) / h_ideal``.
@@ -526,9 +734,11 @@ class GeoLensEval:
                 back to ``self.primary_wvln``.
             plane (str): ``'meridional'`` (y-axis) or ``'sagittal'`` (x-axis).
                 Defaults to ``'meridional'``.
-            ray_aiming (bool): If ``True``, the chief ray is aimed to pass
-                through the center of the aperture stop (more accurate for
-                wide-angle lenses). Defaults to ``True``.
+            num_rays (int): Pupil samples per field angle for chief-ray
+                selection. The chief-ray residual (and hence the distortion
+                noise floor, amplified at small field angles by the small
+                ideal image height) scales as ``~1/sqrt(num_rays)``.
+                Defaults to ``SPP_CALC``.
 
         Returns:
             rfov_samples (np.ndarray): Field angles in degrees, shape
@@ -559,23 +769,17 @@ class GeoLensEval:
         eff_foclen = float(self.foclen)
         ideal_imgh = eff_foclen * np.tan(rfov_compute.numpy() * np.pi / 180)
 
-        # Trace chief rays to the sensor plane
-        chief_ray_o, chief_ray_d = self.calc_chief_ray_infinite(
-            rfov=rfov_compute, wvln=wvln, plane=plane, ray_aiming=ray_aiming
-        )
-        ray = Ray(chief_ray_o, chief_ray_d, wvln=wvln, device=self.device)
-        ray, _ = self.trace(ray)
-        t = (self.d_sensor - ray.o[..., 2]) / ray.d[..., 2]
-
-        # Actual image height from the appropriate transverse coordinate
+        # Actual image height from the physical-stop chief ray at the sensor.
         if plane == "sagittal":
-            actual_imgh = (ray.o[..., 0] + ray.d[..., 0] * t).abs()
+            axis = 0
         elif plane == "meridional":
-            actual_imgh = (ray.o[..., 1] + ray.d[..., 1] * t).abs()
+            axis = 1
         else:
             raise ValueError(f"Invalid plane: {plane}")
-
-        actual_imgh = actual_imgh.cpu().numpy()
+        chief_ray = self.calc_chief_ray(
+            fov=rfov_compute, plane=plane, wvln=wvln, num_rays=num_rays
+        )
+        actual_imgh = chief_ray.o[..., 0, axis].abs().cpu().numpy()
 
         # Fractional distortion, with safe handling of the on-axis singularity
         ideal_imgh = np.asarray(ideal_imgh)
@@ -593,7 +797,6 @@ class GeoLensEval:
         num_points=GEO_GRID,
         wvln=None,
         plane="meridional",
-        ray_aiming=True,
         show=False,
     ):
         """Draw distortion-vs-field-angle curve in Zemax style.
@@ -616,8 +819,6 @@ class GeoLensEval:
                 back to ``self.primary_wvln``.
             plane (str): ``'meridional'`` or ``'sagittal'``.
                 Defaults to ``'meridional'``.
-            ray_aiming (bool): Whether to use ray aiming for chief-ray
-                computation. Defaults to ``True``.
             show (bool): If ``True``, display interactively. Defaults to ``False``.
         """
         wvln = self.primary_wvln if wvln is None else wvln
@@ -625,7 +826,7 @@ class GeoLensEval:
 
         # Calculate distortion at evenly-spaced field angles
         rfov_samples, distortions = self.calc_distortion_radial(
-            num_points=num_points, wvln=wvln, plane=plane, ray_aiming=ray_aiming
+            num_points=num_points, wvln=wvln, plane=plane
         )
 
         # Convert to percentage and handle NaN
@@ -684,9 +885,11 @@ class GeoLensEval:
         """Compute a 2-D distortion grid mapping ideal to actual image positions.
 
         For each cell in a ``num_grid × num_grid`` field grid, rays are traced
-        to the sensor and their centroid is computed.  The centroid is then
-        normalized to ``[-1, 1]`` sensor coordinates, producing a map that
-        shows how each ideal image point is displaced by lens distortion.
+        to the sensor and the physical-stop chief-ray position is extracted
+        (fields without a valid chief ray fall back to the bundle centroid).
+        The position is then normalized to ``[-1, 1]`` sensor coordinates,
+        producing a map that shows how each ideal image point is displaced by
+        lens distortion.
 
         This map can be used with ``torch.nn.functional.grid_sample`` to warp
         or unwarp rendered images.
@@ -702,22 +905,25 @@ class GeoLensEval:
             distortion_grid (torch.Tensor): Distortion grid with shape
                 ``[grid_h, grid_w, 2]``. Each entry ``(x, y)`` is in
                 normalized sensor coordinates ``[-1, 1]``, representing the
-                actual centroid position for the corresponding ideal grid
-                position.
+                actual chief-ray image position for the corresponding ideal
+                grid position.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
         # Sample and trace rays, shape (grid_size, grid_size, num_rays, 3)
-        ray = self.sample_grid_rays(depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False)
+        ray = self.sample_grid_rays(
+            depth=depth, num_grid=num_grid, wvln=wvln, uniform_fov=False
+        )
         ray = self.trace2sensor(ray)
 
-        # Calculate centroid of the rays, shape (grid_size, grid_size, 2).
+        # Reference position per cell, shape (grid_size, grid_size, 2): the
+        # physical-stop chief ray (centroid fallback for invalid fields).
         # Normalize each axis by its own half-extent so non-square sensors
         # map correctly to [-1, 1]: x by sensor_size[0] (width, W),
         # y by sensor_size[1] (height, H).  Sign is flipped on both axes to
         # undo image inversion, matching ``distortion_center``.
         sensor_w, sensor_h = self.sensor_size
-        ray_xy = -ray.centroid()[..., :2]
+        ray_xy = -self._chief_or_centroid_xy(ray)
         x_dist = ray_xy[..., 0] / (sensor_w / 2)
         y_dist = ray_xy[..., 1] / (sensor_h / 2)
         distortion_grid = torch.stack((x_dist, y_dist), dim=-1)
@@ -755,7 +961,7 @@ class GeoLensEval:
         device = self.device
 
         # Convert grid_sample output coordinates to physical sensor positions.
-        # Existing distortion maps use -sensor_centroid as image coordinates.
+        # Distortion maps use negated sensor positions as image coordinates.
         x, y = torch.meshgrid(
             torch.linspace(sensor_w / 2, -sensor_w / 2, grid_w, device=device),
             torch.linspace(sensor_h / 2, -sensor_h / 2, grid_h, device=device),
@@ -764,13 +970,19 @@ class GeoLensEval:
         z = torch.full_like(x, self.d_sensor.item())
 
         pupilz, pupilr = self.get_exit_pupil()
-        ray_o2 = self.sample_circle(r=pupilr, z=pupilz, shape=(grid_h, grid_w, SPP_CALC))
+        ray_o2 = self.sample_circle(
+            r=pupilr, z=pupilz, shape=(grid_h, grid_w, SPP_CALC)
+        )
         ray_o = torch.stack((x, y, z), dim=-1).unsqueeze(2).repeat(1, 1, SPP_CALC, 1)
         ray = Ray(ray_o, ray_o2 - ray_o, wvln, device=device)
 
         ray = self.trace2obj(ray)
         ray = ray.prop_to(depth)
-        point_obj = ray.centroid()[..., :2]
+        # Backward tracing stamps stop weights at the aperture, so the chief
+        # backward ray (through the stop centre) gives the object point whose
+        # forward chief ray lands on this sensor cell — the exact inverse of
+        # the forward distortion map. Centroid fallback for invalid fields.
+        point_obj = self._chief_or_centroid_xy(ray)
 
         scale = self.calc_scale(depth)
         x_ideal = point_obj[..., 0] / (scale * sensor_w / 2)
@@ -779,20 +991,21 @@ class GeoLensEval:
         return inv_distortion_grid
 
     def distortion_center(self, points):
-        """Compute the distorted image centroid for arbitrary normalized object points.
+        """Compute the distorted image position for arbitrary normalized object points.
 
         Given object points in normalized coordinates, this method converts them
         to physical object-space positions, traces rays from each point through
-        the lens, and returns the ray centroid on the sensor in normalized
-        ``[-1, 1]`` coordinates.  This is the inverse mapping needed for
-        distortion correction (unwarping).
+        the lens, and returns the physical-stop chief-ray position on the sensor
+        (bundle-centroid fallback for fields without a valid chief ray) in
+        normalized ``[-1, 1]`` coordinates.  This is the inverse mapping needed
+        for distortion correction (unwarping).
 
         Algorithm:
             1. Convert normalized ``(x, y)`` ∈ [-1, 1] to physical object-space
                positions using ``self.calc_scale(depth)`` and ``self.sensor_size``.
             2. ``self.sample_from_points()`` generates rays from each point.
             3. ``self.trace2sensor()`` propagates rays.
-            4. Compute centroid and normalize back to ``[-1, 1]``.
+            4. Extract the chief-ray position and normalize back to ``[-1, 1]``.
 
         Args:
             points (torch.Tensor): Normalized point source positions with shape
@@ -817,11 +1030,13 @@ class GeoLensEval:
         ray = self.sample_from_points(points=points_obj)
         ray = self.trace2sensor(ray)
 
-        # Calculate centroid and normalize to [-1, 1]
-        ray_center = -ray.centroid()  # shape [..., 3]
+        # Chief-ray position (centroid fallback), normalized to [-1, 1]
+        ray_center = -self._chief_or_centroid_xy(ray)  # shape [..., 2]
         distortion_center_x = ray_center[..., 0] / (sensor_w / 2)
         distortion_center_y = ray_center[..., 1] / (sensor_h / 2)
-        distortion_center = torch.stack((distortion_center_x, distortion_center_y), dim=-1)
+        distortion_center = torch.stack(
+            (distortion_center_x, distortion_center_y), dim=-1
+        )
         return distortion_center
 
     @torch.no_grad()
@@ -848,7 +1063,9 @@ class GeoLensEval:
         wvln = self.primary_wvln if wvln is None else wvln
         depth = self.obj_depth if depth is None else depth
         # Ray tracing to calculate distortion map
-        distortion_grid = self.calc_distortion_map(num_grid=num_grid, depth=depth, wvln=wvln)
+        distortion_grid = self.calc_distortion_map(
+            num_grid=num_grid, depth=depth, wvln=wvln
+        )
         # Scale axes so the plot preserves the physical sensor aspect ratio:
         # longer side → ±1, shorter side → ±(shorter/longer).
         sensor_w, sensor_h = self.sensor_size
@@ -1036,7 +1253,9 @@ class GeoLensEval:
         nyquist_freq = 0.5 / pixel_size
         num_fovs = len(relative_fov_list)
         if float("inf") in depth_list:
-            depth_list = [self.obj_depth if x == float("inf") else x for x in depth_list]
+            depth_list = [
+                self.obj_depth if x == float("inf") else x for x in depth_list
+            ]
         num_depths = len(depth_list)
 
         # Create figure and subplots (num_depths * num_fovs subplots)
@@ -1196,200 +1415,6 @@ class GeoLensEval:
             plt.savefig(filename, bbox_inches="tight", format="png", dpi=300)
         plt.close(fig)
 
-    # ================================================================
-    # Chief ray calculation and ray aiming
-    # ================================================================
-    @torch.no_grad()
-    def calc_chief_ray_infinite(
-        self,
-        rfov,
-        depth=0.0,
-        wvln=None,
-        plane="meridional",
-        num_rays=SPP_CALC,
-        ray_aiming=True,
-    ):
-        """Compute chief rays for one or more field angles with optional ray aiming.
-
-        This computes chief rays with vectorized evaluation over multiple
-        field angles and implements
-        *ray aiming* — an iterative procedure that launches a fan of rays
-        toward the entrance pupil and selects the one that passes closest to
-        the aperture-stop center.  Ray aiming is essential for accurate
-        distortion measurement in wide-angle or fisheye lenses where the
-        paraxial approximation breaks down.
-
-        Algorithm:
-            1. For on-axis (``rfov = 0``): chief ray is trivially along the
-               z-axis.
-            2. For off-axis angles with ``ray_aiming=False``: the chief ray is
-               aimed at the entrance pupil center (paraxial approximation).
-            3. For off-axis angles with ``ray_aiming=True``:
-               a. Estimate the object-space y (or x) position from the entrance
-                  pupil geometry.
-               b. Create a narrow fan of ``num_rays`` rays bracketing that
-                  estimate (width = 5 % of y_distance, clamped to
-                  ``0.05 * pupil_radius``).
-               c. Trace the fan to the aperture stop.
-               d. Pick the ray closest to the optical axis at the stop.
-
-        Args:
-            rfov (float | torch.Tensor): Field angle(s) in **degrees**.
-                A positive scalar is expanded to ``[0, rfov]`` (two-element
-                tensor); a non-positive scalar becomes a single-element
-                tensor.  A tensor of shape ``[N]`` is used directly.
-            depth (float | torch.Tensor): Object depth(s) in mm.
-                Defaults to 0.0 (object at the first surface).
-            wvln (float): Wavelength in µm. When ``None`` (default), falls
-                back to ``self.primary_wvln``.
-            plane (str): ``'sagittal'`` or ``'meridional'``.
-                Defaults to ``'meridional'``.
-            num_rays (int): Size of the search fan for ray aiming.
-                Defaults to ``SPP_CALC``.
-            ray_aiming (bool): If ``True``, perform iterative ray aiming for
-                accurate chief-ray identification. Defaults to ``True``.
-
-        Returns:
-            chief_ray_o (torch.Tensor): Origins, shape ``[N, 3]``.
-            chief_ray_d (torch.Tensor): Unit directions, shape ``[N, 3]``.
-        """
-        wvln = self.primary_wvln if wvln is None else wvln
-        if isinstance(rfov, (int, float)):
-            if rfov > 0:
-                rfov = torch.linspace(0, rfov, 2, device=self.device)
-            else:
-                rfov = torch.tensor([float(rfov)], device=self.device)
-        else:
-            rfov = rfov.to(self.device)
-
-        if not isinstance(depth, torch.Tensor):
-            depth = torch.tensor(depth, device=self.device).repeat(len(rfov))
-
-        # set chief ray
-        chief_ray_o = torch.zeros([len(rfov), 3], device=self.device)
-        chief_ray_d = torch.zeros([len(rfov), 3], device=self.device)
-
-        # Convert rfov to radian
-        rfov = rfov * torch.pi / 180.0
-
-        if torch.any(rfov == 0):
-            chief_ray_o[0, ...] = torch.tensor(
-                [0.0, 0.0, depth[0]], device=self.device, dtype=torch.float32
-            )
-            chief_ray_d[0, ...] = torch.tensor(
-                [0.0, 0.0, 1.0], device=self.device, dtype=torch.float32
-            )
-            if len(rfov) == 1:
-                return chief_ray_o, chief_ray_d
-
-        # Extract non-zero rfov entries for processing
-        has_zero = torch.any(rfov == 0)
-        if has_zero:
-            start_idx = 1
-            rfovs = rfov[1:]
-            depths = depth[1:]
-        else:
-            start_idx = 0
-            rfovs = rfov
-            depths = depth
-
-        if self.aper_idx == 0:
-            if plane == "sagittal":
-                chief_ray_o[start_idx:, ...] = torch.stack(
-                    [depths * torch.tan(rfovs), torch.zeros_like(rfovs), depths], dim=-1
-                )
-                chief_ray_d[start_idx:, ...] = torch.stack(
-                    [torch.sin(rfovs), torch.zeros_like(rfovs), torch.cos(rfovs)],
-                    dim=-1,
-                )
-            else:
-                chief_ray_o[start_idx:, ...] = torch.stack(
-                    [torch.zeros_like(rfovs), depths * torch.tan(rfovs), depths], dim=-1
-                )
-                chief_ray_d[start_idx:, ...] = torch.stack(
-                    [torch.zeros_like(rfovs), torch.sin(rfovs), torch.cos(rfovs)],
-                    dim=-1,
-                )
-
-            return chief_ray_o, chief_ray_d
-
-        # Scale factor
-        pupilz, pupilr = self.calc_entrance_pupil()
-        y_distance = torch.tan(rfovs) * (abs(depths) + pupilz)
-
-        if ray_aiming:
-            scale = 0.05
-            min_delta = 0.05 * pupilr  # minimum search range based on pupil radius
-            delta = torch.clamp(scale * y_distance, min=min_delta)
-
-        if not ray_aiming:
-            if plane == "sagittal":
-                chief_ray_o[start_idx:, ...] = torch.stack(
-                    [-y_distance, torch.zeros_like(rfovs), depths], dim=-1
-                )
-                chief_ray_d[start_idx:, ...] = torch.stack(
-                    [torch.sin(rfovs), torch.zeros_like(rfovs), torch.cos(rfovs)],
-                    dim=-1,
-                )
-            else:
-                chief_ray_o[start_idx:, ...] = torch.stack(
-                    [torch.zeros_like(rfovs), -y_distance, depths], dim=-1
-                )
-                chief_ray_d[start_idx:, ...] = torch.stack(
-                    [torch.zeros_like(rfovs), torch.sin(rfovs), torch.cos(rfovs)],
-                    dim=-1,
-                )
-
-        else:
-            min_y = -y_distance - delta
-            max_y = -y_distance + delta
-            t = torch.linspace(0, 1, num_rays, device=min_y.device)
-            o1_linspace = min_y.unsqueeze(-1) + t * (max_y - min_y).unsqueeze(-1)
-
-            o1 = torch.zeros([len(rfovs), num_rays, 3], device=self.device)
-            # Use each field's own depth, not depths[0] for all fields.
-            o1[:, :, 2] = depths.unsqueeze(-1)
-
-            o2_linspace = -delta.unsqueeze(-1) + t * (2 * delta).unsqueeze(-1)
-
-            o2 = torch.zeros([len(rfovs), num_rays, 3], device=self.device)
-            o2[:, :, 2] = pupilz
-
-            if plane == "sagittal":
-                o1[:, :, 0] = o1_linspace
-                o2[:, :, 0] = o2_linspace
-            else:
-                o1[:, :, 1] = o1_linspace
-                o2[:, :, 1] = o2_linspace
-
-            # Trace until the aperture
-            ray = Ray(o1, o2 - o1, wvln=wvln, device=self.device)
-            inc_ray = ray.clone()
-            surf_range = range(0, self.aper_idx + 1)
-            ray, _ = self.trace(ray, surf_range=surf_range)
-
-            # Look for the ray that is closest to the optical axis
-            if plane == "sagittal":
-                _, center_idx = torch.min(torch.abs(ray.o[..., 0]), dim=1)
-                chief_ray_o[start_idx:, ...] = inc_ray.o[
-                    torch.arange(len(rfovs)), center_idx.long(), ...
-                ]
-                chief_ray_d[start_idx:, ...] = torch.stack(
-                    [torch.sin(rfovs), torch.zeros_like(rfovs), torch.cos(rfovs)],
-                    dim=-1,
-                )
-            else:
-                _, center_idx = torch.min(torch.abs(ray.o[..., 1]), dim=1)
-                chief_ray_o[start_idx:, ...] = inc_ray.o[
-                    torch.arange(len(rfovs)), center_idx.long(), ...
-                ]
-                chief_ray_d[start_idx:, ...] = torch.stack(
-                    [torch.zeros_like(rfovs), torch.sin(rfovs), torch.cos(rfovs)],
-                    dim=-1,
-                )
-
-        return chief_ray_o, chief_ray_d
-
     # ====================================================================================
     # Spot, rendering, and comprehensive analysis
     # ====================================================================================
@@ -1445,11 +1470,14 @@ class GeoLensEval:
         """
         from skimage.metrics import peak_signal_noise_ratio, structural_similarity
         from torchvision.utils import save_image
+
         depth = self.obj_depth if depth is None else depth
         # Change sensor resolution to match the image
         sensor_res_original = self.sensor_res
         if isinstance(img_org, np.ndarray):
-            img = torch.from_numpy(img_org).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+            img = (
+                torch.from_numpy(img_org).permute(2, 0, 1).unsqueeze(0).float() / 255.0
+            )
         elif torch.is_tensor(img_org):
             img = img_org.permute(2, 0, 1).unsqueeze(0).float()
             if img.max() > 1.0:
@@ -1462,9 +1490,15 @@ class GeoLensEval:
 
         # Compute PSNR and SSIM
         img_np = img.squeeze(0).permute(1, 2, 0).cpu().numpy()
-        render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
-        render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
-        render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
+        render_np = (
+            img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
+        )
+        render_psnr = round(
+            peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3
+        )
+        render_ssim = round(
+            structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4
+        )
         print(f"Rendered image: PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}")
 
         # Save image
@@ -1476,9 +1510,23 @@ class GeoLensEval:
             img_render = self.unwarp(img_render, depth)
 
             # Compute PSNR and SSIM
-            render_np = img_render.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().detach().numpy()
-            render_psnr = round(peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3)
-            render_ssim = round(structural_similarity(img_np, render_np, channel_axis=2, data_range=1.0), 4)
+            render_np = (
+                img_render.squeeze(0)
+                .permute(1, 2, 0)
+                .clamp(0, 1)
+                .cpu()
+                .detach()
+                .numpy()
+            )
+            render_psnr = round(
+                peak_signal_noise_ratio(img_np, render_np, data_range=1.0), 3
+            )
+            render_ssim = round(
+                structural_similarity(
+                    img_np, render_np, channel_axis=2, data_range=1.0
+                ),
+                4,
+            )
             print(
                 f"Rendered image (unwarped): PSNR={render_psnr:.3f}, SSIM={render_ssim:.4f}"
             )
@@ -1539,7 +1587,11 @@ class GeoLensEval:
         valid_list = []
         for wvln in self.wvln_rgb:
             ray = self.sample_radial_rays(
-                num_field=num_field, depth=depth, num_rays=SPP_PSF, wvln=wvln
+                num_field=num_field,
+                depth=depth,
+                num_rays=SPP_PSF,
+                wvln=wvln,
+                fov_max=self.rfov,
             )
             ray = self.trace2sensor(ray)
             xy_list.append(ray.o[..., :2])

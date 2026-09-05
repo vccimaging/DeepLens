@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -22,9 +22,12 @@ Functions:
     - loss_bound: Penalize geometry-bound violations (clearance and envelope)
     - loss_cra: Penalize chief ray angle at sensor exceeding chief_ray_angle_max
     - loss_ray_bend: Penalize accumulated per-surface bend angles exceeding bend_angle_max
+    - loss_mat: Penalize refractive index and Abbe number outside manufacturable ranges
     - loss_rms: RGB spot RMS with optional centroid reference and distortion regularization
     - sample_ring_arm_rays: Sample rays from object space using a ring-arm pattern
     - optimize: Optimize the lens by minimizing rms errors
+    - find_diff_surf: List the surfaces holding optimizable parameters
+    - get_optimizer_params, get_optimizer: Build parameter groups and the optimizer
 """
 
 import logging
@@ -294,8 +297,7 @@ class GeoLensOptim:
             # Sag
             sag_ls = self.surfaces[i].sag(x_ls, y_ls)
             sag2diam = sag_ls.abs().max() / self.surfaces[i].r / 2
-            loss_sag2diam += relu(
-                (sag2diam - sag2diam_max) / sag2diam_max)
+            loss_sag2diam += relu((sag2diam - sag2diam_max) / sag2diam_max)
 
             # 1st-order derivative
             grad_ls = self.surfaces[i].dfdxyz(x_ls, y_ls)[0]
@@ -432,7 +434,9 @@ class GeoLensOptim:
         """
         cos_cra_ref = float(np.cos(np.deg2rad(self.chief_ray_angle_max)))
 
-        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=0.2)
+        ray = self.sample_ring_arm_rays(
+            num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=0.2
+        )
         ray = self.trace2sensor(ray)
         cos_cra = ray.d[..., 2]
         valid = ray.is_valid > 0
@@ -450,7 +454,9 @@ class GeoLensOptim:
         Returns:
             loss (torch.Tensor): Scalar bend penalty (at least 0).
         """
-        ray = self.sample_ring_arm_rays(num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=1.0)
+        ray = self.sample_ring_arm_rays(
+            num_ring=8, num_arm=2, spp=SPP_CALC, scale_pupil=1.0
+        )
         ray = self.trace2sensor(ray)
         bend_penalty = ray.bend_penalty.squeeze(-1)
         valid = ray.is_valid > 0

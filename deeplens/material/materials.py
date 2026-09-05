@@ -1,10 +1,16 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
 
-"""Glass and plastic materials for optical lenses."""
+"""Optical materials for lens surfaces.
+
+Dispersion models (Sellmeier, Schott, Cauchy, tabulated, the
+refractiveindex.info formulas, and an optimizable Cauchy form with learnable
+n/V) for glasses, plastics and substrate crystals, plus readers for Zemax AGF
+and custom material files.
+"""
 
 import json
 import math
@@ -245,7 +251,9 @@ class Material(DeepObj):
                 self.n = CUSTOM_data["MATERIAL_TABLE"][self.name][0]
                 self.V = CUSTOM_data["MATERIAL_TABLE"][self.name][1]
             except KeyError:
-                print(f"Warning: {self.name} found in SELLMEIER_TABLE but not in MATERIAL_TABLE.")
+                print(
+                    f"Warning: {self.name} found in SELLMEIER_TABLE but not in MATERIAL_TABLE."
+                )
 
         elif self.name in CUSTOM_data["SCHOTT_TABLE"]:
             self.dispersion = "schott"
@@ -256,7 +264,9 @@ class Material(DeepObj):
                 self.n = CUSTOM_data["MATERIAL_TABLE"][self.name][0]
                 self.V = CUSTOM_data["MATERIAL_TABLE"][self.name][1]
             except KeyError:
-                print(f"Warning: {self.name} found in SCHOTT_TABLE but not in MATERIAL_TABLE.")
+                print(
+                    f"Warning: {self.name} found in SCHOTT_TABLE but not in MATERIAL_TABLE."
+                )
 
         elif self.name in CUSTOM_data["MATERIAL_TABLE"]:
             self.dispersion = "cauchy"
@@ -468,9 +478,7 @@ class Material(DeepObj):
                 self._ref_wvlns_t = self._ref_wvlns_t.to(
                     device=wvln.device, dtype=wvln.dtype
                 )
-                self._ref_n_t = self._ref_n_t.to(
-                    device=wvln.device, dtype=wvln.dtype
-                )
+                self._ref_n_t = self._ref_n_t.to(device=wvln.device, dtype=wvln.dtype)
             ref_wvlns = self._ref_wvlns_t
             ref_n = self._ref_n_t
 
@@ -558,8 +566,12 @@ class Material(DeepObj):
                 float(wvln.detach().max().cpu()),
             ]
 
-        if any(not math.isfinite(value) or not (0.1 < value < 10.0) for value in values):
-            raise ValueError("Wavelength must be finite and satisfy 0.1 < wavelength < 10 µm.")
+        if any(
+            not math.isfinite(value) or not (0.1 < value < 10.0) for value in values
+        ):
+            raise ValueError(
+                "Wavelength must be finite and satisfy 0.1 < wavelength < 10 µm."
+            )
 
         if self.wvln_range is not None:
             wmin, wmax = (float(value) for value in self.wvln_range)
@@ -620,7 +632,9 @@ class Material(DeepObj):
         if not self.name == "air":
             # Material match table
             if mat_table is None:
-                print("No material table provided. Using CDGM common glasses as default.")
+                print(
+                    "No material table provided. Using CDGM common glasses as default."
+                )
                 mat_table = CUSTOM_data["CDGM_GLASS"]
             elif mat_table == "CDGM":
                 # CDGM common glasses
@@ -628,16 +642,21 @@ class Material(DeepObj):
             elif mat_table == "PLASTIC":
                 mat_table = CUSTOM_data["PLASTIC_TABLE"]
             else:
-                raise NotImplementedError(f"Material table {mat_table} not implemented.")
+                raise NotImplementedError(
+                    f"Material table {mat_table} not implemented."
+                )
 
             # Find the closest material
-            n_range = 0.4 # refractive index range usually [1.5, 1.9]
-            V_range = 40.0 # Abbe number range usually [30, 70]
+            n_range = 0.4  # refractive index range usually [1.5, 1.9]
+            V_range = 40.0  # Abbe number range usually [30, 70]
             n_self = float(self.n) if torch.is_tensor(self.n) else self.n
             V_self = float(self.V) if torch.is_tensor(self.V) else self.V
             self.name = min(
                 mat_table,
-                key=lambda name: abs(mat_table[name][0] - n_self) / n_range + abs(mat_table[name][1] - V_self) / V_range,
+                key=lambda name: (
+                    abs(mat_table[name][0] - n_self) / n_range
+                    + abs(mat_table[name][1] - V_self) / V_range
+                ),
             )
 
             # Load the new material parameters

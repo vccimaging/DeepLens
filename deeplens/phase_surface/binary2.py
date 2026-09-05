@@ -3,7 +3,7 @@
 import torch
 
 from ..config import EPSILON
-from .phase import Phase
+from .base_phase import Phase
 
 
 class Binary2Phase(Phase):
@@ -136,7 +136,15 @@ class Binary2Phase(Phase):
         # Horner's method: r2*(o2 + r2*(o4 + r2*(o6 + r2*(o8 + r2*(o10 + r2*o12)))))
         phi = r2 * (
             self.order2
-            + r2 * (self.order4 + r2 * (self.order6 + r2 * (self.order8 + r2 * (self.order10 + r2 * self.order12))))
+            + r2
+            * (
+                self.order4
+                + r2
+                * (
+                    self.order6
+                    + r2 * (self.order8 + r2 * (self.order10 + r2 * self.order12))
+                )
+            )
         )
 
         phi = torch.remainder(phi, 2 * torch.pi)
@@ -162,9 +170,14 @@ class Binary2Phase(Phase):
 
         # d/dr2 of polynomial, then chain rule: dphi/dx = dphi/dr2 * 2*x_norm / norm_radii
         # Horner's: o2 + r2*(2*o4 + r2*(3*o6 + r2*(4*o8 + r2*(5*o10 + r2*6*o12))))
-        dphidr2 = (
-            self.order2
-            + r2 * (2 * self.order4 + r2 * (3 * self.order6 + r2 * (4 * self.order8 + r2 * (5 * self.order10 + r2 * 6 * self.order12))))
+        dphidr2 = self.order2 + r2 * (
+            2 * self.order4
+            + r2
+            * (
+                3 * self.order6
+                + r2
+                * (4 * self.order8 + r2 * (5 * self.order10 + r2 * 6 * self.order12))
+            )
         )
         dphidx = dphidr2 * 2 * x_norm / self.norm_radii
         dphidy = dphidr2 * 2 * y_norm / self.norm_radii

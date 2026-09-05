@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -35,8 +35,8 @@ from deeplens import (
     HybridLens,
     PSFNetLens,
 )
-from deeplens.lens import Lens
 from deeplens.config import PSF_KS
+from deeplens.lens import Lens
 
 LENS_CLASSES = [GeoLens, HybridLens, DiffractiveLens, DefocusLens, PSFNetLens]
 

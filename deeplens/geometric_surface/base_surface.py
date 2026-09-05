@@ -1,7 +1,8 @@
 """Base class for geometric surfaces.
 
-A surface can refract and reflect rays. Some surfaces can also diffract rays
-according to a local grating approximation.
+A surface can refract or reflect rays. Diffraction is not modeled here; see
+`deeplens.phase_surface` for phase surfaces that diffract via the generalized
+Snell's law.
 """
 
 import math
@@ -74,12 +75,8 @@ class Surface(DeepObj):
                 circular one. Defaults to False.
             device (str, optional): Compute device. Defaults to "cpu".
         """
-        super(Surface, self).__init__()
+        super().__init__()
 
-        # Global direction vector, always pointing to the positive z-axis
-        self.vec_global = torch.tensor([0.0, 0.0, 1.0])
-
-        # Sequential thickness (Zemax DISZ), kept as a differentiable tensor.
         self.d_next = (
             d_next.detach().clone()
             if torch.is_tensor(d_next)
@@ -87,45 +84,44 @@ class Surface(DeepObj):
         )
         if not self.d_next.is_floating_point():
             self.d_next = self.d_next.to(torch.get_default_dtype())
-        self.pos_x = torch.as_tensor(pos_xy[0], dtype=self.d_next.dtype)
-        self.pos_y = torch.as_tensor(pos_xy[1], dtype=self.d_next.dtype)
 
-        # Surface direction vector in global coordinate system
-        self.vec_global = self.vec_global.to(self.d_next.dtype)
+        state_dtype = self.d_next.dtype
+        state_device = self.d_next.device
+        self.vec_global = torch.tensor(
+            [0.0, 0.0, 1.0], dtype=state_dtype, device=state_device
+        )
+        self.pos_x = torch.as_tensor(pos_xy[0], dtype=state_dtype, device=state_device)
+        self.pos_y = torch.as_tensor(pos_xy[1], dtype=state_dtype, device=state_device)
         self.vec_local = F.normalize(
-            torch.as_tensor(vec_local, dtype=self.d_next.dtype), p=2, dim=-1
+            torch.as_tensor(vec_local, dtype=state_dtype, device=state_device),
+            p=2,
+            dim=-1,
         )
 
-        # Material after the surface
         self.mat2 = Material(mat2)
-
-        # Surface aperture radius (non-differentiable).
-        # For a square aperture, r is the circumscribed-circle radius
-        # (i.e. the half-diagonal), so the side length is r * sqrt(2).
         self.r = float(r)
         self.is_square = is_square
         if is_square:
             self.w = self.r * float(np.sqrt(2))
             self.h = self.r * float(np.sqrt(2))
 
-        # Newton method parameters
-        self.newton_maxiter = 8  # [int], maximum number of Newton iterations
-        self.newton_convergence = 50.0 * 1e-6  # [mm], Newton method convergence threshold
-        self.newton_step_bound = 5.0  # [mm], maximum step size in each iteration
-
         self.device = device if device is not None else torch.device("cpu")
         self.to(self.device)
-
-        # Pre-compute rotation matrices (depends only on static vec_local/vec_global)
         self._cache_rotation_matrices()
 
-    def _cache_rotation_matrices(self):
-        """Pre-compute and cache rotation matrices for local/global transforms.
+        # Newton method parameters
+        self.newton_maxiter = 8  # [int], maximum number of Newton iterations
+        self.newton_convergence = (
+            50.0 * 1e-6
+        )  # [mm], Newton method convergence threshold
+        self.newton_step_bound = 5.0  # [mm], maximum step size in each iteration
 
-        Called once at init. The matrices depend only on `vec_local` and
-        `vec_global`, which are static after construction. When the surface is
-        on-axis both cached matrices are set to None (no rotation needed).
-        """
+    def _get_effective_d_next(self):
+        """Return the thickness used by the sequential lens tracer."""
+        return self.d_next
+
+    def _cache_rotation_matrices(self):
+        """Pre-compute local/global rotation matrices for a static orientation."""
         needs_rotation = (
             torch.abs(torch.dot(self.vec_local, self.vec_global) - 1.0) > EPSILON
         )
@@ -158,9 +154,23 @@ class Surface(DeepObj):
             f"init_from_dict() is not implemented for {cls.__name__}."
         )
 
-    def _get_effective_d_next(self):
-        """Return the thickness used by the sequential lens tracer."""
-        return self.d_next
+    def paraxial_power(self, n1, n2):
+        """Return the paraxial (first-order) optical power of this surface [1/mm].
+
+        Only the vertex geometry contributes: conic constants, aspheric terms
+        and freeform departures vanish in the paraxial limit, matching the
+        first-order convention used by Zemax and CODE V. Surfaces with a base
+        curvature or an explicit focal length override this; flat and freeform
+        surfaces contribute pure transfer.
+
+        Args:
+            n1 (torch.Tensor): Refractive index of the incident medium.
+            n2 (torch.Tensor): Refractive index of the transmission medium.
+
+        Returns:
+            power (torch.Tensor): Surface power [1/mm], scalar.
+        """
+        return torch.zeros_like(n2)
 
     # =====================================================================
     # Intersection, refraction, reflection between ray and surface
@@ -331,45 +341,6 @@ class Surface(DeepObj):
 
         return t, valid
 
-    def refract(self, ray, eta):
-        """Refract the ray via vector Snell's law (local coordinate system).
-
-        The surface normal points from the surface toward the side the light
-        comes from. The output direction stays normalized when `ray.d` is
-        normalized. Rays undergoing total internal reflection are marked
-        invalid.
-
-        Args:
-            ray (Ray): Incident ray bundle.
-            eta (float): Ratio of refractive indices, $\\eta = n_i / n_t$.
-
-        Returns:
-            ray (Ray): Refracted ray with updated direction and validity mask.
-
-        Reference:
-            [1] https://registry.khronos.org/OpenGL-Refpages/gl4/html/refract.xhtml
-            [2] https://en.wikipedia.org/wiki/Snell%27s_law, "Vector form" section.
-        """
-        # Compute normal vectors
-        normal_vec = self.normal_vec(ray)
-
-        # Compute refraction according to Snell's law, normal_vec * ray_d
-        dot_product = (-normal_vec * ray.d).sum(-1).unsqueeze(-1)
-        k = 1 - eta**2 * (1 - dot_product**2)
-
-        # Total internal reflection
-        valid = (k >= 0).squeeze(-1) & (ray.is_valid > 0)
-        k = k * valid.unsqueeze(-1)
-
-        # Update ray direction
-        new_d = eta * ray.d + (eta * dot_product - torch.sqrt(k + EPSILON)) * normal_vec
-        ray.d = torch.where(valid.unsqueeze(-1), new_d, ray.d)
-
-        # Update ray valid mask
-        ray.is_valid = ray.is_valid * valid
-
-        return ray
-
     def bend_penalty(self, ray, old_d):
         """Accumulate a soft per-surface bend penalty onto the ray.
 
@@ -390,8 +361,97 @@ class Surface(DeepObj):
         cos_bend = torch.sum(ray.d * old_d, dim=-1).unsqueeze(-1)
         per_surf_penalty = F.relu(cos_bend_min - cos_bend)
         valid = ray.is_valid > 0
-        ray.bend_penalty = ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
+        ray.bend_penalty = (
+            ray.bend_penalty + per_surf_penalty * valid.unsqueeze(-1).float()
+        )
         return ray
+
+    def refract(self, ray, eta):
+        """Refract a ray with vector Snell's law in local coordinates."""
+        normal_vec = self.normal_vec(ray)
+        dot_product = (-normal_vec * ray.d).sum(-1).unsqueeze(-1)
+        k = 1 - eta**2 * (1 - dot_product**2)
+
+        valid = (k >= 0).squeeze(-1) & (ray.is_valid > 0)
+        k = k * valid.unsqueeze(-1)
+
+        new_d = eta * ray.d + (eta * dot_product - torch.sqrt(k + EPSILON)) * normal_vec
+        ray.d = torch.where(valid.unsqueeze(-1), new_d, ray.d)
+        ray.is_valid = ray.is_valid * valid
+        return ray
+
+    def to_local_coord(self, ray):
+        """Transform a ray from the surface reference frame to local coordinates."""
+        offset = torch.stack(
+            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
+        ).expand_as(ray.o)
+        ray.o = ray.o - offset
+
+        if self._R_to_local is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_local)
+            ray.d = self._apply_rotation(ray.d, self._R_to_local)
+            ray.d = F.normalize(ray.d, p=2, dim=-1)
+        return ray
+
+    def to_global_coord(self, ray):
+        """Transform a ray from local coordinates to the surface reference frame."""
+        if self._R_to_global is not None:
+            ray.o = self._apply_rotation(ray.o, self._R_to_global)
+            ray.d = self._apply_rotation(ray.d, self._R_to_global)
+            ray.d = F.normalize(ray.d, p=2, dim=-1)
+
+        offset = torch.stack(
+            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
+        ).expand_as(ray.o)
+        ray.o = ray.o + offset
+        return ray
+
+    def _get_rotation_matrix(self, vec_from, vec_to):
+        """Return the dtype/device-preserving rotation from one vector to another."""
+        vec_from = F.normalize(vec_from.to(self.device), p=2, dim=-1)
+        vec_to = F.normalize(vec_to.to(self.device), p=2, dim=-1)
+
+        dot_product = torch.dot(vec_from, vec_to)
+        if torch.abs(dot_product - 1.0) < EPSILON:
+            return torch.eye(3, device=self.device, dtype=vec_from.dtype)
+
+        if torch.abs(dot_product + 1.0) < EPSILON:
+            if torch.abs(vec_from[0]) < 0.9:
+                perpendicular = torch.tensor(
+                    [1.0, 0.0, 0.0],
+                    device=self.device,
+                    dtype=vec_from.dtype,
+                )
+            else:
+                perpendicular = torch.tensor(
+                    [0.0, 1.0, 0.0],
+                    device=self.device,
+                    dtype=vec_from.dtype,
+                )
+            axis = F.normalize(torch.linalg.cross(vec_from, perpendicular), p=2, dim=-1)
+            return 2.0 * torch.outer(axis, axis) - torch.eye(
+                3, device=self.device, dtype=axis.dtype
+            )
+
+        cross_product = torch.linalg.cross(vec_from, vec_to)
+        zero = torch.zeros((), device=self.device, dtype=cross_product.dtype)
+        skew = torch.stack(
+            [
+                torch.stack([zero, -cross_product[2], cross_product[1]]),
+                torch.stack([cross_product[2], zero, -cross_product[0]]),
+                torch.stack([-cross_product[1], cross_product[0], zero]),
+            ]
+        )
+        identity = torch.eye(3, device=self.device, dtype=skew.dtype)
+        return identity + skew + torch.mm(skew, skew) / (1 + dot_product)
+
+    @staticmethod
+    def _apply_rotation(vectors, rotation):
+        """Apply a rotation matrix to tensors whose final dimension is three."""
+        original_shape = vectors.shape
+        vectors_flat = vectors.reshape(-1, 3)
+        rotated_flat = torch.mm(vectors_flat, rotation.t())
+        return rotated_flat.reshape(original_shape)
 
     def reflect(self, ray):
         """Reflect the ray specularly off the surface (local coordinate system).
@@ -443,150 +503,6 @@ class Surface(DeepObj):
         is_forward = ray.d[..., 2].unsqueeze(-1) > 0
         n_vec = torch.where(is_forward, n_vec, -n_vec)
         return n_vec
-
-    def to_local_coord(self, ray):
-        """Transform a ray from global to local surface coordinates.
-
-        Shifts the ray origin by the surface vertex offset and, for off-axis
-        surfaces, rotates origin and direction by the cached rotation matrix.
-
-        Args:
-            ray (Ray): Input ray bundle in the global coordinate system.
-
-        Returns:
-            ray (Ray): Ray expressed in the local surface coordinate system.
-        """
-        # Axial position is represented by the lens reference frame. Only the
-        # surface-local lateral offset belongs in this transform.
-        offset = torch.stack(
-            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
-        ).expand_as(ray.o)
-        ray.o = ray.o - offset
-
-        # Rotate using the matrix cached at init (vec_local/vec_global are static),
-        # instead of rebuilding it on every ray-surface interaction. None means no
-        # rotation is needed (surface is on-axis).
-        if self._R_to_local is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_to_local)
-            ray.d = self._apply_rotation(ray.d, self._R_to_local)
-            ray.d = F.normalize(ray.d, p=2, dim=-1)
-
-        return ray
-
-    def to_global_coord(self, ray):
-        """Transform a ray from local surface coordinates back to global.
-
-        Inverse of `to_local_coord`: rotates by the cached inverse matrix (for
-        off-axis surfaces) then shifts the origin back by the vertex offset.
-
-        Args:
-            ray (Ray): Input ray bundle in the local surface coordinate system.
-
-        Returns:
-            ray (Ray): Ray expressed in the global coordinate system.
-        """
-        # Rotate using the cached inverse matrix (see to_local_coord).
-        if self._R_to_global is not None:
-            ray.o = self._apply_rotation(ray.o, self._R_to_global)
-            ray.d = self._apply_rotation(ray.d, self._R_to_global)
-            ray.d = F.normalize(ray.d, p=2, dim=-1)
-
-        # Shift ray origin back to the surface reference frame.
-        offset = torch.stack(
-            [self.pos_x, self.pos_y, torch.zeros_like(self.pos_x)]
-        ).expand_as(ray.o)
-        ray.o = ray.o + offset
-
-        return ray
-
-    def _get_rotation_matrix(self, vec_from, vec_to):
-        """Compute the rotation matrix that rotates `vec_from` onto `vec_to`.
-
-        Uses Rodrigues' rotation formula in the general case, with special
-        handling for aligned and anti-parallel inputs. Inputs are normalized
-        internally.
-
-        Args:
-            vec_from (torch.Tensor): Source direction vector, shape [3].
-            vec_to (torch.Tensor): Target direction vector, shape [3].
-
-        Returns:
-            R (torch.Tensor): Rotation matrix, shape [3, 3].
-        """
-        # CRITICAL: Normalize input vectors
-        vec_from = F.normalize(vec_from.to(self.device), p=2, dim=-1)
-        vec_to = F.normalize(vec_to.to(self.device), p=2, dim=-1)
-
-        # Check if vectors are already aligned
-        dot_product = torch.dot(vec_from, vec_to)
-        if torch.abs(dot_product - 1.0) < EPSILON:
-            # Vectors are already aligned, return identity matrix
-            return torch.eye(3, device=self.device, dtype=vec_from.dtype)
-
-        if torch.abs(dot_product + 1.0) < EPSILON:
-            # Vectors are opposite, need 180-degree rotation
-            # Find a perpendicular vector
-            if torch.abs(vec_from[0]) < 0.9:
-                perp = torch.tensor(
-                    [1.0, 0.0, 0.0], device=self.device, dtype=vec_from.dtype
-                )
-            else:
-                perp = torch.tensor(
-                    [0.0, 1.0, 0.0], device=self.device, dtype=vec_from.dtype
-                )
-
-            # Get rotation axis by cross product
-            axis = torch.linalg.cross(vec_from, perp)
-            axis = F.normalize(axis, p=2, dim=-1)
-
-            # 180-degree rotation matrix
-            R = 2.0 * torch.outer(axis, axis) - torch.eye(
-                3, device=self.device, dtype=axis.dtype
-            )
-            return R
-
-        # General case: use Rodrigues' rotation formula
-        # For normalized vectors: v × u = sin(θ) * k (where k is unit rotation axis)
-        # and v · u = cos(θ)
-        v_cross_u = torch.linalg.cross(vec_from, vec_to)
-        cos_angle = dot_product
-
-        # Skew-symmetric matrix for cross product v × u (not normalized axis!)
-        # Build via torch.stack to avoid copy-constructing a tensor from tensor
-        # scalars (which emits a warning and forces a host sync).
-        zero = torch.zeros((), device=self.device, dtype=v_cross_u.dtype)
-        K = torch.stack(
-            [
-                torch.stack([zero, -v_cross_u[2], v_cross_u[1]]),
-                torch.stack([v_cross_u[2], zero, -v_cross_u[0]]),
-                torch.stack([-v_cross_u[1], v_cross_u[0], zero]),
-            ]
-        )
-
-        # Rodrigues' formula: R = I + K + K²/(1 + cos(θ))
-        # This is equivalent to: R = I + sin(θ)K + (1-cos(θ))K²
-        identity = torch.eye(3, device=self.device, dtype=K.dtype)
-        R = identity + K + torch.mm(K, K) / (1 + cos_angle)
-
-        return R
-
-    def _apply_rotation(self, vectors, R):
-        """Apply a rotation matrix to a batch of vectors.
-
-        Args:
-            vectors (torch.Tensor): Input vectors, shape [..., 3].
-            R (torch.Tensor): Rotation matrix, shape [3, 3].
-
-        Returns:
-            rotated_vectors (torch.Tensor): Rotated vectors, shape [..., 3].
-        """
-        original_shape = vectors.shape
-        # Reshape to [..., 3] for matrix multiplication
-        vectors_flat = vectors.view(-1, 3)
-        # Apply rotation: v' = R @ v (transpose for batch operation)
-        rotated_flat = torch.mm(vectors_flat, R.t())
-        # Reshape back to original shape
-        return rotated_flat.view(original_shape)
 
     # =====================================================================
     # Computation functions
@@ -930,9 +846,7 @@ class Surface(DeepObj):
             linestyle (str, optional): Matplotlib line style. Defaults to "solid".
         """
         r_eff = self.draw_r()
-        r = torch.linspace(
-            -r_eff, r_eff, 128, device=self.device, dtype=self.dtype
-        )
+        r = torch.linspace(-r_eff, r_eff, 128, device=self.device, dtype=self.dtype)
         z = self.surface_with_offset(
             r,
             torch.zeros(len(r), device=self.device, dtype=self.dtype),
@@ -947,9 +861,7 @@ class Surface(DeepObj):
             linewidth=0.75,
         )
 
-    def create_mesh(
-        self, n_rings=32, n_arms=128, color=[0.06, 0.3, 0.6], d=0.0
-    ):
+    def create_mesh(self, n_rings=32, n_arms=128, color=[0.06, 0.3, 0.6], d=0.0):
         """Create a triangulated mesh of the surface for 3D visualization.
 
         Populates `self.vertices`, `self.faces`, `self.rim`, and `self.mesh_color`.

@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -24,6 +24,8 @@ Functions:
     - psf_center(): Reference PSF centre via chief ray or pinhole projection.
 """
 
+import logging
+
 import torch
 import torch.nn.functional as F
 
@@ -37,6 +39,8 @@ from ..config import (
 from ..imgsim import forward_integral
 from ..light import AngularSpectrumMethod
 from ..utils import diff_float
+
+logger = logging.getLogger(__name__)
 
 
 class GeoLensPSF:
@@ -107,9 +111,7 @@ class GeoLensPSF:
         else:
             raise ValueError(f"Unknown PSF model: {model}")
 
-    def psf_geometric(
-        self, points, ks=PSF_KS, wvln=None, spp=SPP_PSF, recenter=True
-    ):
+    def psf_geometric(self, points, ks=PSF_KS, wvln=None, spp=SPP_PSF, recenter=True):
         """Compute the single-wavelength geometric PSF by incoherent ray binning.
 
         Samples rays from each object point, traces them incoherently to the
@@ -162,9 +164,15 @@ class GeoLensPSF:
         ray.is_coherent = False
         ray = self.trace2sensor(ray)
 
-        # Calculate PSF center, shape [N, 2]
+        # Calculate PSF center, shape [N, 2]. At the primary wavelength the
+        # bundle just traced is reused for the chief ray instead of tracing a
+        # second one. Other wavelengths still trace at the primary wavelength so
+        # every channel shares one reference center and lateral color stays in
+        # the kernels. Sparse bundles are not reused: chief-ray accuracy scales
+        # as 1/sqrt(spp).
         if recenter:
-            pointc = self.psf_center(point_obj, method="chief_ray")
+            reuse_ray = ray if wvln == self.primary_wvln and spp >= SPP_CALC else None
+            pointc = self.psf_center(point_obj, method="chief_ray", ray=reuse_ray)
         else:
             pointc = self.psf_center(point_obj, method="pinhole")
 
@@ -385,9 +393,9 @@ class GeoLensPSF:
         device = self.device
 
         if isinstance(points, list):
-            points = torch.as_tensor(
-                points, device=device, dtype=self.dtype
-            ).unsqueeze(0)
+            points = torch.as_tensor(points, device=device, dtype=self.dtype).unsqueeze(
+                0
+            )
         elif torch.is_tensor(points) and len(points.shape) == 1:
             points = points.unsqueeze(0).to(device=device, dtype=self.dtype)
         elif torch.is_tensor(points) and len(points.shape) == 2:
@@ -663,19 +671,23 @@ class GeoLensPSF:
         return psf_map
 
     @torch.no_grad()
-    def psf_center(self, points_obj, method="chief_ray"):
+    def psf_center(self, points_obj, method="chief_ray", ray=None):
         """Compute the reference PSF center on the sensor for a given point source.
 
-        With method "chief_ray" it traces a half-aperture ray bundle and takes
-        the negated sensor centroid (falling back to "pinhole" if no ray is
-        valid); with "pinhole" it uses an ideal perspective projection (no
-        distortion). Both methods return a center whose sign matches the
-        original object point.
+        With method "chief_ray" it returns the negated sensor intercept of the
+        sampled real ray closest to the physical aperture-stop centre. Invalid
+        chief rays fall back to the pinhole model independently per field, as
+        does the whole computation when the lens has no aperture stop. With
+        "pinhole" it uses an ideal perspective projection (no distortion).
 
         Args:
             points_obj (torch.Tensor): Un-normalized object-plane point(s), shape
                 [..., 3] [mm], spanning [-Inf, Inf] x [-Inf, Inf] x [-Inf, 0].
             method (str, optional): "chief_ray" or "pinhole". Defaults to "chief_ray".
+            ray (Ray, optional): Bundle already traced to the sensor from
+                `points_obj` at the primary wavelength, shape [..., num_rays, 3].
+                When given, the chief ray is extracted from it instead of
+                tracing a new bundle. Ignored for "pinhole".
 
         Returns:
             psf_center (torch.Tensor): Un-normalized PSF center on the sensor
@@ -685,15 +697,34 @@ class GeoLensPSF:
             ValueError: If `method` is neither "chief_ray" nor "pinhole".
         """
         if method == "chief_ray":
-            # Shrink the pupil and calculate centroid ray as the chief ray
-            ray = self.sample_from_points(points_obj, scale_pupil=0.5, num_rays=SPP_CALC)
-            ray = self.trace2sensor(ray)
-            if ray.is_valid.any():
-                psf_center = ray.centroid()
-                psf_center = -psf_center[..., :2]  # shape [..., 2]
-            else:
-                # Fallback to pinhole when chief ray fails (can happen during optimization)
+            if self.aper_idx is None:
+                logger.warning(
+                    "Lens has no aperture stop; using the pinhole model for "
+                    "PSF centers."
+                )
                 return self.psf_center(points_obj, method="pinhole")
+
+            if ray is None:
+                chief_ray = self.calc_chief_ray(points_obj, num_rays=SPP_PSF)
+            else:
+                chief_ray = self.calc_chief_ray(ray=ray)
+            psf_center = -chief_ray.o[..., 0, :2]
+
+            # Info level: a vignetted chief ray is routine mid-optimization, and
+            # psf()/psf_map() run every iteration, so a warning would flood logs.
+            valid = chief_ray.is_valid[..., 0].bool()
+            if not valid.all():
+                failed = int((~valid).sum().item())
+                logger.info(
+                    "%d of %d chief rays are invalid; using the pinhole model "
+                    "for those PSF centers.",
+                    failed,
+                    valid.numel(),
+                )
+                pinhole_center = self.psf_center(points_obj, method="pinhole")
+                psf_center = torch.where(
+                    valid.unsqueeze(-1), psf_center, pinhole_center
+                )
 
         elif method == "pinhole":
             # Pinhole camera perspective projection, distortion not considered

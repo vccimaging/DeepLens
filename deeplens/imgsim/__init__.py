@@ -1,3 +1,5 @@
+"""Image simulation: Monte-Carlo ray integration and PSF-based rendering."""
+
 from .monte_carlo import assign_points_to_pixels, backward_integral, forward_integral
 from .psf import (
     conv_psf,

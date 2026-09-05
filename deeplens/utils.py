@@ -1,3 +1,11 @@
+"""Shared utilities for DeepLens.
+
+Image IO and video export, image-quality metrics (PSNR, SSIM, LPIPS),
+ImageNet normalization, experiment setup (device, random seed, logger),
+differentiable 1D interpolation and grid sampling, and straight-through
+estimators for rounding and quantization.
+"""
+
 import logging
 import os
 import random
@@ -52,7 +60,7 @@ def img2batch(img):
                 # Assume (H, W, C) -> (1, C, H, W)
                 img = img.permute(2, 0, 1).unsqueeze(0)
             else:
-                 raise ValueError("Image channel should be 1 or 3.")
+                raise ValueError("Image channel should be 1 or 3.")
         else:
             raise ValueError("Image should be numpy array or torch tensor.")
 
@@ -85,6 +93,7 @@ def batch_PSNR(img_clean, img):
         img_clean.mul(255).add_(0.5).clamp_(0, 255).to("cpu", torch.uint8).numpy()
     )
     from skimage.metrics import peak_signal_noise_ratio
+
     PSNR = 0.0
     for i in range(Img.shape[0]):
         PSNR += peak_signal_noise_ratio(Img_clean[i, :, :, :], Img[i, :, :, :])
@@ -153,6 +162,7 @@ def batch_ssim(img, img_clean):
     )
 
     from skimage.metrics import structural_similarity
+
     SSIM = 0.0
     for i in range(Img.shape[0]):
         # Auto detect if multichannel based on number of dimensions
@@ -287,6 +297,7 @@ def create_video_from_images(image_folder, output_video_path, fps=30):
 
     # Iterate through images and write them to the video
     from tqdm import tqdm
+
     for image_path in tqdm(images):
         img = cv.imread(image_path)
         video_writer.write(img)
@@ -335,37 +346,75 @@ def set_seed(seed=0):
     torch.backends.cudnn.enabled = False
 
 
-def set_logger(dir="./"):
-    """Configure the root logger to stream to console and write to a file.
+def set_logger(output_dir="./"):
+    """Configure the root logger with one console and one DeepLens file handler.
 
-    Adds a stdout `StreamHandler` and a `FileHandler` writing to
-    `{dir}/output.log`, both at INFO level, with a timestamped format.
+    Repeated calls reuse the DeepLens console handler and replace the owned file
+    handler only when the target path changes. Handlers installed by the host
+    application or test runner are left untouched.
 
     Args:
-        dir (str, optional): Directory for the `output.log` file.
-            Defaults to "./".
+        output_dir (str or os.PathLike, optional): Directory for `output.log`.
+            It is created when needed. Defaults to "./".
+
+    Returns:
+        logger (logging.Logger): The configured root logger.
     """
+    output_dir = os.fspath(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.abspath(os.path.join(output_dir, "output.log"))
+
     logger = logging.getLogger()
-    logger.setLevel("DEBUG")
-    BASIC_FORMAT = "%(asctime)s:%(levelname)s:%(message)s"
-    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-    formatter = logging.Formatter(BASIC_FORMAT, DATE_FORMAT)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s:%(levelname)s:%(message)s", "%Y-%m-%d %H:%M:%S"
+    )
 
-    chlr = logging.StreamHandler()
-    chlr.setFormatter(formatter)
-    chlr.setLevel("INFO")
+    owned_handlers = [
+        handler
+        for handler in logger.handlers
+        if getattr(handler, "_deeplens_handler", False)
+    ]
+    console_handler = next(
+        (
+            handler
+            for handler in owned_handlers
+            if isinstance(handler, logging.StreamHandler)
+            and not isinstance(handler, logging.FileHandler)
+        ),
+        None,
+    )
+    file_handler = next(
+        (
+            handler
+            for handler in owned_handlers
+            if isinstance(handler, logging.FileHandler)
+            and os.path.abspath(handler.baseFilename) == output_path
+        ),
+        None,
+    )
 
-    fhlr = logging.FileHandler(f"{dir}/output.log")
-    fhlr.setFormatter(formatter)
-    fhlr.setLevel("INFO")
+    retained = {handler for handler in (console_handler, file_handler) if handler}
+    for handler in owned_handlers:
+        if handler not in retained:
+            logger.removeHandler(handler)
+            handler.close()
 
-    # fhlr2 = logging.FileHandler(f"{dir}/error.log")
-    # fhlr2.setFormatter(formatter)
-    # fhlr2.setLevel('WARNING')
+    if console_handler is None:
+        console_handler = logging.StreamHandler()
+        console_handler._deeplens_handler = True
+        logger.addHandler(console_handler)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
 
-    logger.addHandler(chlr)
-    logger.addHandler(fhlr)
-    # logger.addHandler(fhlr2)
+    if file_handler is None:
+        file_handler = logging.FileHandler(output_path)
+        file_handler._deeplens_handler = True
+        logger.addHandler(file_handler)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+
+    return logger
 
 
 # ==================================

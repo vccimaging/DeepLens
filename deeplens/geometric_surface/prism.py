@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -9,9 +9,9 @@
 import numpy as np
 import torch
 
-from .base import Surface
-from .plane import Plane
+from .base_surface import Surface
 from .mirror import Mirror
+from .plane import Plane
 
 
 class Prism(Surface):
@@ -44,14 +44,14 @@ class Prism(Surface):
             device (str, optional): Device for tensor computations. Defaults to "cpu".
         """
         Surface.__init__(self, r, d_next, mat2=mat2, is_square=True, device=device)
-        
+
         self.mirror_angle = torch.as_tensor(
             mirror_angle * torch.pi / 180.0,
             device=device,
             dtype=self.d_next.dtype,
         )
         self._init_surfaces()
-        
+
     def _init_surfaces(self):
         """Build the entry plane, internal mirror, and exit plane sub-surfaces.
 
@@ -71,10 +71,10 @@ class Prism(Surface):
         r = self.r
         device = self.device
         mirror_angle = self.mirror_angle.item()
-        
+
         # Plane 1 at the prism entrance; its thickness reaches the mirror.
-        pos_xy = [0., 0.]
-        vec_local = [0., 0., 1.]
+        pos_xy = [0.0, 0.0]
+        vec_local = [0.0, 0.0, 1.0]
         self.plane1 = Plane(
             r=r,
             d_next=r * float(np.tan(mirror_angle)),
@@ -83,10 +83,10 @@ class Prism(Surface):
             mat2=mat2,
             device=device,
         )
-        
-        # Mirror inside the prism 
-        pos_xy = [0., 0.]
-        vec_local = [0., -1., 1.]
+
+        # Mirror inside the prism
+        pos_xy = [0.0, 0.0]
+        vec_local = [0.0, -1.0, 1.0]
         self.mirror = Mirror(
             r=r,
             d_next=0.0,
@@ -94,10 +94,10 @@ class Prism(Surface):
             vec_local=vec_local,
             device=device,
         )
-        
+
         # Plane 2 at the prism exit
-        pos_xy = [0., r]
-        vec_local = [0., 1., 0.]
+        pos_xy = [0.0, r]
+        vec_local = [0.0, 1.0, 0.0]
         self.exit_plane = Plane(
             r=r,
             d_next=0.0,
@@ -108,7 +108,7 @@ class Prism(Surface):
         )
 
         self.surfaces = [self.plane1, self.mirror, self.exit_plane]
-    
+
     @classmethod
     def init_from_dict(cls, surf_dict):
         """Construct a Prism from a surface dictionary.

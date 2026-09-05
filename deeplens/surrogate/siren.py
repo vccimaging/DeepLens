@@ -1,3 +1,5 @@
+"""SIREN layer (linear + sine) and the sine activation module."""
+
 import math
 
 import torch

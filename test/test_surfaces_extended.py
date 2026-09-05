@@ -124,7 +124,9 @@ class TestQTypeFreeform:
 
     def test_init(self):
         """QTypeFreeform can be initialized."""
-        s = QTypeFreeform(r=5.0, d_next=0.0, c=0.1, k=0.0, qm=[0.001, 0.0001], mat2="bk7")
+        s = QTypeFreeform(
+            r=5.0, d_next=0.0, c=0.1, k=0.0, qm=[0.001, 0.0001], mat2="bk7"
+        )
         assert s.n_qterms == 2
 
     def test_sag_center_zero(self):
@@ -150,7 +152,9 @@ class TestQTypeFreeform:
 
     def test_surf_dict_roundtrip(self):
         """surf_dict returns dict with Q coefficients."""
-        s = QTypeFreeform(r=5.0, d_next=0.0, c=0.1, k=0.0, qm=[0.001, 0.0001], mat2="bk7")
+        s = QTypeFreeform(
+            r=5.0, d_next=0.0, c=0.1, k=0.0, qm=[0.001, 0.0001], mat2="bk7"
+        )
         d = s.surf_dict()
         assert d["type"] == "QTypeFreeform"
         assert len(d["qm"]) == 2

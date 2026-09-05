@@ -20,7 +20,7 @@ from deeplens.config import DEPTH
 # =====================================================================
 # lens = GeoLens(filename="./datasets/lenses/camera/ef35mm_f2.0.json")
 # lens = GeoLens(filename="./datasets/lenses/camera/ef35mm_f2.0.zmx")
-lens = GeoLens(filename='./datasets/lenses/cellphone/cellphone80deg.json')
+lens = GeoLens(filename="./datasets/lenses/cellphone/cellphone80deg.json")
 # lens = GeoLens(filename='./datasets/lenses/zemax_double_gaussian.zmx')
 
 save_name = "./lens"

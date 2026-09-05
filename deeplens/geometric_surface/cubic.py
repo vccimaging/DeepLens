@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 
-from .base import Surface
+from .base_surface import Surface
 
 
 class Cubic(Surface):

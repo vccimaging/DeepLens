@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -18,7 +18,7 @@ Reference:
 
 import torch
 
-from .diffractive import DiffractiveSurface
+from .base_diffractive import DiffractiveSurface
 
 
 class RotationallySymmetric(DiffractiveSurface):
@@ -91,8 +91,14 @@ class RotationallySymmetric(DiffractiveSurface):
             ValueError: If `init` is not "fresnel" or "flat".
         """
         super().__init__(
-            d_next=d_next, res=res, mat=mat, wvln0=wvln0, fab_ps=fab_ps,
-            fab_step=fab_step, is_square=is_square, device=device,
+            d_next=d_next,
+            res=res,
+            mat=mat,
+            wvln0=wvln0,
+            fab_ps=fab_ps,
+            fab_step=fab_step,
+            is_square=is_square,
+            device=device,
         )
         self.n_rings = self.res[0] // 2 if n_rings is None else n_rings
         self.circular = circular

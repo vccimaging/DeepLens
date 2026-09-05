@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -21,14 +21,13 @@ import torch.nn as nn
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
+from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
 from .geolens import GeoLens
 from .geolens_pkg.optim import get_cosine_schedule_with_warmup
+from .imgsim import rotate_psf, splat_psf_per_pixel
 from .lens import Lens
 from .surrogate import MLP
 from .surrogate.psfnet_mplconv import PSFNet_MLPConv
-from .config import DEFAULT_WAVE, DEPTH, PSF_KS, WAVE_RGB
-from .imgsim import rotate_psf, splat_psf_per_pixel
-
 
 _SAFE_WEIGHTS_ONLY_TORCH = (2, 10)
 _DEFAULT_CHECKPOINT_LIMIT = 2 * 1024**3
@@ -43,7 +42,9 @@ def _torch_release_tuple(version):
     return int(match.group(1)), int(match.group(2))
 
 
-def _load_psfnet_checkpoint(path, *, trusted=False, max_bytes=_DEFAULT_CHECKPOINT_LIMIT):
+def _load_psfnet_checkpoint(
+    path, *, trusted=False, max_bytes=_DEFAULT_CHECKPOINT_LIMIT
+):
     """Load a checkpoint without silently crossing the pickle trust boundary."""
     size = os.path.getsize(path)
     if size > max_bytes:
@@ -258,8 +259,13 @@ class PSFNetLens(Lens):
             for key, value in weights.items()
         ):
             raise ValueError("PSFNet model weights must be a string-to-tensor mapping.")
-        if sum(value.numel() for value in weights.values()) > _DEFAULT_TENSOR_ELEMENT_LIMIT:
-            raise ValueError("PSFNet checkpoint tensor payload exceeds the element limit.")
+        if (
+            sum(value.numel() for value in weights.values())
+            > _DEFAULT_TENSOR_ELEMENT_LIMIT
+        ):
+            raise ValueError(
+                "PSFNet checkpoint tensor payload exceeds the element limit."
+            )
 
         expected = self.psfnet.state_dict()
         if set(weights) != set(expected):
@@ -278,8 +284,8 @@ class PSFNetLens(Lens):
             raise ValueError(f"PSFNet checkpoint tensor shape mismatch: {bad_shapes}.")
 
         print(
-            f"Pretrained model lens pixel size: {psfnet_dict['pixel_size']*1000.0:.1f} um, "
-            f"Current lens pixel size: {self.pixel_size*1000.0:.1f} um"
+            f"Pretrained model lens pixel size: {psfnet_dict['pixel_size'] * 1000.0:.1f} um, "
+            f"Current lens pixel size: {self.pixel_size * 1000.0:.1f} um"
         )
         print(
             f"Pretrained model lens path: {psfnet_dict['lens_path']}, "
