@@ -68,11 +68,11 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/singer-yang/DeepLens"
-Repository = "https://github.com/singer-yang/DeepLens"
+Homepage = "https://github.com/vccimaging/DeepLens"
+Repository = "https://github.com/vccimaging/DeepLens"
 Documentation = "https://vccimaging.github.io/DeepLens/"
-Issues = "https://github.com/singer-yang/DeepLens/issues"
-Changelog = "https://github.com/singer-yang/DeepLens/releases"
+Issues = "https://github.com/vccimaging/DeepLens/issues"
+Changelog = "https://github.com/vccimaging/DeepLens/releases"
 
 [tool.setuptools.package-data]
 deeplens = ["material/*.AGF", "material/*.json"]

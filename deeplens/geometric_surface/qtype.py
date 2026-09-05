@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -32,7 +32,7 @@ Reference:
 import numpy as np
 import torch
 
-from .base import EPSILON, Surface
+from .base_surface import EPSILON, Surface
 
 
 def compute_qbfs_polynomials(u2, n_terms):
@@ -227,6 +227,21 @@ class QTypeFreeform(Surface):
             mat2=surf_dict["mat2"],
             r_norm=surf_dict.get("r_norm", None),
         )
+
+    def paraxial_power(self, n1, n2):
+        """Return the paraxial optical power of this surface [1/mm].
+
+        Only the vertex curvature contributes: the Q-polynomial departure
+        starts at the 4th order, so it does not affect first-order properties.
+
+        Args:
+            n1 (torch.Tensor): Refractive index of the incident medium.
+            n2 (torch.Tensor): Refractive index of the transmission medium.
+
+        Returns:
+            power (torch.Tensor): Surface power `(n2 - n1) * c` [1/mm], scalar.
+        """
+        return (n2 - n1) * self.c
 
     def _sag(self, x, y):
         """Compute the surface sag $z = f(x, y)$.

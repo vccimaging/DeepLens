@@ -1,3 +1,5 @@
+"""Modulated SIREN: a SIREN synthesizer scaled per-layer by a latent-conditioned modulator."""
+
 import math
 from os.path import exists
 

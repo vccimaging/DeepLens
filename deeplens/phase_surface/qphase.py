@@ -1,8 +1,12 @@
-"""Quartic (Q-type) phase on a plane substrate."""
+"""Quartic-polynomial phase on a plane substrate.
+
+A plain monomial polynomial in normalized (x, y), unrelated to the Forbes
+Q-polynomials of `deeplens.geometric_surface.qtype`.
+"""
 
 import torch
 
-from .phase import Phase
+from .base_phase import Phase
 
 
 class QuarticPhase(Phase):

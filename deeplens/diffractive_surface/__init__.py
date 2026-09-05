@@ -2,7 +2,7 @@
 
 from .binary2 import Binary2
 from .diffracted_rotation import DiffractedRotation
-from .diffractive import DiffractiveSurface
+from .base_diffractive import DiffractiveSurface
 from .fresnel import Fresnel
 from .grating import Grating
 from .pixel2d import Pixel2D

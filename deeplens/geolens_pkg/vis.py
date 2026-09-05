@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -159,7 +159,7 @@ class GeoLensVis:
 
         # Sample points (second point) on the pupil
         if entrance_pupil:
-            pupilz, pupilr = self.calc_entrance_pupil()
+            pupilz, pupilr = self.calc_entrance_pupil_rayaiming()
         else:
             pupilz, pupilr = self.surf_d(0).item(), self.surfaces[0].r
 
@@ -224,7 +224,7 @@ class GeoLensVis:
             wvl_nm = [int(round(w * 1000)) for w in self.wvln_rgb]  # µm → nm
 
             if self.aper_idx is not None:
-                _, pupil_r = self.calc_entrance_pupil()
+                _, pupil_r = self.calc_entrance_pupil_rayaiming()
                 fnum = round(eff_foclen / pupil_r / 2, 2)
                 line1 = (
                     f"FocLen{eff_foclen}mm - F/{fnum} - FoV{fov_deg} - "

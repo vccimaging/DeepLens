@@ -244,7 +244,7 @@ class Aperture(Plane):
             rim (RimCurve): Closed-loop rim curve built from the outer ring vertices.
         """
         # Import RimCurve from base module
-        from .base import RimCurve
+        from .base_surface import RimCurve
 
         # Get outer ring vertices (second half of vertices array)
         start_idx = n_arms  # Start of outer ring

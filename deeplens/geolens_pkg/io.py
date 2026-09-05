@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -949,7 +949,6 @@ SURF 0
             After loading, the lens is moved to `self.device`.
         """
         self.surfaces = []
-        self.materials = []
         with open(filename, "r") as f:
             data = json.load(f)
             for idx, surf_dict in enumerate(data["surfaces"]):

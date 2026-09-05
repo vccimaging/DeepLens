@@ -1,5 +1,5 @@
 # Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
-# This file is part of DeepLens (https://github.com/singer-yang/DeepLens).
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
 #
 # Licensed under the Apache License, Version 2.0.
 # See LICENSE file in the project root for full license information.
@@ -22,9 +22,12 @@ Functions:
     - loss_bound: Penalize geometry-bound violations (clearance and envelope)
     - loss_cra: Penalize chief ray angle at sensor exceeding chief_ray_angle_max
     - loss_ray_bend: Penalize accumulated per-surface bend angles exceeding bend_angle_max
+    - loss_mat: Penalize refractive index and Abbe number outside manufacturable ranges
     - loss_rms: RGB spot RMS with optional centroid reference and distortion regularization
     - sample_ring_arm_rays: Sample rays from object space using a ring-arm pattern
     - optimize: Optimize the lens by minimizing rms errors
+    - find_diff_surf: List the surfaces holding optimizable parameters
+    - get_optimizer_params, get_optimizer: Build parameter groups and the optimizer
 """
 
 import logging
