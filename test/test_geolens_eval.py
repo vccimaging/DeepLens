@@ -216,6 +216,89 @@ class TestChiefRay:
 
         assert calls == [("chief_ray", True), ("chief_ray", False), ("pinhole", False)]
 
+    def test_psf_center_no_stop_falls_back_to_pinhole(
+        self, sample_cellphone_lens, caplog
+    ):
+        lens = sample_cellphone_lens
+        points = torch.tensor(
+            [[0.0, 20.0, lens.obj_depth]], device=lens.device, dtype=lens.dtype
+        )
+        pinhole = lens.psf_center(points, method="pinhole")
+
+        lens.aper_idx = None
+        center = lens.psf_center(points, method="chief_ray")
+
+        torch.testing.assert_close(center, pinhole)
+        assert "no aperture stop" in caplog.text
+
+    def test_chief_or_centroid_falls_back_per_field(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        device = lens.device
+        o = torch.rand(2, 4, 3, device=device, dtype=lens.dtype)
+        d = torch.tensor([[0.0, 0.0, 1.0]], device=device, dtype=lens.dtype).expand(
+            2, 4, 3
+        )
+        ray = Ray(o.clone(), d, wvln=lens.primary_wvln, device=device)
+        inf = float("inf")
+        ray.stop_dist = torch.tensor(
+            [[0.8, 0.05, 0.4, 0.6], [inf, inf, inf, inf]],
+            device=device,
+            dtype=lens.dtype,
+        )
+
+        xy = lens._chief_or_centroid_xy(ray)
+
+        # Field 0: chief-ray sample (index 1). Field 1: no sample reached the
+        # stop, so the valid-ray centroid is used instead.
+        torch.testing.assert_close(xy[0], ray.o[0, 1, :2])
+        torch.testing.assert_close(xy[1], ray.o[1].mean(dim=0)[:2])
+
+    def test_fov_mode_full_field_camera_lens(self, sample_camera_lens):
+        # Regression for the removed fan-based ray aiming: the discrete
+        # selection must stay close to the stop centre at full field, where
+        # the old single-pass fan missed by ~0.12 stop radii on this lens.
+        lens = sample_camera_lens
+        rfov_deg = float(lens.rfov * 180.0 / torch.pi)
+        angles = torch.tensor(
+            [0.5 * rfov_deg, rfov_deg], device=lens.device, dtype=torch.float32
+        )
+
+        torch.manual_seed(5)
+        chief = lens.calc_chief_ray(fov=angles)
+
+        assert chief.o.shape == (2, 1, 3)
+        assert chief.is_valid.all()
+        assert chief.stop_reached.all()
+        assert (chief.stop_residual_normalized < 0.1).all()
+
+    def test_fov_mode_heights_increase_and_record_path(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        rfov_deg = float(lens.rfov * 180.0 / torch.pi)
+        angles = torch.linspace(0.2 * rfov_deg, rfov_deg, 4, device=lens.device)
+
+        torch.manual_seed(5)
+        chief, path = lens.calc_chief_ray(fov=angles, record=True)
+
+        assert chief.o.shape == (4, 1, 3)
+        assert chief.is_valid.all()
+        heights = chief.o[:, 0, 1].abs()
+        assert (heights[1:] > heights[:-1]).all()
+        assert len(path) == len(lens.surfaces) + 2
+        assert all(p.shape == (4, 1, 3) for p in path)
+        torch.testing.assert_close(path[-1], chief.o)
+
+    def test_fov_mode_rejects_bad_inputs(self, sample_cellphone_lens):
+        lens = sample_cellphone_lens
+        with pytest.raises(ValueError, match="Invalid plane"):
+            lens.calc_chief_ray(fov=[0.0, 5.0], plane="diagonal")
+        with pytest.raises(ValueError, match="1-D"):
+            lens.calc_chief_ray(fov=[[0.0, 5.0]])
+        points = torch.tensor(
+            [[0.0, 0.0, lens.obj_depth]], device=lens.device, dtype=lens.dtype
+        )
+        with pytest.raises(ValueError, match="exactly one"):
+            lens.calc_chief_ray(points, fov=[5.0])
+
 
 class TestRMSMap:
     """Tests for rms_map and rms_map_rgb."""
