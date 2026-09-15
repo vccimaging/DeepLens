@@ -22,6 +22,7 @@ einops>=0.7.0
 
 # Utilities
 tqdm>=4.65.0
+pyyaml>=6.0  # scripts/1_design_hybridlens.py, scripts/2_autolens_rms.py
 
 # Jupyter Notebook
 jupyter>=1.0.0
