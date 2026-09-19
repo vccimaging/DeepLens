@@ -137,6 +137,27 @@ class TestZMXIO:
         aper2 = next(s for s in lens2.surfaces if isinstance(s, Aperture))
         assert aper2.r == pytest.approx(1.234, abs=1e-3)
 
+    def test_write_zmx_keeps_catalog_glass_name(self, lenses_dir, test_output_dir):
+        """Catalog glasses export by name (with their GCAT); n/V stays model glass."""
+        from deeplens import GeoLens
+        from deeplens.material import Material
+
+        lens = GeoLens(filename=str(Path(lenses_dir) / "camera/ef35mm_f2.0.zmx"))
+        glass = [s for s in lens.surfaces if s.mat2.name != "air"]
+        glass[0].mat2 = Material("n-bk7")
+        glass[1].mat2 = Material("1.6/50.0")
+        output = Path(test_output_dir) / "named_glass.zmx"
+        lens.write_lens_zmx(str(output))
+
+        zmx = output.read_text()
+        assert "GLAS N-BK7 0 0 " in zmx
+        assert "GLAS ___BLANK 1 0 1.6 50.0" in zmx
+        assert "SCHOTT" in next(l for l in zmx.splitlines() if l.startswith("GCAT"))
+
+        reread = GeoLens(filename=str(output))
+        names = [s.mat2.name for s in reread.surfaces if s.mat2.name != "air"]
+        assert names[:2] == ["n-bk7", "1.6/50.0"]
+
     def test_unknown_named_glass_uses_embedded_model_values(
         self, lenses_dir, test_output_dir
     ):

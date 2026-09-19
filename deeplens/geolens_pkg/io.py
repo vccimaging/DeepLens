@@ -360,6 +360,8 @@ class GeoLensIO:
             enpd_str = "FLOA"
         else:
             enpd_str = f"ENPD {self.enpd}"
+        # Catalogs Zemax must load to resolve the named glasses (MISC always).
+        gcat = {s.mat2.zmx_catalog() for s in self.surfaces} - {None} | {"MISC"}
         # Head string. Top-level directives are written at column 0 (not
         # indented to the surrounding Python block) so the emitted Zemax header
         # has no leading whitespace; the SURF 0 sub-keywords are indented to
@@ -373,7 +375,7 @@ UNIT MM X W X CM MR CPMM
 {enpd_str}
 ENVD 2.0E+1 1 0
 GFAC 0 0
-GCAT OSAKAGASCHEMICAL MISC
+GCAT {" ".join(sorted(gcat))}
 XFLN 0. 0. 0.
 YFLN 0.0 {0.707 * self.rfov_eff * 57.3} {0.99 * self.rfov_eff * 57.3}
 WAVL {self.wvln_rgb[2]:.7f} {self.wvln_rgb[1]:.7f} {self.wvln_rgb[0]:.7f}

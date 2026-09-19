@@ -407,7 +407,7 @@ class Spheric(Surface):
     TYPE STANDARD 
     CURV {self.c.item()} 
     DISZ {d_next.item()} 
-    GLAS ___BLANK 1 0 {self.mat2.n} {self.mat2.V}
+    GLAS {self.mat2.zmx_glass()}
     DIAM {self.r} 1 0 0 1 ""
 """
         return zmx_str

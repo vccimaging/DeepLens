@@ -91,6 +91,13 @@ SCHOTT_data = read_agf(os.path.join(_dir, "SCHOTT.AGF"))
 MISC_data = read_agf(os.path.join(_dir, "MISC.AGF"))
 PLASTIC_data = read_agf(os.path.join(_dir, "PLASTIC2022.AGF"))
 MATERIAL_data = {**MISC_data, **PLASTIC_data, **CDGM_data, **SCHOTT_data}
+# Zemax catalog name for each bundled AGF, in MATERIAL_data precedence order.
+ZMX_CATALOGS = {
+    "SCHOTT": SCHOTT_data,
+    "CDGM": CDGM_data,
+    "PLASTIC2022": PLASTIC_data,
+    "MISC": MISC_data,
+}
 
 
 # ===========================================
@@ -201,6 +208,24 @@ class Material(DeepObj):
             return f"{self.n.item():.4f}/{self.V.item():.2f}"
         else:
             return self.name
+
+    def zmx_catalog(self):
+        """Return the Zemax catalog holding this glass, or None for model glass."""
+        if self.dispersion == "optimizable":
+            return None
+        return next((c for c, d in ZMX_CATALOGS.items() if self.name in d), None)
+
+    def zmx_glass(self):
+        """Return the Zemax `GLAS` record body for this material.
+
+        Catalog glasses are written by name; anything Zemax cannot look up
+        (inline n/V, optimizable, custom-table materials) is written as model
+        glass. nd/Vd are always included so readers can fall back to them.
+        """
+        n, V = float(self.n), float(self.V)
+        if self.zmx_catalog() is None:
+            return f"___BLANK 1 0 {n} {V}"
+        return f"{self.name.upper()} 0 0 {n} {V}"
 
     # -------------------------------------------
     # Load dispersion equation
