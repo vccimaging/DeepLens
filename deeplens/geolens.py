@@ -972,8 +972,9 @@ class GeoLens(
             1. **Perspective projection** — from focal length and sensor size
                (effective FoV, ignoring distortion).
             2. **Forward ray tracing** — sweeps FOV angles from object side,
-               traces to sensor, and finds the angle whose centroid image height
-               matches the sensor half-diagonal. This avoids the failure of the
+               traces to sensor, and interpolates the first angle whose centroid
+               reaches the sensor half-diagonal. If a field loses its rays first,
+               uses the preceding surviving field. This avoids the failure of the
                old backward-tracing approach on wide-angle lenses where pupil
                aberration at full field leaves zero valid rays.
 
@@ -1013,17 +1014,31 @@ class GeoLens(
 
         # Centroid image height per FOV angle, shape [num_fov]
         valid = ray.is_valid > 0  # [num_fov, num_rays]
-        masked_y = ray.o[..., 1] * valid
+        masked_y = torch.where(valid, ray.o[..., 1], 0.0)
         n_valid = valid.sum(dim=-1).clamp(min=1)
         imgh = (masked_y.sum(dim=-1) / n_valid).abs()
 
-        # Find the FOV angle whose image height is closest to r_sensor
+        # Stop at the first crossing or lost field; a folded outer image must
+        # not be mistaken for a larger usable field of view.
         has_valid = valid.sum(dim=-1) > 10
         if has_valid.any():
-            imgh[~has_valid] = float("inf")
-            diff = (imgh - self.r_sensor).abs()
-            best_idx = diff.argmin().item()
-            rfov = fov_samples[best_idx].item() * math.pi / 180.0
+            beyond = (~has_valid) | (imgh >= self.r_sensor)
+            if not beyond.any():
+                best_deg = fov_samples[-1]
+            else:
+                idx = int(beyond.int().argmax())
+                if idx == 0:
+                    best_deg = fov_samples[0]
+                elif has_valid[idx]:
+                    fraction = (self.r_sensor - imgh[idx - 1]) / (
+                        imgh[idx] - imgh[idx - 1]
+                    ).clamp_min(EPSILON)
+                    best_deg = fov_samples[idx - 1] + fraction * (
+                        fov_samples[idx] - fov_samples[idx - 1]
+                    )
+                else:
+                    best_deg = fov_samples[idx - 1]
+            rfov = math.radians(float(best_deg))
             self.rfov = rfov
             self.real_dfov = 2 * rfov
         else:
@@ -1521,12 +1536,8 @@ class GeoLens(
         self.real_dfov = 2 * self.rfov
         self.foclen = self.r_sensor / math.tan(self.rfov_eff)
         self.eqfl = 21.63 / math.tan(self.rfov_eff)
-        self.fnum = fnum
-        aper_r = self.foclen / fnum / 2
-        self.surfaces[self.aper_idx].update_r(float(aper_r))
-
-        # Update pupil after setting aperture radius
-        self.calc_pupil()
+        # F-number specifies the entrance pupil, not an internal stop's radius.
+        self.set_fnum(fnum)
 
     @torch.no_grad()
     def set_fov(self, rfov):

@@ -331,9 +331,10 @@ class GeoLensOptim:
     def loss_bound(self):
         """Penalize geometry-bound violations in a single surface-sampling pass.
 
-        Each surface pair is sampled once and its distances feed both the
-        clearance (min) and envelope (max) relu penalties for air gaps,
-        glass thickness, BFL, and TTL.
+        Each surface pair is sampled over its shared physical radius and at
+        each surface's own rim. These distances feed both the clearance (min)
+        and envelope (max) relu penalties for air gaps, glass thickness, BFL,
+        and TTL, without extrapolating beyond either surface.
 
         Returns:
             loss_clearance (torch.Tensor): Scalar clearance penalty for parts
@@ -380,7 +381,9 @@ class GeoLensOptim:
                 r_center, 0.0, valid_check=False, d=self.surf_d(i + 1)
             )
 
-            r_edge = torch.linspace(0.5, 1.0, 16, device=self.device) * current_surf.r
+            r_edge = torch.linspace(0.0, 1.0, 16, device=self.device) * min(
+                current_surf.r, next_surf.r
+            )
             z_prev_edge = current_surf.surface_with_offset(
                 r_edge, 0.0, valid_check=False, d=self.surf_d(i)
             )
@@ -390,6 +393,19 @@ class GeoLensOptim:
 
             dist_center = z_next_center - z_prev_center
             dist_edges = z_next_edge - z_prev_edge
+            # Keep the same physical-rim sag bracket used by prune_surf.
+            rim_gap = next_surf.surface_with_offset(
+                torch.as_tensor(next_surf.r, device=self.device),
+                0.0,
+                valid_check=False,
+                d=self.surf_d(i + 1),
+            ) - current_surf.surface_with_offset(
+                torch.as_tensor(current_surf.r, device=self.device),
+                0.0,
+                valid_check=False,
+                d=self.surf_d(i),
+            )
+            dist_edges = torch.cat((dist_edges, rim_gap.reshape(1)))
             dist_edge_lo = torch.min(dist_edges)
             dist_edge_hi = torch.max(dist_edges)
 
