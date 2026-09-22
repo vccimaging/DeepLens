@@ -91,11 +91,12 @@ SCHOTT_data = read_agf(os.path.join(_dir, "SCHOTT.AGF"))
 MISC_data = read_agf(os.path.join(_dir, "MISC.AGF"))
 PLASTIC_data = read_agf(os.path.join(_dir, "PLASTIC2022.AGF"))
 MATERIAL_data = {**MISC_data, **PLASTIC_data, **CDGM_data, **SCHOTT_data}
-# Zemax catalog name for each bundled AGF, in MATERIAL_data precedence order.
+# Zemax catalog name for each bundled AGF that OpticStudio ships, in
+# MATERIAL_data precedence order. PLASTIC2022.AGF is a DeepLens compilation of
+# vendor plastics, not a Zemax catalog, so its glasses export as model glass.
 ZMX_CATALOGS = {
     "SCHOTT": SCHOTT_data,
     "CDGM": CDGM_data,
-    "PLASTIC2022": PLASTIC_data,
     "MISC": MISC_data,
 }
 
@@ -222,7 +223,9 @@ class Material(DeepObj):
         (inline n/V, optimizable, custom-table materials) is written as model
         glass. nd/Vd are always included so readers can fall back to them.
         """
-        n, V = float(self.n), float(self.V)
+        # .item() on optimizable (requires_grad) tensors; float() would warn.
+        n = round(self.n.item() if torch.is_tensor(self.n) else self.n, 6)
+        V = round(self.V.item() if torch.is_tensor(self.V) else self.V, 6)
         if self.zmx_catalog() is None:
             return f"___BLANK 1 0 {n} {V}"
         return f"{self.name.upper()} 0 0 {n} {V}"

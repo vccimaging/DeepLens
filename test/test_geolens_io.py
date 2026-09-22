@@ -146,13 +146,19 @@ class TestZMXIO:
         glass = [s for s in lens.surfaces if s.mat2.name != "air"]
         glass[0].mat2 = Material("n-bk7")
         glass[1].mat2 = Material("1.6/50.0")
+        glass[2].mat2 = Material("okp4")  # PLASTIC2022: not a Zemax catalog
+        glass[3].mat2 = Material("h-k9l")
+        glass[3].mat2.get_optimizer_params()  # optimizable: n/V no longer catalog
         output = Path(test_output_dir) / "named_glass.zmx"
         lens.write_lens_zmx(str(output))
 
         zmx = output.read_text()
         assert "GLAS N-BK7 0 0 " in zmx
         assert "GLAS ___BLANK 1 0 1.6 50.0" in zmx
-        assert "SCHOTT" in next(l for l in zmx.splitlines() if l.startswith("GCAT"))
+        assert "OKP4" not in zmx and "H-K9L" not in zmx
+        assert zmx.count("GLAS ___BLANK") == len(glass) - 1
+        gcat = next(l for l in zmx.splitlines() if l.startswith("GCAT")).split()
+        assert gcat == ["GCAT", "MISC", "SCHOTT"]
 
         reread = GeoLens(filename=str(output))
         names = [s.mat2.name for s in reread.surfaces if s.mat2.name != "air"]
