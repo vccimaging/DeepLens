@@ -56,8 +56,9 @@ dev = [
     "jupyter>=1.0.0",
     "notebook>=7.0.0",
     "ipywidgets>=8.0.0",
-    # Only needed to regenerate material/refractiveindex_data.json via
-    # deeplens/material/build_refractiveindex_data.py; not a runtime dependency.
+    # Needed by the config-driven scripts (scripts/1_design_hybridlens.py,
+    # scripts/2_autolens_rms.py) and to regenerate
+    # material/refractiveindex_data.json; not a library runtime dependency.
     "pyyaml>=6.0",
 ]
 docs = [
