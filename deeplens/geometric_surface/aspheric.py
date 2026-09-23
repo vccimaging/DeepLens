@@ -230,11 +230,12 @@ class Aspheric(Surface):
         if self.ai2 is not None:
             total_surface = total_surface + self.ai2 * r2
 
-        # Aspheric polynomial: ai4*r⁴ + ai6*r⁶ + ai8*r⁸ + ...
-        r_pow = r2 * r2  # starts at r^4
-        for i in range(self.ai_degree):
-            total_surface = total_surface + getattr(self, f"ai{2 * (i + 2)}") * r_pow
-            r_pow = r_pow * r2
+        # Horner form: r⁴ * (a4 + r² * (a6 + r² * (...))).
+        if self.ai_degree > 0:
+            polynomial = getattr(self, f"ai{2 * (self.ai_degree + 1)}")
+            for i in range(self.ai_degree - 2, -1, -1):
+                polynomial = getattr(self, f"ai{2 * (i + 2)}") + r2 * polynomial
+            total_surface = total_surface + r2 * r2 * polynomial
 
         return total_surface
 
@@ -265,12 +266,13 @@ class Aspheric(Surface):
         if self.ai2 is not None:
             dsdr2 = dsdr2 + self.ai2
 
-        # Derivative of aspheric polynomial w.r.t. r²: 2*ai4*r² + 3*ai6*r⁴ + ...
-        r_pow = r2
-        for i in range(self.ai_degree):
-            order = i + 2  # 2, 3, 4, ...
-            dsdr2 = dsdr2 + order * getattr(self, f"ai{2 * order}") * r_pow
-            r_pow = r_pow * r2
+        # Horner form of the derivative: r² * (2*a4 + r² * (3*a6 + ...)).
+        if self.ai_degree > 0:
+            order = self.ai_degree + 1
+            polynomial = order * getattr(self, f"ai{2 * order}")
+            for order in range(self.ai_degree, 1, -1):
+                polynomial = order * getattr(self, f"ai{2 * order}") + r2 * polynomial
+            dsdr2 = dsdr2 + r2 * polynomial
 
         return dsdr2 * 2 * x, dsdr2 * 2 * y
 
