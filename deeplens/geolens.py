@@ -10,7 +10,6 @@ Technical Paper:
     Xinge Yang, Qiang Fu, and Wolfgang Heidrich, "Curriculum learning for ab initio deep learned refractive optics," Nature Communications 2024.
 """
 
-import logging
 import math
 
 import numpy as np
@@ -974,7 +973,8 @@ class GeoLens(
             2. **Forward ray tracing** — sweeps FOV angles from object side,
                traces to sensor, and interpolates the first angle whose centroid
                reaches the sensor half-diagonal. If a field loses its rays first,
-               uses the preceding surviving field. This avoids the failure of the
+               uses the preceding surviving field (zero if the on-axis field
+               is unavailable). This avoids the failure of the
                old backward-tracing approach on wide-angle lenses where pupil
                aberration at full field leaves zero valid rays.
 
@@ -1003,10 +1003,9 @@ class GeoLens(
         # Sweep FOV angles from object side, trace to sensor, and find which
         # angle produces an image height matching r_sensor.
         num_fov = 64
-        fov_lo = float(np.rad2deg(self.rfov_eff)) * 0.5
         fov_hi = min(float(np.rad2deg(self.rfov_eff)) * 1.8, 89.0)
         fov_samples = torch.linspace(
-            fov_lo, fov_hi, num_fov, device=self.device, dtype=self.dtype
+            0.0, fov_hi, num_fov, device=self.device, dtype=self.dtype
         )
 
         ray = self.sample_from_fov(fov_x=0.0, fov_y=fov_samples.tolist(), num_rays=256)
@@ -1042,8 +1041,8 @@ class GeoLens(
             self.rfov = rfov
             self.real_dfov = 2 * rfov
         else:
-            self.rfov = self.rfov_eff
-            self.real_dfov = self.dfov
+            self.rfov = 0.0
+            self.real_dfov = 0.0
 
         # 3. Compute 35mm equivalent focal length. 35mm sensor: 36mm * 24mm
         self.eqfl = 21.63 / math.tan(self.rfov_eff)
@@ -1487,32 +1486,48 @@ class GeoLens(
 
     @torch.no_grad()
     def set_fnum(self, fnum):
-        """Set F-number and aperture radius using binary search.
+        """Set F-number by bracketing the pupil radius, then bisecting.
 
         Args:
             fnum (float): target F-number.
+
+        Raises:
+            ValueError: F-number or target pupil radius is not finite and positive.
+            RuntimeError: The pupil target cannot be reached. The original
+                aperture radius is restored on failure.
         """
+        if not math.isfinite(fnum) or fnum <= 0:
+            raise ValueError("F-number must be finite and positive.")
         target_pupil_r = self.foclen / fnum / 2
-        aper_r = self.surfaces[self.aper_idx].r
-        lo, hi = 0.1 * aper_r, 5.0 * aper_r
-
-        pupilr = None
-        for _ in range(40):
-            mid = 0.5 * (lo + hi)
-            self.surfaces[self.aper_idx].update_r(float(mid))
-            _, pupilr = self.calc_entrance_pupil_rayaiming()
-            if abs(pupilr - target_pupil_r) / target_pupil_r < 1e-3:
-                break
-            if pupilr > target_pupil_r:
-                hi = mid
-            else:
-                lo = mid
-        else:
-            logging.warning(
-                f"set_fnum: did not converge, pupil_r={pupilr:.4f}, target={target_pupil_r:.4f}"
+        if not math.isfinite(target_pupil_r) or target_pupil_r <= 0:
+            raise ValueError("Target pupil radius must be finite and positive.")
+        aperture = self.surfaces[self.aper_idx]
+        original_r = aperture.r
+        lo, hi = 0.0, None
+        radius = original_r
+        try:
+            for _ in range(80):
+                aperture.update_r(float(radius))
+                radius = aperture.r  # update_r enforces the surface's physical limit.
+                _, pupilr = self.calc_entrance_pupil_rayaiming()
+                if not math.isfinite(pupilr) or pupilr <= 0:
+                    break
+                if abs(pupilr - target_pupil_r) / target_pupil_r < 1e-3:
+                    self.calc_pupil()
+                    return
+                if pupilr > target_pupil_r:
+                    hi = radius
+                else:
+                    if radius <= lo:
+                        break
+                    lo = radius
+                radius = 2 * radius if hi is None else 0.5 * (lo + hi)
+            raise RuntimeError(
+                f"Cannot reach F/{fnum}: target pupil radius {target_pupil_r:.6g} mm."
             )
-
-        self.calc_pupil()
+        except Exception:
+            aperture.update_r(original_r)
+            raise
 
     @torch.no_grad()
     def set_target_fov_fnum(self, rfov, fnum):
