@@ -72,8 +72,8 @@ Functions:
             field angles (infinite conjugates), or a traced bundle.
 
     Comprehensive Analysis:
-        analysis_spot: RMS and geometric spot radii averaged over RGB at
-            multiple field positions.
+        analysis_spot: RMS and geometric spot radii and ray throughput over RGB
+            at multiple field positions.
         analysis_rendering: Render a test image through the lens and report
             PSNR / SSIM.
         analysis: One-call entry point that chains layout drawing, spot
@@ -1549,7 +1549,7 @@ class GeoLensEval:
 
     @torch.no_grad()
     def analysis_spot(self, num_field=3, depth=float("inf")):
-        """Compute RMS and geometric spot radii at multiple field positions for RGB.
+        """Compute RGB spot radii and ray throughput at multiple field positions.
 
         Traces rays at ``num_field`` evenly-spaced field positions along the
         meridional direction for three wavelengths (R, G, B), and computes
@@ -1581,6 +1581,8 @@ class GeoLensEval:
                 ``'fov0.5'``, ``'fov1.0'``). Each value is a dict with:
                     - ``'rms'``: Polychromatic RMS spot radius in μm.
                     - ``'radius'``: Polychromatic geometric spot radius in μm.
+                    - ``'throughput'``: Fraction of sampled rays reaching the sensor;
+                      zero marks a lost field even when its spot radius is zero.
         """
         # Trace each wavelength and pool rays across wavelengths per field
         xy_list = []
@@ -1624,6 +1626,7 @@ class GeoLensEval:
         # Convert mm → μm
         avg_rms_radius_um = spot_rms * 1000.0
         avg_geo_radius_um = spot_radius * 1000.0
+        throughput = (valid_all > 0).float().mean(-1)
 
         # Print results
         print(f"Ray spot analysis results for depth {depth}:")
@@ -1632,6 +1635,9 @@ class GeoLensEval:
         )
         print(
             f"Geo radius: FoV (0.0) {avg_geo_radius_um[0]:.3f} um, FoV (0.5) {avg_geo_radius_um[num_field // 2]:.3f} um, FoV (1.0) {avg_geo_radius_um[-1]:.3f} um"
+        )
+        print(
+            f"Throughput: FoV (0.0) {throughput[0]:.3f}, FoV (0.5) {throughput[num_field // 2]:.3f}, FoV (1.0) {throughput[-1]:.3f}"
         )
 
         # Save to dict
@@ -1642,6 +1648,7 @@ class GeoLensEval:
             rms_results[f"fov{fov}"] = {
                 "rms": round(avg_rms_radius_um[i].item(), 4),
                 "radius": round(avg_geo_radius_um[i].item(), 4),
+                "throughput": round(throughput[i].item(), 4),
             }
 
         return rms_results
