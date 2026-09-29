@@ -54,7 +54,7 @@ def test_repository_code_does_not_read_absolute_surface_d():
         if any(part.startswith(".") or part == "__pycache__" for part in path.parts):
             continue
 
-        tree = ast.parse(path.read_text(), filename=str(path))
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         surface_names = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.For) and _surface_collection(node.iter):
@@ -217,7 +217,7 @@ def test_json_round_trip_ignores_absolute_d_metadata(sample_singlet_lens, tmp_pa
     path = tmp_path / "lens.json"
     source.write_lens_json(path)
 
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     expected = [float(surface.d_next) for surface in source.surfaces]
     for idx, surface in enumerate(data["surfaces"]):
         surface["d"] = 1000.0 + idx
