@@ -264,7 +264,7 @@ if __name__ == "__main__":
     lens.post_computation()
 
     logging.info(
-        f"Actual: diagonal FOV {lens.rfov}, r sensor {lens.r_sensor}, F/{lens.fnum}."
+        f"Actual: diagonal FoV {math.degrees(2 * lens.rfov):.2f}deg, r sensor {lens.r_sensor}, F/{lens.fnum:.3f}."
     )
     lens.write_lens_json(f"{result_dir}/final_lens.json")
     lens.analysis(save_name=f"{result_dir}/final_lens")
