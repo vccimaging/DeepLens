@@ -239,9 +239,9 @@ if __name__ == "__main__":
         result_dir=args["result_dir"],
     )
 
-    # Match materials and set fnum
+    # Match materials and save before any step that can raise; the F-number is
+    # set on the reloaded lens by set_target_fov_fnum below.
     lens.match_materials()
-    lens.set_fnum(args["fnum"])
     lens.write_lens_json(f"{result_dir}/curriculum_final.json")
 
     # To obtain optimal optical performance, we typically need additional training iterations. This code uses strong lens design constraints with small learning rates, making optimization slow but steadily improving optical performance. For demonstration purposes, here we only train for 3000 steps.

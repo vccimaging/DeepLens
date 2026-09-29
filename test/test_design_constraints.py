@@ -1,3 +1,9 @@
+# Copyright 2026 KAUST Computational Imaging Group, Xinge Yang and DeepLens contributors.
+# This file is part of DeepLens (https://github.com/vccimaging/DeepLens).
+#
+# Licensed under the Apache License, Version 2.0.
+# See LICENSE file in the project root for full license information.
+
 """Regressions for physical design targets, clearances, and field coverage."""
 
 import math
@@ -36,14 +42,16 @@ def test_target_fnum_brackets_large_aperture_changes(
     assert lens.fnum == pytest.approx(target, rel=0.002)
 
 
-@pytest.mark.parametrize("failure", ["limit", "nan", "exception"])
+@pytest.mark.parametrize("failure", ["limit", "clamped", "nan", "exception"])
 def test_set_fnum_restores_aperture_on_failure(
     sample_singlet_lens, monkeypatch, failure
 ):
     lens = sample_singlet_lens
     aperture = lens.surfaces[lens.aper_idx]
     original_r, original_fnum = aperture.r, lens.fnum
-    monkeypatch.setattr(aperture, "max_height", lambda: original_r)
+    # "clamped": a stop loaded above its own max_height must still be restored.
+    limit = 0.5 * original_r if failure == "clamped" else original_r
+    monkeypatch.setattr(aperture, "max_height", lambda: limit)
 
     def pupil():
         if failure == "exception":

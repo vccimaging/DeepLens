@@ -1526,21 +1526,28 @@ class GeoLens(
                 f"Cannot reach F/{fnum}: target pupil radius {target_pupil_r:.6g} mm."
             )
         except Exception:
-            aperture.update_r(original_r)
+            # Assign directly: update_r would clamp a stop above max_height().
+            aperture.r = original_r
             raise
 
     @torch.no_grad()
     def set_target_fov_fnum(self, rfov, fnum):
         """Set FoV, image height, and F-number as design targets.
 
-        Only use this method to assign design targets (it overwrites the
-        cached first-order quantities directly rather than measuring them).
+        Only use this method to assign design targets. FoV and focal length
+        are overwritten directly; the F-number is reached by resizing the
+        aperture stop with `set_fnum`, which ray-traces the entrance pupil.
 
         Args:
             rfov (float): Half-diagonal FoV. Interpreted as radians; if the
                 value is greater than $\\pi$ it is treated as degrees and
                 converted to radians.
             fnum (float): Target F-number.
+
+        Raises:
+            ValueError: See `set_fnum`.
+            RuntimeError: See `set_fnum`. FoV and focal length targets stay
+                assigned; only the aperture radius is restored.
         """
         if rfov > math.pi:
             self.rfov_eff = rfov / 180.0 * math.pi
