@@ -157,7 +157,8 @@ def test_fov_uses_first_crossing_or_last_surviving_field(
     if case == "fold":
         expected = math.radians(float(fov[0] + (fov[-1] - fov[0]) * 0.37))
     elif case == "dead":
-        expected = math.radians(float(fov[31]))
+        # Peak of the sine; the surviving fields past it fold back inward.
+        expected = math.radians(float(fov[16]))
     elif case == "clear":
         expected = math.radians(float(fov[-1]))
     elif case == "early_dead":

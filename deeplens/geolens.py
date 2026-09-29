@@ -973,8 +973,9 @@ class GeoLens(
             2. **Forward ray tracing** — sweeps FOV angles from object side,
                traces to sensor, and interpolates the first angle whose centroid
                reaches the sensor half-diagonal. If a field loses its rays first,
-               uses the preceding surviving field (zero if the on-axis field
-               is unavailable). This avoids the failure of the
+               or no field reaches it, uses the surviving field with the largest
+               image height (zero if the on-axis field is unavailable). This
+               avoids the failure of the
                old backward-tracing approach on wide-angle lenses where pupil
                aberration at full field leaves zero valid rays.
 
@@ -1022,21 +1023,20 @@ class GeoLens(
         has_valid = valid.sum(dim=-1) > 10
         if has_valid.any():
             beyond = (~has_valid) | (imgh >= self.r_sensor)
-            if not beyond.any():
-                best_deg = fov_samples[-1]
+            idx = int(beyond.int().argmax()) if beyond.any() else num_fov
+            if idx == 0:
+                best_deg = fov_samples[0]
+            elif idx < num_fov and has_valid[idx]:
+                fraction = (self.r_sensor - imgh[idx - 1]) / (
+                    imgh[idx] - imgh[idx - 1]
+                ).clamp_min(EPSILON)
+                best_deg = fov_samples[idx - 1] + fraction * (
+                    fov_samples[idx] - fov_samples[idx - 1]
+                )
             else:
-                idx = int(beyond.int().argmax())
-                if idx == 0:
-                    best_deg = fov_samples[0]
-                elif has_valid[idx]:
-                    fraction = (self.r_sensor - imgh[idx - 1]) / (
-                        imgh[idx] - imgh[idx - 1]
-                    ).clamp_min(EPSILON)
-                    best_deg = fov_samples[idx - 1] + fraction * (
-                        fov_samples[idx] - fov_samples[idx - 1]
-                    )
-                else:
-                    best_deg = fov_samples[idx - 1]
+                # No crossing: stop at the peak image height, since the image
+                # folds back beyond it (vignetted outer fields).
+                best_deg = fov_samples[int(imgh[:idx].argmax())]
             rfov = math.radians(float(best_deg))
             self.rfov = rfov
             self.real_dfov = 2 * rfov
