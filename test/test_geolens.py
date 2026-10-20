@@ -292,6 +292,12 @@ class TestGeoLensPSF:
         )
         assert similarity.item() > 0.75
 
+    def test_geometric_psf_rejects_return_field(self, sample_cellphone_lens):
+        """The incoherent model has no field; it must not return intensity instead."""
+        points = torch.tensor([[0.0, 0.0, DEPTH]])
+        with pytest.raises(ValueError, match="return_field"):
+            sample_cellphone_lens.psf(points, ks=31, return_field=True)
+
     def test_geolens_psf_normalized(self, sample_cellphone_lens):
         """PSF should sum to approximately 1."""
         lens = sample_cellphone_lens
