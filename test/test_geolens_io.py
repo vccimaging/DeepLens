@@ -271,6 +271,25 @@ class TestSEQIO:
         assert [s.mat2.get_name() for s in lens.surfaces] == ["n-bk7", "air"]
         assert float(lens.foclen) == pytest.approx(float(reference.foclen))
 
+    def test_semicolon_separates_every_command(self, test_output_dir):
+        """Commands after ``;`` are read, and a trailing ``;`` is harmless.
+
+        Regression: ``S r t; STO; CIR 3`` dropped the stop and the semi-diameter,
+        and ``EPD 10.0;`` raised on ``float("10.0;")``.
+        """
+        from deeplens import GeoLens
+
+        text = (
+            "RDM\nEPD 10.0;\nYAN 0 10;\nSO 0.0 1e10;\nS 50.0 3.0 N-BK7\n"
+            "S -50.0 45.0; STO; CIR 3\nSI 0.0 0.0;\nGO\n"
+        )
+        path = Path(test_output_dir) / "seq_semicolons.seq"
+        path.write_text(text, encoding="utf-8")
+        lens = GeoLens(filename=str(path))
+
+        assert lens.aper_idx == 1
+        assert lens.surfaces[1].r == pytest.approx(3.0)
+
 
 class TestCrossFormat:
     """Tests for cross-format conversion."""
