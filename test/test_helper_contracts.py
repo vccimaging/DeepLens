@@ -60,7 +60,11 @@ def test_tilted_phase_transform_preserves_dtype_and_roundtrips(device_auto, dtyp
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_plane_and_phase_refraction_match(device_auto, dtype):
-    """Flat geometric and phase surfaces share the same Snell refraction."""
+    """Flat geometric and phase surfaces share the same Snell refraction.
+
+    The ray hits the Fresnel vertex, where the phase gradient is zero, so the
+    generalized law in `diffract` must reduce to plain Snell refraction.
+    """
     plane = Plane(
         r=2.0,
         d_next=torch.tensor(0.0, device=device_auto, dtype=dtype),
@@ -83,7 +87,7 @@ def test_plane_and_phase_refraction_match(device_auto, dtype):
     phase_ray = Ray(origin.clone(), direction.clone(), wvln=0.55, device=device_auto)
 
     plane_out = plane.refract(plane_ray, eta=1.0 / 1.5)
-    phase_out = phase.refract(phase_ray, eta=1.0 / 1.5)
+    phase_out = phase.diffract(phase_ray, n1=1.0, n2=1.5)
 
     assert torch.equal(phase_out.is_valid, plane_out.is_valid)
     assert torch.allclose(phase_out.d, plane_out.d, atol=1e-7, rtol=1e-6)
