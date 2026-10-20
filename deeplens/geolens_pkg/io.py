@@ -472,10 +472,14 @@ SURF 0
 
         print("Beginning to parse surface data...\n")
 
-        for line_num, line in enumerate(lines, 1):
-            # "!" starts a Code V comment, also after a command.
-            line = line.split("!", 1)[0].strip()
-
+        # "!" starts a Code V comment and ";" separates commands on one line,
+        # so every branch below sees a single command.
+        commands = [
+            (line_num, command.strip())
+            for line_num, line in enumerate(lines, 1)
+            for command in line.split("!", 1)[0].split(";")
+        ]
+        for line_num, line in commands:
             # Skip irrelevant lines
             if not line or line.startswith(
                 (
@@ -537,8 +541,7 @@ SURF 0
                     surfaces.append(current_surface)
                     surface_index += 1
 
-                # ";" ends the S command; another command may follow it.
-                parts = line.split(";", 1)[0].split()
+                parts = line.split()
                 radius_value = float(parts[1]) if len(parts) > 1 else 0.0
                 thickness = float(parts[2]) if len(parts) > 2 else 0.0
                 material = parts[3].upper() if len(parts) > 3 else "AIR"
@@ -586,9 +589,7 @@ SURF 0
             # Handle surface attributes (CIR, STO, ASP, K, A~J, etc.)
             if current_surface:
                 if line.startswith("CIR"):
-                    current_surface["diameter"] = float(
-                        line.split()[1].replace(";", "")
-                    )
+                    current_surface["diameter"] = float(line.split()[1])
                     print(f"[Line {line_num}]   → CIR={current_surface['diameter']}")
 
                 elif line.startswith("STO"):
@@ -600,7 +601,7 @@ SURF 0
                     print(f"[Line {line_num}]   → Aspheric surface")
 
                 elif line.startswith("K "):
-                    current_surface["conic"] = float(line.split()[1].replace(";", ""))
+                    current_surface["conic"] = float(line.split()[1])
                     print(f"[Line {line_num}]   → K={current_surface['conic']}")
 
                 # Only extract single-letter coefficients A-J
@@ -619,7 +620,7 @@ SURF 0
                         "J ",
                     ]
                 ):
-                    parts = line.replace(";", "").split()
+                    parts = line.split()
                     i = 0
                     while i < len(parts) - 1:
                         try:

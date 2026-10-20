@@ -132,6 +132,9 @@ CUSTOM_data = read_custom_mat(os.path.join(_dir, "materials_data.json"))
 RII_data = read_custom_mat(os.path.join(_dir, "refractiveindex_data.json"))
 RII_data.setdefault("FORMULA", {})
 RII_data.setdefault("INTERP", {})
+# A variant grade with its base grade's nd/Vd resolves to the base formula.
+for _alias, _base in CUSTOM_data.get("ALIAS_TABLE", {}).items():
+    RII_data["FORMULA"][_alias] = RII_data["FORMULA"][_base]
 
 
 # ===========================================

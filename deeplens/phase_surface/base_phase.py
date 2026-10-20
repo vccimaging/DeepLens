@@ -16,9 +16,9 @@ class Phase(DeepObj):
     Represents a flat (zero-sag) substrate carrying a phase pattern $\\phi(x, y)$,
     using sequential geometry. It owns only `d_next`, the thickness to the next
     vertex; the containing `GeoLens` derives its absolute position. Provides the
-    common ray-tracing machinery (intersection, refraction, generalized-Snell
-    diffraction, local/global transforms); the phase profile $\\phi$ and its
-    gradient are defined by subclasses.
+    common ray-tracing machinery (intersection, generalized-Snell refraction,
+    local/global transforms); the phase profile $\\phi$ and its gradient are
+    defined by subclasses.
 
     Attributes:
         vec_global (torch.Tensor): Global axis direction $[0, 0, 1]$, shape [3].
@@ -316,20 +316,6 @@ class Phase(DeepObj):
 
         return ray
 
-    def refract(self, ray, eta):
-        """Refract a ray with vector Snell's law in local coordinates."""
-        normal_vec = self.normal_vec(ray)
-        dot_product = (-normal_vec * ray.d).sum(-1).unsqueeze(-1)
-        k = 1 - eta**2 * (1 - dot_product**2)
-
-        valid = (k >= 0).squeeze(-1) & (ray.is_valid > 0)
-        k = k * valid.unsqueeze(-1)
-
-        new_d = eta * ray.d + (eta * dot_product - torch.sqrt(k + EPSILON)) * normal_vec
-        ray.d = torch.where(valid.unsqueeze(-1), new_d, ray.d)
-        ray.is_valid = ray.is_valid * valid
-        return ray
-
     def to_local_coord(self, ray):
         """Transform a ray from the surface reference frame to local coordinates."""
         offset = torch.stack(
@@ -402,24 +388,6 @@ class Phase(DeepObj):
         vectors_flat = vectors.reshape(-1, 3)
         rotated_flat = torch.mm(vectors_flat, rotation.t())
         return rotated_flat.reshape(original_shape)
-
-    def normal_vec(self, ray):
-        """Calculate the surface normal vector at intersection points.
-
-        The normal points from the surface toward the side the light comes from
-        (i.e. it is flipped to oppose the ray's z-direction).
-
-        Args:
-            ray (Ray): Ray providing the propagation direction.
-
-        Returns:
-            normal_vec (torch.Tensor): Unit normal vectors, same shape as `ray.d`.
-        """
-        normal_vec = torch.zeros_like(ray.d)
-        normal_vec[..., 2] = -1
-        is_forward = ray.d[..., 2].unsqueeze(-1) > 0
-        normal_vec = torch.where(is_forward, normal_vec, -normal_vec)
-        return normal_vec
 
     # ==============================
     # Optimization

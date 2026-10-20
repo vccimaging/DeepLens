@@ -92,7 +92,8 @@ class GeoLensPSF:
                 geometric model with N points.
 
         Raises:
-            ValueError: If `model` is not one of the supported names.
+            ValueError: If `model` is not one of the supported names, or
+                `return_field` is set for the geometric model.
         """
         wvln = self.primary_wvln if wvln is None else wvln
         spp = kwargs.get("spp", None)
@@ -100,6 +101,8 @@ class GeoLensPSF:
         return_field = kwargs.get("return_field", False)
         model = kwargs.get("model", "geometric")
         if model == "geometric":
+            if return_field:
+                raise ValueError("return_field needs model='coherent' or 'huygens'.")
             spp = SPP_PSF if spp is None else spp
             return self.psf_geometric(points, ks, wvln, spp, recenter)
         elif model == "coherent":

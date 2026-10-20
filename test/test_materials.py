@@ -356,7 +356,6 @@ class TestPatentGlassGrades:
     @pytest.mark.parametrize(
         ("name", "nd", "vd"),
         [
-            ("TAFD35L", 1.91082, 35.25),
             ("NBFD29", 1.77047, 29.74),
             ("J-KZFH9", 1.73800, 32.26),
             ("FDS20-W", 1.86966, 20.02),
@@ -372,6 +371,15 @@ class TestPatentGlassGrades:
         # TAFD37A is in refractiveindex_data.json; a custom-table row would
         # shadow its dispersion formula with a Cauchy fit.
         assert Material("tafd37a").dispersion == "rii"
+
+    def test_variant_grade_uses_base_formula(self):
+        # TAFD35L prints TAFD35's nd/Vd; a Cauchy fit misses its 0.4 um index by 3e-3.
+        wvln = torch.tensor([0.40, 0.4861, 0.5876, 0.6563])
+        mat = Material("TAFD35L")
+        assert mat.dispersion == "rii"
+        assert mat.get_name() == "tafd35l"
+        assert float(mat.n) == pytest.approx(1.91082)
+        assert torch.equal(mat.ior(wvln), Material("tafd35").ior(wvln))
 
 
 class TestMaterialEdgeCases:
