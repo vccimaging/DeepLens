@@ -228,6 +228,23 @@ class TestSEQIO:
         lens.write_lens_seq(out_path)
         assert os.path.exists(out_path)
 
+    def test_floating_pupil_exports_its_diameter(
+        self, sample_singlet_lens, test_output_dir
+    ):
+        """A lens with a floating pupil exports the EPD its stop gives.
+
+        Regression: the writer printed ``EPD None`` for every lens without a
+        stored ``enpd`` (all bundled lenses), so the file could not be read.
+        """
+        from deeplens import GeoLens
+
+        lens = sample_singlet_lens
+        assert lens.float_enpd
+        path = Path(test_output_dir) / "seq_floating_pupil.seq"
+        lens.write_lens_seq(str(path))
+        lens2 = GeoLens(filename=str(path))
+        assert lens2.enpd == pytest.approx(2 * float(lens.entr_pupilr_parax))
+
     def test_missing_image_surface_reports_actionable_error(self, test_output_dir):
         """A truncated Code V file names the missing SI image surface."""
         output = Path(test_output_dir) / "missing_image.seq"

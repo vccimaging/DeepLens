@@ -816,8 +816,9 @@ SURF 0
 
         Exports refractive surfaces (spheric and aspheric; pure apertures are
         skipped), materials, field angles (YAN at 0, 0.707, and 0.99 of the
-        effective half-FoV, in degrees), entrance pupil diameter, and the
-        image surface in Code V format.
+        effective half-FoV, in degrees), entrance pupil diameter (for a
+        floating pupil, the paraxial one the stop gives), and the image surface
+        in Code V format.
 
         Args:
             filename (str, optional): Output file path. Defaults to './test.seq'.
@@ -829,10 +830,13 @@ SURF 0
         import datetime
 
         current_date = datetime.datetime.now().strftime("%d-%b-%Y")
+        # Code V has no floating pupil, so export the paraxial entrance pupil
+        # diameter that the stop size gives.
+        enpd = 2 * float(self.entr_pupilr_parax) if self.float_enpd else self.enpd
 
         head_str = f"""RDM;LEN       "VERSION: 2023.03       LENS VERSION: 89       Creation Date:  {current_date}"
     TITLE 'Lens Design'
-    EPD   {self.enpd}
+    EPD   {enpd}
     DIM   M
     WL    650.0 550.0 480.0
     REF   2
