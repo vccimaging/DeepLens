@@ -434,7 +434,8 @@ SURF 0
         Parses standard and aspheric surfaces (conic K and polynomial
         coefficients A-I, mapped to even-aspheric terms ai[1]-ai[9]), entrance
         pupil diameter (EPD), field angles (YAN, in degrees), aperture stop
-        (STO), and the image surface (SI). Populates `self.surfaces`,
+        (STO, on an air gap or a refractive surface), and the image surface
+        (SI). Populates `self.surfaces`,
         `self.d_sensor` [mm], `self.r_sensor` [mm], `self.enpd`, `self.hfov`
         [deg], and `self.rfov_eff` [rad]. Progress is printed to stdout.
 
@@ -790,6 +791,7 @@ SURF 0
                 if pending_gap != 0.0 and self.surfaces:
                     self.surfaces[-1].d_next += pending_gap
                 pending_gap = 0.0
+                created.is_aperture = is_stop
                 self.surfaces.append(created)
             else:
                 pending_gap += d_next
@@ -814,11 +816,11 @@ SURF 0
     def write_lens_seq(self, filename="./test.seq"):
         """Write the lens to a Code V .seq sequential file.
 
-        Exports refractive surfaces (spheric and aspheric; pure apertures are
-        skipped), materials, field angles (YAN at 0, 0.707, and 0.99 of the
-        effective half-FoV, in degrees), entrance pupil diameter (for a
-        floating pupil, the paraxial one the stop gives), and the image surface
-        in Code V format.
+        Exports refractive surfaces (spheric and aspheric), pure apertures as
+        `STO` air surfaces, the `STO` flag of a refractive stop, materials,
+        field angles (YAN at 0, 0.707, and 0.99 of the effective half-FoV, in
+        degrees), entrance pupil diameter (for a floating pupil, the paraxial
+        one the stop gives), and the image surface in Code V format.
 
         Args:
             filename (str, optional): Output file path. Defaults to './test.seq'.
@@ -881,7 +883,7 @@ SURF 0
                 continue
 
             is_aspheric = surf.__class__.__name__ == "Aspheric"
-            is_stop_surface = getattr(surf, "is_stop", False)
+            is_stop_surface = getattr(surf, "is_aperture", False)
 
             if is_aspheric:
                 if abs(surf.c) > 1e-10:

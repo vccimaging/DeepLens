@@ -307,6 +307,29 @@ class TestSEQIO:
         assert lens.aper_idx == 1
         assert lens.surfaces[1].r == pytest.approx(3.0)
 
+    def test_refractive_stop_round_trips(self, test_output_dir):
+        """``STO`` on a refractive surface makes it the stop, read and written.
+
+        Regression: the reader dropped the flag, so the smallest surface became
+        the stop, and the writer looked for an ``is_stop`` attribute that no
+        surface has.
+        """
+        from deeplens import GeoLens
+
+        text = (
+            "RDM\nEPD 10.0\nYAN 0 10\nSO 0.0 1e10\n"
+            "S 50.0 3.0 N-BK7\n  STO\n  CIR 6\nS -50.0 45.0\n  CIR 4\n"
+            "SI 0.0 0.0\nGO\n"
+        )
+        path = Path(test_output_dir) / "seq_refractive_stop.seq"
+        path.write_text(text, encoding="utf-8")
+        lens = GeoLens(filename=str(path))
+        assert lens.aper_idx == 0
+
+        out_path = Path(test_output_dir) / "seq_refractive_stop_out.seq"
+        lens.write_lens_seq(str(out_path))
+        assert GeoLens(filename=str(out_path)).aper_idx == 0
+
 
 class TestCrossFormat:
     """Tests for cross-format conversion."""
