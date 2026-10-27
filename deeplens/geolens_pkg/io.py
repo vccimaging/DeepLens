@@ -431,11 +431,12 @@ SURF 0
     def read_lens_seq(self, filename="./test.seq"):
         """Load the lens from a Code V .seq sequential file.
 
-        Parses standard and aspheric surfaces (conic K and polynomial
-        coefficients A-I, mapped to even-aspheric terms ai[1]-ai[9]), entrance
-        pupil diameter (EPD), field angles (YAN, in degrees), aperture stop
-        (STO, on an air gap or a refractive surface), and the image surface
-        (SI). Populates `self.surfaces`,
+        Parses standard and aspheric surfaces (conic K and the 4th- to
+        20th-order coefficients A-H, J, mapped to `Aspheric`'s
+        `ai = [a4, ..., a20]`), entrance pupil diameter (EPD), field angles
+        (YAN, in degrees), aperture stop (STO, on an air gap or a refractive
+        surface), and the image surface (SI). Lines ending in `&` continue on
+        the next line. Populates `self.surfaces`,
         `self.d_sensor` [mm], `self.r_sensor` [mm], `self.enpd`, `self.hfov`
         [deg], and `self.rfov_eff` [rad]. Progress is printed to stdout.
 
@@ -473,13 +474,18 @@ SURF 0
 
         print("Beginning to parse surface data...\n")
 
-        # "!" starts a Code V comment and ";" separates commands on one line,
-        # so every branch below sees a single command.
-        commands = [
-            (line_num, command.strip())
-            for line_num, line in enumerate(lines, 1)
-            for command in line.split("!", 1)[0].split(";")
-        ]
+        # "!" starts a Code V comment, a trailing "&" continues the line, and
+        # ";" separates commands on one line, so every branch below sees a
+        # single command.
+        commands = []
+        continued = ""
+        for line_num, line in enumerate(lines, 1):
+            line = continued + line.split("!", 1)[0].strip()
+            if line.endswith("&"):
+                continued = line[:-1] + " "
+                continue
+            continued = ""
+            commands += [(line_num, command.strip()) for command in line.split(";")]
         for line_num, line in commands:
             # Skip irrelevant lines
             if not line or line.startswith(
@@ -605,7 +611,8 @@ SURF 0
                     current_surface["conic"] = float(line.split()[1])
                     print(f"[Line {line_num}]   → K={current_surface['conic']}")
 
-                # Only extract single-letter coefficients A-J
+                # Only extract the single-letter coefficients A-H, J (Code V
+                # has no I coefficient)
                 elif any(
                     line.startswith(p)
                     for p in [
@@ -617,7 +624,6 @@ SURF 0
                         "F ",
                         "G ",
                         "H ",
-                        "I ",
                         "J ",
                     ]
                 ):
@@ -626,7 +632,7 @@ SURF 0
                     while i < len(parts) - 1:
                         try:
                             key = parts[i]
-                            # Only accept single letters within the range A-J
+                            # Only accept the single letters A-H, J
                             if len(key) == 1 and key in [
                                 "A",
                                 "B",
@@ -636,7 +642,6 @@ SURF 0
                                 "F",
                                 "G",
                                 "H",
-                                "I",
                                 "J",
                             ]:
                                 value = float(parts[i + 1])
@@ -735,29 +740,9 @@ SURF 0
                         k = surf.get("conic", 0.0)
                         asph_coeffs = surf.get("asph_coeffs", {})
 
-                        # CODE V aspheric coefficient mapping (shift forward by one position):
-                        # A → ai[1] (2nd term, ρ²)
-                        # B → ai[2] (4th term, ρ⁴)
-                        # C → ai[3] (6th term, ρ⁶)
-                        # D → ai[4] (8th term, ρ⁸)
-                        # E → ai[5] (10th term, ρ¹⁰)
-                        # F → ai[6] (12th term, ρ¹²)
-                        # G → ai[7] (14th term, ρ¹⁴)
-                        # H → ai[8] (16th term, ρ¹⁶)
-                        # I → ai[9] (18th term, ρ¹⁸)
-
-                        # Initialize ai array (10 elements)
-                        ai = [0.0] * 10
-                        ai[0] = 0.0  # ρ⁰ term (unused)
-                        ai[1] = asph_coeffs.get("A", 0.0)  # ρ²
-                        ai[2] = asph_coeffs.get("B", 0.0)  # ρ⁴
-                        ai[3] = asph_coeffs.get("C", 0.0)  # ρ⁶
-                        ai[4] = asph_coeffs.get("D", 0.0)  # ρ⁸
-                        ai[5] = asph_coeffs.get("E", 0.0)  # ρ¹⁰
-                        ai[6] = asph_coeffs.get("F", 0.0)  # ρ¹²
-                        ai[7] = asph_coeffs.get("G", 0.0)  # ρ¹⁴
-                        ai[8] = asph_coeffs.get("H", 0.0)  # ρ¹⁶
-                        ai[9] = asph_coeffs.get("I", 0.0)  # ρ¹⁸
+                        # Code V's A-H, J are the ρ⁴ to ρ²⁰ terms, the same
+                        # orders as Aspheric's ai = [a4, a6, ..., a20].
+                        ai = [asph_coeffs.get(key, 0.0) for key in "ABCDEFGHJ"]
 
                         created = Aspheric(
                             c=c,
@@ -771,11 +756,9 @@ SURF 0
                         print(
                             f"   Created aspheric surface{status}: Aspheric(c={c:.6f}, r={r:.4f}, d={d:.4f}, k={k}, mat2='{current_material}')"
                         )
-                        if any(
-                            ai[1:]
-                        ):  # If there are non-zero higher-order terms (starting from ai[1])
+                        if any(ai):
                             print(
-                                f"      Aspheric coefficients: A={ai[1]:.2e}, B={ai[2]:.2e}, C={ai[3]:.2e}, D={ai[4]:.2e}"
+                                f"      Aspheric coefficients: A={ai[0]:.2e}, B={ai[1]:.2e}, C={ai[2]:.2e}, D={ai[3]:.2e}"
                             )
 
                 else:
@@ -816,9 +799,10 @@ SURF 0
     def write_lens_seq(self, filename="./test.seq"):
         """Write the lens to a Code V .seq sequential file.
 
-        Exports refractive surfaces (spheric and aspheric), pure apertures as
-        `STO` air surfaces, the `STO` flag of a refractive stop, materials,
-        field angles (YAN at 0, 0.707, and 0.99 of the effective half-FoV, in
+        Exports refractive surfaces (spheric, and aspheric with conic K and
+        the 4th- to 20th-order coefficients A-H, J), pure apertures as `STO`
+        air surfaces, the `STO` flag of a refractive stop, materials, field
+        angles (YAN at 0, 0.707, and 0.99 of the effective half-FoV, in
         degrees), entrance pupil diameter (for a floating pupil, the paraxial
         one the stop gives), and the image surface in Code V format.
 
@@ -892,7 +876,6 @@ SURF 0
                     radius = 0.0
 
                 k = surf.k if hasattr(surf, "k") else 0.0
-                ai = surf.ai if hasattr(surf, "ai") else [0.0] * 10
 
                 surf_str = f"S     {radius} {d_next}{material_str}\n"
                 surf_str += f"  CCY 0; THC 0\n"
@@ -902,12 +885,10 @@ SURF 0
                 surf_str += f"  ASP\n"
                 surf_str += f"  K   {k}\n"
 
-                if len(ai) > 4 and any(ai[1:5]):
-                    surf_str += f"  A   {ai[1]:.16e}; B {ai[2]:.16e}; C&\n"
-                    surf_str += f"   {ai[3]:.16e}; D {ai[4]:.16e}\n"
-
-                if len(ai) > 8 and any(ai[5:9]):
-                    surf_str += f"  E   {ai[5]:.16e}; F {ai[6]:.16e}; G {ai[7]:.16e}; H {ai[8]:.16e}\n"
+                # Code V's A-H, J are the ρ⁴ to ρ²⁰ terms, i.e. ai4 ... ai20.
+                for key, i in zip("ABCDEFGHJ", range(surf.ai_degree)):
+                    coeff = getattr(surf, f"ai{2 * (i + 2)}").item()
+                    surf_str += f"  {key}   {coeff:.16e}\n"
 
             else:
                 if abs(surf.c) > 1e-10:

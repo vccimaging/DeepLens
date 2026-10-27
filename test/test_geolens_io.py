@@ -330,6 +330,63 @@ class TestSEQIO:
         lens.write_lens_seq(str(out_path))
         assert GeoLens(filename=str(out_path)).aper_idx == 0
 
+    def test_aspheric_coefficients_follow_code_v_orders(self, test_output_dir):
+        """Code V's A, B, C, D are the ρ⁴, ρ⁶, ρ⁸, ρ¹⁰ terms; ``&`` continues a line.
+
+        Regression: A was read as the ρ⁶ term (every order one too high), and
+        the ``C&`` continuation lost C.
+        """
+        from deeplens import GeoLens
+
+        coeffs = [1e-4, 2e-6, 3e-8, 4e-10]
+        text = (
+            "RDM\nEPD 10.0\nYAN 0 10\nSO 0.0 1e10\n"
+            "S 50.0 3.0 N-BK7\n  ASP\n  K -0.5\n"
+            f"  A {coeffs[0]}; B {coeffs[1]}; C&\n   {coeffs[2]}; D {coeffs[3]}\n"
+            "S -50.0 45.0\nSI 0.0 0.0\nGO\n"
+        )
+        path = Path(test_output_dir) / "seq_aspheric_orders.seq"
+        path.write_text(text, encoding="utf-8")
+        surf = GeoLens(filename=str(path)).surfaces[0]
+
+        rho = torch.tensor([0.5, 1.0, 2.0, 3.0], dtype=torch.float64)
+        c, k = 1 / 50.0, -0.5
+        sag = c * rho**2 / (1 + torch.sqrt(1 - (1 + k) * c**2 * rho**2))
+        sag = sag + sum(a * rho ** (2 * i + 4) for i, a in enumerate(coeffs))
+        rho = rho.to(surf.c)
+        assert torch.allclose(
+            surf.sag(rho, torch.zeros_like(rho)).double().cpu(), sag, rtol=1e-5
+        )
+
+    def test_aspheric_lens_round_trips(self, lenses_dir, test_output_dir):
+        """Write then read keeps every aspheric coefficient at its order.
+
+        Regression: the writer skipped a4, wrote no coefficient at all for an
+        asphere with up to four terms, and read the ``ai`` list given at
+        construction instead of the ``ai4``, ``ai6``, ... an optimiser updates.
+        """
+        from deeplens import GeoLens
+        from deeplens.geometric_surface import Aspheric
+
+        lens = GeoLens(filename=os.path.join(lenses_dir, "camera/rf35mm_f1.8.json"))
+        idx = next(i for i, s in enumerate(lens.surfaces) if isinstance(s, Aspheric))
+        surf = lens.surfaces[idx]
+        surf.ai4 = surf.ai4 * 1.5
+
+        path = Path(test_output_dir) / "seq_aspheric_round_trip.seq"
+        lens.write_lens_seq(str(path))
+        lens2 = GeoLens(filename=str(path))
+
+        assert len(lens2.surfaces) == len(lens.surfaces)
+        rho = torch.linspace(0.0, surf.r, 5).to(surf.c)
+        assert torch.allclose(
+            lens2.surfaces[idx].sag(rho, torch.zeros_like(rho)),
+            surf.sag(rho, torch.zeros_like(rho)),
+            rtol=1e-5,
+            atol=1e-7,
+        )
+        assert float(lens2.foclen) == pytest.approx(float(lens.foclen), rel=1e-4)
+
 
 class TestCrossFormat:
     """Tests for cross-format conversion."""
