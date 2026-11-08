@@ -71,7 +71,7 @@ docs = [
 [project.urls]
 Homepage = "https://github.com/vccimaging/DeepLens"
 Repository = "https://github.com/vccimaging/DeepLens"
-Documentation = "https://ai4optics.com/deeplens/"
+Documentation = "https://www.ai4optics.com/deeplens/"
 Issues = "https://github.com/vccimaging/DeepLens/issues"
 Changelog = "https://github.com/vccimaging/DeepLens/releases"
 
