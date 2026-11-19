@@ -19,6 +19,12 @@ Functions:
     - psf_coherent(): Alias for psf_pupil_prop.
     - psf_pupil_prop(): Exit-pupil diffraction PSF via coherent tracing + ASM.
     - pupil_field(): Complex wavefront at the exit pupil plane.
+    - gaussian_fiber_mode(): Fundamental Gaussian single-mode-fiber field.
+    - fiber_mode_overlap(): Power coupling between two sampled complex fields.
+    - fiber_coupling(): Lens-to-single-mode-fiber coupling calculation.
+    - geometric_fiber_capture(): Core-and-NA acceptance for traced ray bundles.
+    - geometric_fiber_coupling(): Zemax-style geometric fiber coupling.
+    - multimode_fiber_coupling(): Alias for geometric multimode-fiber coupling.
     - psf_huygens(): Huygens-Fresnel PSF via secondary point source integration.
     - psf_map(): Geometric PSF map across the field of view.
     - psf_center(): Reference PSF centre via chief ray or pinhole projection.
@@ -30,6 +36,7 @@ import torch
 import torch.nn.functional as F
 
 from ..config import (
+    DEFAULT_WAVE,
     EPSILON,
     PSF_KS,
     SPP_CALC,
@@ -354,6 +361,396 @@ class GeoLensPSF:
         psf = psf / (torch.sum(psf, dim=(-2, -1), keepdim=True) + EPSILON)
 
         return diff_float(psf)
+
+    @staticmethod
+    def gaussian_fiber_mode(
+        shape,
+        pixel_size,
+        mode_field_diameter,
+        *,
+        offset=(0.0, 0.0),
+        tilt=(0.0, 0.0),
+        wvln=DEFAULT_WAVE,
+        device=None,
+        dtype=None,
+    ):
+        """Sample the fundamental Gaussian mode of a single-mode fiber.
+
+        Args:
+            shape (tuple[int, int]): Mode-grid shape ``(height, width)``.
+            pixel_size (float): Grid pitch in mm.
+            mode_field_diameter (float): Fiber MFD in mm. The intensity is
+                ``exp(-2 r^2 / w^2)``, where ``w`` is half this value.
+            offset (tuple[float, float], optional): Fiber-mode centre
+                ``(x, y)`` in mm. Defaults to ``(0.0, 0.0)``.
+            tilt (tuple[float, float], optional): Fiber-axis angles
+                ``(theta_x, theta_y)`` in radians. Defaults to ``(0.0, 0.0)``.
+            wvln (float, optional): Vacuum wavelength in µm. Defaults to
+                ``DEFAULT_WAVE``.
+            device (torch.device or str or None, optional): Output device.
+            dtype (torch.dtype or None, optional): Complex output dtype. When
+                None, uses ``torch.complex64``.
+
+        Returns:
+            torch.Tensor: Energy-normalized complex mode of shape ``[H, W]``.
+
+        Raises:
+            ValueError: If a grid dimension, pitch, MFD, or wavelength is not
+                positive.
+        """
+        height, width = shape
+        if height <= 0 or width <= 0:
+            raise ValueError("Fiber mode grid dimensions must be positive.")
+        if pixel_size <= 0:
+            raise ValueError("pixel_size must be positive.")
+        if mode_field_diameter <= 0:
+            raise ValueError("mode_field_diameter must be positive.")
+        if wvln <= 0:
+            raise ValueError("wvln must be positive.")
+
+        if dtype is None:
+            dtype = torch.complex64
+        if dtype not in (torch.complex64, torch.complex128):
+            raise ValueError("dtype must be torch.complex64 or torch.complex128.")
+
+        real_dtype = torch.float64 if dtype == torch.complex128 else torch.float32
+        x = (
+            torch.arange(width, device=device, dtype=real_dtype) - (width - 1) / 2
+        ) * pixel_size
+        y = (
+            torch.arange(height, device=device, dtype=real_dtype) - (height - 1) / 2
+        ) * pixel_size
+        yy, xx = torch.meshgrid(y, x, indexing="ij")
+        waist = mode_field_diameter / 2
+        x_shifted = xx - offset[0]
+        y_shifted = yy - offset[1]
+        amplitude = torch.exp(-(x_shifted.square() + y_shifted.square()) / waist**2)
+
+        wvln_mm = wvln * 1e-3
+        phase = (
+            2
+            * torch.pi
+            / wvln_mm
+            * (
+                xx
+                * torch.sin(torch.as_tensor(tilt[0], device=device, dtype=real_dtype))
+                + yy
+                * torch.sin(torch.as_tensor(tilt[1], device=device, dtype=real_dtype))
+            )
+        )
+        mode = amplitude * torch.exp(1j * phase)
+        energy = mode.abs().square().sum() * pixel_size**2
+        return mode / torch.sqrt(energy + EPSILON)
+
+    @staticmethod
+    def fiber_mode_overlap(field, mode, pixel_size):
+        """Calculate the power coupling between sampled complex fields.
+
+        Args:
+            field (torch.Tensor): Incident complex field with shape ``[H, W]``.
+            mode (torch.Tensor): Fiber-mode complex field with the same shape
+                as ``field``.
+            pixel_size (float): Common grid pitch in mm.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Coupling efficiency in ``[0, 1]``
+            and corresponding insertion loss in dB.
+
+        Raises:
+            ValueError: If either field is not complex, their shapes differ, or
+                the pixel size is not positive.
+        """
+        if not field.is_complex() or not mode.is_complex():
+            raise ValueError("field and mode must be complex tensors.")
+        if field.shape != mode.shape:
+            raise ValueError("field and mode must have the same shape.")
+        if pixel_size <= 0:
+            raise ValueError("pixel_size must be positive.")
+
+        area = pixel_size**2
+        overlap = (field * mode.conj()).sum() * area
+        field_power = field.abs().square().sum() * area
+        mode_power = mode.abs().square().sum() * area
+        efficiency = overlap.abs().square() / (field_power * mode_power + EPSILON)
+        efficiency = efficiency.real.clamp(0.0, 1.0)
+        loss_db = -10 * torch.log10(efficiency.clamp_min(EPSILON))
+        return efficiency, loss_db
+
+    def fiber_coupling(
+        self,
+        points,
+        mode_field_diameter,
+        *,
+        wvln=None,
+        spp=SPP_COHERENT,
+        ks=None,
+        offset=(0.0, 0.0),
+        tilt=(0.0, 0.0),
+        defocus=0.0,
+        recenter=True,
+    ):
+        """Calculate coherent coupling from a lens to a Gaussian single-mode fiber.
+
+        The lens field is coherently traced to its exit pupil and propagated to
+        the sensor plane with ASM. An optional ``defocus`` then propagates the
+        field to the fiber facet. Coupling is the normalized complex overlap
+        with the fundamental Gaussian fiber mode.
+
+        Args:
+            points (torch.Tensor or list): One normalized object point ``[x, y, z]``.
+            mode_field_diameter (float): Fiber MFD in mm.
+            wvln (float, optional): Wavelength in µm. Defaults to the lens's
+                primary wavelength.
+            spp (int, optional): Coherent rays to trace. Defaults to
+                ``SPP_COHERENT``.
+            ks (int or None, optional): Square sensor-plane region used for the
+                overlap. ``None`` uses the full padded propagated field.
+            offset (tuple[float, float], optional): Fiber lateral offset in mm.
+            tilt (tuple[float, float], optional): Fiber angular offset in radians.
+            defocus (float, optional): Fiber-facet displacement from the sensor
+                plane in mm. Defaults to 0.
+            recenter (bool, optional): Centre the source's chief ray before
+                matching the fiber mode. Defaults to True.
+
+        Returns:
+            dict[str, torch.Tensor]: ``efficiency``, ``loss_db``, propagated
+            ``field``, and matched Gaussian ``mode``.
+        """
+        wvln = self.primary_wvln if wvln is None else wvln
+        field = self.psf_pupil_prop(
+            points,
+            ks=ks,
+            wvln=wvln,
+            spp=spp,
+            recenter=recenter,
+            return_field=True,
+        )
+        if defocus:
+            field = AngularSpectrumMethod(
+                field, z=defocus, wvln=wvln, ps=self.pixel_size, padding=True
+            )
+        mode = self.gaussian_fiber_mode(
+            field.shape,
+            self.pixel_size,
+            mode_field_diameter,
+            offset=offset,
+            tilt=tilt,
+            wvln=wvln,
+            device=field.device,
+            dtype=field.dtype,
+        )
+        efficiency, loss_db = self.fiber_mode_overlap(field, mode, self.pixel_size)
+        return {
+            "efficiency": efficiency,
+            "loss_db": loss_db,
+            "field": field,
+            "mode": mode,
+        }
+
+    @staticmethod
+    def geometric_fiber_capture(
+        ray_origins,
+        ray_directions,
+        core_diameter,
+        numerical_aperture,
+        *,
+        fiber_center=(0.0, 0.0, 0.0),
+        fiber_tilt=(0.0, 0.0),
+        valid=None,
+    ):
+        """Evaluate geometric ray capture by a step-index multimode fiber.
+
+        A ray is coupled when it intersects the circular core on the fiber-facet
+        plane and its angle to the fiber axis is within the numerical aperture.
+        This is a geometric throughput calculation; it does not model coherent
+        interference or coupling into individual guided modes.
+
+        Args:
+            ray_origins (torch.Tensor): Ray positions with shape ``[..., 3]`` in
+                mm. The rays may originate on any plane.
+            ray_directions (torch.Tensor): Unit ray directions with the same
+                shape as ``ray_origins``.
+            core_diameter (float): Circular fiber-core diameter in mm.
+            numerical_aperture (float): Fiber NA in the incident medium.
+            fiber_center (tuple[float, float, float], optional): Core centre on
+                the fiber facet in mm. Defaults to the coordinate origin.
+            fiber_tilt (tuple[float, float], optional): Fiber-axis tilt
+                ``(theta_x, theta_y)`` in radians. Defaults to no tilt.
+            valid (torch.Tensor or None, optional): Per-ray validity mask with
+                shape ``ray_origins.shape[:-1]``. Defaults to all valid.
+
+        Returns:
+            dict[str, torch.Tensor]: Boolean ``coupled``, ``in_core``, and
+            ``within_na`` masks; facet ``positions``; and per-ray
+            ``incidence_sine``.
+
+        Raises:
+            ValueError: If shapes do not match, the core diameter is not
+                positive, or NA is outside ``(0, 1]``.
+        """
+        if ray_origins.shape != ray_directions.shape or ray_origins.shape[-1] != 3:
+            raise ValueError(
+                "ray_origins and ray_directions must have matching [..., 3] shapes."
+            )
+        if core_diameter <= 0:
+            raise ValueError("core_diameter must be positive.")
+        if not 0 < numerical_aperture <= 1:
+            raise ValueError("numerical_aperture must be in (0, 1].")
+
+        dtype = ray_origins.dtype
+        device = ray_origins.device
+        center = torch.as_tensor(fiber_center, device=device, dtype=dtype)
+        axis = torch.stack(
+            (
+                torch.tan(torch.as_tensor(fiber_tilt[0], device=device, dtype=dtype)),
+                torch.tan(torch.as_tensor(fiber_tilt[1], device=device, dtype=dtype)),
+                torch.ones((), device=device, dtype=dtype),
+            )
+        )
+        axis = axis / axis.norm()
+
+        direction = ray_directions / ray_directions.norm(dim=-1, keepdim=True)
+        axis_dot_direction = (direction * axis).sum(dim=-1)
+        denom = axis_dot_direction.clamp_min(EPSILON)
+        distance = ((center - ray_origins) * axis).sum(dim=-1) / denom
+        positions = ray_origins + distance.unsqueeze(-1) * direction
+
+        transverse = positions - center
+        transverse = transverse - (transverse * axis).sum(dim=-1, keepdim=True) * axis
+        in_core = transverse.square().sum(dim=-1) <= (core_diameter / 2) ** 2
+        incidence_sine = torch.sqrt((1 - axis_dot_direction.square()).clamp_min(0))
+        within_na = incidence_sine <= numerical_aperture
+        forward = axis_dot_direction > 0
+        if valid is None:
+            valid = torch.ones_like(in_core, dtype=torch.bool)
+        else:
+            valid = valid.to(device=device, dtype=torch.bool)
+            if valid.shape != in_core.shape:
+                raise ValueError("valid must have shape ray_origins.shape[:-1].")
+        coupled = valid & forward & in_core & within_na
+        return {
+            "coupled": coupled,
+            "in_core": in_core,
+            "within_na": within_na,
+            "positions": positions,
+            "incidence_sine": incidence_sine,
+        }
+
+    @torch.no_grad()
+    def geometric_fiber_coupling(
+        self,
+        points,
+        core_diameter,
+        numerical_aperture,
+        *,
+        wvln=None,
+        num_rays=SPP_PSF,
+        offset=(0.0, 0.0),
+        tilt=(0.0, 0.0),
+        defocus=0.0,
+        recenter=True,
+    ):
+        """Calculate ray-based fiber coupling from a lens to a multimode fiber.
+
+        This implements the geometric coupling calculation used by optical
+        design tools: traced rays must enter the circular core and satisfy the
+        fiber NA acceptance cone. The returned efficiency includes lens
+        vignetting, core clipping, and NA rejection. It is appropriate for
+        multimode fibers and ray-based tolerance sweeps; use
+        :meth:`fiber_coupling` for coherent single-mode coupling.
+
+        Args:
+            points (torch.Tensor or list): One normalized object point ``[x, y, z]``.
+            core_diameter (float): Fiber-core diameter in mm.
+            numerical_aperture (float): Fiber NA in the incident medium.
+            wvln (float, optional): Wavelength in µm. Defaults to the lens's
+                primary wavelength.
+            num_rays (int, optional): Rays launched from the object point.
+            offset (tuple[float, float], optional): Core-centre displacement
+                from the chief-ray intercept in mm.
+            tilt (tuple[float, float], optional): Fiber-axis tilt in radians.
+            defocus (float, optional): Fiber-facet axial displacement from the
+                sensor plane in mm. Defaults to 0.
+            recenter (bool, optional): Centre the fiber on the chief-ray
+                intercept. When False, ``offset`` is an absolute sensor-plane
+                position. Defaults to True.
+
+        Returns:
+            dict[str, torch.Tensor]: Coupling ``efficiency`` and ``loss_db``;
+            individual ``lens_throughput``, ``core_throughput``, and
+            ``na_throughput``; plus ray-level ``coupled``, ``in_core``,
+            ``within_na``, ``positions``, and ``incidence_sine`` diagnostics.
+        """
+        wvln = self.primary_wvln if wvln is None else wvln
+        if isinstance(points, list):
+            points = torch.as_tensor(points, device=self.device, dtype=self.dtype)
+        else:
+            points = points.to(device=self.device, dtype=self.dtype)
+        if points.shape != (3,):
+            raise ValueError(
+                "points must contain exactly one normalized [x, y, z] point."
+            )
+
+        sensor_w, sensor_h = self.sensor_size
+        scale = self.calc_scale(points[2].item())
+        points_obj = torch.stack(
+            (
+                points[0] * scale * sensor_w / 2,
+                points[1] * scale * sensor_h / 2,
+                points[2],
+            )
+        )
+        ray = self.sample_from_points(points_obj, num_rays=num_rays, wvln=wvln)
+        ray = self.trace2sensor(ray)
+        if recenter:
+            center_xy = ray.centroid(mode="chief_ray")[:2]
+        else:
+            center_xy = torch.zeros(2, device=self.device, dtype=self.dtype)
+        fiber_center = (
+            center_xy[0] + offset[0],
+            center_xy[1] + offset[1],
+            self.d_sensor + defocus,
+        )
+        capture = self.geometric_fiber_capture(
+            ray.o,
+            ray.d,
+            core_diameter,
+            numerical_aperture,
+            fiber_center=fiber_center,
+            fiber_tilt=tilt,
+            valid=ray.is_valid > 0,
+        )
+
+        launched = ray.is_valid.numel()
+        valid = ray.is_valid > 0
+        coupled = capture["coupled"]
+        in_core = capture["in_core"] & valid
+        within_na = capture["within_na"] & valid
+        efficiency = coupled.sum(dtype=self.dtype) / launched
+        lens_throughput = valid.sum(dtype=self.dtype) / launched
+        core_throughput = in_core.sum(dtype=self.dtype) / launched
+        na_throughput = within_na.sum(dtype=self.dtype) / launched
+        loss_db = -10 * torch.log10(efficiency.clamp_min(EPSILON))
+        return {
+            "efficiency": efficiency,
+            "loss_db": loss_db,
+            "lens_throughput": lens_throughput,
+            "core_throughput": core_throughput,
+            "na_throughput": na_throughput,
+            "fiber_center": torch.as_tensor(
+                fiber_center, device=self.device, dtype=self.dtype
+            ),
+            "valid": valid,
+            **capture,
+        }
+
+    def multimode_fiber_coupling(self, *args, **kwargs):
+        """Alias for :meth:`geometric_fiber_coupling`.
+
+        Multimode fibers are modeled as a circular step-index core with a
+        geometric NA acceptance cone.
+        """
+        return self.geometric_fiber_coupling(*args, **kwargs)
 
     def pupil_field(self, points, wvln=None, spp=SPP_COHERENT, recenter=True):
         """Compute the complex wavefront at the exit-pupil plane by coherent ray tracing.
